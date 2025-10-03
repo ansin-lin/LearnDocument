@@ -1,0 +1,49 @@
+site_name: 编程基础教程
+site_url: https://ansin-lin.github.io/LearnDocument/
+use_directory_urls: false
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs       # 顶部导航栏
+    - navigation.sections   # 左侧分组章节
+    - navigation.expand     # 左侧目录默认展开
+    - content.code.copy     # 代码块一键复制
+
+nav:
+  - Python 教程:
+      - 首页: python/index.md
+      - 1. Python 简介: python/01_intro.md
+      - 2. 第一个 Python 程序: python/02_hello_world.md
+      - 3. 基本数据类型: python/03_data_types.md
+      - 4. 变量与常量: python/04_variables.md
+      - 5. 运算符: python/05_operators.md
+      - 6. 条件判断: python/06_conditions.md
+      - 7. 循环语句: python/07_loops.md
+      - 8. 列表 List: python/08_list.md
+      - 9. 元组 Tuple: python/09_tuple.md
+      - 10. 字典 Dict: python/10_dict.md
+      - 11. 集合 Set: python/11_set.md
+      - 12. 函数: python/12_functions.md
+      - 13. 类与对象: python/13_class.md
+      - 14. 异常处理: python/14_exceptions.md
+      - 15. 文件操作: python/15_file.md
+      - 16. 模块与包: python/16_modules.md
+      - 17. 输入输出: python/17_io.md
+      - 18. 小结: python/18_summary.md
+
+  - Java 教程:
+      - 首页: java/index.md
+      - 1. Java 简介: java/01_intro.md
+      - 2. Java 程序结构: java/02_structure.md
+      - 3. 变量与数据类型: java/03_dataType_variable.md
+      - 4. 运算符: java/04_operators.md
+      - 5. 控制语句: java/05_controls.md
+      - 6. 数组: java/06_arrays.md
+      - 7. 类与对象: java/07_methods.md
+      - 9. 类与对象: java/09_class.md
+      - 10. 面向对象基础: java/10_oop.md
+      - 11. 常见关键字: java/11_keywords.md
+      - 12. 异常处理: java/12_exceptions.md
+      - 13. 输入输出: java/13_io.md
+      - 14. 小结: java/14_summary.md
