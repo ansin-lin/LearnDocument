@@ -40,10 +40,11 @@ nav:
       - 4. 运算符: java/04_operators.md
       - 5. 控制语句: java/05_controls.md
       - 6. 数组: java/06_arrays.md
-      - 7. 类与对象: java/07_methods.md
-      - 9. 类与对象: java/09_class.md
-      - 10. 面向对象基础: java/10_oop.md
-      - 11. 常见关键字: java/11_keywords.md
-      - 12. 异常处理: java/12_exceptions.md
-      - 13. 输入输出: java/13_io.md
+      - 7. 类与对象: java/class.md
+      - 8. 面向对象的知识点: java/oop_object.md
+      - 9. 包和注释: java/09_package_command.md
+      - 10. 类的深入理解: java/10_oop.md
+      - 11. 异常处理: java/11_exception_handling.md
+      - 12. 字符串处理: java/12_exceptions.md
+      - 13. java集合: java/13_io.md
       - 14. 小结: java/14_summary.md

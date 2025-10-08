@@ -74,6 +74,7 @@ Java 中支持三种注释方式：
 3. **文档注释** `/** ... */`
 
 #### 单行注释
+
 ```java
 // 第一个 Java 程序
 public class HelloWorld {
@@ -84,6 +85,7 @@ public class HelloWorld {
 ```
 
 #### 多行注释
+
 ```java
 /*
  * 第一个 Java 程序
@@ -97,6 +99,7 @@ public class HelloWorld {
 ```
 
 #### 文档注释
+
 ```java
 /**
  * 第一个 Java 程序
@@ -120,6 +123,7 @@ public class HelloWorld {
 文档注释可以通过 `javadoc` 工具生成 HTML 文档，类似于 Java 官方的 API 文档。
 
 ### 常用标记
+
 | 标记 | 说明 |
 |------|------|
 | `@param` | 方法参数说明 |
@@ -141,6 +145,7 @@ public int add(int num1, int num2) {
 ```
 
 ### 类注释示例
+
 ```java
 /**
  * Animal，动物类
@@ -151,6 +156,7 @@ public class Animal {
 ```
 
 ### 字段注释示例
+
 ```java
 public class Cunyu {
     /** 公众号 */
@@ -159,6 +165,7 @@ public class Cunyu {
 ```
 
 ### 生成文档命令
+
 ```bash
 javadoc -d helloworld -author -version -encoding UTF-8 HelloWorld.java
 ```
@@ -170,12 +177,15 @@ javadoc -d helloworld -author -version -encoding UTF-8 HelloWorld.java
 JAR（Java ARchive）文件是一种压缩包格式，用于将多个 `.class` 文件、资源文件等打包在一起，方便分发和使用。
 
 ### 创建 JAR 文件
+
 1. 编译 Java 文件：
+
    ```bash
    javac HelloWorld.java
    ```
 
 2. 使用 `jar` 工具打包：
+
    ```bash
    jar cvf HelloWorld.jar HelloWorld.class
    ```
@@ -185,17 +195,21 @@ JAR（Java ARchive）文件是一种压缩包格式，用于将多个 `.class` �
    - `f` 指定输出文件名
 
 3. 运行 jar 文件（如果包含 `Main-Class`）：
+
    ```bash
    java -jar HelloWorld.jar
    ```
 
 ### 在 Manifest 文件中指定主类
+
 创建 `manifest.txt` 文件：
-```
+
+```bash
 Main-Class: HelloWorld
 ```
 
 再执行：
+
 ```bash
 jar cvfm HelloWorld.jar manifest.txt HelloWorld.class
 ```
