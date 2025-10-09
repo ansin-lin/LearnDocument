@@ -33,7 +33,7 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GH_TOKEN }}
           publish_dir: ./site
-          publish_branch: gh-pages    # ✅ 目标分支（自动创建）
-          force_orphan: true          # ✅ 首次部署必须启用
+          publish_branch: gh-pages
+          force_orphan: true
