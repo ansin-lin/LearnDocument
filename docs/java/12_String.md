@@ -10,6 +10,7 @@
 ## 二、String 概述
 
 ### 1. 基本特性
+
 - `String` 是 **不可变对象**，一旦创建，内容无法修改。
 - 每次修改实际上都会创建一个新的 `String` 对象。
 
@@ -24,16 +25,21 @@ System.out.println(a); // 实际上创建了新的 "abcd" 对象
 ## 三、创建字符串的两种方式
 
 ### 1. 直接赋值
+
 ```java
-String name = "村雨遥";
+String name = "安信株式会社";
+
 ```
+
 该方式创建的字符串会存储在 **字符串常量池** 中，相同内容只会保留一份。
 
 ### 2. 使用构造方法
+
 ```java
 String s1 = new String(); // 空字符串
-String s2 = new String("村雨遥");
+String s2 = new String("安信株式会社");
 ```
+
 此方式每次调用 `new` 都会在 **堆内存** 中创建新的对象。
 
 ### 构造方法汇总
@@ -50,6 +56,7 @@ String s2 = new String("村雨遥");
 ## 四、String 常用 API
 
 ### 1. equals / equalsIgnoreCase
+
 ```java
 String a = "Cunyu";
 String b = "cunyu";
@@ -58,42 +65,54 @@ System.out.println(a.equalsIgnoreCase(b));  // true
 ```
 
 ### 2. length()
+
 获取字符串长度：
+
 ```java
-String str = "村雨遥";
+String str = "安信株式会社";
 System.out.println(str.length()); // 3
 ```
 
 ### 3. charAt()
+
 获取指定索引的字符：
+
 ```java
 String str = "cunyu1943";
 System.out.println(str.charAt(3)); // y
 ```
 
 ### 4. toCharArray()
+
 将字符串转换为字符数组：
+
 ```java
 char[] arr = "Java".toCharArray();
 System.out.println(Arrays.toString(arr)); // [J, a, v, a]
 ```
 
 ### 5. substring()
+
 截取字符串（左闭右开）：
+
 ```java
 String s = "cunyu1943";
 System.out.println(s.substring(2, 5)); // nyu
 ```
 
 ### 6. replace()
+
 替换字符或子串：
+
 ```java
 String str = "cunyu1943";
 System.out.println(str.replace("u", "x")); // cxnyx1943
 ```
 
 ### 7. split()
+
 按规则切割字符串：
+
 ```java
 String s = "010-110-119";
 String[] arr = s.split("-");
@@ -105,6 +124,7 @@ System.out.println(Arrays.toString(arr)); // [010, 110, 119]
 ## 五、StringBuilder
 
 ### 1. 概述
+
 `StringBuilder` 是一个可变字符串容器，设计用于高效拼接和修改字符串。  
 相比 `String`，`StringBuilder` 不会频繁创建新对象，从而提升性能。
 
@@ -116,8 +136,8 @@ System.out.println(Arrays.toString(arr)); // [010, 110, 119]
 | `StringBuilder(String str)` | 以指定字符串初始化 |
 
 ```java
-StringBuilder sb = new StringBuilder("村雨遥");
-System.out.println(sb); // 村雨遥
+StringBuilder sb = new StringBuilder("安信株式会社");
+System.out.println(sb); // 安信株式会社
 ```
 
 ### 3. 常用方法
@@ -143,25 +163,30 @@ System.out.println(sb.length()); // 11
 
 ## 六、StringBuffer
 
-### 1. 概述
+### 1. 概述2
+
 `StringBuffer` 与 `StringBuilder` 类似，也是可变字符串类。  
 **区别在于**：`StringBuffer` 是 **线程安全的**，在多线程环境中更可靠。
 
-### 2. 构造方法
+### 2. 构造方法2
+
 ```java
 StringBuffer sb1 = new StringBuffer();
 StringBuffer sb2 = new StringBuffer("Java");
 ```
 
-### 3. 常用方法
+### 3. 常用方法2
+
 与 `StringBuilder` 基本一致：
+
 - `append()`：拼接字符串。
 - `insert()`：插入字符串。
 - `delete()`：删除指定位置内容。
 - `reverse()`：反转字符串。
 - `toString()`：转为字符串。
 
-### 4. 示例
+### 4. 示例2
+
 ```java
 public class StringBufferTest {
     public static void main(String[] args) {
@@ -175,7 +200,8 @@ public class StringBufferTest {
 }
 ```
 
-> **总结区别**：  
+> **总结区别**：
+>
 > - `StringBuffer`：线程安全（多线程场景适用）。  
 > - `StringBuilder`：非线程安全，但更快（单线程场景适用）。
 
@@ -183,10 +209,11 @@ public class StringBufferTest {
 
 ## 七、StringJoiner
 
-### 1. 概述
+### 1. 概述3
+
 `StringJoiner` 是 JDK8 引入的工具类，用于高效拼接字符串，支持指定分隔符、前缀、后缀。
 
-### 2. 构造方法
+### 2. 构造方法3
 
 | 构造函数 | 说明 |
 |-----------|------|
@@ -199,7 +226,7 @@ joiner.add("Java").add("Python").add("Go");
 System.out.println(joiner); // [Java-Python-Go]
 ```
 
-### 3. 常用方法
+### 3. 常用方法3
 
 | 方法 | 说明 |
 |------|------|
