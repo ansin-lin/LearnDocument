@@ -1,0 +1,1755 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ansin-lin.github.io/LearnDocument/java/01_intro.html">
+      
+      
+        <link rel="prev" href="index.html">
+      
+      
+        <link rel="next" href="02_structure.html">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>1. Java 简介 - 编程基础教程</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.2a3383ac.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#java" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../index.html" title="编程基础教程" class="md-header__button md-logo" aria-label="编程基础教程" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            编程基础教程
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              1. Java 简介
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="标签" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../index.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  首页
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../python/index.html" class="md-tabs__link">
+          
+  
+  
+  Python 教程
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="index.html" class="md-tabs__link">
+          
+  
+  
+  Java 教程
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="编程基础教程" class="md-nav__button md-logo" aria-label="编程基础教程" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    编程基础教程
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Python 教程
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Python 教程
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/01_intro.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    1. Python 简介
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/02_hello_world.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    2. 第一个 Python 程序
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/03_data_types.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    3. 基本数据类型
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/04_variables.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    4. 变量与常量
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/05_operators.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    5. 运算符
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/06_conditions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    6. 条件判断
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/07_loops.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    7. 循环语句
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/08_list.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    8. 列表 List
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/09_tuple.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    9. 元组 Tuple
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/10_dict.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    10. 字典 Dict
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/11_set.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    11. 集合 Set
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/12_functions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    12. 函数
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/13_class.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    13. 类与对象
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/14_exceptions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    14. 异常处理
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/15_file.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    15. 文件操作
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/16_modules.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    16. 模块与包
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/17_io.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    17. 输入输出
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/18_summary.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    18. 小结
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Java 教程
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Java 教程
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    1. Java 简介
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="01_intro.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    1. Java 简介
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      一、前言
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      二、历史背景
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="二、历史背景">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#java-2022" class="md-nav__link">
+    <span class="md-ellipsis">
+      📜 Java 发展年表（截至 2022 年）
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#java_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      三、为什么使用 Java
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="三、为什么使用 Java">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. 全球广泛使用
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. 优秀的移植性
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. 强大的社区支持
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. 高效率与易用性平衡
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#java_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      四、Java 能做什么
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#java_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      五、Java 技术体系
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="五、Java 技术体系">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      按平台划分为三大体系
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      六、总结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="02_structure.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    2. Java 程序结构
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="03_dataType_variable.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    3. 变量与数据类型
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="04_operators.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    4. 运算符
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="05_controls.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    5. 控制语句
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="06_arrays.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    6. 数组
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="07_class.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    7. 类与对象
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="08_oop_object.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    8. 面向对象的知识点
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="09_package_command.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    9. 包和注释
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="10_oop.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    10. 类的深入理解
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="11_exception_handling.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    11. 异常处理
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="12_String.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    12. 字符串处理
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="13_class_package.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    13. java类包
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="14_collection.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    14. java集合
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      一、前言
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      二、历史背景
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="二、历史背景">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#java-2022" class="md-nav__link">
+    <span class="md-ellipsis">
+      📜 Java 发展年表（截至 2022 年）
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#java_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      三、为什么使用 Java
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="三、为什么使用 Java">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. 全球广泛使用
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. 优秀的移植性
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. 强大的社区支持
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. 高效率与易用性平衡
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#java_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      四、Java 能做什么
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#java_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      五、Java 技术体系
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="五、Java 技术体系">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      按平台划分为三大体系
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      六、总结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="java">Java 入门简介</h1>
+<h2 id="_1">一、前言</h2>
+<p>既然要学习一门技术，那么就先来了解下它的历史，我们为什么要使用它，以及我们能用它来干啥。</p>
+<hr />
+<h2 id="_2">二、历史背景</h2>
+<p>1990 年代初，Sun 公司的詹姆斯·高斯林等人为了实现电视机、电话、闹钟等家用电器的控制和通信，开发了一套用于家电系统的编程语言 —— <strong>Oka</strong>。但由于市场需求有限，该计划逐渐被放弃。  </p>
+<p>随着互联网的兴起，Sun 公司发现 Oka 语言在网络中的潜力巨大，于是进行了改造，并在 <strong>1995 年 5 月</strong> 以 <strong>Java</strong> 的名义正式发布。  </p>
+<p>自此，Java 凭借强大的平台兼容性和网络特性迅速崛起，成为全球最重要的编程语言之一。詹姆斯·高斯林也被称为 <strong>Java 之父</strong>。  </p>
+<p>2009 年，Sun 公司被 Oracle 收购，Java 成为 Oracle 的核心产品之一。  </p>
+<hr />
+<h3 id="java-2022">📜 Java 发展年表（截至 2022 年）</h3>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>发布日期</th>
+<th>主要事件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JDK Beta</td>
+<td>1995</td>
+<td>Java 语言发布，Applet 大量应用</td>
+</tr>
+<tr>
+<td>JDK 1.0</td>
+<td>1996 年 1 月</td>
+<td>奠定 JDK、JRE、JVM 体系结构</td>
+</tr>
+<tr>
+<td>JDK 1.1</td>
+<td>1997 年 2 月</td>
+<td>加入 JIT 提升执行效率</td>
+</tr>
+<tr>
+<td>J2SE 1.2</td>
+<td>1998 年 12 月</td>
+<td>确立 J2SE、J2EE、J2ME 架构</td>
+</tr>
+<tr>
+<td>J2SE 1.3</td>
+<td>2000 年 5 月</td>
+<td>内置 HotSpot JVM</td>
+</tr>
+<tr>
+<td>J2SE 1.4</td>
+<td>2002 年 2 月</td>
+<td>支持 XML、断言、正则表达式</td>
+</tr>
+<tr>
+<td>J2SE 5.0</td>
+<td>2004 年 9 月</td>
+<td>泛型、枚举、自动装箱、for-each 循环</td>
+</tr>
+<tr>
+<td>Java SE 6</td>
+<td>2006 年 12 月</td>
+<td>动态语言支持、同步垃圾回收</td>
+</tr>
+<tr>
+<td>Java SE 7</td>
+<td>2011 年 7 月</td>
+<td>switch 支持字符串、多异常捕获</td>
+</tr>
+<tr>
+<td>Java SE 8 (LTS)</td>
+<td>2014 年 3 月</td>
+<td>引入 Lambda 表达式</td>
+</tr>
+<tr>
+<td>Java SE 9</td>
+<td>2017 年 9 月</td>
+<td>模块系统、GC 改进</td>
+</tr>
+<tr>
+<td>Java SE 10</td>
+<td>2018 年 3 月</td>
+<td>局部变量类型推断</td>
+</tr>
+<tr>
+<td>Java SE 11 (LTS)</td>
+<td>2018 年 9 月</td>
+<td>常用类增强，第一个长期支持版</td>
+</tr>
+<tr>
+<td>Java SE 12</td>
+<td>2019 年 3 月</td>
+<td>switch 表达式增强</td>
+</tr>
+<tr>
+<td>Java SE 13</td>
+<td>2019 年 9 月</td>
+<td>文本块支持</td>
+</tr>
+<tr>
+<td>Java SE 14</td>
+<td>2020 年 3 月</td>
+<td>instanceof 模式匹配</td>
+</tr>
+<tr>
+<td>Java SE 15</td>
+<td>2020 年 9 月</td>
+<td>密封类、隐藏类</td>
+</tr>
+<tr>
+<td>Java SE 16</td>
+<td>2021 年 3 月</td>
+<td>启用 C++14 特性、Vector API</td>
+</tr>
+<tr>
+<td>Java SE 17 (LTS)</td>
+<td>2021 年 9 月</td>
+<td>增强伪随机数生成器</td>
+</tr>
+<tr>
+<td>Java SE 18</td>
+<td>2022 年 3 月</td>
+<td>默认 UTF-8 编码、轻量级 HTTP 服务器</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>当前国内企业仍以 Java 8 为主流版本，LTS（长期支持版）在企业开发中更受青睐。</p>
+</blockquote>
+<hr />
+<h2 id="java_1">三、为什么使用 Java</h2>
+<h3 id="1">1. 全球广泛使用</h3>
+<p>Java 是世界范围内最流行的编程语言之一，TIOBE 排行榜长期保持前 3 位。</p>
+<h3 id="2">2. 优秀的移植性</h3>
+<p>得益于 JVM（Java Virtual Machine）特性，Java 可实现 <strong>一次编译，随处运行（Write Once, Run Anywhere）</strong>。</p>
+<h3 id="3">3. 强大的社区支持</h3>
+<p>Java 拥有全球最完善的开发生态和开源社区，提供丰富的框架和 API（如 Spring、Hibernate、MyBatis）。</p>
+<h3 id="4">4. 高效率与易用性平衡</h3>
+<p>相比 C/C++，Java 简化了内存管理；相比 Python，又具有更高执行效率。</p>
+<hr />
+<h2 id="java_2">四、Java 能做什么</h2>
+<p>Java 在现实中应用广泛，以下是主要领域：</p>
+<ul>
+<li>🖥 <strong>桌面 GUI 应用</strong>（如 Swing、JavaFX）  </li>
+<li>🌐 <strong>服务器端开发</strong>（Spring、Spring Boot、Servlet）  </li>
+<li>🏢 <strong>企业级系统开发</strong>（ERP、CRM 等）  </li>
+<li>📊 <strong>大数据生态</strong>（Hadoop、Spark、Flink 等）  </li>
+<li>📱 <strong>移动应用开发</strong>（早期 Android 平台）  </li>
+<li>🎮 <strong>游戏开发</strong>（Minecraft 等）  </li>
+</ul>
+<hr />
+<h2 id="java_3">五、Java 技术体系</h2>
+<p>Java 技术体系主要包括三部分：</p>
+<ol>
+<li><strong>Java 语言本身</strong></li>
+<li><strong>Java 虚拟机（JVM）</strong></li>
+<li><strong>Java API 类库（标准库）</strong></li>
+</ol>
+<h3 id="_3">按平台划分为三大体系</h3>
+<table>
+<thead>
+<tr>
+<th>平台</th>
+<th>全称</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Java SE</strong></td>
+<td>Java Standard Edition</td>
+<td>标准版，桌面与核心应用开发基础</td>
+</tr>
+<tr>
+<td><strong>Java EE</strong></td>
+<td>Java Enterprise Edition</td>
+<td>企业版，支持 Web 与分布式系统</td>
+</tr>
+<tr>
+<td><strong>Java ME</strong></td>
+<td>Java Micro Edition</td>
+<td>小型版，用于移动设备与嵌入式系统</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_4">六、总结</h2>
+<p>本文从以下几个方面简要介绍了 Java：</p>
+<ul>
+<li>历史与发展过程  </li>
+<li>为什么选择 Java  </li>
+<li>Java 的应用场景  </li>
+<li>Java 技术体系结构  </li>
+</ul>
+<p>接下来的章节，我们将学习如何 <strong>搭建 Java 开发环境（JDK + IDE）</strong>，并实现一个简单的入门程序。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "content.code.copy"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
