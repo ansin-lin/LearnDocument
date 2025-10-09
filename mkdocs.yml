@@ -11,6 +11,7 @@ theme:
     - content.code.copy     # 代码块一键复制
 
 nav:
+  - 首页: index.md
   - Python 教程:
       - 首页: python/index.md
       - 1. Python 简介: python/01_intro.md
