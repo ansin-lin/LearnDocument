@@ -40,8 +40,8 @@ nav:
       - 4. 运算符: java/04_operators.md
       - 5. 控制语句: java/05_controls.md
       - 6. 数组: java/06_arrays.md
-      - 7. 类与对象: java/class.md
-      - 8. 面向对象的知识点: java/oop_object.md
+      - 7. 类与对象: java/07_class.md
+      - 8. 面向对象的知识点: java/08_oop_object.md
       - 9. 包和注释: java/09_package_command.md
       - 10. 类的深入理解: java/10_oop.md
       - 11. 异常处理: java/11_exception_handling.md
