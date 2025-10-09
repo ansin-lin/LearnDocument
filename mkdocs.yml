@@ -46,5 +46,5 @@ nav:
       - 10. 类的深入理解: java/10_oop.md
       - 11. 异常处理: java/11_exception_handling.md
       - 12. 字符串处理: java/12_String.md
-      - 13. java集合: java/13_class_package.md
-      - 14. 小结: java/14_collection.md
+      - 13. java类包: java/13_class_package.md
+      - 14. java集合: java/14_collection.md
