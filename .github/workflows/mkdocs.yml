@@ -24,6 +24,8 @@ jobs:
         run: mkdocs build --strict
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
+         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}  # 👈 自动注入权限令牌
+          publish_dir: ./site                       # MkDocs 默认构建目录
+          publish_branch: gh-pages                  # 指定目标分支
+          force_orphan: true                        # 👈 关键：首次部署强制创建干净分支
