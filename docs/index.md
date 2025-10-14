@@ -17,8 +17,8 @@
 
 > 从程序结构、面向对象到集合框架与异常处理的完整讲解。
 
-📂 路径：`java/index.md`
+📂 [进入 Java 教程首页](java/index.md)
 
 ```markdown
-> 参考资料：https://github.com/cunyu1943/JavaPark/tree/main/docs/src/java-tutorial/javase
+> 文档整理参考：https://github.com/cunyu1943/JavaPark/tree/main/docs/src/java-tutorial/javase
 ```

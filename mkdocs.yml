@@ -49,3 +49,7 @@ nav:
       - 12. 字符串处理: java/12_String.md
       - 13. java类包: java/13_class_package.md
       - 14. java集合: java/14_collection.md
+
+  - SQL 教程:
+      - 1.数据库简介: sql/01_Database_Introduction.md
+      - 2.SQL 基础入门: sql/02_basic_syntax_and_query.md
