@@ -19,8 +19,7 @@ SQL 的主要功能包括：
 | 类型 | 名称 | 说明 | 常见命令 |
 |------|------|------|----------|
 | DDL | 数据定义语言 | 定义数据库结构 | `CREATE`, `ALTER`, `DROP` |
-| DML | 数据操作语言 | 增删改数据 | `INSERT`, `UPDATE`, `DELETE` |
-| DQL | 数据查询语言 | 查询数据 | `SELECT` |
+| DML | 数据操作语言 | 增删改查数据 | `INSERT`, `UPDATE`, `DELETE`, `SELECT`|
 | DCL | 数据控制语言 | 控制权限 | `GRANT`, `REVOKE` |
 
 **提示**：  

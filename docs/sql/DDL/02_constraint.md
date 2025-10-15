@@ -222,6 +222,8 @@ CREATE TABLE 表名 (
   - **普通语法**
 
 ```sql
+    ALTER TABLE 表名 MODIFY 列名 数据类型 DEFAULT 'active';
+    或
     ALTER TABLE 表名 ALTER COLUMN 列名 SET DEFAULT 默认值;
 ```
 

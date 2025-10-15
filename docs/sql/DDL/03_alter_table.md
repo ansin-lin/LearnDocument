@@ -10,19 +10,19 @@
 - **MySQL / PostgreSQL**
 
 ```sql
-ALTER TABLE 表名 ADD COLUMN 列名 VARCHAR(100);
+ALTER TABLE 表名 ADD COLUMN 列名 数据类型;
 ```
 
 - **SQL Server**
 
 ```sql
-ALTER TABLE 表名 ADD 列名 NVARCHAR(100);
+ALTER TABLE 表名 ADD 列名 数据类型;
 ```
 
 - **Oracle**
 
 ```sql
-ALTER TABLE 表名 ADD (列名 VARCHAR2(100));
+ALTER TABLE 表名 ADD (列名 数据类型);
 ```
 
 ---
@@ -32,7 +32,7 @@ ALTER TABLE 表名 ADD (列名 VARCHAR2(100));
 - **MySQL**
   
 ```sql
-ALTER TABLE 表名 CHANGE COLUMN 旧列名 新列名 VARCHAR(100);
+ALTER TABLE 表名 CHANGE COLUMN 旧列名 新列名 数据类型;
 ```
 
 - **SQL Server**
@@ -54,25 +54,25 @@ ALTER TABLE 表名 RENAME COLUMN 旧列名 TO 新列名;
 - **MySQL**
 
 ```sql
-ALTER TABLE 表名 MODIFY COLUMN 列名 FLOAT;
+ALTER TABLE 表名 MODIFY COLUMN 列名 数据类型;
 ```
 
 - **SQL Server**
   
 ```sql
-ALTER TABLE 表名 ALTER COLUMN 列名 FLOAT;
+ALTER TABLE 表名 ALTER COLUMN 列名 数据类型;
 ```
 
 - **PostgreSQL**
 
 ```sql
-ALTER TABLE 表名 ALTER COLUMN 列名 TYPE FLOAT;
+ALTER TABLE 表名 ALTER COLUMN 列名 TYPE 数据类型;
 ```
 
 - **Oracle**
 
 ```sql
-ALTER TABLE 表名 MODIFY (列名 FLOAT);
+ALTER TABLE 表名 MODIFY (列名 数据类型);
 ```
 
 ---

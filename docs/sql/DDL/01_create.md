@@ -55,12 +55,3 @@ CREATE TABLE 表名 (
 
 ---
 
-## 小结  
-
-| 主题 | 关键命令 | 作用 |
-|------|-----------|------|
-| 建表与结构 | CREATE, ALTER, DROP | 定义或修改表结构 |
-| 约束控制 | PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK | 保证数据有效性 |
-| 辅助机制 | INDEX, VIEW, AUTO_INCREMENT | 提升性能与便利性 |
-
----

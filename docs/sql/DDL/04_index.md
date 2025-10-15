@@ -1,4 +1,3 @@
-
 # 索引（INDEX）  
 
 索引用于 **加快查询速度**，类似于书本的“目录”。
@@ -60,6 +59,8 @@ ALTER INDEX 旧索引名 RENAME TO 新索引名;
 ```sql
 -- 删除索引
 DROP INDEX 索引名 ON 表名;
+或者
+ALTER TABLE 表名 DROP INDEX 索引名
 ```
 
 - **SQL Server**
