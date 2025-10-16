@@ -148,6 +148,13 @@ CREATE VIEW top_students AS
 SELECT name, score FROM students WHERE score >= 90;
 ```
 
+### 更新视图
+
+```sql
+CREATE OR REPLACE VIEW top_students AS
+SELECT name, score FROM students WHERE score >= 70;
+```
+
 ### 查询视图
 
 ```sql

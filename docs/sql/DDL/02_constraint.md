@@ -1,6 +1,6 @@
 # 约束（CONSTRAINT）  
 
-约束用于 **保证数据的正确性与一致性**。
+约束用于 **保证数据的正确性与一致性**
 
 | 约束类型 | 说明 | 示例 |
 |-----------|------|------|
@@ -15,13 +15,12 @@
 
 ## 创建表时直接定义约束（CREATE TABLE）
 
-> 在创建表时，可以直接定义各类约束，无需使用 ALTER TABLE。以下对不同数据库的语法进行对比。
+> 在创建表时，可以直接定义各类约束，无需使用 ALTER TABLE。
+> 在MySQL / PostgreSQL / SqlServe / Oracle中语法相同
 
 ---
 
 ### 1️⃣ PRIMARY KEY（主键）
-
-#### MySQL / PostgreSQL / SqlServe / Oracle
 
 - **普通定义**
   
@@ -45,8 +44,6 @@
 ---
 
 ### 2️⃣ UNIQUE（唯一约束）
-
-#### MySQL / SQL Server / PostgreSQL / Oracle
 
 - **普通定义**
 
@@ -84,8 +81,6 @@ CREATE TABLE 表名 (
 
 ### 4️⃣ DEFAULT（默认值）
 
-#### MySQL / PostgreSQL / Oracle / SqlServe
-
 - **普通定义**
 
 ```sql
@@ -108,8 +103,6 @@ CREATE TABLE 表名 (
 
 ### 5️⃣ CHECK（检查约束）
 
-#### SQL Server / PostgreSQL / Oracle / MySQL
-
 - **普通定义**
 
 ```sql
@@ -129,11 +122,9 @@ CREATE TABLE 表名 (
 
 ---
 
-#### 6️⃣ FOREIGN KEY（外键）
+### 6️⃣ FOREIGN KEY（外键）
 
-- **MySQL / Oracle / PostgreSql /SqlServe**
-
-  - **普通定义**
+- **普通定义**
 
 ```sql
     CREATE TABLE 表名 (
@@ -143,7 +134,7 @@ CREATE TABLE 表名 (
     );
 ```
 
-  - **命名定义**
+- **命名定义**
 
 ```sql
     CREATE TABLE 表名 (
@@ -159,15 +150,15 @@ CREATE TABLE 表名 (
 
 #### 1. PRIMARY KEY（主键）
 
-- **MySQL / Oracle / SQL Server / PostgreSQL**
+MySQL / Oracle / SQL Server / PostgreSQL
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 ADD PRIMARY KEY (列名);
 ```
 
-  - **命名语法**
+- **命名语法**
 
 ```sql
     ALTER TABLE 表名 ADD CONSTRAINT 约束名 PRIMARY KEY (列名);
@@ -177,15 +168,15 @@ CREATE TABLE 表名 (
 
 #### 2. UNIQUE（唯一）
 
-- **MySQL / PostgreSql / sqlserve / oracle**
+MySQL / Oracle / SQL Server / PostgreSQL
 
-  - **普通语法**
+- **普通语法**
   
 ```sql
     ALTER TABLE 表名 ADD UNIQUE (列名);
 ```
 
-  - **命名语法**
+- **命名语法**
 
 ```sql
     ALTER TABLE 表名 ADD CONSTRAINT 约束名 UNIQUE (列名);
@@ -197,17 +188,17 @@ CREATE TABLE 表名 (
 
 > 说明：NOT NULL 为列属性，不支持“命名约束”。
 
-- **MySQL / Oracle**
+MySQL / Oracle
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 MODIFY 列名 数据类型 NOT NULL;
 ```
 
-- **SQL Server / PostgreSQL**
+SQL Server / PostgreSQL
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 ALTER COLUMN 列名 数据类型 NOT NULL;
@@ -217,9 +208,9 @@ CREATE TABLE 表名 (
 
 #### 4. DEFAULT（默认值）
 
-- **MySQL**
+MySQL
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 MODIFY 列名 数据类型 DEFAULT 'active';
@@ -227,58 +218,58 @@ CREATE TABLE 表名 (
     ALTER TABLE 表名 ALTER COLUMN 列名 SET DEFAULT 默认值;
 ```
 
-  - **命名语法**
-    - 不支持命名 DEFAULT。
+- **命名语法**
+  - 不支持命名 DEFAULT。
 
-- **SQL Server**
+SQL Server
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 ADD DEFAULT 默认值 FOR 列名;
 ```
 
-  - **命名语法**
+- **命名语法**
 
 ```sql
     ALTER TABLE 表名 ADD CONSTRAINT 约束名 DEFAULT 默认值 FOR 列名;
 ```
 
-- **PostgreSQL**
+PostgreSQL
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 ALTER COLUMN 列名 SET DEFAULT 默认值;
 ```
 
-  - **命名语法**
-    - 不支持命名 DEFAULT。
+- **命名语法**
+  - 不支持命名 DEFAULT。
 
-- **Oracle**
+Oracle
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 MODIFY 列名 DEFAULT 默认值;
 ```
 
-  - **命名语法**
-    - 不支持命名 DEFAULT（作为列属性保存）。
+- **命名语法**
+  - 不支持命名 DEFAULT（作为列属性保存）。
 
 ---
 
 #### 5. CHECK（检查约束）
 
-- **MySQL /SQL Server/PostGreSql / Oracle**
+MySQL /SQL Server/PostGreSql / Oracle
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 ADD CHECK (条件表达式);
 ```
 
-  - **命名语法**
+- **命名语法**
 
 ```sql
     ALTER TABLE 表名 ADD CONSTRAINT 约束名 CHECK (条件表达式);
@@ -288,15 +279,15 @@ CREATE TABLE 表名 (
 
 #### 6. FOREIGN KEY（外键）
 
-- **MySQL / SQL Server / PostGreSql / Oracle**
+MySQL / SQL Server / PostGreSql / Oracle
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 ADD FOREIGN KEY (列名) REFERENCES 关联表(关联列);
 ```
 
-  - **命名语法**
+- **命名语法**
 
 ```sql
     ALTER TABLE 表名 ADD CONSTRAINT 约束名 FOREIGN KEY (列名) REFERENCES 关联表(关联列);
@@ -343,19 +334,19 @@ CREATE TABLE 表名 (
 #### NOT NULL（非空）
 
 - **通用语法**
-  - MySQL / Oracle：
+MySQL / Oracle：
   
 ```sql
     ALTER TABLE 表名 MODIFY 列名 新数据类型 [NOT NULL | NULL];
 ```
 
-  - SQL Server：
+SQL Server：
   
 ```sql
     ALTER TABLE 表名 ALTER COLUMN 列名 新数据类型 [NOT NULL | NULL];
 ```
 
-  - PostgreSQL：
+PostgreSQL：
 
 ```sql
     ALTER TABLE 表名 ALTER COLUMN 列名 [SET NOT NULL | DROP NOT NULL];
@@ -372,21 +363,21 @@ CREATE TABLE 表名 (
 
 - **通用思路**
   
-  ```sql
+```sql
   -- 先 DROP 旧检查，再 ADD 新检查
   （见“删除 CHECK”）
   （见“添加 CHECK”）
-  ```
+```
 
 #### FOREIGN KEY（外键）
 
 - **通用思路**
   
-  ```sql
+```sql
   -- 先 DROP 外键，再 ADD 外键（含 ON DELETE/UPDATE 规则）
   （见“删除 FOREIGN KEY”）
   （见“添加 FOREIGN KEY”）
-  ```
+```
 
 ---
 
@@ -394,17 +385,17 @@ CREATE TABLE 表名 (
 
 #### PRIMARY KEY
 
-- **MySQL**
+MySQL
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 DROP PRIMARY KEY;
 ```
 
-- **SQL Server/PostgreSQL/Oracle**
+SQL Server/PostgreSQL/Oracle
 
-  - **普通 / 命名语法**
+- **普通 / 命名语法**
 
 ```sql
     ALTER TABLE 表名 DROP CONSTRAINT 约束名;
@@ -414,17 +405,17 @@ CREATE TABLE 表名 (
 
 #### UNIQUE
 
-- **mysql**
+mysql
 
-  - **普通 / 命名语法**
+- **普通 / 命名语法**
 
 ```sql
     ALTER TABLE 表名 DROP INDEX 索引名;
 ```
 
-- **Oracle/SQL Server/PostgreSQL**
+Oracle/SQL Server/PostgreSQL
 
-  - **普通 / 命名语法**
+- **普通 / 命名语法**
 
 ```sql
     ALTER TABLE 表名 DROP CONSTRAINT 约束名;
@@ -434,17 +425,17 @@ CREATE TABLE 表名 (
 
 #### NOT NULL
 
-- **mysql/Oracle**
+mysql/Oracle
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 MODIFY 列名 数据类型 NULL;
 ```
 
-- **SQL Server/PostgreSQL**
+SQL Server/PostgreSQL
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 ALTER COLUMN 列名 数据类型 NULL;
@@ -454,25 +445,25 @@ CREATE TABLE 表名 (
 
 #### DEFAULT
 
-- **MySQL/PostgreSQL**
+MySQL/PostgreSQL
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 ALTER COLUMN 列名 DROP DEFAULT;
 ```
 
-- **SQLServer**
+SQLServer
 
-  - **普通 / 命名语法**
+- **普通 / 命名语法**
 
 ```sql
     ALTER TABLE 表名 DROP CONSTRAINT 约束名;
 ```
 
-- **oracle**
+oracle
 
-  - **普通语法**
+- **普通语法**
 
 ```sql
     ALTER TABLE 表名 MODIFY 列名 DEFAULT NULL;  -- 通过设为 NULL 清除默认值
@@ -482,9 +473,9 @@ CREATE TABLE 表名 (
 
 #### CHECK
 
-- **MySQL / SQLServer / PostgreSQL / Oracle**
+MySQL / SQLServer / PostgreSQL / Oracle
 
-  - **普通 / 命名语法**
+- **普通 / 命名语法**
 
 ```sql
     ALTER TABLE 表名 DROP CONSTRAINT 约束名;
@@ -494,17 +485,17 @@ CREATE TABLE 表名 (
 
 #### FOREIGN KEY
 
-- **mysql**
+mysql
 
-  - **普通 / 命名语法**
+- **普通 / 命名语法**
 
 ```sql
     ALTER TABLE 表名 DROP FOREIGN KEY 约束名;
 ```
 
-- **SQL Server / PostgreSQL / Oracle**
+SQL Server / PostgreSQL / Oracle
 
-  - **普通 / 命名语法**
+- **普通 / 命名语法**
 
 ```sql
     ALTER TABLE 表名 DROP CONSTRAINT 约束名;

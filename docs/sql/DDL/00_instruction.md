@@ -1,6 +1,6 @@
 # SQL 基础入门
 
-## 什么是 SQL  
+## 什么是 SQL
 
 **SQL（Structured Query Language，结构化查询语言）**  
 是一种用于操作关系型数据库（如 MySQL、PostgreSQL、Oracle、SQL Server 等）的标准语言。
@@ -10,7 +10,7 @@ SQL 的主要功能包括：
 - 定义数据库和表的结构；
 - 插入、更新、删除数据；
 - 查询和分析数据；
-- 管理用户权限与安全性。
+- 管理用户权限与安全性;
 
 ---
 
