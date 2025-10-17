@@ -1,0 +1,2455 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ansin-lin.github.io/LearnDocument/java/03_dataType_variable.html">
+      
+      
+        <link rel="prev" href="02_structure.html">
+      
+      
+        <link rel="next" href="04_operators.html">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
+    
+    
+      
+        <title>3. 变量与数据类型 - 编程基础教程</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#java" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../index.html" title="编程基础教程" class="md-header__button md-logo" aria-label="编程基础教程" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            编程基础教程
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              3. 变量与数据类型
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="标签" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../index.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  首页
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../python/index.html" class="md-tabs__link">
+          
+  
+  
+  Python 教程
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="index.html" class="md-tabs__link">
+          
+  
+  
+  Java 教程
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../sql/00_Database_Introduction.html" class="md-tabs__link">
+          
+  
+  
+  SQL 教程
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="编程基础教程" class="md-nav__button md-logo" aria-label="编程基础教程" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    编程基础教程
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Python 教程
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Python 教程
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/01_intro.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    1. Python 简介
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/02_hello_world.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    2. 第一个 Python 程序
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/03_data_types.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    3. 基本数据类型
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/04_variables.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    4. 变量与常量
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/05_operators.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    5. 运算符
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/06_conditions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    6. 条件判断
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/07_loops.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    7. 循环语句
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/08_list.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    8. 列表 List
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/09_tuple.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    9. 元组 Tuple
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/10_dict.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    10. 字典 Dict
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/11_set.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    11. 集合 Set
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/12_functions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    12. 函数
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/13_class.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    13. 类与对象
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/14_exceptions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    14. 异常处理
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/15_file.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    15. 文件操作
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/16_modules.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    16. 模块与包
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/17_io.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    17. 输入输出
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/18_summary.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    18. 小结
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Java 教程
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Java 教程
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="01_intro.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    1. Java 简介
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="02_structure.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    2. Java 程序结构
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    3. 变量与数据类型
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="03_dataType_variable.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    3. 变量与数据类型
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      变量
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="变量">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      什么是变量？
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      标识符命名规则
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      变量的特点
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      常见关键字
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      数据类型
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="数据类型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      基本数据类型
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      引用数据类型
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      数据类型转换
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      变量作用域
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      常量
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="04_operators.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    4. 运算符
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="05_controls.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    5. 控制语句
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="06_arrays.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    6. 数组
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="07_class.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    7. 类与对象
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="08_oop_object.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    8. 面向对象的知识点
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="09_package_command.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    9. 包和注释
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="10_oop.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    10. 类的深入理解
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="11_exception_handling.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    11. 异常处理
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="12_String.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    12. 字符串处理
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="13_class_package.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    13. java类包
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="14_collection.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    14. java集合
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    SQL 教程
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            SQL 教程
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/00_Database_Introduction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    1.SQL 基础入门
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            1.SQL 基础入门
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/00_instruction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    00.介绍;
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    2..DDL 基础语法
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            2..DDL 基础语法
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/01_create.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    01.创建语句
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/02_constraint.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    02.约束
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/03_alter_table.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    03.修改表结构
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/04_index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    04.索引
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/05_auto_increment.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    05.自增列
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    3.DML 基础语法
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            3.DML 基础语法
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/00_instruction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    00.DML介绍
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/01_select_bastic.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    01.基础查询语法
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/02_join_subquery_union.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    02.多表查询
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/03_groupby_functions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    03.分组查询与聚合函数
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/04_window_condition.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    04.窗口函数与条件表达式
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/05_common_functions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    05.常用函数
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      变量
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="变量">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      什么是变量？
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      标识符命名规则
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      变量的特点
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      常见关键字
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      数据类型
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="数据类型">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      基本数据类型
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      引用数据类型
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      数据类型转换
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      变量作用域
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      常量
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      总结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="java">Java 变量与常量</h1>
+<p>本期内容预告如下：</p>
+<ul>
+<li>变量  </li>
+<li>数据类型  </li>
+<li>变量作用域</li>
+<li>常量</li>
+</ul>
+<p>本文将主要从以上四个方面出发，带领大家来看一下 <strong>Java 中的变量和数据类型</strong>。</p>
+<hr />
+<h2 id="_1">变量</h2>
+<h3 id="_2">什么是变量？</h3>
+<p>所谓变量，就是用来命名一个数据的标识符，其定义格式如下：</p>
+<pre><code class="language-java">数据类型 变量名称 = 初始值;
+</code></pre>
+<ul>
+<li><strong>数据类型</strong>：限制存储数据的形式  </li>
+<li><strong>变量名称</strong>：变量的符号，就像人的名字  </li>
+<li><strong>初始值</strong>：变量存储时的初始数据  </li>
+</ul>
+<p>在 Java 中，变量主要分为两种：</p>
+<ul>
+<li>基本类型的变量</li>
+<li>引用类型的变量</li>
+</ul>
+<pre><code class="language-java">// 基本类型的变量
+int id = 1;
+// 引用类型的变量
+String name = &quot;安信株式会社&quot;;
+</code></pre>
+<hr />
+<h3 id="_3">标识符命名规则</h3>
+<p>标识符命名并不是我们想怎么命名就怎么命名，需要满足一定的规则，最常见的标识符命名规则主要有如下几条：</p>
+<ul>
+<li><strong>强制</strong>：只能使用字母（大小写）、数字、<code>$</code>、<code>_</code>  </li>
+<li><strong>强制</strong>：不能使用 Java 关键字（如 <code>int</code>、<code>for</code>、<code>long</code>）  </li>
+<li><strong>强制</strong>：第一个字符不能是数字  </li>
+</ul>
+<hr />
+<h3 id="_4">变量的特点</h3>
+<ol>
+<li>变量必须先声明再使用  </li>
+<li>类型一旦确定，不可存储其他类型数据  </li>
+<li>定义时可不赋值，但使用前必须赋值  </li>
+<li>同一作用域内不可重复定义  </li>
+<li>变量的值可被重新赋值  </li>
+<li>变量以小驼峰的形式命名(小写字母开头，换单词首字母大写)，例如:<code>userName, totalCount</code></li>
+</ol>
+<p>示例：</p>
+<pre><code class="language-java">public class Main {
+    public static void main(String[] args) {
+        // 定义 int 类型变量 id
+        int id = 1;
+        System.out.println(id); // 输出 1
+
+        // 重新赋值
+        id = 2;
+        System.out.println(id); // 输出 2
+    }
+}
+</code></pre>
+<hr />
+<h3 id="_5">常见关键字</h3>
+<p>这是一种事先定义好的，有特定意义的标识符，也叫做保留字。对于 Java 编译器有着特殊意义，用来表示一种数据类型，或者表示程序的结构等。</p>
+<p>此外，关键字不能用作变量名、方法名、类名、包名和参数名。</p>
+<p>常见的关键字可以分为如下几类，具体的关键字如下图所示：</p>
+<ul>
+<li>访问控制类</li>
+<li>类、方法及变量修饰符类</li>
+<li>程序控制类</li>
+<li>错误处理</li>
+<li>包相关</li>
+<li>基本类型</li>
+<li>变量引用</li>
+<li>保留字</li>
+</ul>
+<p><img alt="Java关键字" src="image/java-key-words.png" /></p>
+<h2 id="_6">数据类型</h2>
+<h3 id="_7">基本数据类型</h3>
+<p>Java 中，共有 8 种基本数据类型，由 Java 语言预定好的，每个数据类型都属于关键字  而且每种基本变量都有其对应的封装类，
+这 8 种基本数据类型分别是：</p>
+<ul>
+<li>整型（4 种）<ul>
+<li>字节型（ byte ）</li>
+<li>短整型（ short ）</li>
+<li>整型（ int ）</li>
+<li>长整型（ long ）</li>
+</ul>
+</li>
+<li>浮点型（2 种）<ul>
+<li>单精度浮点型（ float ）</li>
+<li>双精度浮点型（ double ）</li>
+</ul>
+</li>
+<li>字符型（1 种）<ul>
+<li>char</li>
+</ul>
+</li>
+<li>布尔型（1 种）<ul>
+<li>boolean</li>
+</ul>
+</li>
+</ul>
+<p>下面的表就是 Java 中 8 大数据类型所占的内存空间，对应封装类，数据表示范围以及默认值的一下相关情况。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">数据类型</th>
+<th>bit</th>
+<th style="text-align: center;">字节</th>
+<th style="text-align: left;">封装类</th>
+<th style="text-align: left;">范围/取值</th>
+<th style="text-align: left;">默认值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">byte</td>
+<td>8</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">Byte</td>
+<td style="text-align: left;">-2⁷ ~ 2⁷-1</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">short</td>
+<td>16</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;">Short</td>
+<td style="text-align: left;">-2¹⁵ ~ 2¹⁵-1</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">char</td>
+<td>16</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;">Character</td>
+<td style="text-align: left;"><code>\u0000</code> ~ <code>\uffff</code></td>
+<td style="text-align: left;"><code>\u0000</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">int</td>
+<td>32</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: left;">Integer</td>
+<td style="text-align: left;">-2³¹ ~ 2³¹-1</td>
+<td style="text-align: left;">0</td>
+</tr>
+<tr>
+<td style="text-align: left;">long</td>
+<td>64</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: left;">Long</td>
+<td style="text-align: left;">-2⁶³ ~ 2⁶³-1</td>
+<td style="text-align: left;">0L</td>
+</tr>
+<tr>
+<td style="text-align: left;">float</td>
+<td>32</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: left;">Float</td>
+<td style="text-align: left;">1.4e-45 ~ 3.4e38</td>
+<td style="text-align: left;">0.0f</td>
+</tr>
+<tr>
+<td style="text-align: left;">double</td>
+<td>64</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: left;">Double</td>
+<td style="text-align: left;">4.9e-324 ~ 1.8e308</td>
+<td style="text-align: left;">0.0d</td>
+</tr>
+<tr>
+<td style="text-align: left;">boolean</td>
+<td>1</td>
+<td style="text-align: center;">JVM 决定</td>
+<td style="text-align: left;">Boolean</td>
+<td style="text-align: left;">true / false</td>
+<td style="text-align: left;">false</td>
+</tr>
+</tbody>
+</table>
+<p>注意：</p>
+<ol>
+<li>boolean 一般用 1 bit 来存储，但是具体大小并未规定，JVM 在编译期将 boolean 类型转换为 int，此时 1 代表 true，0 代表 false。  此外，JVM 还指出 boolean 数组，但底层是通过 byte 数组来实现。</li>
+<li>使用 long 类型时，需要在后边加上 L/l，否则将其作为整型解析，可能会导致越界。</li>
+<li>浮点数如果没有明确指定 float 还是 double，统一按 double 处理。</li>
+<li>char 是用 单引号 '' 将内容括起来，只能存放一个字符，相当于一个整型值（ASCII 值），能够参加表达式运算；</li>
+<li>String 是用 双引号 "" 将内容括起来，代表的是一个地址值。</li>
+<li>Java 在内存中是采用 Unicode 表示，所以无论是一个中文字符还是英文字符，都能用 char 来表示。</li>
+</ol>
+<h3 id="_8">引用数据类型</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">数据类型</th>
+<th style="text-align: center;">默认值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">数组</td>
+<td style="text-align: center;"><code>null</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">类</td>
+<td style="text-align: center;"><code>null</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">接口</td>
+<td style="text-align: center;"><code>null</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">String</td>
+<td style="text-align: center;"><code>null</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>String</strong>
+对于引用数据类型中的 String，我们需要特别关注。</p>
+<p>String 不同于 char，它属于引用类型，而 char 属于基本数据类型。用双引号 "" 括起来表示字符串，一个字符串能够保存 0 个到任意个字符，它一旦创建就不能被改变。</p>
+<p>而针对字符串，如果我们要打印一些特殊的字符，比如字符串本来就包含 "，那么这个时候就需要借助于转义字符 \，最常见的转义字符主要有：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">转义字符</th>
+<th style="text-align: center;">含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;"><code>\"</code></td>
+<td style="text-align: center;">字符 <code>"</code></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>\'</code></td>
+<td style="text-align: center;">字符 <code>'</code></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>\\</code></td>
+<td style="text-align: center;">字符 <code>\</code></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>\n</code></td>
+<td style="text-align: center;"><code>换行符</code></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>\t</code></td>
+<td style="text-align: center;"><code>制表符 Tab</code></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>\r</code></td>
+<td style="text-align: center;"><code>回车符</code></td>
+</tr>
+</tbody>
+</table>
+<p>那多个字符串之间或者字符串和其他类型数据之间，该如何进行连接呢？</p>
+<p>Java 编译器中，对于字符串和其他数据类型之间，可以使用 + 进行连接，编译器会自动将其他数据类型自动转换为字符串，然后再进行连接；</p>
+<pre><code class="language-java">String str = &quot;安信株式会社&quot;;
+int year = 10;
+String all = str + year;
+System.out.println(all);
+
+//输出结果为：安信株式会社10
+</code></pre>
+<h3 id="_9">数据类型转换</h3>
+<p>对于基本数据类型，不同类型之间是可以相互转换的，但需要满足一定的条件；</p>
+<blockquote>
+<p><strong><em>从小到大自动转，从大到小强制转</em></strong></p>
+</blockquote>
+<ul>
+<li><strong>隐式转换（自动类型转换,从小到大）</strong></li>
+</ul>
+<p>当满足如下条件时，如果将一种类型的数据赋值给另一种数据类型变量时，将执行自动类型转换：</p>
+<blockquote>
+<ol>
+<li>两种数据类型彼此兼容；</li>
+<li>目标数据类型的取值范围大于源数据类型；</li>
+</ol>
+</blockquote>
+<p>一般而言，隐式转换的规则是从低级类型数据转换为高级类型数据，对应规则如下：</p>
+<blockquote>
+<ul>
+<li>数值类型：byte -&gt; short -&gt; int -&gt; long -&gt; float -&gt; double</li>
+<li>字符类型转整型：char -&gt; int</li>
+</ul>
+</blockquote>
+<ul>
+<li><strong>显式转换（强制类型转换，从大到小）</strong></li>
+</ul>
+<p>那既然满足上述两个条件时会发生隐式转换，那不满足我们又想进行数据类型转换时，我们该怎么办呢？</p>
+<p>这个时候就需要我们的 <strong>显式转换</strong> 登场了，其语法格式如下：</p>
+<pre><code class="language-java">(type) variableName;
+</code></pre>
+<p>我们举个例子来说下：</p>
+<pre><code class="language-java">int num = 3;
+double ans = 5.0;
+// 要将 double 类型的值赋值给 int，则需要强制转换
+num = (int)ans;
+</code></pre>
+<p><strong>注意：</strong>强制转换可能会导致精度丢失，所以一般情况下尽量能不用就不用。</p>
+<ul>
+<li><strong>字符与数字转换</strong></li>
+</ul>
+<pre><code class="language-java">char c = 'A';
+int code = c;  // 65
+char d = (char)(code + 1); // 'B'
+</code></pre>
+<hr />
+<h2 id="_10">变量作用域</h2>
+<p>变量的作用域是指<strong>变量自定义的地方起</strong>，可以使用的有效范围。
+在程序中不同的地方定义的变量具有不同的作用域。
+一般情况下，在本程序块（即以<strong>大括号“{}”括起</strong>的程序段）内定义的变量在本程序块内有效。</p>
+<pre><code class="language-java">public class Var_Area_Example
+ {
+    static int n_var1=10;   //类变量,对整个类都有效
+    public void display()
+    {
+        int n_var2=200;   //方法变量，只在该方法内有效
+        n_var1=n_var1+n_var2;
+        System.out.println(&quot;n_var1=&quot;+n_var1);
+        System.out.println(&quot;n_var2=&quot;+n_var2);
+    }
+    public static void main(String args[])
+    {
+        int n_var3;  //方法变量，只在该方法内有效
+        n_var3=n_var1*2;
+        System.out.println(&quot;n_var1=&quot;+n_var1);
+        System.out.println(&quot;n_var3=&quot;+n_var3);       
+    }
+ }
+</code></pre>
+<hr />
+<h2 id="_11">常量</h2>
+<p>既然有变量，那就有与之相对的常量（也就是值是固定的，不能再变）。</p>
+<p>通常我们把 Java 中用 final 关键字所修饰的成员变量叫做常量，它的值一旦给定就无法再进行改变！</p>
+<ul>
+<li>
+<p>定义</p>
+<ul>
+<li>用 <code>final</code> 修饰  </li>
+<li>值一旦赋值不可更改</li>
+</ul>
+</li>
+<li>
+<p>命名特点
+    -全部大写，换单词用<code>_</code>(下划线)分割</p>
+</li>
+</ul>
+<pre><code class="language-java">final 数据类型 常量名 = 常量初始值;
+</code></pre>
+<pre><code class="language-java">final int num = 1024;
+</code></pre>
+<pre><code class="language-java">public class Main {
+    public static final double PI = 3.14; // 静态常量
+    final int num = 1024;                 // 成员常量
+
+    public static void main(String[] args) {
+        final long count = 1000;          // 局部常量
+    }
+}
+</code></pre>
+<hr />
+<h2 id="_12">总结</h2>
+<p>本文主要介绍了：</p>
+<ul>
+<li>Java 中的变量  </li>
+<li>数据类型（基本 &amp; 引用）  </li>
+<li>数据类型转换  </li>
+<li>变量作用域  </li>
+<li>常量  </li>
+</ul>
+<p>这些内容是理解 Java 语法和面向对象之前的重要基础。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "content.code.copy"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

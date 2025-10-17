@@ -1,0 +1,2692 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ansin-lin.github.io/LearnDocument/java/11_exception_handling.html">
+      
+      
+        <link rel="prev" href="10_oop.html">
+      
+      
+        <link rel="next" href="12_String.html">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.22">
+    
+    
+      
+        <title>11. 异常处理 - 编程基础教程</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#java" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../index.html" title="编程基础教程" class="md-header__button md-logo" aria-label="编程基础教程" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            编程基础教程
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              11. 异常处理
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="标签" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../index.html" class="md-tabs__link">
+        
+  
+  
+    
+  
+  首页
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../python/index.html" class="md-tabs__link">
+          
+  
+  
+  Python 教程
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="index.html" class="md-tabs__link">
+          
+  
+  
+  Java 教程
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../sql/00_Database_Introduction.html" class="md-tabs__link">
+          
+  
+  
+  SQL 教程
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="编程基础教程" class="md-nav__button md-logo" aria-label="编程基础教程" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    编程基础教程
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Python 教程
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Python 教程
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/01_intro.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    1. Python 简介
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/02_hello_world.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    2. 第一个 Python 程序
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/03_data_types.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    3. 基本数据类型
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/04_variables.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    4. 变量与常量
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/05_operators.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    5. 运算符
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/06_conditions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    6. 条件判断
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/07_loops.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    7. 循环语句
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/08_list.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    8. 列表 List
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/09_tuple.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    9. 元组 Tuple
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/10_dict.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    10. 字典 Dict
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/11_set.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    11. 集合 Set
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/12_functions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    12. 函数
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/13_class.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    13. 类与对象
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/14_exceptions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    14. 异常处理
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/15_file.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    15. 文件操作
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/16_modules.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    16. 模块与包
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/17_io.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    17. 输入输出
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/18_summary.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    18. 小结
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Java 教程
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Java 教程
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="01_intro.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    1. Java 简介
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="02_structure.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    2. Java 程序结构
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="03_dataType_variable.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    3. 变量与数据类型
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="04_operators.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    4. 运算符
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="05_controls.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    5. 控制语句
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="06_arrays.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    6. 数组
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="07_class.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    7. 类与对象
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="08_oop_object.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    8. 面向对象的知识点
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="09_package_command.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    9. 包和注释
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="10_oop.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    10. 类的深入理解
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    11. 异常处理
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="11_exception_handling.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    11. 异常处理
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      前言
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      异常体系结构
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="异常体系结构">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#throwable" class="md-nav__link">
+    <span class="md-ellipsis">
+      Throwable
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error（错误）
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exception" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exception（异常）
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#try-catch-finally" class="md-nav__link">
+    <span class="md-ellipsis">
+      try-catch-finally
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="try-catch-finally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      基本语法
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      示例1
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#catch" class="md-nav__link">
+    <span class="md-ellipsis">
+      多重 catch 与异常链
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="多重 catch 与异常链">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#catch_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      多重 catch
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exception-chaining" class="md-nav__link">
+    <span class="md-ellipsis">
+      异常链（Exception Chaining）
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#throw-throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      throw 与 throws
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="throw 与 throws">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#throw" class="md-nav__link">
+    <span class="md-ellipsis">
+      throw —— 抛出异常对象
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      throws —— 声明可能抛出的异常
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      两者区别
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      自定义异常
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="自定义异常">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      自定义异常类
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用自定义异常
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      常见异常类型
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      异常处理最佳实践
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="异常处理最佳实践">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 优先使用具体异常类型
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 不要吞掉异常
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 不滥用异常控制流程
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 记录日志，保留堆栈信息
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 使用自定义异常封装业务逻辑错误
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#try-with-resources-jdk7" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 善用 try-with-resources 自动关闭资源（JDK7+）
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      九、总结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="12_String.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    12. 字符串处理
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="13_class_package.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    13. java类包
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="14_collection.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    14. java集合
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    SQL 教程
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            SQL 教程
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/00_Database_Introduction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    首页
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    1.SQL 基础入门
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            1.SQL 基础入门
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/00_instruction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    00.介绍;
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    2..DDL 基础语法
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            2..DDL 基础语法
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/01_create.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    01.创建语句
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/02_constraint.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    02.约束
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/03_alter_table.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    03.修改表结构
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/04_index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    04.索引
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DDL/05_auto_increment.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    05.自增列
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    3.DML 基础语法
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            3.DML 基础语法
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/00_instruction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    00.DML介绍
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/01_select_bastic.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    01.基础查询语法
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/02_join_subquery_union.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    02.多表查询
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/03_groupby_functions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    03.分组查询与聚合函数
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/04_window_condition.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    04.窗口函数与条件表达式
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/DML/05_common_functions.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    05.常用函数
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      前言
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      异常体系结构
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="异常体系结构">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#throwable" class="md-nav__link">
+    <span class="md-ellipsis">
+      Throwable
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error" class="md-nav__link">
+    <span class="md-ellipsis">
+      Error（错误）
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exception" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exception（异常）
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#try-catch-finally" class="md-nav__link">
+    <span class="md-ellipsis">
+      try-catch-finally
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="try-catch-finally">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      基本语法
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    <span class="md-ellipsis">
+      示例1
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#catch" class="md-nav__link">
+    <span class="md-ellipsis">
+      多重 catch 与异常链
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="多重 catch 与异常链">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#catch_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      多重 catch
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exception-chaining" class="md-nav__link">
+    <span class="md-ellipsis">
+      异常链（Exception Chaining）
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#throw-throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      throw 与 throws
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="throw 与 throws">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#throw" class="md-nav__link">
+    <span class="md-ellipsis">
+      throw —— 抛出异常对象
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      throws —— 声明可能抛出的异常
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      两者区别
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      自定义异常
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="自定义异常">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      自定义异常类
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      使用自定义异常
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      常见异常类型
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      异常处理最佳实践
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="异常处理最佳实践">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 优先使用具体异常类型
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 不要吞掉异常
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 不滥用异常控制流程
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 记录日志，保留堆栈信息
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 使用自定义异常封装业务逻辑错误
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#try-with-resources-jdk7" class="md-nav__link">
+    <span class="md-ellipsis">
+      ✅ 善用 try-with-resources 自动关闭资源（JDK7+）
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      九、总结
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="java">Java 异常处理详解</h1>
+<h2 id="_1">前言</h2>
+<p>在 Java 程序中，异常是程序运行过程中出现的非正常情况。Java 提供了一套完整的 <strong>异常处理机制</strong>，用于提高程序的健壮性与可维护性。  </p>
+<p>异常处理的核心目的：</p>
+<ul>
+<li>发现并捕获程序中的错误。  </li>
+<li>防止程序在出错时崩溃。  </li>
+<li>提供友好的错误信息或补救措施。  </li>
+</ul>
+<hr />
+<h2 id="_2">异常体系结构</h2>
+<p>Java 中的异常体系位于 <code>java.lang</code> 包下：  </p>
+<pre><code class="language-markdown">Throwable
+├── Error（错误）
+│   ├── OutOfMemoryError
+│   ├── StackOverflowError
+│   └── ...
+└── Exception（异常）
+    ├── RuntimeException（运行时异常）
+    │   ├── NullPointerException
+    │   ├── ArrayIndexOutOfBoundsException
+    │   ├── ArithmeticException
+    │   ├── ClassCastException
+    │   └── ...
+    └── Checked Exception（受检异常）
+        ├── IOException
+        ├── SQLException
+        └── FileNotFoundException
+</code></pre>
+<h3 id="throwable">Throwable</h3>
+<p>所有异常与错误的父类，定义了常见方法：</p>
+<ul>
+<li><code>getMessage()</code>：获取异常信息。</li>
+<li><code>printStackTrace()</code>：打印堆栈信息。</li>
+</ul>
+<h3 id="error">Error（错误）</h3>
+<p>严重问题，如内存溢出、系统崩溃，程序<strong>无法恢复</strong>，不应捕获。</p>
+<h3 id="exception">Exception（异常）</h3>
+<p>程序可处理的问题，分为：</p>
+<ul>
+<li><strong>受检异常（Checked Exception）</strong>：必须显式处理（如 IO、SQL）。  </li>
+<li><strong>非受检异常（Unchecked Exception）</strong>：运行时异常，可选择处理（如空指针）。  </li>
+</ul>
+<hr />
+<h2 id="try-catch-finally">try-catch-finally</h2>
+<h3 id="_3">基本语法</h3>
+<pre><code class="language-java">try {
+    // 可能发生异常的代码
+} catch (ExceptionType e) {
+    // 异常处理逻辑
+} finally {
+    // 无论是否发生异常，都会执行的代码
+}
+</code></pre>
+<h3 id="1">示例1</h3>
+<pre><code class="language-java">public class Demo {
+    public static void main(String[] args) {
+        try {
+            int result = 10 / 0;
+            System.out.println(result);
+        } catch (ArithmeticException e) {
+            System.out.println(&quot;错误：除数不能为0！&quot;);
+            e.printStackTrace();
+        } finally {
+            System.out.println(&quot;执行 finally 块，资源释放。&quot;);
+        }
+    }
+}
+</code></pre>
+<p>输出：</p>
+<pre><code class="language-bash">错误：除数不能为0！
+执行 finally 块，资源释放。
+</code></pre>
+<blockquote>
+<p><strong>finally 块的常见用途</strong>：关闭文件、数据库连接、网络流等资源。</p>
+</blockquote>
+<hr />
+<h2 id="catch">多重 catch 与异常链</h2>
+<h3 id="catch_1">多重 catch</h3>
+<pre><code class="language-java">try {
+    int[] arr = {1, 2, 3};
+    System.out.println(arr[5]);
+} catch (ArrayIndexOutOfBoundsException e) {
+    System.out.println(&quot;数组越界异常！&quot;);
+} catch (Exception e) {
+    System.out.println(&quot;其他异常！&quot;);
+}
+</code></pre>
+<blockquote>
+<p>注意：子类异常必须写在父类异常之前，否则会编译错误。</p>
+</blockquote>
+<h3 id="exception-chaining">异常链（Exception Chaining）</h3>
+<p>可在抛出新异常时，将原始异常作为参数传递。</p>
+<pre><code class="language-java">try {
+    readFile(&quot;abc.txt&quot;);
+} catch (IOException e) {
+    throw new RuntimeException(&quot;文件读取失败&quot;, e);
+}
+</code></pre>
+<hr />
+<h2 id="throw-throws">throw 与 throws</h2>
+<h3 id="throw">throw —— 抛出异常对象</h3>
+<p>用于手动抛出异常。</p>
+<pre><code class="language-java">public void checkAge(int age) {
+    if (age &lt; 18) {
+        throw new IllegalArgumentException(&quot;未成年禁止访问&quot;);
+    }
+}
+</code></pre>
+<h3 id="throws">throws —— 声明可能抛出的异常</h3>
+<p>用于方法声明处，告知调用者需要处理的异常。</p>
+<pre><code class="language-java">public void readFile(String path) throws IOException {
+    FileReader reader = new FileReader(path);
+    reader.read();
+}
+</code></pre>
+<p>调用方需显式处理：</p>
+<pre><code class="language-java">try {
+    readFile(&quot;test.txt&quot;);
+} catch (IOException e) {
+    e.printStackTrace();
+}
+</code></pre>
+<h3 id="_4">两者区别</h3>
+<table>
+<thead>
+<tr>
+<th>关键字</th>
+<th>位置</th>
+<th>作用</th>
+<th>用法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>throw</td>
+<td>方法内</td>
+<td>抛出具体异常对象</td>
+<td>throw new Exception()</td>
+</tr>
+<tr>
+<td>throws</td>
+<td>方法签名</td>
+<td>声明可能抛出的异常类型</td>
+<td>public void method() throws Exception</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_5">自定义异常</h2>
+<p>当系统异常无法满足业务需求时，可自定义异常类。</p>
+<h3 id="_6">自定义异常类</h3>
+<pre><code class="language-java">public class MyException extends Exception {
+    public MyException(String message) {
+        super(message);
+    }
+}
+</code></pre>
+<h3 id="_7">使用自定义异常</h3>
+<pre><code class="language-java">public class Test {
+    public static void checkScore(int score) throws MyException {
+        if (score &lt; 0 || score &gt; 100) {
+            throw new MyException(&quot;分数必须在 0 到 100 之间！&quot;);
+        } else {
+            System.out.println(&quot;成绩合法：&quot; + score);
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            checkScore(120);
+        } catch (MyException e) {
+            System.out.println(&quot;捕获异常：&quot; + e.getMessage());
+        }
+    }
+}
+</code></pre>
+<hr />
+<h2 id="_8">常见异常类型</h2>
+<table>
+<thead>
+<tr>
+<th>异常类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NullPointerException</code></td>
+<td>空指针引用</td>
+</tr>
+<tr>
+<td><code>ArrayIndexOutOfBoundsException</code></td>
+<td>数组越界</td>
+</tr>
+<tr>
+<td><code>ClassCastException</code></td>
+<td>类型转换错误</td>
+</tr>
+<tr>
+<td><code>NumberFormatException</code></td>
+<td>数字格式错误</td>
+</tr>
+<tr>
+<td><code>ArithmeticException</code></td>
+<td>算术错误（如除以 0）</td>
+</tr>
+<tr>
+<td><code>IOException</code></td>
+<td>输入输出异常</td>
+</tr>
+<tr>
+<td><code>FileNotFoundException</code></td>
+<td>文件未找到</td>
+</tr>
+<tr>
+<td><code>SQLException</code></td>
+<td>数据库操作异常</td>
+</tr>
+<tr>
+<td><code>IllegalArgumentException</code></td>
+<td>参数非法</td>
+</tr>
+<tr>
+<td><code>InterruptedException</code></td>
+<td>线程中断异常</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_9">异常处理最佳实践</h2>
+<h3 id="_10">✅ 优先使用具体异常类型</h3>
+<p>不要用 <code>Exception</code> 或 <code>Throwable</code> 一把抓。</p>
+<h3 id="_11">✅ 不要吞掉异常</h3>
+<p>避免只写 <code>catch(Exception e){}</code> 而不处理。应记录日志或重新抛出。</p>
+<h3 id="_12">✅ 不滥用异常控制流程</h3>
+<p>不要将异常当作普通逻辑判断使用。</p>
+<h3 id="_13">✅ 记录日志，保留堆栈信息</h3>
+<p>使用 <code>e.printStackTrace()</code> 或日志框架记录完整堆栈。</p>
+<h3 id="_14">✅ 使用自定义异常封装业务逻辑错误</h3>
+<p>使系统异常与业务异常区分明确。</p>
+<h3 id="try-with-resources-jdk7">✅ 善用 try-with-resources 自动关闭资源（JDK7+）</h3>
+<pre><code class="language-java">try (FileReader reader = new FileReader(&quot;test.txt&quot;)) {
+    reader.read();
+} catch (IOException e) {
+    e.printStackTrace();
+}
+</code></pre>
+<blockquote>
+<p>try-with-resources 会自动调用实现了 <code>AutoCloseable</code> 接口的资源的 <code>close()</code> 方法。</p>
+</blockquote>
+<hr />
+<h2 id="_15">九、总结</h2>
+<table>
+<thead>
+<tr>
+<th>分类</th>
+<th>是否必须处理</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>受检异常</strong></td>
+<td>是</td>
+<td>IOException, SQLException</td>
+</tr>
+<tr>
+<td><strong>运行时异常</strong></td>
+<td>否</td>
+<td>NullPointerException, ArithmeticException</td>
+</tr>
+<tr>
+<td><strong>错误（Error）</strong></td>
+<td>否</td>
+<td>OutOfMemoryError, StackOverflowError</td>
+</tr>
+</tbody>
+</table>
+<p><strong>核心要点</strong>：</p>
+<ul>
+<li>使用 <code>try-catch-finally</code> 捕获可预期异常；  </li>
+<li>使用 <code>throw</code> 主动抛出业务异常；  </li>
+<li>使用 <code>throws</code> 声明异常类型；  </li>
+<li>使用自定义异常提升系统可读性；  </li>
+<li>合理记录日志与释放资源，确保系统稳定运行。</li>
+</ul>
+<hr />
+<blockquote>
+<p>掌握异常机制，是写出高质量 Java 代码的必经之路。<br />
+异常不是“错误”，而是程序设计中的“控制信号”。</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "content.code.copy"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
