@@ -182,7 +182,7 @@ System.out.println(all);
 
 > ***从小到大自动转，从大到小强制转***
 
-#### 隐式转换（自动类型转换,从小到大）
+- **隐式转换（自动类型转换,从小到大）**
 
 当满足如下条件时，如果将一种类型的数据赋值给另一种数据类型变量时，将执行自动类型转换：
 
@@ -194,7 +194,7 @@ System.out.println(all);
 > - 数值类型：byte -> short -> int -> long -> float -> double
 > - 字符类型转整型：char -> int
 
-#### 显式转换（强制类型转换，从大到小）
+- **显式转换（强制类型转换，从大到小）**
 
 那既然满足上述两个条件时会发生隐式转换，那不满足我们又想进行数据类型转换时，我们该怎么办呢？
 
@@ -215,27 +215,41 @@ num = (int)ans;
 
 **注意：**强制转换可能会导致精度丢失，所以一般情况下尽量能不用就不用。
 
-## 变量作用域
-
-根据作用范围，分为：
-
-- **成员变量**:定义在方法体和语句块外，不属于任何一个方法，能在整个类中起作用；  
-- **局部变量**:定义在方法或方法体中的变量，作用域是其所在的代码块；
-
-### 成员变量
-
-| 名称     | 修饰符  | 访问方式       | 生命周期 |
-|:------:----|:------:---|:------::------:----|:------:----|
-| 实例变量 | 无      | 对象名.变量名  | 对象存活 |
-| 静态变量 | static  | 类名.变量名    | 类存活   |
+- **字符与数字转换**
 
 ```java
-public class Person {
-    String name;   // 实例变量
-    int age;
+char c = 'A';
+int code = c;  // 65
+char d = (char)(code + 1); // 'B'
+```
 
-    public static final String wechat = "安信株式会社"; // 静态常量
-}
+---
+
+## 变量作用域
+
+变量的作用域是指**变量自定义的地方起**，可以使用的有效范围。
+在程序中不同的地方定义的变量具有不同的作用域。
+一般情况下，在本程序块（即以**大括号“{}”括起**的程序段）内定义的变量在本程序块内有效。
+
+```java
+public class Var_Area_Example
+ {
+    static int n_var1=10;   //类变量,对整个类都有效
+    public void display()
+    {
+        int n_var2=200;   //方法变量，只在该方法内有效
+        n_var1=n_var1+n_var2;
+        System.out.println("n_var1="+n_var1);
+        System.out.println("n_var2="+n_var2);
+    }
+    public static void main(String args[])
+    {
+        int n_var3;  //方法变量，只在该方法内有效
+        n_var3=n_var1*2;
+        System.out.println("n_var1="+n_var1);
+        System.out.println("n_var3="+n_var3);       
+    }
+ }
 ```
 
 ---
