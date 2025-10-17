@@ -219,7 +219,7 @@ MySQL
 ```
 
 - **命名语法**
-  - 不支持命名 DEFAULT。
+    - 不支持命名 DEFAULT。
 
 SQL Server
 
@@ -244,7 +244,7 @@ PostgreSQL
 ```
 
 - **命名语法**
-  - 不支持命名 DEFAULT。
+    - 不支持命名 DEFAULT。
 
 Oracle
 
@@ -255,7 +255,7 @@ Oracle
 ```
 
 - **命名语法**
-  - 不支持命名 DEFAULT（作为列属性保存）。
+    - 不支持命名 DEFAULT（作为列属性保存）。
 
 ---
 
@@ -298,11 +298,11 @@ MySQL / SQL Server / PostGreSql / Oracle
 ### 备注与命名建议
 
 - 常用命名前缀：
-  - 主键：`pk_表名`
-  - 唯一：`uq_列名`
-  - 外键：`fk_列名`
-  - 检查：`ck_列名`
-  - 默认：`df_列名`
+    - 主键：`pk_表名`
+    - 唯一：`uq_列名`
+    - 外键：`fk_列名`
+    - 检查：`ck_列名`
+    - 默认：`df_列名`
 - NOT NULL/DEFAULT 在 MySQL、PostgreSQL、Oracle 中本质是 **列属性**，不可命名（SQL Server 的 DEFAULT 可命名）。
 
 ---
@@ -355,9 +355,9 @@ PostgreSQL：
 #### DEFAULT（默认值）
 
 - **通用思路**
-  - MySQL / PostgreSQL：直接 **SET DEFAULT** 改值；或 **DROP DEFAULT** 后再 **SET DEFAULT**。
-  - SQL Server：需先 **DROP CONSTRAINT** 再以新值 **ADD CONSTRAINT DEFAULT**。
-  - Oracle：直接 **MODIFY 列名 DEFAULT 新值**。
+    - MySQL / PostgreSQL：直接 **SET DEFAULT** 改值；或 **DROP DEFAULT** 后再 **SET DEFAULT**。
+    - SQL Server：需先 **DROP CONSTRAINT** 再以新值 **ADD CONSTRAINT DEFAULT**。
+    - Oracle：直接 **MODIFY 列名 DEFAULT 新值**。
 
 #### CHECK（检查）
 

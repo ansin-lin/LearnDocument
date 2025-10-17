@@ -22,7 +22,7 @@ FROM 表名
 
 1. FROM —— 指定数据来源表
 2. join —— 其他表
-3. on —— 结合太监
+3. on —— 结合条件
 4. WHERE —— 筛选行  
 5. GROUP BY —— 按列分组  
 6. HAVING —— 过滤分组结果  
