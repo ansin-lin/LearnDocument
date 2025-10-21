@@ -32,104 +32,285 @@
 
 ## 面向对象的 5 大原则
 
-1. 单一职责原则 SRP
-又称为单一功能原则，也就是说类的功能要单一，不能太复杂。
-
+1. 单一职责原则 SRP  
+又称为单一功能原则，也就是说类的功能要单一，不能太复杂。  
 举个例子来说，学校里边有学生、老师、管理员，如果将这些人统一封装在一个类中，那么到时候难以对他们的身份作区分，那么此时按照 SRP 原则，我们就可以将他们各自分为一个类，从而方便管理。
-2. 开放封闭原则 OCP
-指一个模块对于扩展是开放的，但对于修改则是封闭的。也就是说可以增加功能，但是不能修改功能。
-
+2. 开放封闭原则 OCP  
+指一个模块对于扩展是开放的，但对于修改则是封闭的。也就是说可以增加功能，但是不能修改功能。  
 也就是说，一个类可以进行扩展（添加属性或者方法），但是对于类中已有的属性和方法，不要修改它们。
-3. 里氏替换原则 LSP
-指子类能够替换父类出现在父类能够出现的任何地方。
-
+3. 里氏替换原则 LSP  
+指子类能够替换父类出现在父类能够出现的任何地方。  
 假设有两个类 Father 和 Child，其中 Father 是 Child 的父类，那么在进行调用时，Father 类可以引用 Child 类，反之却不行。
-4. 依赖倒置原则 DIP
-高层次的模块不应该依赖于低层次的模块，而应该都依赖于抽象。抽象不应该依赖于具体实现，但具体实现应该依赖于抽象。
-
+4. 依赖倒置原则 DIP  
+高层次的模块不应该依赖于低层次的模块，而应该都依赖于抽象。抽象不应该依赖于具体实现，但具体实现应该依赖于抽象。  
 也就是说，我们可以将同类事物的共性抽取出来，将其作为这一类事物的“高层次模块”，然后由“低层次模块”来继承或者实现“高层次模块”。
-5. 接口分离原则 ISP
+5. 接口分离原则 ISP  
 指设计时可以采用多个与特定客户类相关的接口，而不是采用一个通用的接口。
+
+---
 
 ## 面向对象的 3 大特性
 
-### 封装
+### 封装（Encapsulation）
 
-利用数据类型把数据和方法封装在一起，然后共同构成一个相互关联的对象。从而隐藏对象的属性和实现细节，只对外提供访问的接口，提高代码的复用性和安全性。
+封装的核心思想是
+>把“属性”和“行为”捆在一起，用方法控制访问权限。
+
+比如我们想创建一个“英雄 Hero”对象，它有名字、技能。
+我们不希望别人直接乱改内部属性，而是通过“方法”来操作。
 
 ```java
-public class Hero{
-    private String name;
-    private String skill;
+public class Hero {
+    private String name;   // 名字
+    private String skill;  // 技能
 
-    public String getName(){
+    // 提供外部访问方法
+    public String getName() {
         return name;
     }
-
-    public void setName(String name){
+    public void setName(String name) {
         this.name = name;
     }
 
-        public String getSkill(){
+    public String getSkill() {
         return skill;
     }
-
-    public void setSkill(String skill){
+    public void setSkill(String skill) {
         this.skill = skill;
     }
 }
 ```
 
-对于以上的 Hero 类，它封装了 name 、skill 等属性，如果我们想要获取 Hero 的 name 和 skill 属性值，那么就只能通过 get() 方法来获取，而如果我们想要改变这两个属性值，也只能通过 set() 方法来进行设置。
+**解释：**
 
-封装时，需要注意其原则，需要什么要的数据，就封装对应的数据，并提供数据所对应的行为。
+- private：隐藏内部细节，外部无法直接访问；
+- getXxx() / setXxx()：提供安全访问通道；
+- 这样可以控制数据修改的逻辑，提高安全性。
 
-### 继承
+通俗理解：
 
-定义父类之后，子类可以从基础类进行继承，这样一来，子类就可以获得父类中非 private 的属性和方法，从而提高了代码的复用性。
+>你去银行办业务时，只能通过“窗口（方法）”操作账户，不能直接进金库乱改钱，这就是“封装”。
 
-假设我们现在有一个类 Shooter 继承自 Hero，那么此时我们就可以定义一个父类引用，然后将该引用指向它的子类对象。
+---
 
-Java 中提供了一个关键字**extends**，从而让一个类和另一个类建立起继承关系，其格式如下：
+### 继承（Inheritance）
+
+继承是“复用”的核心，让我们可以不用重复写相似代码。
+
+子类可以自动拥有父类的属性和方法，还可以自己扩展新的功能。
+
+**示例：**
 
 ```java
-public class 子类 extends 父类{}
-public Shooter extends Hero{
-    ……
+// 父类：英雄
+public class Hero {
+    String name;
+    public void attack() {
+        System.out.println(name + " 发起普通攻击！");
+    }
+}
+
+// 子类：射手
+public class Shooter extends Hero {
+    public void skill() {
+        System.out.println(name + " 发动远程射击！");
+    }
 }
 ```
 
-其中，被继承的类叫做父类（也叫超类或基类），如上述代码中的 Hero，另外一个类则叫做子类（也叫派生类），比如上面的 Shooter。
+使用：
 
 ```java
-Hero shooter = new Shooter();
+Shooter s = new Shooter();
+s.name = "后羿";
+s.attack(); // 继承自父类
+s.skill();  // 子类自己定义
 ```
 
-但是要注意一点：在 Java 中，类只能单继承。
+输出：
+>后羿 发起普通攻击！  
+>后羿 发动远程射击！
 
-### 多态
 
-所谓多态，就是同类型的对象，表现出的不同形态，表现形式为：
+向上转型（Upcasting）
 
 ```java
-父类类型 对象名 = 子类对象;
+Hero hero = new Shooter(); // 父类引用指向子类对象
+hero.attack();  // ✅ 可以
+hero.skill();   // ❌ 不能访问子类特有方法
 ```
 
-指的是父类或者接口定义的引用变量可以指向子类或具体实现类的实例对象，提高程序的扩展性。
+因为此时 hero 的类型是 Hero，编译器只能识别父类的功能。
 
-多态又可以分为编译时多态和运行时多态，其中，编译时多态是指方法的重载，而运行时多态则指的是程序中定义的对象引用所指向的具体类型在运行期间才能确定下来。
+注意：
 
-要确定一个多态是编译时还是运行时多态，可以通过以下三个条件来区分：
+- Java 只支持单继承（一个类只能有一个父类）。
+- 但可以通过 “多层继承” 或 接口实现（implements） 来实现复用。
+- 子类不能继承父类的 private 成员。
 
-- 继承
-- 覆盖（重写）
-- 向上转型
-如果同时满足以上三个条件，那么此时多态是运行时多态。
+通俗比喻：
 
-多态中，调用成员变量和成员方法时，遵循以下原则。
+>继承就像孩子继承了父母的“DNA”。  
+你会有父母的特征（属性），还能发展自己的技能（方法）。
 
-1. **调用成员变量：编译看左边，运行也看左边：**指 javac 编译时，会看左边的父类中是否有该变量，如果有则编译成功，如果没有就会编译失败。而用 java 运行代码时，实际获取的成员变量是父类中的值。
-2. **调用成员方法：编译看左边，运行看右边：**指 javac 编译时，会看左边的父类中是否有该方法，如果有则编译成功，如果没有就会编译失败。而用 java 运行代码时，实际调用的是子类中的方法。
+#### 重写（Override）
+
+- **概念：**
+是指**子类重新定义父类中**已经存在的方法。要求**方法名、参数列表、返回类型**完全一致。
+目的是修改或扩展父类方法的行为。
+- **特点：**
+
+| 特点    | 说明                      |
+| ----- | ----------------------- |
+| 定义位置  | 父子类之间的子类中               |
+| 方法名   | 必须相同                    |
+| 参数列表  | 必须相同                    |
+| 返回类型  | 必须相同或是父类返回类型的子类（协变返回类型） |
+| 访问修饰符 | 不能比父类更严格                |
+| 异常类型  | 子类不能抛出比父类更广的异常          |
+| 调用方式  | 通过多态：父类引用指向子类对象         |
+
+
+```java
+class Hero {
+    public void fight() {
+        System.out.println("战斗");
+    }
+}
+class Shooter extends Hero {
+    @Override
+    public void fight() {
+        System.out.println("远程战斗");
+    }
+}
+```
+
+- **注意事项：**
+
+    - 使用 @Override 注解可帮助编译器检测是否正确重写。
+    - private、static、final 方法不能被重写。
+    - 构造方法不能被继承或重写。
+    - 重写方法访问级别不能更低，例如：
+        - public → protected → default → private
+        - 子类不能比父类“更严格”。
+
+---
+
+---
+
+### 多态（Polymorphism）
+
+多态： 同一种操作，对不同对象会表现出不同的行为。  
+“同一个方法，不同对象执行时表现不同。”
+
+示例：
+
+```java
+class Hero {
+    public void attack() {
+        System.out.println("普通攻击！");
+    }
+}
+
+class Shooter extends Hero {
+    @Override
+    public void attack() {
+        System.out.println("远程射击！");
+    }
+}
+
+class Mage extends Hero {
+    @Override
+    public void attack() {
+        System.out.println("释放魔法！");
+    }
+}
+```
+
+使用：
+
+```java
+Hero h1 = new Shooter();
+Hero h2 = new Mage();
+
+h1.attack(); // 输出：远程射击！
+h2.attack(); // 输出：释放魔法！
+```
+
+原理解释：
+>父类引用可以指向子类对象（向上转型）；  
+运行时根据对象实际类型决定调用哪个方法；
+
+这就是 “运行时多态”（Runtime Polymorphism）。
+
+**成员变量 vs 成员方法的调用规则：**
+
+| 类型   | 编译期看谁   | 运行期看谁   |
+| ---- | ------- | ------- |
+| 成员变量 | 看左边（父类） | 看左边（父类） |
+| 成员方法 | 看左边（父类） | 看右边（子类） |
+
+例子：
+
+```java
+class Hero {
+    String name = "Hero";
+    public void show() { System.out.println("父类方法"); }
+}
+
+class Shooter extends Hero {
+    String name = "Shooter";
+    public void show() { System.out.println("子类方法"); }
+}
+
+Hero h = new Shooter();
+System.out.println(h.name); // 输出：Hero
+h.show();                   // 输出：子类方法
+```
+
+多态的三大必要条件：
+
+- 继承（extends / implements）
+- 方法重写（Override）
+- 父类引用指向子类对象
+
+编译时多态 vs 运行时多态
+
+| 类型    | 实现方式           | 发生阶段 |
+| ----- | -------------- | ---- |
+| 编译时多态 | 方法重载（Overload） | 编译阶段 |
+| 运行时多态 | 方法重写（Override） | 运行阶段 |
+
+注意事项：
+>多态下不能访问子类特有属性或方法；  
+如果需要访问，必须 向下转型：
+
+```java
+Hero h = new Shooter();
+((Shooter)h).skill();
+```
+
+若转型错误，会抛出 ClassCastException。
+
+通俗比喻：
+
+>“父类是接口，子类是不同的实现。”
+比如“动物都会叫”，但猫喵喵叫、狗汪汪叫、鸟叽叽叫——
+这就是“多态”。
+
+✅ 总结对比表
+
+| 特性 | 关键字                  | 目的   | 示例                     | 优势     |
+| -- | -------------------- | ---- | ---------------------- | ------ |
+| 封装 | private / get / set  | 隐藏细节 | 银行账户操作                 | 安全、可维护 |
+| 继承 | extends              | 代码复用 | Hero → Shooter         | 减少重复   |
+| 多态 | override / upcasting | 灵活扩展 | Hero h = new Shooter() | 可扩展性高  |
+
+ 一句话总结：
+
+>封装 让代码更安全，  
+>继承 让代码更复用，  
+>多态 让代码更灵活。
 
 ## 总结
 
