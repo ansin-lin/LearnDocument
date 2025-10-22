@@ -208,7 +208,9 @@ public abstract class Person {
 }
 ```
 
-子类必须重写父类的抽象方法：
+### 抽象类的使用
+
+需要被子类所继承，并且**子类必须重写父类的抽象方法**：
 
 ```java
 public class Student extends Person {
@@ -308,7 +310,7 @@ public interface Inter {
 
 ---
 
-## 六、类与接口关系总结
+## 类与接口关系总结
 
 | 关系 | 关键字 | 特性 |
 |------|----------|------|
