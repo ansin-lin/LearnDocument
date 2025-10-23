@@ -87,5 +87,5 @@ nav:
         - 3.5 常用函数: sql/DML/05_common_functions.md
   
   - Test:
-      - 1.测试详解: springboot/SpringBoot_Test_Tutorial_Full(1).md
+      - 1.测试详解: springboot/SpringBoot_Test_Tutorial_Full (1).md
       - 2.断言: springboot/SpringBoot_Assertion_Complete_Tutorial.md
