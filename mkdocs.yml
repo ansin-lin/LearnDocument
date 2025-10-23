@@ -9,29 +9,47 @@ theme:
     - navigation.sections   # 左侧分组章节
     - navigation.expand     # 左侧目录默认展开
     - content.code.copy     # 代码块一键复制
+  palette:
+    primary: indigo
+    accent: deep purple
 
+markdown_extensions:
+  # 官方推荐基础扩展
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - toc:
+      permalink: true
+
+  # PyMdown Extensions - MkDocs Material 官方推荐
+  - pymdownx.superfences        # 支持嵌套代码块（解决 MD046 问题）
+  - pymdownx.details            # 支持折叠块
+  - pymdownx.highlight          # 高亮代码块
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
 nav:
   - 首页: index.md
   - Python 教程:
       - 首页: python/index.md
-      - 1. Python 简介: python/01_intro.md
-      - 2. 第一个 Python 程序: python/02_hello_world.md
-      - 3. 基本数据类型: python/03_data_types.md
-      - 4. 变量与常量: python/04_variables.md
-      - 5. 运算符: python/05_operators.md
-      - 6. 条件判断: python/06_conditions.md
-      - 7. 循环语句: python/07_loops.md
-      - 8. 列表 List: python/08_list.md
-      - 9. 元组 Tuple: python/09_tuple.md
-      - 10. 字典 Dict: python/10_dict.md
-      - 11. 集合 Set: python/11_set.md
-      - 12. 函数: python/12_functions.md
-      - 13. 类与对象: python/13_class.md
-      - 14. 异常处理: python/14_exceptions.md
-      - 15. 文件操作: python/15_file.md
-      - 16. 模块与包: python/16_modules.md
-      - 17. 输入输出: python/17_io.md
-      - 18. 小结: python/18_summary.md
+      - 1. 编程基础: 
+        - 1.1 Python 简介: python/01_intro.md
+        - 1.2 语法基础与变量: python/02_variables_and_operators.md
+        - 1.3 流程控制语句: python/03_control_flow_match_case.md
+        - 1.4 容器类型详解: python/04_collections.md
+        - 1.5 函数详解: python/05_functions_detailed.md
+        - 1.6 异常处理: python/06_exceptions_modern.md
+        - 1.7 字符串详解: python/07_string_detailed.md
+        - 1.8 面向对象编程: python/08_object_oriented_programming.md
+        - 1.9 内置函数与模块: python/09_btFunctions_and_modules.md
 
   - Java 教程:
       - 首页: java/index.md
@@ -53,17 +71,21 @@ nav:
   - SQL 教程:
       - 首页: sql/00_Database_Introduction.md
       - 1.SQL 基础入门: 
-        - 00.介绍;: sql/DDL/00_instruction.md
+        - 介绍;: sql/DDL/00_instruction.md
       - 2..DDL 基础语法:
-        - 01.创建语句: sql/DDL/01_create.md
-        - 02.约束: sql/DDL/02_constraint.md
-        - 03.修改表结构: sql/DDL/03_alter_table.md
-        - 04.索引: sql/DDL/04_index.md
-        - 05.自增列: sql/DDL/05_auto_increment.md
+        - 2.1 创建语句: sql/DDL/01_create.md
+        - 2.2 约束: sql/DDL/02_constraint.md
+        - 2.3 修改表结构: sql/DDL/03_alter_table.md
+        - 2.4 索引: sql/DDL/04_index.md
+        - 2.5 自增列: sql/DDL/05_auto_increment.md
       - 3.DML 基础语法:
-        - 00.DML介绍: sql/DML/00_instruction.md
-        - 01.基础查询语法: sql/DML/01_select_bastic.md
-        - 02.多表查询: sql/DML/02_join_subquery_union.md
-        - 03.分组查询与聚合函数: sql/DML/03_groupby_functions.md
-        - 04.窗口函数与条件表达式: sql/DML/04_window_condition.md
-        - 05.常用函数: sql/DML/05_common_functions.md
+        - 3.0 DML介绍: sql/DML/00_instruction.md
+        - 3.1 基础查询语法: sql/DML/01_select_bastic.md
+        - 3.2 多表查询: sql/DML/02_join_subquery_union.md
+        - 3.3 分组查询与聚合函数: sql/DML/03_groupby_functions.md
+        - 3.4 窗口函数与条件表达式: sql/DML/04_window_condition.md
+        - 3.5 常用函数: sql/DML/05_common_functions.md
+  
+  - Test:
+      - 1.测试详解: springboot/SpringBoot_Test_Tutorial_Full(1).md
+      - 2.断言: springboot/SpringBoot_Assertion_Complete_Tutorial.md
