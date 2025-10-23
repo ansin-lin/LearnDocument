@@ -1,296 +1,347 @@
-# Java 常用系统类与包详解
+# Java 常用系统类与包详解（非集合版）
 
 ## 一、前言
 
-在 Java 程序开发中，我们经常需要调用各种类与工具方法，而这些类大部分都来自 **Java 标准库（Java API）** 中定义的系统包。  
-这些包构成了 Java 平台的基础框架，涵盖了常见的数据结构、输入输出、日期时间、网络通信、数学计算等功能。
+在 Java 开发中，除了集合框架，标准库还提供了大量实用的**系统类与工具包**，
+用于处理字符串、文件、日期、网络、数学计算、安全、并发等功能。
+这些类构成了 Java 应用的基础能力。
 
 ---
 
-## 二、Package（包）的概念
+## 二、包的导入与使用
 
-**包（Package）** 是 Java 中用于组织类的命名空间，用来防止类名冲突并提升代码可维护性。  
-语法定义：
+**包（Package）** 是 Java 中组织类的命名空间，用于防止命名冲突。
 
 ```java
 package com.example.project;
+import java.util.*;
+import java.io.File;
 ```
 
-### 导入包
-
-要使用其他包中的类，可通过以下方式导入：
-
-```java
-import java.util.List;           // 导入单个类
-import java.util.*;              // 导入整个包
-```
-
-> `java.lang` 包会被自动导入，无需显式声明。
+> `java.lang` 包会被自动导入。
 
 ---
 
-## 三、Java 核心包总览
+## 三、核心系统包概览
 
-| 包名 | 主要功能 |
+| 包名 | 功能描述 |
 |------|-----------|
-| `java.lang` | Java 基础类（字符串、数学、系统、线程等） |
-| `java.util` | 工具包（集合类、日期、随机数、定时器等） |
-| `java.io` | 输入输出流 |
-| `java.nio` | 新版 I/O（NIO）高性能文件与通道操作 |
-| `java.net` | 网络编程（Socket、URL、HTTP） |
-| `java.math` | 高精度数学运算（BigDecimal、BigInteger） |
+| `java.lang` | 基础类：字符串、数学、系统、线程 |
+| `java.util` | 工具类：随机数、日期、扫描器等 |
+| `java.io` | 文件与输入输出流 |
+| `java.nio` | 高性能 NIO 通道与文件操作 |
+| `java.net` | 网络编程 |
+| `java.math` | 高精度数学计算 |
 | `java.time` | 日期与时间 API（JDK 8+） |
 | `java.sql` | 数据库连接（JDBC） |
-| `java.text` | 文本与日期格式化 |
-| `java.awt` / `javax.swing` | 图形界面开发 |
-| `java.security` | 安全加密相关 |
+| `java.text` | 文本与格式化 |
+| `java.security` | 加密与安全 |
 | `java.util.concurrent` | 并发编程支持 |
 
 ---
 
-## 四、常用系统包详解
+## 四、java.lang
 
-### java.lang（Java 基础类）
+### String（字符串类）
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `String` | 字符串操作 | `length()`, `substring()`, `equals()`, `toUpperCase()`, `replace()` |
-| `Math` | 数学运算 | `abs()`, `pow()`, `sqrt()`, `random()`, `round()` |
-| `System` | 系统操作 | `currentTimeMillis()`, `exit()`, `gc()`, `getProperty()` |
-| `Object` | 所有类的父类 | `equals()`, `hashCode()`, `toString()`, `clone()` |
-| `Thread` | 线程控制 | `start()`, `sleep()`, `join()`, `interrupt()` |
+- `public int length()`：返回字符串长度。
+- `public char charAt(int index)`：返回指定索引处字符。
+- `public String substring(int begin, int end)`：截取子串。
+- `public boolean equals(Object obj)`：比较内容是否相同。
+- `public boolean isEmpty()`：判断是否为空字符串。
+- `public String toUpperCase()`：转为大写。
+- `public String replace(CharSequence old, CharSequence new)`：替换子串。
 
-**示例：**
+### Math（数学类）
 
-```java
-System.out.println(Math.pow(2, 3)); // 8.0
-String s = "Hello".toUpperCase(); // HELLO
-```
+- `public static double abs(double a)`：返回绝对值。
+- `public static double pow(double a, double b)`：幂运算。
+- `public static double sqrt(double a)`：平方根。
+- `public static long round(double a)`：四舍五入。
+- `public static double random()`：返回 0~1 随机数。
 
----
+### System（系统类）
 
-### java.util（集合与工具包）
+- `public static void exit(int status)`：退出程序。
+- `public static long currentTimeMillis()`：当前时间毫秒值。
+- `public static void gc()`：请求垃圾回收。
+- `public static String getProperty(String key)`：获取系统属性。
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `ArrayList` | 动态数组 | `add()`, `get()`, `remove()`, `size()`, `contains()` |
-| `HashMap` | 键值对存储 | `put()`, `get()`, `remove()`, `keySet()`, `values()` |
-| `HashSet` | 无序集合 | `add()`, `remove()`, `contains()`, `isEmpty()` |
-| `Collections` | 集合工具类 | `sort()`, `reverse()`, `shuffle()`, `max()`, `min()` |
-| `Date` / `Calendar` | 时间操作（旧 API） | `getTime()`, `setTime()`, `add()` |
-| `Random` | 随机数生成 | `nextInt()`, `nextDouble()` |
-| `Scanner` | 控制台输入 | `nextLine()`, `nextInt()` |
+### Object（根类）
 
-**示例：**
+- `public boolean equals(Object obj)`：判断是否相等。
+- `public int hashCode()`：返回哈希值。
+- `public String toString()`：返回字符串表示。
+- `protected Object clone()`：克隆对象。
 
-```java
-List<String> list = new ArrayList<>();
-list.add("Java");
-Collections.sort(list);
-System.out.println(list);
-```
+### Thread（线程类）
 
----
-
-### java.io（输入输出流）
-
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `File` | 文件操作 | `exists()`, `createNewFile()`, `delete()`, `listFiles()` |
-| `FileReader` / `FileWriter` | 字符流 | `read()`, `write()`, `close()` |
-| `FileInputStream` / `FileOutputStream` | 字节流 | `read()`, `write()`, `available()` |
-| `BufferedReader` / `BufferedWriter` | 缓冲流 | `readLine()`, `newLine()`, `flush()` |
-| `ObjectInputStream` / `ObjectOutputStream` | 对象序列化 | `writeObject()`, `readObject()` |
-
-**示例：**
-
-```java
-File file = new File("test.txt");
-if (!file.exists()) file.createNewFile();
-```
+- `public void start()`：启动线程。
+- `public void run()`：线程任务。
+- `public void sleep(long millis)`：暂停执行。
+- `public void join()`：等待线程结束。
+- `public void interrupt()`：中断线程。
 
 ---
 
-### java.nio（高性能 I/O）
+## 五、java.util（非集合）
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `Files` | 文件操作工具类 | `readAllLines()`, `write()`, `copy()`, `delete()` |
-| `Paths` | 路径管理 | `get()`, `toAbsolutePath()` |
-| `ByteBuffer` | 缓冲区 | `put()`, `flip()`, `get()` |
-| `FileChannel` | 通道读写 | `read()`, `write()`, `close()` |
+### Random（随机数）
 
-**示例：**
+- `public int nextInt()`：返回随机整数。
+- `public int nextInt(int bound)`：返回指定范围随机数。
+- `public double nextDouble()`：返回随机小数。
+- `public boolean nextBoolean()`：返回随机布尔值。
 
-```java
-Files.write(Paths.get("nio.txt"), "Hello".getBytes());
-```
+### Date（旧日期类）
 
----
+- `public long getTime()`：获取时间戳。
+- `public void setTime(long time)`：设置时间戳。
+- `public int getYear()`：获取年份（过时）。
+- `public int getMonth()`：获取月份（过时）。
 
-### java.net（网络编程）
+### Calendar（日期类）
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `URL` | 网络资源定位 | `openConnection()`, `getHost()` |
-| `HttpURLConnection` | HTTP 通信 | `connect()`, `getInputStream()`, `getResponseCode()` |
-| `Socket` / `ServerSocket` | TCP 通信 | `accept()`, `getInputStream()`, `getOutputStream()` |
-| `InetAddress` | IP 地址操作 | `getHostName()`, `getHostAddress()` |
+- `public static Calendar getInstance()`：获取实例。
+- `public void set(int field, int value)`：设置时间字段。
+- `public Date getTime()`：转换为 Date。
+- `public void add(int field, int amount)`：增减时间。
 
-**示例：**
+### Scanner（控制台输入）
 
-```java
-InetAddress ip = InetAddress.getLocalHost();
-System.out.println(ip.getHostAddress());
+- `public String nextLine()`：读取一行文本。
+- `public int nextInt()`：读取整数。
+- `public double nextDouble()`：读取浮点数。
+- `public boolean hasNext()`：判断是否有输入。
 
-```
+### Collections（工具类）
 
----
-
-### java.math（高精度数学计算）
-
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `BigDecimal` | 高精度浮点数 | `add()`, `subtract()`, `multiply()`, `divide()` |
-| `BigInteger` | 高精度整数 | `add()`, `pow()`, `mod()` |
-
-**示例：**
-
-```java
-BigDecimal a = new BigDecimal("1.5");
-BigDecimal b = new BigDecimal("2.0");
-System.out.println(a.multiply(b)); // 3.0
-```
+- `public static <T> void sort(List<T> list)`：排序。
+- `public static void reverse(List<?> list)`：反转。
+- `public static void shuffle(List<?> list)`：随机打乱。
+- `public static <T> T max(Collection<? extends T> coll)`：返回最大值。
 
 ---
 
-### java.time（日期与时间 API）
+## 六、java.io
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `LocalDate` | 日期 | `now()`, `plusDays()`, `getYear()` |
-| `LocalTime` | 时间 | `now()`, `minusHours()` |
-| `LocalDateTime` | 日期时间 | `now()`, `format()`, `plusDays()` |
-| `DateTimeFormatter` | 格式化 | `ofPattern()`, `format()` |
+### File（文件类）
 
-**示例：**
+- `public boolean exists()`：判断文件是否存在。
+- `public boolean createNewFile()`：创建文件。
+- `public boolean delete()`：删除文件。
+- `public String[] list()`：列出目录内容。
+- `public boolean mkdir()`：创建目录。
 
-```java
-LocalDateTime now = LocalDateTime.now();
-System.out.println(now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-```
+### FileReader / FileWriter（字符流）
 
----
+- `public int read()`：读取单个字符。
+- `public void write(String str)`：写入字符串。
+- `public void close()`：关闭流。
 
-### java.sql（数据库连接）
+### FileInputStream / FileOutputStream（字节流）
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `Connection` | 数据库连接 | `createStatement()`, `prepareStatement()`, `close()` |
-| `Statement` / `PreparedStatement` | SQL 执行 | `executeQuery()`, `executeUpdate()` |
-| `ResultSet` | 查询结果集 | `next()`, `getString()`, `getInt()` |
-| `DriverManager` | 管理数据库驱动 | `getConnection()` |
+- `public int read()`：读取字节。
+- `public void write(int b)`：写入字节。
+- `public void close()`：关闭流。
 
-**示例：**
+### BufferedReader / BufferedWriter（缓冲流）
 
-```java
-Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/test", "root", "1234");
-Statement stmt = conn.createStatement();
-ResultSet rs = stmt.executeQuery("SELECT * FROM user");
-```
+- `public String readLine()`：读取一行文本。
+- `public void newLine()`：写入换行符。
+- `public void flush()`：刷新缓冲区。
+
+### ObjectInputStream / ObjectOutputStream（对象流）
+
+- `public void writeObject(Object obj)`：序列化对象。
+- `public Object readObject()`：反序列化对象。
 
 ---
 
-### java.text（文本与格式化）
+## 七、java.nio
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `SimpleDateFormat` | 日期格式化 | `format()`, `parse()` |
-| `DecimalFormat` | 数字格式化 | `format()` |
-| `MessageFormat` | 模板消息 | `format()` |
+### Files（文件操作）
 
-**示例：**
+- `public static List<String> readAllLines(Path path)`：读取所有行。
+- `public static void write(Path path, byte[] bytes)`：写入文件。
+- `public static void copy(Path src, Path dest)`：复制文件。
+- `public static void delete(Path path)`：删除文件。
 
-```java
-SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-System.out.println(sdf.format(new Date()));
-```
+### Paths（路径管理）
 
----
+- `public static Path get(String first, String... more)`：获取路径。
+- `public Path toAbsolutePath()`：返回绝对路径。
 
-## 十、java.awt / javax.swing（图形界面）
+### ByteBuffer（缓冲区）
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `Frame` / `JFrame` | 创建窗口 | `setSize()`, `setVisible()` |
-| `Button` / `JButton` | 按钮控件 | `addActionListener()` |
-| `Label` / `JLabel` | 文本标签 | `setText()` |
-| `Panel` / `JPanel` | 面板容器 | `add()` |
+- `public ByteBuffer put(byte b)`：写入一个字节。
+- `public byte get()`：读取一个字节。
+- `public void flip()`：准备读操作。
 
-**示例：**
+### FileChannel（通道）
 
-```java
-JFrame frame = new JFrame("Hello GUI");
-frame.setSize(300, 200);
-frame.setVisible(true);
-```
+- `public int read(ByteBuffer dst)`：读取到缓冲区。
+- `public int write(ByteBuffer src)`：写入通道。
+- `public void close()`：关闭通道。
 
 ---
 
-## 十一、java.security（安全加密）
+## 八、java.net
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `MessageDigest` | 信息摘要算法（MD5/SHA） | `getInstance()`, `digest()` |
-| `KeyPairGenerator` | 密钥对生成 | `generateKeyPair()` |
-| `Signature` | 数字签名 | `initSign()`, `sign()`, `verify()` |
+### URL（统一资源定位）
 
-**示例：**
+- `public URL(String spec)`：构造 URL。
+- `public URLConnection openConnection()`：打开连接。
+- `public String getHost()`：获取主机名。
 
-```java
-MessageDigest md = MessageDigest.getInstance("SHA-256");
-byte[] hash = md.digest("Hello".getBytes());
-```
+### HttpURLConnection（HTTP 连接）
 
----
+- `public void connect()`：建立连接。
+- `public InputStream getInputStream()`：获取输入流。
+- `public int getResponseCode()`：获取响应码。
 
-## 十二、java.util.concurrent（并发编程）
+### Socket / ServerSocket（TCP 通信）
 
-| 常用类 | 说明 | 常用方法 |
-|--------|------|----------|
-| `ExecutorService` | 线程池管理 | `submit()`, `shutdown()` |
-| `Future` | 异步结果 | `get()`, `cancel()` |
-| `CountDownLatch` | 并发同步 | `await()`, `countDown()` |
-| `ReentrantLock` | 可重入锁 | `lock()`, `unlock()` |
-| `ConcurrentHashMap` | 并发安全 Map | `put()`, `get()`, `remove()` |
+- `public Socket accept()`：等待客户端连接。
+- `public InputStream getInputStream()`：获取输入流。
+- `public OutputStream getOutputStream()`：获取输出流。
 
-**示例：**
+### InetAddress（IP 地址）
 
-```java
-ExecutorService pool = Executors.newFixedThreadPool(2);
-pool.submit(() -> System.out.println("Task running"));
-pool.shutdown();
-```
+- `public static InetAddress getLocalHost()`：获取本机地址。
+- `public String getHostName()`：主机名。
+- `public String getHostAddress()`：IP 地址。
 
 ---
 
-## 总结
+## 九、java.math
 
-| 包名 | 主要功能 |
-|------|-----------|
-| `java.lang` | 基础类（字符串、数学、系统、线程等） |
-| `java.util` | 工具类（集合、日期、随机数等） |
-| `java.io` | 输入输出流 |
-| `java.nio` | 高性能文件与通道操作 |
-| `java.net` | 网络编程 |
-| `java.math` | 高精度计算 |
-| `java.time` | 日期与时间 API |
-| `java.sql` | 数据库连接（JDBC） |
-| `java.text` | 文本与日期格式化 |
-| `java.awt` / `javax.swing` | 图形界面开发 |
-| `java.security` | 安全加密 |
-| `java.util.concurrent` | 并发编程支持 |
+### BigDecimal（高精度浮点数）
+
+- `public BigDecimal add(BigDecimal val)`：加法。
+- `public BigDecimal subtract(BigDecimal val)`：减法。
+- `public BigDecimal multiply(BigDecimal val)`：乘法。
+- `public BigDecimal divide(BigDecimal val)`：除法。
+
+### BigInteger（高精度整数）
+
+- `public BigInteger add(BigInteger val)`：加法。
+- `public BigInteger subtract(BigInteger val)`：减法。
+- `public BigInteger multiply(BigInteger val)`：乘法。
+- `public BigInteger mod(BigInteger m)`：取模。
 
 ---
 
-> 熟悉以上系统包及其常用类与方法，是掌握 Java 标准库的关键基础。建议结合实际项目多实践、反复查阅本速查表。
+## 十、java.time
+
+### LocalDate / LocalTime / LocalDateTime
+
+- `public static LocalDate now()`：当前日期。
+- `public LocalDate plusDays(long days)`：增加天数。
+- `public int getYear()`：获取年份。
+- `public LocalDateTime format(DateTimeFormatter fmt)`：格式化。
+
+### DateTimeFormatter
+
+- `public static DateTimeFormatter ofPattern(String pattern)`：定义格式。
+- `public String format(TemporalAccessor temporal)`：格式化日期时间。
+
+---
+
+## 十一、java.sql
+
+### Connection（数据库连接）
+
+- `public Statement createStatement()`：创建 SQL 语句。
+- `public PreparedStatement prepareStatement(String sql)`：预编译语句。
+- `public void close()`：关闭连接。
+
+### Statement / PreparedStatement
+
+- `public ResultSet executeQuery(String sql)`：执行查询。
+- `public int executeUpdate(String sql)`：执行更新。
+
+### ResultSet（结果集）
+
+- `public boolean next()`：移动到下一行。
+- `public String getString(String column)`：获取字符串。
+- `public int getInt(String column)`：获取整数。
+
+### DriverManager
+
+- `public static Connection getConnection(String url, String user, String pass)`：建立连接。
+
+---
+
+## 十二、java.text
+
+### SimpleDateFormat
+
+- `public String format(Date date)`：格式化日期。
+- `public Date parse(String text)`：解析日期字符串。
+
+### DecimalFormat
+
+- `public String format(double number)`：格式化数字。
+
+### MessageFormat
+
+- `public static String format(String pattern, Object... args)`：按模板输出文本。
+
+---
+
+## 十三、java.security
+
+### MessageDigest（摘要）
+
+- `public static MessageDigest getInstance(String algorithm)`：获取算法实例。
+- `public byte[] digest(byte[] input)`：生成摘要。
+
+### KeyPairGenerator（密钥生成）
+
+- `public static KeyPairGenerator getInstance(String algorithm)`：获取生成器。
+- `public KeyPair generateKeyPair()`：生成密钥对。
+
+### Signature（签名）
+
+- `public void initSign(PrivateKey key)`：初始化签名。
+- `public byte[] sign()`：生成签名。
+- `public boolean verify(byte[] sig)`：验证签名。
+
+---
+
+## 十四、java.util.concurrent
+
+### ExecutorService（线程池）
+
+- `public Future<?> submit(Runnable task)`：提交任务。
+- `public void shutdown()`：关闭线程池。
+
+### Future（异步结果）
+
+- `public Object get()`：获取结果。
+- `public boolean cancel(boolean mayInterruptIfRunning)`：取消任务。
+
+### CountDownLatch（同步工具）
+
+- `public void await()`：等待计数归零。
+- `public void countDown()`：递减计数。
+
+### ReentrantLock（可重入锁）
+
+- `public void lock()`：加锁。
+- `public void unlock()`：解锁。
+
+### ConcurrentHashMap（并发 Map）
+
+- `public V put(K key, V value)`：放入键值。
+- `public V get(Object key)`：获取值。
+- `public V remove(Object key)`：移除键值。
+
+---
+
+## 十五、总结
+
+- 本文涵盖 Java 常用系统包中除集合类外的核心类与方法。
+- 建议多结合官方文档与实践理解其用法。
+

@@ -260,6 +260,8 @@ public class Student extends Person {
 
 ### 实现接口
 
+1. 
+
 ```java
 public class Main implements Inter {
     @Override

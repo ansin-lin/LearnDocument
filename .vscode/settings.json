@@ -1,0 +1,35 @@
+{
+  // ✅ markdownlint 插件配置
+  "markdownlint.config": {
+    // 允许二级列表缩进 4 个空格（不再提示 MD007）
+    "MD007": { "indent": 4 },
+
+    // 允许使用 ```fenced``` 代码块
+    "MD046": { "style": "fenced" },
+
+    // 允许使用 **asterisk** 风格加粗
+    "MD050": { "style": "asterisk" },
+
+    // 关闭行宽限制（MD013）
+    "MD013": false,
+
+    // 允许标题后无空行（MD012）
+    "MD012": false
+  },
+
+  // ✅ 代码自动格式化选项
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.formatOnSave": true,
+
+  // ✅ Markdown 编辑体验优化
+  "editor.wordWrap": "on",
+  "editor.renderWhitespace": "boundary",
+  "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+
+  // ✅ 让 VS Code 识别 MkDocs 的 Markdown
+  "files.associations": {
+    "*.md": "markdown"
+  }
+}

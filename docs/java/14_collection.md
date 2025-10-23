@@ -1,4 +1,4 @@
-# Java 集合（Collection）框架详解
+# Java 集合（Collection）框架详解（方法补充版）
 
 ## 一、前言
 
@@ -44,7 +44,6 @@ Map（接口）
 ├── TreeMap
 └── Hashtable
     └── Properties
-
 ```
 
 ---
@@ -53,156 +52,231 @@ Map（接口）
 
 `Collection` 是最基础的集合接口，定义了集合的通用操作：
 
-| 方法 | 说明 |
-|------|------|
-| `add(E e)` | 向集合添加元素 |
-| `remove(Object o)` | 删除指定元素 |
-| `clear()` | 清空集合 |
-| `size()` | 返回元素数量 |
-| `isEmpty()` | 判断集合是否为空 |
-| `contains(Object o)` | 判断集合是否包含某个元素 |
-| `iterator()` | 获取迭代器 |
+### Collection常用方法说明
+
+- `public boolean add(E e)`：向集合添加一个元素。
+- `public boolean addAll(Collection<? extends E> c)`：将指定集合的所有元素添加到当前集合。
+- `public void clear()`：清空集合中的所有元素。
+- `public boolean contains(Object o)`：判断集合是否包含指定对象。
+- `public boolean containsAll(Collection<?> c)`：判断集合是否包含指定集合中的所有元素。
+- `public boolean isEmpty()`：判断集合是否为空。
+- `public Iterator<E> iterator()`：返回一个用于遍历集合的迭代器。
+- `public boolean remove(Object o)`：从集合中删除指定的对象。
+- `public boolean removeAll(Collection<?> c)`：从集合中删除指定集合的所有元素。
+- `public boolean retainAll(Collection<?> c)`：仅保留集合中与指定集合共有的元素。
+- `public int size()`：返回集合中元素的数量。
+- `public Object[] toArray()`：返回包含所有元素的数组。
+- `public <T> T[] toArray(T[] a)`：返回一个指定类型的数组。
 
 ---
 
 ## 四、List 接口（有序可重复）
 
-### 1. 特点
+### 特点
 
-- 元素有序（插入顺序）  
-- 允许重复元素  
-- 支持索引访问  
+- 元素有序（按插入顺序）  
+- 允许重复元素
+- 支持索引访问（下标）
 
-### 2. 常用实现类
+### List 接口常用方法
 
-| 类名 | 底层结构 | 线程安全 | 特点 |
-|------|-----------|-----------|------|
-| `ArrayList` | 动态数组 | 否 | 查询快，增删慢 |
-| `LinkedList` | 双向链表 | 否 | 增删快，查询慢 |
-| `Vector` | 动态数组 | 是 | 线程安全，较旧 |
+- `public E get(int index)`：根据索引返回元素。
+- `public E set(int index, E element)`：替换指定位置的元素。
+- `public void add(int index, E element)`：在指定索引位置插入元素。
+- `public int indexOf(Object o)`：返回元素首次出现的位置。
+- `public int lastIndexOf(Object o)`：返回元素最后出现的位置。
+- `public List<E> subList(int fromIndex, int toIndex)`：返回指定范围的子列表。
+
+### 常用实现类
+
+| 类名 | 底层结构 | 特点 |
+|------|-----------|------|
+| `ArrayList` | 动态数组 | 查询快、增删慢 |
+| `LinkedList` | 双向链表 |  增删快、查询慢 |
+| `Vector` | 动态数组（线程安全） | 过时但安全 |
+| `Stack` | 继承自 `Vector` | 栈结构（LIFO） |
+
+### ArrayList 常用方法
+
+- `public boolean add(E e)`：添加元素到列表末尾。
+- `public void ensureCapacity(int minCapacity)`：增加底层数组容量。
+- `public void trimToSize()`：缩减底层数组容量以匹配当前元素数量。
+- `public E remove(int index)`：删除指定位置的元素。
+- `public void clear()`：清空所有元素。
+- `public boolean contains(Object o)`：判断是否存在指定元素。
+- `public Object clone()`：浅拷贝当前 ArrayList。
+
+### LinkedList 常用方法
+
+- `public void addFirst(E e)`：在链表头部添加元素。
+- `public void addLast(E e)`：在链表尾部添加元素。
+- `public E getFirst()`：返回第一个元素。
+- `public E getLast()`：返回最后一个元素。
+- `public E removeFirst()`：删除第一个元素。
+- `public E removeLast()`：删除最后一个元素。
+- `public E peek()`：获取但不移除第一个元素。
+- `public E poll()`：获取并移除第一个元素。
+
+### Vector 常用方法
+
+- `public synchronized void addElement(E obj)`：在向量末尾添加元素。
+- `public synchronized E elementAt(int index)`：返回指定索引处的元素。
+- `public synchronized void removeElementAt(int index)`：删除指定位置的元素。
+- `public synchronized int capacity()`：返回当前容量。
+- `public synchronized void setElementAt(E obj, int index)`：设置指定索引处的元素。
+- `public synchronized Enumeration<E> elements()`：返回枚举器遍历元素。
 
 ### 示例
 
 ```java
-import java.util.*;
-
-public class ListDemo {
-    public static void main(String[] args) {
-        List<String> list = new ArrayList<>();
-        list.add("Java");
-        list.add("Python");
-        list.add("Go");
-        System.out.println(list.get(1)); // Python
-        list.remove("Go");
-        System.out.println(list);
-    }
-}
+List<String> list = new ArrayList<>();
+list.add("Java");
+list.add("Python");
+System.out.println(list.get(0)); // Java
+list.set(1, "C++");
+System.out.println(list.contains("C++")); // true
+list.remove("Java");
 ```
 
 ---
 
 ## 五、Set 接口（无序不重复）
 
-### 1. 特点1
+### 特点
 
 - 不允许重复元素  
-- 元素无序（部分实现有序）  
-- 通过 `equals()` 与 `hashCode()` 判断唯一性  
+- 判断唯一性依赖 `hashCode()` 与 `equals()`  
+- 无索引，不支持随机访问
 
-### 2. 常用实现类1
+### 常用实现类与方法
 
 | 类名 | 底层结构 | 特点 |
 |------|-----------|------|
-| `HashSet` | 哈希表 | 无序，查找速度快 |
-| `LinkedHashSet` | 哈希表 + 双向链表 | 有序（按插入顺序） |
-| `TreeSet` | 红黑树 | 自动排序（可自定义 Comparator） |
+| `HashSet` | 哈希表 |  无序唯一，查找快 |
+| `LinkedHashSet` | 哈希表 + 双向链表 | 保留插入顺序,有序唯一 |
+| `TreeSet` | 红黑树 | 自动排序，可排序集合 |
 
-### 示例1
+### HashSet 常用方法
+
+- `public boolean add(E e)`：添加元素，如果存在则不添加。
+- `public boolean remove(Object o)`：删除指定元素。
+- `public boolean contains(Object o)`：判断是否存在指定元素。
+- `public Iterator<E> iterator()`：返回迭代器。
+- `public int size()`：返回元素个数。
+
+### TreeSet 常用方法
+
+- `public boolean add(E e)`：按自然顺序或比较器顺序添加。
+- `public E first()`：返回第一个（最小）元素。
+- `public E last()`：返回最后一个（最大）元素。
+- `public SortedSet<E> headSet(E toElement)`：返回小于指定元素的子集。
+- `public SortedSet<E> tailSet(E fromElement)`：返回大于或等于指定元素的子集。
+
+### 示例
 
 ```java
-import java.util.*;
-
-public class SetDemo {
-    public static void main(String[] args) {
-        Set<String> set = new HashSet<>();
-        set.add("Java");
-        set.add("Python");
-        set.add("Java"); // 重复元素不会添加
-        System.out.println(set);
-    }
-}
+Set<Integer> set = new TreeSet<>();
+set.add(3);
+set.add(1);
+set.add(2);
+System.out.println(set); // [1, 2, 3]
 ```
 
 ---
 
 ## 六、Queue 接口（队列）
 
-### 1. 特点2
+### 1. 特点
 
 - 遵循 FIFO（先进先出）原则  
-- 通常用于任务调度或消息队列  
+- 适用于任务调度、消息队列
 
-### 2. 常用实现类2
 
-| 类名 | 说明 |
-|------|------|
-| `PriorityQueue` | 基于堆的优先级队列 |
-| `ArrayDeque` | 双端队列（Deque 的实现） |
+### Queue 接口常用方法
 
-### 示例2
+- `public boolean offer(E e)`：添加元素到队列尾部。
+- `public E poll()`：获取并删除队首元素。
+- `public E peek()`：获取但不删除队首元素。
+- `public E remove()`：获取并删除队首元素（为空抛异常）。
+- `public E element()`：查看队首元素（为空抛异常）。
+
+### Deque 常用方法
+
+- `public void addFirst(E e)`：添加元素到队列头部。
+- `public void addLast(E e)`：添加元素到队列尾部。
+- `public E removeFirst()`：删除队列头元素。
+- `public E removeLast()`：删除队列尾元素。
+- `public E peekFirst()`：查看头部元素。
+- `public E peekLast()`：查看尾部元素。
+
+### 示例：
 
 ```java
-import java.util.*;
-
-public class QueueDemo {
-    public static void main(String[] args) {
-        Queue<Integer> queue = new PriorityQueue<>();
-        queue.offer(3);
-        queue.offer(1);
-        queue.offer(2);
-        System.out.println(queue.poll()); // 1（最小优先）
-    }
-}
+Queue<Integer> q = new LinkedList<>();
+q.offer(1);
+q.offer(2);
+q.offer(3);
+System.out.println(q.peek()); // 1
+System.out.println(q.poll()); // 1
+System.out.println(q);        // [2, 3]
 ```
 
 ---
 
 ## 七、Map 接口（键值对集合）
 
-### 1. 特点3
+### Map特点
 
-- 存储键值对（key-value）形式  
-- key 唯一，value 可重复  
-- 不继承 `Collection` 接口  
+- 键（key）唯一，值（value）可重复  
+- 不继承 `Collection` 接口
 
-### 2. 常用实现类3
+### Map 接口常用方法
 
-| 类名 | 底层结构 | 特点 |
-|------|-----------|------|
-| `HashMap` | 哈希表 | 无序，允许 null 键值 |
-| `LinkedHashMap` | 哈希表 + 链表 | 按插入顺序保存 |
-| `TreeMap` | 红黑树 | 按 key 排序 |
-| `Hashtable` | 哈希表 | 线程安全，不允许 null |
+- `public V put(K key, V value)`：添加或更新键值对。
+- `public V get(Object key)`：根据键返回值。
+- `public V remove(Object key)`：删除指定键对应的键值对。
+- `public boolean containsKey(Object key)`：判断是否包含指定键。
+- `public boolean containsValue(Object value)`：判断是否包含指定值。
+- `public Set<K> keySet()`：返回键集合。
+- `public Collection<V> values()`：返回值集合。
+- `public Set<Map.Entry<K,V>> entrySet()`：返回键值对集合。
+- `public int size()`：返回键值对数量。
+- `public void clear()`：清空所有键值对。
 
-### 示例3
+### 3. 常用实现类
+
+| 类名 | 特点 |
+|------|------|
+| `HashMap` | 无序、允许 null 键与值 |
+| `LinkedHashMap` | 按插入顺序存储 |
+| `TreeMap` | 按 key 排序 |
+| `Hashtable` | 线程安全，不允许 null |
+
+### HashMap 常用方法
+
+- `public V putIfAbsent(K key, V value)`：仅当键不存在时才添加键值对。
+- `public V replace(K key, V value)`：替换指定键对应的值。
+- `public V getOrDefault(Object key, V defaultValue)`：获取值或默认值。
+- `public void forEach(BiConsumer<? super K,? super V> action)`：遍历所有键值对。
+
+### TreeMap 常用方法
+
+- `public K firstKey()`：返回第一个键。
+- `public K lastKey()`：返回最后一个键。
+- `public SortedMap<K,V> headMap(K toKey)`：返回小于指定键的部分映射。
+- `public SortedMap<K,V> tailMap(K fromKey)`：返回大于等于指定键的部分映射。
+- `public Comparator<? super K> comparator()`：返回用于排序的比较器。
+
+### 示例：
 
 ```java
-import java.util.*;
-
-public class MapDemo {
-    public static void main(String[] args) {
-        Map<Integer, String> map = new HashMap<>();
-        map.put(1, "Java");
-        map.put(2, "Python");
-        map.put(3, "Go");
-
-        System.out.println(map.get(2)); // Python
-        map.remove(3);
-
-        for (Map.Entry<Integer, String> entry : map.entrySet()) {
-            System.out.println(entry.getKey() + " -> " + entry.getValue());
-        }
-    }
+Map<String, Integer> map = new HashMap<>();
+map.put("Java", 1);
+map.put("Python", 2);
+System.out.println(map.get("Java"));
+map.remove("Python");
+for (Map.Entry<String, Integer> e : map.entrySet()) {
+    System.out.println(e.getKey() + " => " + e.getValue());
 }
 ```
 
@@ -210,36 +284,31 @@ public class MapDemo {
 
 ## 八、Collections 工具类
 
-`Collections` 是集合的操作工具类，包含大量静态方法。
+### 常用静态方法
 
-| 方法 | 说明 |
-|------|------|
-| `sort(List<T> list)` | 排序 |
-| `reverse(List<T> list)` | 反转 |
-| `shuffle(List<T> list)` | 随机打乱 |
-| `max()/min()` | 获取最大/最小值 |
-| `frequency(Collection, Object)` | 统计元素出现次数 |
+- `public static <T extends Comparable<? super T>> void sort(List<T> list)`：对列表进行排序。
+- `public static void reverse(List<?> list)`：反转列表顺序。
+- `public static void shuffle(List<?> list)`：随机打乱列表元素。
+- `public static <T> T max(Collection<? extends T> coll)`：返回最大值。
+- `public static <T> T min(Collection<? extends T> coll)`：返回最小值。
+- `public static <T> int frequency(Collection<?> c, Object o)`：统计出现次数。
+- `public static <T> void copy(List<? super T> dest, List<? extends T> src)`：将源列表内容复制到目标列表。
+- `public static <T> List<T> synchronizedList(List<T> list)`：返回线程安全的列表。
 
-### 示例4
+### 示例：
 
 ```java
-import java.util.*;
-
-public class CollectionsDemo {
-    public static void main(String[] args) {
-        List<Integer> list = Arrays.asList(3, 1, 2, 5, 4);
-        Collections.sort(list);
-        Collections.reverse(list);
-        System.out.println(list);
-    }
-}
+List<Integer> list = Arrays.asList(3, 1, 2, 5, 4);
+Collections.sort(list);
+Collections.reverse(list);
+System.out.println(list);
 ```
 
 ---
 
 ## 九、集合遍历与泛型
 
-### 1. 使用增强 for 循环
+### 1. 增强 for 循环
 
 ```java
 for (String item : list) {
@@ -247,7 +316,7 @@ for (String item : list) {
 }
 ```
 
-### 2. 使用迭代器
+### 2. 迭代器
 
 ```java
 Iterator<String> it = list.iterator();
@@ -256,7 +325,7 @@ while (it.hasNext()) {
 }
 ```
 
-### 3. 使用 Lambda
+### 3. Lambda 表达式
 
 ```java
 list.forEach(item -> System.out.println(item));
@@ -282,9 +351,7 @@ list.forEach(item -> System.out.println(item));
 
 - 集合是 Java 最核心的容器框架之一，是数据存储与处理的基础。  
 - `List`：有序可重复；`Set`：无序不可重复；`Map`：键值对存储。  
-- 选择集合实现类时，应根据**访问频率、线程安全、排序要求**来确定。  
-- `Collections` 工具类提供了常用的集合操作与辅助方法。  
+- 选择集合实现类时，应根据 **访问频率、线程安全、排序要求** 来确定。  
+- `Collections` 工具类提供了常用的集合操作与辅助方法。
 
 > 熟练掌握集合框架，是成为 Java 后端开发工程师的必备技能之一。
-
----

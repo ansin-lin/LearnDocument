@@ -1,224 +1,149 @@
-# Java 字符串详解
+# Java 字符串详解（方法签名 + 版本说明版）
 
 ## 一、前言
 
-`String` 是 Java 中最常用的数据类型之一，代表不可变的字符串对象。  
-此外，Java 还提供了 `StringBuilder`、`StringBuffer` 和 `StringJoiner` 三个用于拼接或处理字符串的类，极大提高了字符串操作效率。
+`String` 是 Java 中最常用的类之一，表示不可变的字符串。  
+此外，还有 `StringBuilder`、`StringBuffer` 和 `StringJoiner` 等辅助类，
+用于提高字符串拼接与处理的性能与灵活性。
 
 ---
 
-## 二、String 概述
+## 二、String 类
 
 ### 1. 基本特性
 
-- `String` 是 **不可变对象**，一旦创建，内容无法修改。
-- 每次修改实际上都会创建一个新的 `String` 对象。
+- `String` 是 **不可变对象**，每次修改都会生成新的字符串实例。
+- 字符串常量存储在字符串常量池中。
+
+### 2. 常用构造方法
+
+- `public String()`【JDK 1.0】：创建空字符串。
+- `public String(String original)`【JDK 1.0】：复制已有字符串内容。
+- `public String(char[] value)`【JDK 1.0】：从字符数组创建字符串。
+- `public String(byte[] bytes)`【JDK 1.0】：从字节数组创建字符串。
+
+### 3. 常用方法（附版本说明）
+
+- `public int length()`【JDK 1.0】：返回字符串长度。
+- `public boolean isEmpty()`【JDK 1.6】：判断字符串是否为空。
+- `public char charAt(int index)`【JDK 1.0】：返回指定索引处字符。
+- `public int indexOf(String str)`【JDK 1.0】：返回子串首次出现位置。
+- `public int lastIndexOf(String str)`【JDK 1.0】：返回子串最后出现位置。
+- `public boolean equals(Object anObject)`【JDK 1.0】：比较字符串内容。
+- `public boolean equalsIgnoreCase(String anotherString)`【JDK 1.0】：忽略大小写比较。
+- `public boolean contains(CharSequence s)`【JDK 1.5】：判断是否包含子串。
+- `public boolean startsWith(String prefix)`【JDK 1.0】：判断是否以指定前缀开头。
+- `public boolean endsWith(String suffix)`【JDK 1.0】：判断是否以指定后缀结尾。
+- `public String substring(int beginIndex, int endIndex)`【JDK 1.0】：截取子串。
+- `public String concat(String str)`【JDK 1.0】：拼接字符串。
+- `public String replace(CharSequence target, CharSequence replacement)`【JDK 1.5】：替换子串。
+- `public String replaceAll(String regex, String replacement)`【JDK 1.4】：使用正则替换所有匹配项。
+- `public boolean matches(String regex)`【JDK 1.4】：判断是否匹配正则表达式。
+- `public String[] split(String regex)`【JDK 1.4】：根据正则切割字符串。
+- `public String trim()`【JDK 1.0】：去除前后空白。
+- `public String toUpperCase()`【JDK 1.0】：转换为大写。
+- `public String toLowerCase()`【JDK 1.0】：转换为小写。
+- `public static String format(String format, Object... args)`【JDK 1.5】：格式化输出。
+- `public static String join(CharSequence delimiter, CharSequence... elements)`【JDK 1.8】：使用分隔符连接字符串。
+- `public String intern()`【JDK 1.0】：返回常量池中的字符串引用。
+
+### 示例
 
 ```java
-String a = "abc";
-a += "d";
-System.out.println(a); // 实际上创建了新的 "abcd" 对象
+String name = "安信";
+String result = name.concat(" 株式会社").toUpperCase();
+System.out.println(result); // 安信 株式会社
 ```
 
 ---
 
-## 三、创建字符串的两种方式
-
-### 1. 直接赋值
-
-```java
-String name = "安信株式会社";
-
-```
-
-该方式创建的字符串会存储在 **字符串常量池** 中，相同内容只会保留一份。
-
-### 2. 使用构造方法
-
-```java
-String s1 = new String(); // 空字符串
-String s2 = new String("安信株式会社");
-```
-
-此方式每次调用 `new` 都会在 **堆内存** 中创建新的对象。
-
-### 构造方法汇总
-
-| 构造方法 | 说明 |
-|-----------|------|
-| `String()` | 创建空白字符串对象 |
-| `String(String original)` | 复制字符串内容 |
-| `String(char[] chs)` | 从字符数组创建字符串 |
-| `String(byte[] bytes)` | 从字节数组创建字符串 |
-
----
-
-## 四、String 常用 API
-
-### 1. equals / equalsIgnoreCase
-
-```java
-String a = "Cunyu";
-String b = "cunyu";
-System.out.println(a.equals(b));            // false
-System.out.println(a.equalsIgnoreCase(b));  // true
-```
-
-### 2. length()
-
-获取字符串长度：
-
-```java
-String str = "安信株式会社";
-System.out.println(str.length()); // 3
-```
-
-### 3. charAt()
-
-获取指定索引的字符：
-
-```java
-String str = "cunyu1943";
-System.out.println(str.charAt(3)); // y
-```
-
-### 4. toCharArray()
-
-将字符串转换为字符数组：
-
-```java
-char[] arr = "Java".toCharArray();
-System.out.println(Arrays.toString(arr)); // [J, a, v, a]
-```
-
-### 5. substring()
-
-截取字符串（左闭右开）：
-
-```java
-String s = "cunyu1943";
-System.out.println(s.substring(2, 5)); // nyu
-```
-
-### 6. replace()
-
-替换字符或子串：
-
-```java
-String str = "cunyu1943";
-System.out.println(str.replace("u", "x")); // cxnyx1943
-```
-
-### 7. split()
-
-按规则切割字符串：
-
-```java
-String s = "010-110-119";
-String[] arr = s.split("-");
-System.out.println(Arrays.toString(arr)); // [010, 110, 119]
-```
-
----
-
-## 五、StringBuilder
+## 三、StringBuilder 类
 
 ### 1. 概述
 
-`StringBuilder` 是一个可变字符串容器，设计用于高效拼接和修改字符串。  
-相比 `String`，`StringBuilder` 不会频繁创建新对象，从而提升性能。
+`StringBuilder` 是一个可变的字符串容器，效率高于 `String`，但非线程安全。
 
-### 2. 构造方法
+### 2. StringBuilder常用构造方法
 
-| 方法 | 说明 |
-|------|------|
-| `StringBuilder()` | 创建空容器 |
-| `StringBuilder(String str)` | 以指定字符串初始化 |
-
-```java
-StringBuilder sb = new StringBuilder("安信株式会社");
-System.out.println(sb); // 安信株式会社
-```
+- `public StringBuilder()`【JDK 1.5】：创建空容器。
+- `public StringBuilder(String str)`【JDK 1.5】：使用初始字符串。
 
 ### 3. 常用方法
 
-| 方法 | 说明 |
-|------|------|
-| `append()` | 添加内容 |
-| `insert()` | 在指定位置插入内容 |
-| `delete()` | 删除指定区间内容 |
-| `reverse()` | 反转内容 |
-| `toString()` | 转换为 String |
+- `public StringBuilder append(String str)`【JDK 1.5】：追加字符串。
+- `public StringBuilder insert(int offset, String str)`【JDK 1.5】：在指定位置插入字符串。
+- `public StringBuilder delete(int start, int end)`【JDK 1.5】：删除指定区间。
+- `public StringBuilder deleteCharAt(int index)`【JDK 1.5】：删除单个字符。
+- `public StringBuilder replace(int start, int end, String str)`【JDK 1.5】：替换区间内容。
+- `public StringBuilder reverse()`【JDK 1.5】：反转字符序列。
+- `public int capacity()`【JDK 1.5】：返回当前容量。
+- `public void ensureCapacity(int minimumCapacity)`【JDK 1.5】：确保容量足够。
+- `public void setCharAt(int index, char ch)`【JDK 1.5】：修改指定位置字符。
+- `public String substring(int start, int end)`【JDK 1.5】：提取子串。
+- `public String toString()`【JDK 1.5】：转换为 String。
+
+### StringBuilder示例
 
 ```java
-StringBuilder sb = new StringBuilder("Hello");
-sb.append(" World");
-System.out.println(sb);          // Hello World
-sb.reverse();
-System.out.println(sb);          // dlroW olleH
-System.out.println(sb.length()); // 11
+StringBuilder sb = new StringBuilder("Java");
+sb.append(" Programming").insert(4, " SE");
+System.out.println(sb.reverse()); // gnimmargorP ES avaJ
 ```
 
 ---
 
-## 六、StringBuffer
+## 四、StringBuffer 类
 
-### 1. 概述2
+### 1. StringBuffer概述
 
-`StringBuffer` 与 `StringBuilder` 类似，也是可变字符串类。  
-**区别在于**：`StringBuffer` 是 **线程安全的**，在多线程环境中更可靠。
+`StringBuffer` 与 `StringBuilder` 功能类似，但它是线程安全的，适合多线程环境。
 
-### 2. 构造方法2
+### 2. StringBuffer常用构造方法
 
-```java
-StringBuffer sb1 = new StringBuffer();
-StringBuffer sb2 = new StringBuffer("Java");
-```
+- `public StringBuffer()`【JDK 1.0】：创建空缓冲区。
+- `public StringBuffer(String str)`【JDK 1.0】：使用初始字符串。
 
-### 3. 常用方法2
+### 3. StringBuffer常用方法
 
-与 `StringBuilder` 基本一致：
+- `public synchronized StringBuffer append(String str)`【JDK 1.0】：追加字符串。
+- `public synchronized StringBuffer insert(int offset, String str)`【JDK 1.0】：插入字符串。
+- `public synchronized StringBuffer delete(int start, int end)`【JDK 1.0】：删除区间内容。
+- `public synchronized StringBuffer reverse()`【JDK 1.0】：反转字符序列。
+- `public synchronized int capacity()`【JDK 1.0】：返回容量。
+- `public synchronized void ensureCapacity(int minimumCapacity)`【JDK 1.0】：确保容量。
+- `public synchronized String toString()`【JDK 1.0】：转为字符串。
 
-- `append()`：拼接字符串。
-- `insert()`：插入字符串。
-- `delete()`：删除指定位置内容。
-- `reverse()`：反转字符串。
-- `toString()`：转为字符串。
-
-### 4. 示例2
+### StringBuffer示例
 
 ```java
-public class StringBufferTest {
-    public static void main(String[] args) {
-        StringBuffer buffer = new StringBuffer("Java");
-        buffer.append(" SE");
-        buffer.insert(4, " 8");
-        System.out.println(buffer); // Java 8 SE
-        buffer.reverse();
-        System.out.println(buffer); // ES 8 avaJ
-    }
-}
+StringBuffer buffer = new StringBuffer("Java");
+buffer.append(" SE");
+buffer.insert(4, " 8");
+System.out.println(buffer); // Java 8 SE
 ```
-
-> **总结区别**：
->
-> - `StringBuffer`：线程安全（多线程场景适用）。  
-> - `StringBuilder`：非线程安全，但更快（单线程场景适用）。
 
 ---
 
-## 七、StringJoiner
+## 五、StringJoiner 类
 
-### 1. 概述3
+### 1. StringJoiner概述
 
-`StringJoiner` 是 JDK8 引入的工具类，用于高效拼接字符串，支持指定分隔符、前缀、后缀。
+`StringJoiner` 是 JDK 1.8 新增类，用于高效地拼接带分隔符的字符串。
 
-### 2. 构造方法3
+### 2. StringJoiner构造方法
 
-| 构造函数 | 说明 |
-|-----------|------|
-| `StringJoiner(CharSequence delimiter)` | 指定分隔符 |
-| `StringJoiner(CharSequence delimiter, CharSequence prefix, CharSequence suffix)` | 指定分隔符、前缀、后缀 |
+- `public StringJoiner(CharSequence delimiter)`【JDK 1.8】：指定分隔符。
+- `public StringJoiner(CharSequence delimiter, CharSequence prefix, CharSequence suffix)`【JDK 1.8】：指定分隔符、前缀与后缀。
+
+### 3. StringJoiner常用方法
+
+- `public StringJoiner add(CharSequence newElement)`【JDK 1.8】：添加元素。
+- `public int length()`【JDK 1.8】：返回拼接后长度。
+- `public StringJoiner merge(StringJoiner other)`【JDK 1.8】：合并另一个 Joiner。
+- `public StringJoiner setEmptyValue(CharSequence emptyValue)`【JDK 1.8】：设置空值时的输出内容。
+- `public String toString()`【JDK 1.8】：返回拼接后的字符串。
+
+### StringJoiner示例
 
 ```java
 StringJoiner joiner = new StringJoiner("-", "[", "]");
@@ -226,33 +151,24 @@ joiner.add("Java").add("Python").add("Go");
 System.out.println(joiner); // [Java-Python-Go]
 ```
 
-### 3. 常用方法3
+---
 
-| 方法 | 说明 |
-|------|------|
-| `add()` | 添加元素 |
-| `length()` | 获取拼接后长度 |
-| `toString()` | 转换为字符串 |
+## 六、性能与适用场景对比
+
+| 类名 | 可变性 | 线程安全 | 引入版本 | 性能 | 典型场景 |
+|------|----------|------------|------------|-----------|-----------|
+| String | 不可变 | 安全 | JDK 1.0 | 低 | 不频繁拼接 |
+| StringBuilder | 可变 | 否 | JDK 1.5 | 高 | 单线程高频拼接 |
+| StringBuffer | 可变 | 是 | JDK 1.0 | 中 | 多线程字符串操作 |
+| StringJoiner | 可变 | 否 | JDK 1.8 | 高 | 格式化分隔拼接 |
 
 ---
 
-## 八、性能与适用场景对比
+## 七、总结
 
-| 类名 | 可变性 | 线程安全 | 性能 | 典型场景 |
-|------|----------|------------|----------|-----------|
-| **String** | 不可变 | 安全 | 低 | 少量字符串拼接 |
-| **StringBuilder** | 可变 | 不安全 | 高 | 单线程下频繁拼接 |
-| **StringBuffer** | 可变 | 安全 | 中 | 多线程下字符串操作 |
-| **StringJoiner** | 可变 | 安全 | 高 | 格式化拼接带分隔符的内容 |
+- **String**：不可变，适合少量字符串操作。  
+- **StringBuilder**：非线程安全但性能优异。  
+- **StringBuffer**：线程安全，适合多线程场景。  
+- **StringJoiner**：JDK 1.8+ 推荐用于带分隔符的格式化拼接。
 
----
-
-## 九、总结
-
-- **String**：不可变对象，每次修改会生成新字符串。  
-- **StringBuilder**：单线程下高性能拼接首选。  
-- **StringBuffer**：多线程环境下的安全版本。  
-- **StringJoiner**：格式化拼接更优雅。  
-
-> 掌握字符串的底层机制，有助于写出高效、稳定的 Java 程序。  
-> **牢记：字符串的不可变性是安全与效率之间的权衡。**
+> 合理选择字符串类，可以显著提升 Java 程序的性能与可维护性。

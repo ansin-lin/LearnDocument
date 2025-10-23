@@ -5,31 +5,6 @@
 
 ---
 
-## 目录
-
-- [🧪 Spring Boot 测试完整教学课件（Eclipse 环境 · 适配 Spring Boot 3.5）](#-spring-boot-测试完整教学课件eclipse-环境--适配-spring-boot-35)
-  - [目录](#目录)
-  - [测试的目的与意义](#测试的目的与意义)
-  - [测试框架与依赖配置（Eclipse）](#测试框架与依赖配置eclipse)
-    - [Maven 依赖（Spring Boot 3.5.x）](#maven-依赖spring-boot-35x)
-    - [在 Eclipse 中运行测试](#在-eclipse-中运行测试)
-  - [测试工具与使用场景总览](#测试工具与使用场景总览)
-  - [JUnit 5：框架与生命周期](#junit-5框架与生命周期)
-  - [Mockito：模拟依赖与交互验证](#mockito模拟依赖与交互验证)
-  - [Spring Test 切片与 MockMvc](#spring-test-切片与-mockmvc)
-  - [实战案例：三层测试代码精讲](#实战案例三层测试代码精讲)
-    - [A. Service 层（Mockito + JUnit5）](#a-service-层mockito--junit5)
-    - [B. Mapper 层（@MybatisTest + JdbcTemplate 造数据）](#b-mapper-层mybatistest--jdbctemplate-造数据)
-    - [C. Controller 层（两种方式对比）](#c-controller-层两种方式对比)
-      - [方式 1：Mockito 轻量方式（直接调方法）](#方式-1mockito-轻量方式直接调方法)
-      - [方式 2：MockMvc（模拟 HTTP）](#方式-2mockmvc模拟-http)
-  - [课堂练习与常见陷阱](#课堂练习与常见陷阱)
-    - [练习](#练习)
-    - [常见陷阱](#常见陷阱)
-  - [附录：推荐目录结构与常用命令](#附录推荐目录结构与常用命令)
-    - [目录结构](#目录结构)
-
----
 
 ## 测试的目的与意义
 

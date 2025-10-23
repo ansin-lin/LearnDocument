@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "DavidAnson.vscode-markdownlint",     // Markdown 语法检测与格式化
+    "yzhang.markdown-all-in-one",         // Markdown 增强功能（预览、目录、快捷键）
+    "esbenp.prettier-vscode"              // 通用格式化工具
+  ]
+}
