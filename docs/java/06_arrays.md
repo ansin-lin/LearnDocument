@@ -175,11 +175,18 @@ public class StandardLibrarySortTest {
 
 Java `Arrays` 工具类提供了丰富的方法：
 
-| 方法 | 描述 |
-|------|------|
-| `Arrays.toString(Object[] a)` | 输出数组字符串形式 |
-| `Arrays.asList(T... a)` | 将数组转换为 List |
-| `Arrays.equals(Object[] d1,Object[] d2)` | 判断两个数组是否相同 |
+- public static String toString(Object[] a)：将数组转换为字符串形式输出。
+- public static <T> List<T> asList(T... a)：将数组转换为 List（固定长度）。
+- public static boolean equals(Object[] a, Object[] b)：判断两个数组是否内容相同。
+- public static boolean deepEquals(Object[] a1, Object[] a2)：深度比较多维数组是否相等。
+- public static void sort(int[] a)：对整型数组进行升序排序。
+- public static int binarySearch(int[] a, int key)：使用二分法查找指定元素的索引（需已排序）。
+- public static void fill(int[] a, int val)：将数组中所有元素设置为指定值。
+- public static <T> void fill(T[] a, T val)：将对象数组填充为指定值。
+- public static <T> T[] copyOf(T[] original, int newLength)：复制数组到指定长度的新数组。
+- public static <T> T[] copyOfRange(T[] original, int from, int to)：复制数组的指定范围。
+- public static <T> boolean mismatch(T[] a, T[] b)【JDK 9】：返回第一个不同元素的索引。
+- public static <T> T[] copyOfRange(T[] original, int from, int to, Class<? extends T[]> newType)【JDK 1.6】：复制指定范围并指定类型的新数组。
 
 ### 示例
 

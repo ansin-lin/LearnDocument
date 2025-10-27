@@ -109,6 +109,4 @@ jar cvfm HelloWorld.jar manifest.txt HelloWorld.class
 ## 小结
 
 - 包（package）用于管理命名空间和访问权限。
-- 注释有三种：单行、多行、文档注释。
-- Javadoc 可生成 HTML 文档。
 - JAR 文件用于打包和分发 Java 应用程序。

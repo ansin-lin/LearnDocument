@@ -1,7 +1,10 @@
-# 🧪 Spring Boot 测试完整教学课件（Eclipse 环境 · 适配 Spring Boot 3.5）
+# 🧪 Spring Boot 测试
 
-> 课程目标：理解 Spring Boot 测试的**目的与体系**，熟练使用 **JUnit5、Mockito、Spring Test 切片、MockMvc、DataJpaTest / MybatisTest、AssertJ / Hamcrest、Jacoco** 等工具；能够在企业项目中高质量地编写 **Service / Mapper / Controller** 三层测试。  
-> 适用读者：Java/Spring 开发者、测试开发、教学培训。
+> 课程目标：
+>> 理解 Spring Boot 测试的**目的与体系**，
+>> 熟练使用 **JUnit5、Mockito、Spring Test 切片、MockMvc、DataJpaTest / MybatisTest、AssertJ / Hamcrest、Jacoco** 等工具；
+>> 能够在企业项目中高质量地编写 **Service / Mapper / Controller** 三层测试。  
+>> 适用读者：Java/Spring 开发者、测试开发、教学培训。
 
 ---
 
@@ -10,10 +13,10 @@
 
 **为什么要写测试？**
 
-- ✅ 验证业务逻辑正确性，防止“改一处、崩全局”。
-- ✅ 降低维护成本，便于代码重构与升级。
-- ✅ 配合 CI/CD，自动化保障发布质量。
-- ✅ 为复杂系统（多模块/多服务）提供**回归保护网**。
+- 验证业务逻辑正确性，防止“改一处、崩全局”。
+- 降低维护成本，便于代码重构与升级。
+- 配合 CI/CD，自动化保障发布质量。
+- 为复杂系统（多模块/多服务）提供**回归保护网**。
 
 **单元测试 vs 集成测试**
 
@@ -288,7 +291,7 @@ class UserTblMapperTest {
 
 ---
 
-### C. Controller 层（两种方式对比）
+### C. Controller 层
 
 #### 方式 1：Mockito 轻量方式（直接调方法）
 
@@ -361,7 +364,7 @@ class AdminListControllerMvcTest {
 
 ### 目录结构
 
-```
+```java
 src
 ├── main/java/com/example/project
 │   ├── controller/...

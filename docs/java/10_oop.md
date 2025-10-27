@@ -183,7 +183,7 @@ public final class Person { }
 
 ---
 
-## 抽象类（abstract）
+## 抽象（abstract）
 
 ### 抽象方法
 
@@ -192,6 +192,14 @@ public final class Person { }
 ```java
 public abstract void welcome(String name);
 ```
+
+**抽象方法的特点：**
+
+1. 所谓抽象方法，是指在类中仅仅声明了类的行为，并没有真正实现行为的代码。
+      1. 抽象方法仅仅是为所有的派生子类定义一个统一的接口，方法具体实现的程序代码交给了各个派生子类来完成，不同的子类可以根据自身的情况以不同的程序代码实现。
+      2. 没有方法体。
+2. 抽象方法只能存在于抽象类/interface中，一个类中只要有一个方法是抽象的，则这个类就是抽象的。
+3. 构造方法、静态（static）方法、最终（final）方法和私有（private）方法不能被声明为抽象的方法。
 
 ### 抽象类的定义
 
@@ -260,7 +268,8 @@ public class Student extends Person {
 
 ### 实现接口
 
-1. 
+1. 实现类通过`implements`实现接口
+2. 需要在实现类中重写接口中所有抽象方法
 
 ```java
 public class Main implements Inter {

@@ -209,7 +209,7 @@ System.out.println(set); // [1, 2, 3]
 - `public E peekFirst()`：查看头部元素。
 - `public E peekLast()`：查看尾部元素。
 
-### 示例：
+### 示例
 
 ```java
 Queue<Integer> q = new LinkedList<>();
@@ -267,7 +267,7 @@ System.out.println(q);        // [2, 3]
 - `public SortedMap<K,V> tailMap(K fromKey)`：返回大于等于指定键的部分映射。
 - `public Comparator<? super K> comparator()`：返回用于排序的比较器。
 
-### 示例：
+### 示例
 
 ```java
 Map<String, Integer> map = new HashMap<>();
@@ -295,7 +295,7 @@ for (Map.Entry<String, Integer> e : map.entrySet()) {
 - `public static <T> void copy(List<? super T> dest, List<? extends T> src)`：将源列表内容复制到目标列表。
 - `public static <T> List<T> synchronizedList(List<T> list)`：返回线程安全的列表。
 
-### 示例：
+### 示例
 
 ```java
 List<Integer> list = Arrays.asList(3, 1, 2, 5, 4);

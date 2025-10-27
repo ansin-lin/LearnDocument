@@ -72,7 +72,7 @@ nav:
       - 首页: sql/00_Database_Introduction.md
       - 1.SQL 基础入门: 
         - 介绍;: sql/DDL/00_instruction.md
-      - 2..DDL 基础语法:
+      - 2.DDL 基础语法:
         - 2.1 创建语句: sql/DDL/01_create.md
         - 2.2 约束: sql/DDL/02_constraint.md
         - 2.3 修改表结构: sql/DDL/03_alter_table.md
@@ -86,6 +86,15 @@ nav:
         - 3.4 窗口函数与条件表达式: sql/DML/04_window_condition.md
         - 3.5 常用函数: sql/DML/05_common_functions.md
   
-  - Test:
-      - 1.测试详解: springboot/SpringBoot_Test_Tutorial_Full (1).md
-      - 2.断言: springboot/SpringBoot_Assertion_Complete_Tutorial.md
+  - SpringBoot:
+      - 1.介绍: springboot/01_intridution.md
+      - 2.入门案例: springboot/02_springboot_mybatis_intro.md
+      - 3.核心注解: springboot/03_springboot_annotations.md
+      - 4.Bean详解: springboot/04_springbean_annotations.md
+      - 5.MVC注解: springboot/05_mvc_annotations.md
+      - 6.数据校验注解: springboot/06_validation_annotations.md
+      - 7.全局异常与事务注解: springboot/07_exception_transaction.md
+      - 8.Spring Data JPA注解: springboot/08_datajpa_json_annotations.md
+      - 测试相关:
+        - 1.测试详解: springboot/Test_Tutorial_Full.md
+        - 2.断言: springboot/Assertion_Complete_Tutorial.md

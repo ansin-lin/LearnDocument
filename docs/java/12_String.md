@@ -17,35 +17,35 @@
 
 ### 2. 常用构造方法
 
-- `public String()`【JDK 1.0】：创建空字符串。
-- `public String(String original)`【JDK 1.0】：复制已有字符串内容。
-- `public String(char[] value)`【JDK 1.0】：从字符数组创建字符串。
-- `public String(byte[] bytes)`【JDK 1.0】：从字节数组创建字符串。
+- `public String()`：创建空字符串。
+- `public String(String original)`：复制已有字符串内容。
+- `public String(char[] value)`：从字符数组创建字符串。
+- `public String(byte[] bytes)`：从字节数组创建字符串。
 
 ### 3. 常用方法（附版本说明）
 
-- `public int length()`【JDK 1.0】：返回字符串长度。
-- `public boolean isEmpty()`【JDK 1.6】：判断字符串是否为空。
-- `public char charAt(int index)`【JDK 1.0】：返回指定索引处字符。
-- `public int indexOf(String str)`【JDK 1.0】：返回子串首次出现位置。
-- `public int lastIndexOf(String str)`【JDK 1.0】：返回子串最后出现位置。
-- `public boolean equals(Object anObject)`【JDK 1.0】：比较字符串内容。
-- `public boolean equalsIgnoreCase(String anotherString)`【JDK 1.0】：忽略大小写比较。
-- `public boolean contains(CharSequence s)`【JDK 1.5】：判断是否包含子串。
-- `public boolean startsWith(String prefix)`【JDK 1.0】：判断是否以指定前缀开头。
-- `public boolean endsWith(String suffix)`【JDK 1.0】：判断是否以指定后缀结尾。
-- `public String substring(int beginIndex, int endIndex)`【JDK 1.0】：截取子串。
-- `public String concat(String str)`【JDK 1.0】：拼接字符串。
-- `public String replace(CharSequence target, CharSequence replacement)`【JDK 1.5】：替换子串。
-- `public String replaceAll(String regex, String replacement)`【JDK 1.4】：使用正则替换所有匹配项。
-- `public boolean matches(String regex)`【JDK 1.4】：判断是否匹配正则表达式。
-- `public String[] split(String regex)`【JDK 1.4】：根据正则切割字符串。
-- `public String trim()`【JDK 1.0】：去除前后空白。
-- `public String toUpperCase()`【JDK 1.0】：转换为大写。
-- `public String toLowerCase()`【JDK 1.0】：转换为小写。
-- `public static String format(String format, Object... args)`【JDK 1.5】：格式化输出。
-- `public static String join(CharSequence delimiter, CharSequence... elements)`【JDK 1.8】：使用分隔符连接字符串。
-- `public String intern()`【JDK 1.0】：返回常量池中的字符串引用。
+- `public int length()`：返回字符串长度。
+- `public boolean isEmpty()`：判断字符串是否为空。
+- `public char charAt(int index)`：返回指定索引处字符。
+- `public int indexOf(String str)`：返回子串首次出现位置。
+- `public int lastIndexOf(String str)`：返回子串最后出现位置。
+- `public boolean equals(Object anObject)`：比较字符串内容。
+- `public boolean equalsIgnoreCase(String anotherString)`：忽略大小写比较。
+- `public boolean contains(CharSequence s)`：判断是否包含子串。
+- `public boolean startsWith(String prefix)`：判断是否以指定前缀开头。
+- `public boolean endsWith(String suffix)`：判断是否以指定后缀结尾。
+- `public String substring(int beginIndex, int endIndex)`：截取子串。
+- `public String concat(String str)`：拼接字符串。
+- `public String replace(CharSequence target, CharSequence replacement)`：替换子串。
+- `public String replaceAll(String regex, String replacement)`：使用正则替换所有匹配项。
+- `public boolean matches(String regex)`：判断是否匹配正则表达式。
+- `public String[] split(String regex)`：根据正则切割字符串。
+- `public String trim()`：去除前后空白。
+- `public String toUpperCase()`：转换为大写。
+- `public String toLowerCase()`：转换为小写。
+- `public static String format(String format, Object... args)`：格式化输出。
+- `public static String join(CharSequence delimiter, CharSequence... elements)`：使用分隔符连接字符串。
+- `public String intern()`：返回常量池中的字符串引用。
 
 ### 示例
 
@@ -65,22 +65,22 @@ System.out.println(result); // 安信 株式会社
 
 ### 2. StringBuilder常用构造方法
 
-- `public StringBuilder()`【JDK 1.5】：创建空容器。
-- `public StringBuilder(String str)`【JDK 1.5】：使用初始字符串。
+- `public StringBuilder()`：创建空容器。
+- `public StringBuilder(String str)`：使用初始字符串。
 
 ### 3. 常用方法
 
-- `public StringBuilder append(String str)`【JDK 1.5】：追加字符串。
-- `public StringBuilder insert(int offset, String str)`【JDK 1.5】：在指定位置插入字符串。
-- `public StringBuilder delete(int start, int end)`【JDK 1.5】：删除指定区间。
-- `public StringBuilder deleteCharAt(int index)`【JDK 1.5】：删除单个字符。
-- `public StringBuilder replace(int start, int end, String str)`【JDK 1.5】：替换区间内容。
-- `public StringBuilder reverse()`【JDK 1.5】：反转字符序列。
-- `public int capacity()`【JDK 1.5】：返回当前容量。
-- `public void ensureCapacity(int minimumCapacity)`【JDK 1.5】：确保容量足够。
-- `public void setCharAt(int index, char ch)`【JDK 1.5】：修改指定位置字符。
-- `public String substring(int start, int end)`【JDK 1.5】：提取子串。
-- `public String toString()`【JDK 1.5】：转换为 String。
+- `public StringBuilder append(String str)`：追加字符串。
+- `public StringBuilder insert(int offset, String str)`：在指定位置插入字符串。
+- `public StringBuilder delete(int start, int end)`：删除指定区间。
+- `public StringBuilder deleteCharAt(int index)`：删除单个字符。
+- `public StringBuilder replace(int start, int end, String str)`：替换区间内容。
+- `public StringBuilder reverse()`：反转字符序列。
+- `public int capacity()`：返回当前容量。
+- `public void ensureCapacity(int minimumCapacity)`：确保容量足够。
+- `public void setCharAt(int index, char ch)`：修改指定位置字符。
+- `public String substring(int start, int end)`：提取子串。
+- `public String toString()`：转换为 String。
 
 ### StringBuilder示例
 
@@ -100,18 +100,18 @@ System.out.println(sb.reverse()); // gnimmargorP ES avaJ
 
 ### 2. StringBuffer常用构造方法
 
-- `public StringBuffer()`【JDK 1.0】：创建空缓冲区。
-- `public StringBuffer(String str)`【JDK 1.0】：使用初始字符串。
+- `public StringBuffer()`：创建空缓冲区。
+- `public StringBuffer(String str)`：使用初始字符串。
 
 ### 3. StringBuffer常用方法
 
-- `public synchronized StringBuffer append(String str)`【JDK 1.0】：追加字符串。
-- `public synchronized StringBuffer insert(int offset, String str)`【JDK 1.0】：插入字符串。
-- `public synchronized StringBuffer delete(int start, int end)`【JDK 1.0】：删除区间内容。
-- `public synchronized StringBuffer reverse()`【JDK 1.0】：反转字符序列。
-- `public synchronized int capacity()`【JDK 1.0】：返回容量。
-- `public synchronized void ensureCapacity(int minimumCapacity)`【JDK 1.0】：确保容量。
-- `public synchronized String toString()`【JDK 1.0】：转为字符串。
+- `public synchronized StringBuffer append(String str)`：追加字符串。
+- `public synchronized StringBuffer insert(int offset, String str)`：插入字符串。
+- `public synchronized StringBuffer delete(int start, int end)`：删除区间内容。
+- `public synchronized StringBuffer reverse()`：反转字符序列。
+- `public synchronized int capacity()`：返回容量。
+- `public synchronized void ensureCapacity(int minimumCapacity)`：确保容量。
+- `public synchronized String toString()`：转为字符串。
 
 ### StringBuffer示例
 
@@ -132,16 +132,16 @@ System.out.println(buffer); // Java 8 SE
 
 ### 2. StringJoiner构造方法
 
-- `public StringJoiner(CharSequence delimiter)`【JDK 1.8】：指定分隔符。
-- `public StringJoiner(CharSequence delimiter, CharSequence prefix, CharSequence suffix)`【JDK 1.8】：指定分隔符、前缀与后缀。
+- `public StringJoiner(CharSequence delimiter)`：指定分隔符。
+- `public StringJoiner(CharSequence delimiter, CharSequence prefix, CharSequence suffix)`：指定分隔符、前缀与后缀。
 
 ### 3. StringJoiner常用方法
 
-- `public StringJoiner add(CharSequence newElement)`【JDK 1.8】：添加元素。
-- `public int length()`【JDK 1.8】：返回拼接后长度。
-- `public StringJoiner merge(StringJoiner other)`【JDK 1.8】：合并另一个 Joiner。
-- `public StringJoiner setEmptyValue(CharSequence emptyValue)`【JDK 1.8】：设置空值时的输出内容。
-- `public String toString()`【JDK 1.8】：返回拼接后的字符串。
+- `public StringJoiner add(CharSequence newElement)`：添加元素。
+- `public int length()`：返回拼接后长度。
+- `public StringJoiner merge(StringJoiner other)`：合并另一个 Joiner。
+- `public StringJoiner setEmptyValue(CharSequence emptyValue)`：设置空值时的输出内容。
+- `public String toString()`：返回拼接后的字符串。
 
 ### StringJoiner示例
 
