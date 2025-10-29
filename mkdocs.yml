@@ -95,6 +95,7 @@ nav:
       - 6.数据校验注解: springboot/06_validation_annotations.md
       - 7.全局异常与事务注解: springboot/07_exception_transaction.md
       - 8.Spring Data JPA注解: springboot/08_datajpa_json_annotations.md
+      - 9.多环境配置: springboot/09_env_profile_multids.md
       - 测试相关:
-        - 1.测试详解: springboot/Test_Tutorial_Full.md
-        - 2.断言: springboot/Assertion_Complete_Tutorial.md
+        - 1.测试详解: springboot/Test/01_Test_Tutorial_Full.md
+        - 2.断言: springboot/Test/02_Assertion_Complete_Tutorial.md
