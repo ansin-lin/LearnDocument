@@ -9,8 +9,8 @@
 ```sql
 SELECT [DISTINCT] 列名1, 列名2, ...
 FROM 表名
-[join 其他表]
-[on 结合条件]
+[LEFT/RIGHT/INNER JOIN 其他表]
+[ON 结合条件]
 [WHERE 条件]
 [GROUP BY 分组列]
 [HAVING 聚合条件]
@@ -21,8 +21,8 @@ FROM 表名
 ### 执行顺序
 
 1. FROM —— 指定数据来源表
-2. join —— 其他表
-3. on —— 结合条件
+2. LEFT/RIGHT/INNER JOIN —— 其他表
+3. ON —— 结合条件
 4. WHERE —— 筛选行  
 5. GROUP BY —— 按列分组  
 6. HAVING —— 过滤分组结果  

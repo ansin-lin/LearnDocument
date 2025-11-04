@@ -36,6 +36,8 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.tilde
+
+
 nav:
   - 首页: index.md
   - Python 教程:
@@ -61,7 +63,7 @@ nav:
       - 6. 数组: java/06_arrays.md
       - 7. 类与对象: java/07_class.md
       - 8. 面向对象的知识点: java/08_oop_object.md
-      - 9. 包和注释: java/09_package_command.md
+      - 9. 包: java/09_package.md
       - 10. 类的深入理解: java/10_oop.md
       - 11. 异常处理: java/11_exception_handling.md
       - 12. 字符串处理: java/12_String.md
@@ -96,6 +98,33 @@ nav:
       - 7.全局异常与事务注解: springboot/07_exception_transaction.md
       - 8.Spring Data JPA注解: springboot/08_datajpa_json_annotations.md
       - 9.多环境配置: springboot/09_env_profile_multids.md
+      - 10.日志体系: springboot/10_logging_System.md
+      - 11.MVC扩展: springboot/11_mvc_advanced_guide.md
+      - 12.常用模块: springboot/12_springboot_common_modules.md
+      - 13.部署与运行: springboot/13_springboot_deployment_runtime.md
+      - 14.自动配置与事件: springboot/14_springboot_aop_event.md
       - 测试相关:
         - 1.测试详解: springboot/Test/01_Test_Tutorial_Full.md
         - 2.断言: springboot/Test/02_Assertion_Complete_Tutorial.md
+
+  - linux_shell:
+      - Linux 基础入门: linux_shell/01_linux_intro.md
+      - 文件与目录操作: linux_shell/02_file_dir_command.md
+      - 用户与权限管理: linux_shell/03_user_permission.md
+      - 进程与系统管理: linux_shell/04_process_system.md
+      - Shell 脚本基础: linux_shell/05_shell_basic.md
+      - 定时任务管理: linux_shell/06_crontab_scheduler.md
+      - 日志系统与分析: linux_shell/07_log_management.md
+      - 综合练习与总结: linux_shell/08_exercises_summary.md
+
+  - git:
+      - Git 基本概念: git/01_basic_concepts.md  
+      - Git 安装与配置: git/02_install_and_config.md  
+      - 常用命令详解: git/03_common_commands.md  
+      - 分支与合并操作: git/04_branches_and_merge.md  
+      - 远程仓库管理: git/05_remote_repo.md  
+      - 撤销与重置机制: git/06_undo_and_reset.md  
+      - 标签与版本发布: git/07_tags_and_release.md  
+      - 高级操作技巧: git/08_advanced_operations.md  
+      - 团队协作与冲突解决: git/09_teamwork_and_conflicts.md  
+      - Git 命令速查表: git/cheatsheet.md

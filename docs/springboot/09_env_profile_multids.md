@@ -1,20 +1,7 @@
 
-# Spring Boot 配置与多环境 + 多数据源 + 打包发布（超详解）
+# Spring Boot 配置与多环境 + 多数据源 + 打包发布
 
 > 适配 Spring Boot 3.x。涵盖配置优先级、Profiles（多环境）、外部化配置、`@Value` vs `@ConfigurationProperties`、**多数据源（JPA/MyBatis）** 实战、**打包与发布**（JAR、Docker、Buildpacks、Jib），并附带可运行示例与命令。
-
----
-
-## 目录
-
-1. 配置加载与优先级
-2. Profiles 多环境管理（单环境、复合环境、Profile Group）
-3. 外部化配置（命令行、环境变量、外部文件、`spring.config.import`）
-4. 属性绑定：`@Value` 与 `@ConfigurationProperties`
-5. 多数据源配置（JPA 版 / MyBatis 版 / 动态路由）
-6. 打包与发布（Maven/Gradle JAR、Buildpacks、Dockerfile、Jib）
-7. 一体化示例与启动指令（含本地/测试/生产）
-8. 常见坑位与Checklist
 
 ---
 
