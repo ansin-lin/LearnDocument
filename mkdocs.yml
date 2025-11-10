@@ -76,6 +76,7 @@ nav:
       - 12. 字符串处理: java/12_String.md
       - 13. java类包: java/13_class_package.md
       - 14. java集合: java/14_collection.md
+      - 15. 连接数据库: java/15_jdbc.md
 
   - SQL 教程:
       - 首页: sql/00_Database_Introduction.md
@@ -114,6 +115,17 @@ nav:
         - 1.测试详解: springboot/Test/01_Test_Tutorial_Full.md
         - 2.断言: springboot/Test/02_Assertion_Complete_Tutorial.md
 
+  - Mybatis:
+      - 基础入门:
+        - 1.MyBatis 简介与特点: mybatis/01_mybatis_overview.md
+        - 2.MyBatis 核心组件结构讲解: mybatis/02_mybatis_hello_world.md
+        - 3.核心配置文件讲解: mybatis/03_mybatis_core_classes.md
+        - 4.代码实例: mybatis/04_mybatis_config_file.md
+      - 进阶使用:
+        - CRUD 操作与参数映射: mybatis/05_mybatis_crud_mapper.md
+        - 动态 SQL 标签详解: mybatis/06_mybatis_dynamic_sql.md
+        - ResultMap 与多表映射关系: mybatis/07_mybatis_resultmap_association.md
+        - 缓存与插件机制: mybatis/08_mybatis_cache_and_plugins.md
   - linux_shell:
       - Linux 基础入门: linux_shell/01_linux_intro.md
       - 文件与目录操作: linux_shell/02_file_dir_command.md
