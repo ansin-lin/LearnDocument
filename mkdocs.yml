@@ -60,7 +60,7 @@ nav:
   - SQL 教程:
       - 首页: sql/00_Database_Introduction.md
       - 1.SQL 基础入门: 
-        - 介绍;: sql/DDL/00_instruction.md
+        - 介绍: sql/DDL/00_instruction.md
       - 2.DDL 基础语法:
         - 2.1 创建语句: sql/DDL/01_create.md
         - 2.2 约束: sql/DDL/02_constraint.md
@@ -126,9 +126,12 @@ nav:
   - UI:
       - Vuetify:
         - 基础结构: ui/vuetify/Vuetify_App_Structure_Tutorial.md
-        - 组件:: ui/vuetify/Vuetify_Components.md
+        - 组件: ui/vuetify/Vuetify_Components.md
+        - 布局与主题: ui/vuetify/Vuetify_Layout_And_Theme_Tutorial.md
       - BootStrap:
-        - 
+        - 基础结构: ui/bootstrap/Bootstrap_Basics_Tutorial.md
+        - 组件: ui/bootstrap/Bootstrap_Components_Tutorial.md
+        - 布局与主题: ui/bootstrap/Bootstrap_Layout_And_Theme_Tutorial.md
   - Python 教程:
       - 首页: python/index.md
       - 1. 编程基础: 
