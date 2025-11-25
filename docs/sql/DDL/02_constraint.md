@@ -410,7 +410,7 @@ mysql
 - **普通 / 命名语法**
 
 ```sql
-    ALTER TABLE 表名 DROP INDEX 索引名;
+    ALTER TABLE 表名 DROP INDEX 约束名;
 ```
 
 Oracle/SQL Server/PostgreSQL
