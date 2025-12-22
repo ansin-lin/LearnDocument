@@ -84,9 +84,9 @@ dependencies {
         <version>3.5.15</version>
     </dependency>
     <dependency>
-        <groupId>mysql</groupId>
-        <artifactId>mysql-connector-java</artifactId>
-        <version>5.1.49</version>
+        <groupId>com.mysql</groupId>
+        <artifactId>mysql-connector-j</artifactId>
+        <version>8.2.0</version>
     </dependency>
    ```
 
@@ -144,7 +144,7 @@ VALUES ('Alice', 20), ('Bob', 22);
 ### 1️⃣ `resources/db.properties`
 
 ```properties
-driver=com.mysql.jdbc.Driver
+driver=com.mysql.cj.jdbc.Driver
 url=jdbc:mysql://localhost:3306/test?useSSL=false&serverTimezone=Asia/Tokyo
 username=root
 password=123456
