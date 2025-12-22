@@ -145,7 +145,7 @@ VALUES ('Alice', 20), ('Bob', 22);
 ### 1️⃣ `resources/db.properties`
 
 ```properties
-driver=com.mysql.cj.jdbc.Driver
+driver=com.mysql.jdbc.Driver
 url=jdbc:mysql://localhost:3306/test?useSSL=false&serverTimezone=Asia/Tokyo
 username=root
 password=123456
@@ -164,7 +164,7 @@ password=123456
 <configuration>
 
   <!-- 引入数据库配置文件 -->
-  <properties resource="db.properties"/>
+  <properties resource="mapper/db.properties"/>
 
   <!-- 类型别名 -->
   <typeAliases>
@@ -283,7 +283,7 @@ import java.util.List;
 public class MainTest {
     public static void main(String[] args) throws Exception {
         // 1. 读取 MyBatis 配置文件
-        InputStream is = Resources.getResourceAsStream("mybatis-config.xml");
+        InputStream is = Resources.getResourceAsStream("mapper/mybatis-config.xml");
 
         // 2. 构建 SqlSessionFactory
         SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(is);
