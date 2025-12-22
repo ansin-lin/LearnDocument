@@ -178,14 +178,14 @@ Spring 官方提供了一个项目生成器网站 —— **Spring Initializr**�
 ### 2. 界面配置说明
 
 - Project：选择构建工具
-      - 推荐：自定义名称(如：LearnProject)
+      - 推荐：自定义名称(如：hello-springboot)
 - Language：选择开发语言
       - 推荐：Java
 - Spring Boot Version：选择 Spring Boot 版本
       - 推荐使用稳定版，如 3.x 系列
 - Project Metadata（项目基础信息）：
       - Group：组织或公司域名反转（如 com.example）
-      - Artifact：项目名（如 demo）
+      - Artifact：项目名（如 hello-springboot）
       - Name：应用名，默认与 Artifact 一致
       - Description：项目描述（可选）
       - Package name：包路径，一般自动生成
@@ -200,11 +200,10 @@ Spring 官方提供了一个项目生成器网站 —— **Spring Initializr**�
 
 - `Spring Web`：用于开发 RESTful Web 服务。  
 - `Spring Boot DevTools`：热部署，提高开发效率。  
-- `Lombok`：简化 Java 实体类代码。  
-- `Spring Configuration Processor`：支持 YML 自动提示。  
+- `Lombok`：简化 Java 实体类代码。
 - `Spring Data JPA`：数据库访问支持。
 
-> ✅ 对于入门项目，只需添加 `Spring Web` 即可。
+> ✅ 对于入门项目，只需添加 `Spring Web`和`Spring Boot DevTools` 即可。
 
 ---
 
@@ -217,10 +216,94 @@ Spring 官方提供了一个项目生成器网站 —— **Spring Initializr**�
 
 ### 5. 导入到 IDEA
 
-1. 打开 Eclipse → `File → Import`。  
-2. 选择解压后的项目文件夹。  
-3. IDEA 会自动识别 Maven 并下载依赖。  
-4. 等待依赖加载完成后即可运行 `DemoApplication`。
+#### 1：打开导入向导
+
+在 Eclipse 顶部菜单中选择：
+
+```text
+File → Import...
+```
+
+---
+
+#### 2：选择 Maven 项目导入方式（关键）
+
+在导入窗口中，选择：
+
+```text
+Maven
+ └─ Existing Maven Projects
+```
+
+然后点击 **Next**。
+
+⚠️ 注意  
+
+> - 不要选择 **Java Project**  
+> - 不要选择 **Spring Starter Project**（该选项用于新建项目，而不是导入）
+
+---
+
+#### 3：选择项目根目录（非常关键）
+
+点击 **Browse...**，选择 **包含 `pom.xml` 的项目根目录**。
+
+正确示例：
+
+```text
+springboot-demo/
+ ├─ pom.xml
+ ├─ src/
+```
+
+确认后：
+
+- ☑ 勾选扫描出来的 `pom.xml`
+- ☑（可选）勾选 `Add project(s) to working sets`
+
+然后点击 **Finish**。
+
+---
+
+#### 4： 等待 Maven 下载依赖
+
+首次导入项目时，Eclipse 会自动下载 Maven 依赖。
+
+- 底部状态栏会显示 `Downloading from central...`
+- 请耐心等待，不要强制中断 Eclipse
+
+---
+
+#### 5：导入完成后的确认
+
+导入完成后，请确认以下内容：
+
+- 项目前显示 **Maven 图标**
+- `pom.xml` 文件没有红叉
+- 项目结构包含：
+    - `src/main/java`
+    - `src/main/resources`
+
+如果 `pom.xml` 出现红叉，可执行：
+
+```text
+右键项目 → Maven → Update Project
+```
+
+并勾选：
+
+```text
+☑ Force Update of Snapshots/Releases
+```
+
+---
+
+
+## 小结（现场项目建议）
+
+- 导入已有项目时，**永远使用 `Existing Maven Projects`**
+- 只要 `pom.xml` 正确，项目一定可以成功导入
+- Eclipse 报红优先检查 Maven 与 JDK 配置，不要盲目重建项目
 
 ---
 
@@ -232,7 +315,7 @@ hello-springboot/
  │   └─ main/
  │       ├─ java/com/example/demo/
  │       │   └─ DemoApplication.java
- │       └─ resources/application.yml
+ │       └─ resources/application.properties
  └─ pom.xml
 ```
 
@@ -250,14 +333,14 @@ hello-springboot/
  │       ├─ java/com/example/demo/
  │       │   ├─ DemoApplication.java
  │       │   └─ controller/HelloController.java
- │       └─ resources/application.yml
+ │       └─ resources/application.properties
  └─ pom.xml
 ```
 
 
 ### 1. 关键文件说明
 
-#### 📄 pom.xml
+#### pom.xml
 
 此文件内容保持不变
 
@@ -274,17 +357,23 @@ hello-springboot/
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.2</version>
+        <version>3.2.5</version>
     </parent>
 
     <dependencies>
-        <!-- Web 模块 -->
+        <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-
-        <!-- 测试模块 -->
+        <!-- DevTools -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+        <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -403,7 +492,7 @@ mvn spring-boot:run
 
 浏览器访问：  
 👉 <http://localhost:8080/hello>  
-输出：  
+页面显示：  
 
 ```bash
 Hello Spring Boot!

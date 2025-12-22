@@ -4,7 +4,7 @@
 
 ---
 
-## 🧩 @SpringBootApplication
+## @SpringBootApplication
 
 **作用：**  
 Spring Boot 应用的入口注解，是一个复合注解，整合了：
@@ -38,13 +38,13 @@ public class DemoApplication {
 
 ---
 
-## 🧩 @Configuration
+### @Configuration
 
 **作用：**  
 声明该类为配置类，可在其中定义多个 `@Bean` 方法，Spring 会将其注册到容器中。
 
 **定义位置：**  
-任意 Java 类上，一般用于管理 `@Bean`。
+任意 Java 类上，一般用于管理 `@Bean`
 
 ```java
 import org.springframework.context.annotation.Bean;
@@ -67,7 +67,7 @@ public class AppConfig {
 
 ---
 
-## 🧩 @EnableAutoConfiguration
+### @EnableAutoConfiguration
 
 **作用：**  
 开启 Spring Boot 的自动装配机制。  
@@ -93,7 +93,7 @@ public class AutoConfigEnabled {}
 
 ---
 
-## 🧩 @ComponentScan
+### @ComponentScan
 
 **作用：**  
 指定扫描哪些包中的组件（如 `@Component`、`@Service`、`@Repository` 等），并将其注册为 Bean。
@@ -117,12 +117,12 @@ public class ScanConfig {}
 
 ---
 
-## 🧩 @Import
+## @Import
 
 **作用：**  
 将指定的类、配置类或选择器的 Bean 导入到 Spring 容器中。
 
-**定义位置：**  
+**定义位置：**
 配置类上。
 
 ```java
@@ -139,7 +139,7 @@ public class RootConfig {}
 
 ---
 
-## 🧩 @PropertySource / @PropertySources
+## @PropertySource / @PropertySources
 
 **作用：**  
 显式加载外部 `.properties` 文件，将其内容注入到 Spring 的 `Environment` 环境中。
@@ -171,7 +171,7 @@ public class PropConfig {}
 
 ---
 
-## 🧩 @SpringBootConfiguration
+## @SpringBootConfiguration
 
 **作用：**  
 `@Configuration` 的派生注解，是 Spring Boot 应用的配置核心标识。  
@@ -189,7 +189,7 @@ public class MainConfig {}
 
 ---
 
-## 🧩 条件装配系列（@ConditionalOn*）
+## 条件装配系列（@ConditionalOn*）
 
 **作用：**  
 根据条件是否成立来决定是否注册 Bean。  
@@ -219,7 +219,7 @@ public class JacksonAutoConfig {
 
 ---
 
-## 🧩 @EnableConfigurationProperties / @ConfigurationProperties
+## @EnableConfigurationProperties / @ConfigurationProperties
 
 **作用：**  
 将配置文件（application.yml / properties）中的属性映射为 Java 对象。  
@@ -260,7 +260,7 @@ public class PropsConfig {}
 
 ---
 
-## 🧩 @Profile
+## @Profile
 
 **作用：**  
 基于环境（profile）激活不同的 Bean 或配置，常用于区分开发 / 测试 / 生产环境。
@@ -292,7 +292,7 @@ spring:
 
 ---
 
-## 🧩 @Lazy
+## @Lazy
 
 **作用：**  
 延迟初始化 Bean，直到第一次被使用时才实例化。
@@ -317,7 +317,7 @@ public class LazyConfig {
 
 ---
 
-## 🧩 @ImportResource
+## @ImportResource
 
 **作用：**  
 导入传统 XML 配置文件，便于与旧项目混用。
@@ -333,7 +333,7 @@ public class LegacyConfig {}
 
 ---
 
-## 🧩 @SpringBootTest（测试）
+## @SpringBootTest（测试）
 
 **作用：**  
 在测试中启动完整的 Spring Boot 应用上下文。  

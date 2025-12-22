@@ -121,7 +121,7 @@ springboot-mybatis-demo/
 server.port=8080
 
 # 数据源配置
-spring.datasource.url=jdbc:mysql://localhost:3306/mysql_learn?serverTimezone=UTC&characterEncoding=utf8&useSSL=false
+spring.datasource.url=jdbc:mysql://localhost:3306/test?serverTimezone=UTC&characterEncoding=utf8&useSSL=false
 spring.datasource.username=root
 spring.datasource.password=root
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
