@@ -78,17 +78,16 @@ dependencies {
    打开项目根目录下的 `pom.xml`，在 `<dependencies>` 标签中添加：
 
    ```xml
-   <dependency>
-       <groupId>org.mybatis</groupId>
-       <artifactId>mybatis</artifactId>
-       <version>3.5.15</version>
-   </dependency>
-
-   <dependency>
-       <groupId>mysql</groupId>
-       <artifactId>mysql-connector-j</artifactId>
-       <version>8.4.0</version>
-   </dependency>
+    <dependency>
+        <groupId>org.mybatis</groupId>
+        <artifactId>mybatis</artifactId>
+        <version>3.5.15</version>
+    </dependency>
+    <dependency>
+        <groupId>mysql</groupId>
+        <artifactId>mysql-connector-java</artifactId>
+        <version>5.1.49</version>
+    </dependency>
    ```
 
 4. **创建包结构：**
