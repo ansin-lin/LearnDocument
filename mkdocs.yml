@@ -123,6 +123,15 @@ nav:
       - 高级操作技巧: git/08_advanced_operations.md  
       - 团队协作与冲突解决: git/09_teamwork_and_conflicts.md  
       - Git 命令速查表: git/cheatsheet.md
+  - AWS:
+      - AWS 学习预备知识: aws/aws_chapter_0.md
+      - SSH 登录服务器: aws/aws_ssh_login.md
+      - 核心基础服务: aws/aws_chapter_1.md
+      - 中级核心服务: aws/aws_chapter_2.md
+      - 项目部署指南: aws/aws_chapter_3.md
+      - AWS 安全: aws/aws_chapter_4.md
+      - 监控与日志: aws/aws_chapter_5.md
+      - CI/CD部署: aws/aws_chapter_6.md
   - UI:
       - Vuetify:
         - 基础结构: ui/vuetify/Vuetify_App_Structure_Tutorial.md
