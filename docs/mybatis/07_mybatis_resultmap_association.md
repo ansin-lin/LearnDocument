@@ -365,9 +365,9 @@ public class Course {
 
 ---
 
-## 五、association 与 collection 的属性说明（按用法分组）
+## 五、association 与 collection 的属性说明
 
-### 1️⃣ <association> 常用属性
+### 1️⃣ `<association>` 常用属性
 
 - `property`：Java 实体中的属性名，例如 `user.detail`、`order.user`。  
 - `javaType`：属性类型，例如 `UserDetail.class`。  
@@ -376,7 +376,7 @@ public class Course {
 - `resultMap`：也可以直接引用另一个 `<resultMap>`。  
 - `fetchType`：`lazy` / `eager`，控制懒加载。  
 
-### 2️⃣ <collection> 常用属性
+### 2️⃣ `<collection>` 常用属性
 
 - `property`：集合属性名，例如 `department.employees`、`student.courses`。  
 - `ofType`：集合中单个元素的类型，例如 `Employee.class`。  
