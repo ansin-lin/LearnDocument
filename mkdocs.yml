@@ -89,6 +89,15 @@ nav:
       - 12.常用模块: springboot/12_springboot_common_modules.md
       - 13.部署与运行: springboot/13_springboot_deployment_runtime.md
       - 14.自动配置与事件: springboot/14_springboot_aop_event.md
+      - 架构设计:
+          - 项目结构设计: springboot/Architecture/01_Project_Structure_Design.md
+          - 分层架构设计: springboot/Architecture/02_Layered_Architecture_Design.md
+          - 常用设计模式: springboot/Architecture/03_Common_Design_Patterns.md
+          - MVC 架构设计: springboot/Architecture/04_MVC_Architecture_Design.md
+          - DTO/VO/PO/DO/Entity区别: springboot/Architecture/05_DTO_VO_PO_DO_Entity_Differences.md
+          - 事务设计与边界: springboot/Architecture/06_Transaction_Design_and_Boundary.md
+          - 异常处理设计: springboot/Architecture/07_Exception_Handling_Design.md
+          - 接口设计规范: springboot/Architecture/08_API_Design_REST_DTO_VO.md
       - 测试相关:
         - 1.测试详解: springboot/Test/01_Test_Tutorial_Full.md
         - 2.断言: springboot/Test/02_Assertion_Complete_Tutorial.md
