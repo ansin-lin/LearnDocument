@@ -50,7 +50,7 @@ public class UserController {}
 **常用属性：**
 
 | 属性 | 说明 |
-|------|------|
+| ------ | ------ |
 | `path` / `value` | 映射的 URL 路径 |
 | `method` | 限定 HTTP 方法（GET/POST/PUT/DELETE） |
 | `params` | 限定请求参数 |
@@ -63,7 +63,7 @@ public class UserController {}
 ### ✅ 派生注解
 
 | 注解 | 对应 HTTP 方法 |
-|------|----------------|
+| ------ | ---------------- |
 | `@GetMapping` | GET |
 | `@PostMapping` | POST |
 | `@PutMapping` | PUT |
@@ -119,7 +119,7 @@ public List<User> search(
 **常用属性：**
 
 | 属性 | 说明 |
-|------|------|
+| ------ | ------ |
 | `value` | 参数名 |
 | `required` | 是否必填（默认 true） |
 | `defaultValue` | 默认值 |
@@ -312,7 +312,7 @@ public User create(@Validated(CreateGroup.class) @RequestBody UserDTO dto) {
 ## 🧩 其他常用注解
 
 | 注解 | 说明 |
-|------|------|
+| ------ | ------ |
 | `@InitBinder` | 定制数据绑定与类型转换器 |
 | `@SessionAttributes` / `@SessionAttribute` | 声明 / 读取会话属性 |
 | `@RequestPart` | 处理 `multipart/form-data` 上传部分 |

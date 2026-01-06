@@ -198,25 +198,158 @@ public class ProductService {
 
 ---
 
-## 四、定时任务模块
+## 四、Spring Boot 定时任务
 
-### 1️⃣ 模块作用
+### 1. 什么是定时任务
 
-定期执行任务（清理缓存、生成报表等）。
+定时任务（Scheduled Task）是指程序在运行过程中，按照**固定时间**或**固定周期**自动执行的方法。  
+在后端系统中，常用于数据同步、定时统计、日志清理等场景。
 
-### 2️⃣ 示例
+Spring Boot 通过 `@Scheduled` 注解提供了非常简单的定时任务支持。
+
+---
+
+### 2. 启用定时任务功能
+
+在 Spring Boot 中，使用定时任务前，需要在启动类上开启调度功能。
 
 ```java
+@SpringBootApplication
 @EnableScheduling
-@Component
-public class CacheCleanupTask {
+public class DemoApplication {
 
-    @Scheduled(cron = "0 0 * * * ?") // 每小时执行
-    public void cleanExpiredCache() {
-        System.out.println("清理过期缓存...");
+    public static void main(String[] args) {
+        SpringApplication.run(DemoApplication.class, args);
     }
 }
 ```
+
+说明：  
+如果没有添加 `@EnableScheduling`，所有 `@Scheduled` 注解都不会生效。
+
+---
+
+### 3. 定义定时任务类
+
+定时任务类需要交给 Spring 管理，通常使用 `@Component` 注解。
+
+```java
+@Component
+public class SimpleJob {
+}
+```
+
+---
+
+### 4. 使用 @Scheduled 定义定时任务
+
+#### 4.1 fixedRate（固定频率执行）
+
+含义：  
+每隔固定时间执行一次（从**方法开始执行**算间隔）。
+
+```java
+@Component
+public class RateJob {
+
+    @Scheduled(fixedRate = 5000)
+    public void run() {
+        System.out.println("fixedRate 执行：" + System.currentTimeMillis());
+    }
+}
+```
+
+说明：  
+
+- 时间单位为毫秒  
+- `5000` 表示每 5 秒执行一次
+
+---
+
+#### 4.2 fixedDelay（固定延迟执行）
+
+含义：  
+上一次方法执行完成后，延迟指定时间再执行。
+
+```java
+@Component
+public class DelayJob {
+
+    @Scheduled(fixedDelay = 5000)
+    public void run() throws InterruptedException {
+        Thread.sleep(2000);
+        System.out.println("fixedDelay 执行：" + System.currentTimeMillis());
+    }
+}
+```
+
+说明：  
+
+- 会等待方法执行完毕  
+- 再延迟 5 秒执行下一次
+
+---
+
+#### 4.3 cron 表达式（按时间点执行）
+
+```java
+@Component
+public class CronJob {
+
+    @Scheduled(cron = "0 0 2 * * *")
+    public void run() {
+        System.out.println("cron 执行：" + System.currentTimeMillis());
+    }
+}
+```
+
+含义：  
+每天凌晨 2 点执行一次。
+
+---
+
+### 5. cron 表达式基础说明
+
+Spring Boot 使用 6 位 cron 表达式：
+
+```
+秒 分 时 日 月 星期
+```
+
+常见示例：
+
+| 表达式 | 说明 |
+|------|------|
+| 0 */5* ** * | 每 5 分钟执行 |
+| 0 0 ** ** | 每小时执行 |
+| 0 0 9 ** * | 每天 9 点执行 |
+| 0 0 0 ** * | 每天凌晨执行 |
+
+---
+
+### 6. 基本使用规则
+
+1. 定时任务方法 **不能有参数**
+2. 定时任务方法 **返回值必须是 void**
+3. 定时任务随 Spring Boot 启动而启动
+
+错误示例：
+
+```java
+@Scheduled(fixedRate = 1000)
+public String run(String name) {
+    return "error";
+}
+```
+
+---
+
+### 7. 总结
+
+- 使用 `@EnableScheduling` 开启定时任务功能  
+- 使用 `@Scheduled` 定义执行规则  
+- 三种基础方式：`fixedRate`、`fixedDelay`、`cron`  
+- 适合入门学习和简单业务场景
 
 ---
 

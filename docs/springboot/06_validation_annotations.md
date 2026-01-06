@@ -35,7 +35,7 @@ public class UserService {
 > 绝大多数约束在值为 `null` 时**默认视为通过**（除非显式要求非空，如 `@NotNull/@NotBlank/@NotEmpty`）。
 
 | 注解 | 说明 | 示例 |
-|---|---|---|
+| --- | --- | --- |
 | `@NotNull` | 不为 `null` | `@NotNull Long id` |
 | `@NotEmpty` | 长度 > 0（字符串/集合/数组） | `@NotEmpty List<String> tags` |
 | `@NotBlank` | 字符串非空白 | `@NotBlank String name` |
@@ -45,7 +45,7 @@ public class UserService {
 | `@Min/@Max` | 数值下/上限（含） | `@Min(1) int page` |
 | `@DecimalMin/@DecimalMax` | 小数边界 | `@DecimalMin("0.01") BigDecimal price` |
 | `@Positive/@PositiveOrZero` | 正数/非负 | `@Positive Integer count` |
-| `@Negative/@NegativeOrZero` | 负数/非正 |  |
+| `@Negative/@NegativeOrZero` | 负数/非正 | |
 | `@Past/@PastOrPresent` | 早于/早于等于现在 | `@Past LocalDate birthday` |
 | `@Future/@FutureOrPresent` | 晚于/晚于等于现在 | `@Future LocalDateTime expireAt` |
 | `@AssertTrue/@AssertFalse` | 必须为真/假 | `@AssertTrue Boolean enabled` |
@@ -323,7 +323,7 @@ public List<Log> list(@RequestParam @DateTimeFormat(pattern="yyyy-MM-dd") LocalD
 > 以下注解并非规范的一部分，但在实际项目中非常常用：
 
 | 注解 | 说明 |
-|---|---|
+| --- | --- |
 | `@Length(min,max)` | 字符串长度（类似 `@Size`，但只用于字符串） |
 | `@Range(min,max)` | 数值范围 |
 | `@URL` | URL 格式 |

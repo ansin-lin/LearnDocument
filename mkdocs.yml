@@ -121,6 +121,8 @@ nav:
       - 定时任务管理: linux_shell/06_crontab_scheduler.md
       - 日志系统与分析: linux_shell/07_log_management.md
       - 综合练习与总结: linux_shell/08_exercises_summary.md
+      - vi / vim 编辑器使用: linux_shell/09_vi_vim_editor.md
+      - 常用命令速查表: linux_shell/cheatsheet.md
   - git:
       - Git 基本概念: git/01_basic_concepts.md  
       - Git 安装与配置: git/02_install_and_config.md  
