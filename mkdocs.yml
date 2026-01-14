@@ -134,6 +134,29 @@ nav:
       - 高级操作技巧: git/08_advanced_operations.md  
       - 团队协作与冲突解决: git/09_teamwork_and_conflicts.md  
       - Git 命令速查表: git/cheatsheet.md
+
+  - PLSQL: 
+      - 入门与环境配置: PLSQL/01_environment.md
+      - 基础语法: 
+        - 基本语法与程序结构: PLSQL/02_basic_syntax.md.md
+        - 数据类型: PLSQL/03_data_types.md
+        - 变量-常量: PLSQL/04_variables_constants.md
+        - 运算符: PLSQL/05_operators.md
+        - 流程控制: PLSQL/06_control_flow.md
+        - 异常处理: PLSQL/07_exception.md
+      - 核心机制: 
+        - 存储过程和函数: PLSQL/08_procedures_and_functions.md
+        - 游标: PLSQL/09_cursors.md
+        - 触发器: PLSQL/10_triggers.md
+        - 包: PLSQL/11_package.md
+        - 复合数据类型: PLSQL/12_composite_data_types.md
+      - 进阶使用:
+        - 批量处理与性能优化: PLSQL/13_bulk_processing_and_performance.md
+        - 动态 SQL: PLSQL/14_dynamic_sql.md
+        - 批处理与定时作业: PLSQL/15_batch_and_scheduler.md
+        - 与 Java 的协作模式: PLSQL/16_java_spring_integration.md
+        - 注意事项与面试问题: PLSQL/17_common_pitfalls_and_interview.md
+
   - AWS:
       - AWS 学习预备知识: aws/aws_chapter_0.md
       - SSH 登录服务器: aws/aws_ssh_login.md
