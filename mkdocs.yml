@@ -121,8 +121,8 @@ nav:
       - 定时任务管理: linux_shell/06_crontab_scheduler.md
       - 日志系统与分析: linux_shell/07_log_management.md
       - 综合练习与总结: linux_shell/08_exercises_summary.md
-      - vi / vim 编辑器使用: linux_shell/09_vi_vim_editor.md
-      - 常用命令速查表: linux_shell/cheatsheet.md
+      - vi / vim 编辑器使用: linux_shell/09_vi_vim_nasic.md
+      - 常用命令速查表: linux_shell/Linux_Command_Cheat_Sheet.md
   - git:
       - Git 基本概念: git/01_basic_concepts.md  
       - Git 安装与配置: git/02_install_and_config.md  
@@ -156,7 +156,6 @@ nav:
         - 批处理与定时作业: PLSQL/15_batch_and_scheduler.md
         - 与 Java 的协作模式: PLSQL/16_java_spring_integration.md
         - 注意事项与面试问题: PLSQL/17_common_pitfalls_and_interview.md
-
   - AWS:
       - AWS 学习预备知识: aws/aws_chapter_0.md
       - SSH 登录服务器: aws/aws_ssh_login.md
