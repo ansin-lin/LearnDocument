@@ -124,7 +124,7 @@ nav:
       - vi / vim 编辑器使用: linux_shell/09_vi_vim_nasic.md
       - 常用命令速查表: linux_shell/Linux_Command_Cheat_Sheet.md
   - git:
-      - Git 基本概念: git/01_basic_concepts.md  
+      - Git 基本概念: git/01_basic_concepts.md
       - Git 安装与配置: git/02_install_and_config.md  
       - 常用命令详解: git/03_common_commands.md  
       - 分支与合并操作: git/04_branches_and_merge.md  
@@ -134,11 +134,10 @@ nav:
       - 高级操作技巧: git/08_advanced_operations.md  
       - 团队协作与冲突解决: git/09_teamwork_and_conflicts.md  
       - Git 命令速查表: git/cheatsheet.md
-
   - PLSQL: 
       - 入门与环境配置: PLSQL/01_environment.md
       - 基础语法: 
-        - 基本语法与程序结构: PLSQL/02_basic_syntax.md.md
+        - 基本语法与程序结构: PLSQL/02_basic_syntax.md
         - 数据类型: PLSQL/03_data_types.md
         - 变量-常量: PLSQL/04_variables_constants.md
         - 运算符: PLSQL/05_operators.md
@@ -157,14 +156,17 @@ nav:
         - 与 Java 的协作模式: PLSQL/16_java_spring_integration.md
         - 注意事项与面试问题: PLSQL/17_common_pitfalls_and_interview.md
   - AWS:
-      - AWS 学习预备知识: aws/aws_chapter_0.md
-      - SSH 登录服务器: aws/aws_ssh_login.md
-      - 核心基础服务: aws/aws_chapter_1.md
-      - 中级核心服务: aws/aws_chapter_2.md
-      - 项目部署指南: aws/aws_chapter_3.md
-      - AWS 安全: aws/aws_chapter_4.md
-      - 监控与日志: aws/aws_chapter_5.md
-      - CI/CD部署: aws/aws_chapter_6.md
+      - AWS 学习预备知识: aws/00_aws_pre_knowledge.md
+      - 账号与权限: aws/01_stage_iam_fundamentals.md
+      - 计算服务: aws/02_aws_stage2_ec2_ssh.md
+      - S3对象存储: aws/03_aws_stage3_s3.md
+      - CloudFront: aws/04_aws_stage4_cloudFront.md
+      - RDS: aws/05_aws_stage5_rds.md
+      - VPC与网络设计: aws/06_aws_stage6_vpc.md
+      - 负载均衡与自动伸缩: aws/07_aws_stage7_elb.md
+      - 监控、告警与自动化: aws/08_aws_stage8_CloudWatch.md
+      - https与域名管理: aws/09_aws_stage9_https_route53.md
+      - 日志、监控与故障排查: aws/10_aws_stage10_CloudWatch.md
   - UI:
       - Vuetify:
         - 基础结构: ui/vuetify/Vuetify_App_Structure_Tutorial.md
