@@ -165,7 +165,7 @@ nav:
       - VPC与网络设计: aws/06_aws_stage6_vpc.md
       - 负载均衡与自动伸缩: aws/07_aws_stage7_alb.md
       - 监控、告警与自动化: aws/08_aws_stage8_CloudWatch.md
-      - https与域名管理: aws/09_aws_stage9_https_route53.md
+      - https与域名管理: aws/09_aws_stage9_https_acm.md
       - 日志、监控与故障排查: aws/10_aws_stage10_CloudWatch.md
   - UI:
       - Vuetify:
