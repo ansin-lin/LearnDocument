@@ -104,9 +104,9 @@ nav:
   - Mybatis:
       - 基础入门:
         - 1.MyBatis 简介与特点: mybatis/01_mybatis_overview.md
-        - 2.MyBatis 核心组件结构讲解: mybatis/02_mybatis_hello_world.md
-        - 3.核心配置文件讲解: mybatis/03_mybatis_core_classes.md
-        - 4.代码实例: mybatis/04_mybatis_config_file.md
+        - 2.代码实例: mybatis/02_mybatis_hello_world.md
+        - 3.核心组件结构讲解: mybatis/03_mybatis_core_classes.md
+        - 4.核心配置文件讲解: mybatis/04_mybatis_config_file.md
       - 进阶使用:
         - CRUD 操作与参数映射: mybatis/05_mybatis_crud_mapper.md
         - 动态 SQL 标签详解: mybatis/06_mybatis_dynamic_sql.md
