@@ -5,19 +5,53 @@
 ## 一、配置文件的作用
 
 `mybatis-config.xml` 是 **MyBatis 的全局配置文件**，用于定义和控制 MyBatis 运行行为。
+简单理解：
+    Java程序
+    ↓
+    mybatis-config.xml  (核心配置)
+    ↓
+    Mapper.xml (SQL)
+    ↓
+    数据库
+它主要负责：
+    数据库连接配置
+    MyBatis运行规则
+    Java类型别名
+    类型转换
+    SQL映射文件注册
 
-包括：
+### 1.配置文件整体结构
 
-* 环境配置（数据源、事务管理）
-* 类型别名和处理器
-* 全局设置项（日志、驼峰名转换）
-* Mapper 映射文件注册
+```xml
+<configuration>
+    <properties>...</properties>
+    <settings>...</settings>
+    <typeAliases>...</typeAliases>
+    <typeHandlers>...</typeHandlers>
+    <environments>...</environments>
+    <mappers>...</mappers>
+</configuration>
+```
+
+执行顺序：
+    properties
+    ↓
+    settings
+    ↓
+    typeAliases
+    ↓
+    typeHandlers
+    ↓
+    environments
+    ↓
+    mappers
+顺序不能乱。
 
 ---
 
 ## 二、`<configuration>` 根标签
 
-* **作用**：MyBatis 全部配置的根节点。
+* **作用**：MyBatis 全部配置的根节点。MyBatis 配置文件的最外层标签。
 * **属性**：无。
 * **注意**：必须包含 DTD 声明，否则不能被 MyBatis 正确解析。
 
@@ -47,6 +81,8 @@
 
 ```xml
 <properties resource="db.properties" />
+or
+<properties url="file:///D:/config/db.properties" />
 ```
 
 **db.properties** 内容：
@@ -62,6 +98,17 @@ password=123456
 
 ```xml
 <property name="url" value="${url}" />
+```
+
+完整示例：
+
+```xml
+<dataSource type="POOLED">
+  <property name="driver" value="${driver}"/>
+  <property name="url" value="${url}"/>
+  <property name="username" value="${username}"/>
+  <property name="password" value="${password}"/>
+</dataSource>
 ```
 
 ---
@@ -202,6 +249,7 @@ password=123456
     * `<mapper class="com.example.mapper.UserMapper"/>`：通过接口类
     * `<mapper url="file:///D:/UserMapper.xml"/>`：通过绝对路径
     * `<package name="com.example.mapper"/>`：包扫描
+        * `<mappers><package name="com.example.mapper"/></mappers>`
 
 **推荐**：在 Spring Boot 项目中使用 `@MapperScan` 和 `<package>` 方式。
 

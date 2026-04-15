@@ -412,7 +412,7 @@ CREATE TABLE products (
 
 ✅ **运行方式**：
 
-1. 启动 MySQL 数据库并创建 `mysql_learn` 数据库。
+1. 启动 MySQL 数据库并创建 `test` 数据库。
 2. 执行以上建表 SQL。
 3. 运行 `DemoApplication` 启动项目。
 4. 访问接口：

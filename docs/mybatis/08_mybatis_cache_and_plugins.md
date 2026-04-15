@@ -251,7 +251,7 @@ public class LogInterceptor implements Interceptor {
 ## 九、缓存 vs 插件：差异对比
 
 | 对比项 | 缓存 | 插件 |
-|--------|------|------|
+| -------- | ------ | ------ |
 | 目的 | 提升性能 | 扩展功能 |
 | 生命周期 | SqlSession / Mapper | 全局 |
 | 开启方式 | 自动 / 手动 | 在配置中注册 |
