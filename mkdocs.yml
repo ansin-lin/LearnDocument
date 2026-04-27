@@ -137,7 +137,7 @@ nav:
   - PLSQL: 
       - 入门与环境配置: PLSQL/01_environment.md
       - 基础语法: 
-        - 基本语法与程序结构: PLSQL/02_basic_syntax.md
+        - 基本语法与结构: PLSQL/02_basic_syntax.md
         - 数据类型: PLSQL/03_data_types.md
         - 变量-常量: PLSQL/04_variables_constants.md
         - 运算符: PLSQL/05_operators.md
