@@ -195,3 +195,5 @@ nav:
         - 2.4 文件格式: python/file_operations/13_data_serialization.md
       - 3.Web 开发:
         - 3.1 Web基础,Flask入门: python/framework/14_flask_intro.md
+  - 综合复习知识点:
+      -Vue.js: all/Vue面试题教程版_基础到工程化.md
