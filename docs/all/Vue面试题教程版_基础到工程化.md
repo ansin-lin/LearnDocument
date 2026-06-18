@@ -1281,6 +1281,124 @@ defineProps({
 
 ---
 
+### ref + defineExpose（Vue3 组件通信）
+
+#### 什么是 ref + defineExpose？
+
+在 Vue3 中，父组件如果想调用子组件的方法，需要先通过 `ref` 获取子组件实例。
+
+但在 `<script setup>` 语法中，子组件内部定义的变量和方法默认是私有的，父组件无法直接访问，因此需要使用 `defineExpose` 主动暴露。
+
+---
+
+#### 作用
+
+```text
+ref            → 获取子组件实例
+defineExpose   → 暴露允许父组件访问的内容
+```
+
+两者通常配合使用，实现父组件调用子组件方法。
+
+---
+
+#### 子组件
+
+```vue
+<script setup>
+const open = () => {
+  console.log('打开弹窗')
+}
+
+const close = () => {
+  console.log('关闭弹窗')
+}
+
+defineExpose({
+  open,
+  close
+})
+</script>
+```
+
+---
+
+#### 父组件
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import Child from './Child.vue'
+
+const childRef = ref()
+
+const showDialog = () => {
+  childRef.value.open()
+}
+</script>
+
+<template>
+  <Child ref="childRef" />
+
+  <button @click="showDialog">
+    打开弹窗
+  </button>
+</template>
+```
+
+---
+
+#### 执行流程
+
+```text
+父组件
+   │
+   ▼
+ref 获取子组件实例
+   │
+   ▼
+defineExpose 暴露方法
+   │
+   ▼
+childRef.value.open()
+```
+
+---
+
+#### 为什么需要 defineExpose？
+
+Vue2 中：
+
+```js
+this.$refs.child.open()
+```
+
+默认可以访问子组件的 methods、data 等内容。
+
+Vue3 的 `<script setup>` 默认是私有的：
+
+```vue
+<script setup>
+const open = () => {}
+</script>
+```
+
+此时父组件无法访问 `open`。
+
+只有通过：
+
+```js
+defineExpose({
+  open
+})
+```
+
+主动暴露后才能访问。
+
+这样可以提高组件封装性，避免父组件随意操作子组件内部状态。
+
+---
+
 ### 2. 子 → 父通信方式？
 
 常见方式：
@@ -1325,6 +1443,204 @@ function handleClick() {
 简单场景：父组件中转。  
 复杂共享状态：Pinia。  
 不推荐大量使用 event bus。
+
+#### Event Bus（事件总线）
+
+##### 什么是 Event Bus？
+
+Event Bus（事件总线）是一种组件通信方案，通过一个公共事件中心实现组件之间的数据传递。
+
+本质上采用的是发布-订阅（Publish / Subscribe）模式。
+
+```text
+组件A
+  │ emit
+  ▼
+Event Bus
+  ▲
+  │ on
+组件B
+```
+
+组件之间不需要直接引用即可通信。
+
+---
+
+##### 使用场景
+
+适用于：
+
+- 兄弟组件通信
+- 非父子组件通信
+- 跨层级简单通信
+
+例如：
+
+```text
+Header
+    │
+    ├── emit('login')
+    │
+Sidebar
+    └── on('login')
+```
+
+---
+
+##### Vue2 实现方式
+
+Vue2 中通常利用 Vue 实例作为事件中心：
+
+```js
+// bus.js
+
+import Vue from 'vue'
+
+export default new Vue()
+```
+
+发送事件：
+
+```js
+import bus from './bus'
+
+bus.$emit('login', user)
+```
+
+接收事件：
+
+```js
+import bus from './bus'
+
+bus.$on('login', (user) => {
+  console.log(user)
+})
+```
+
+---
+
+##### Vue3 实现方式
+
+Vue3 已移除：
+
+```js
+$on
+$off
+$once
+```
+
+因此无法继续使用：
+
+```js
+new Vue()
+```
+
+作为事件总线。
+
+通常使用第三方库：
+
+```bash
+npm install mitt
+```
+
+---
+
+##### mitt 实现 Event Bus
+
+###### 创建事件中心
+
+```js
+// bus.js
+
+import mitt from 'mitt'
+
+export default mitt()
+```
+
+---
+
+###### 发送事件
+
+```js
+import bus from './bus'
+
+bus.emit('login', {
+  name: 'Tom'
+})
+```
+
+---
+
+###### 接收事件
+
+```js
+import bus from './bus'
+
+bus.on('login', (data) => {
+  console.log(data)
+})
+```
+
+---
+
+###### 销毁监听
+
+```js
+import { onUnmounted } from 'vue'
+
+const handler = (data) => {
+  console.log(data)
+}
+
+bus.on('login', handler)
+
+onUnmounted(() => {
+  bus.off('login', handler)
+})
+```
+
+---
+
+##### Event Bus 的缺点
+
+- 代码难维护
+- 事件过多难管理
+- 容易造成内存泄漏
+- 数据流不清晰
+
+---
+
+### Event Bus 与 Pinia 的区别
+
+| 对比项 | Event Bus | Pinia |
+| ---- | --------- | ------ |
+| 通信方式 | 事件通知 | 状态共享 |
+| 数据管理 | 不擅长 | 非常适合 |
+| 可维护性 | 较差 | 较好 |
+| 调试能力 | 弱 | 强 |
+| 适用场景 | 简单通知 | 全局状态管理 |
+
+---
+
+### 为什么现在不推荐 Event Bus？
+
+Vue2 时代 Event Bus 使用较多。
+
+Vue3 官方更推荐：
+
+```text
+父子通信       → props / emit
+跨层级通信     → provide / inject
+全局状态共享   → Pinia
+```
+
+大型项目通常不再使用 Event Bus 管理业务数据。
+
+---
+
+### 面试回答
+
+Event Bus（事件总线）是一种基于发布订阅模式的组件通信方案，通过统一的事件中心实现非父子组件之间的数据传递。Vue2 中通常使用 Vue 实例实现 Event Bus，Vue3 中则常配合 mitt 使用。由于 Event Bus 会导致数据流不清晰、事件难以维护以及内存泄漏等问题，因此在大型项目中更推荐使用 Pinia、provide/inject 等方案。
 
 ---
 
@@ -1721,6 +2037,29 @@ URL：
 ```text
 /user/1
 ```
+
+#### state 传参
+
+基于浏览器 History API 实现。
+
+router.push({
+  path: '/user',
+  state: {
+    id: 1001,
+    name: 'Tom'
+  }
+})
+
+获取参数：
+
+console.log(history.state)
+
+特点：
+
+参数不会显示在地址栏
+URL 更简洁
+适合临时数据传递
+页面刷新后可能丢失
 
 ---
 
@@ -2945,86 +3284,178 @@ window.addEventListener('unhandledrejection', (event) => {
 
 ## 十、工程化 & 构建
 
-### 1. Vite 为什么快？
+### 1.Vite 是什么？
 
-#### 核心回答
+Vite（法语，意为“快速”）是新一代前端构建工具，由 Vue 作者尤雨溪开发。
 
-Vite 在开发环境中利用浏览器原生 ESM，不需要像传统打包工具一样先把整个项目打包完成再启动，所以冷启动更快。依赖预构建通常使用 esbuild，速度也很快。
+主要用于：
 
-#### 详细解释
-
-传统工具：
-
-```text
-启动开发服务器
-  ↓
-扫描项目
-  ↓
-打包整个应用
-  ↓
-浏览器访问
-```
-
-Vite：
-
-```text
-启动开发服务器
-  ↓
-浏览器请求哪个模块
-  ↓
-Vite 按需转换哪个模块
-```
-
-所以项目越大，Vite 开发启动优势越明显。
+- Vue 项目开发
+- React 项目开发
+- TypeScript 项目开发
+- 前端工程化构建
 
 ---
 
-### 2. Vite 和 Webpack 区别？
+### Vite 解决了什么问题？
+
+传统 Webpack 项目启动时：
+
+```text
+启动项目
+ ↓
+打包整个项目
+ ↓
+启动完成
+```
+
+项目越大：
+
+```text
+启动越慢
+```
+
+---
+
+Vite 采用：
+
+```text
+浏览器原生 ESM
+```
+
+方式运行。
+
+```text
+启动项目
+ ↓
+启动开发服务器
+ ↓
+按需加载模块
+```
+
+因此启动速度非常快。
+
+---
+
+### Vite 的工作原理
+
+开发环境：
+
+```text
+源码
+ ↓
+浏览器请求
+ ↓
+Vite 实时编译
+ ↓
+返回模块
+```
+
+不需要提前打包整个项目。
+
+---
+
+生产环境：
+
+```text
+源码
+ ↓
+Rollup 打包
+ ↓
+生成静态资源
+```
+
+---
+
+### Vite 为什么快？
+
+#### 1. 基于 ES Module
+
+浏览器直接加载模块：
+
+```js
+import App from './App.vue'
+```
+
+无需提前打包全部代码。
+
+---
+
+#### 2. 按需编译
+
+只编译当前访问的模块。
+
+```text
+访问页面A
+ ↓
+只编译页面A相关代码
+```
+
+---
+
+#### 3. 使用 ESBuild
+
+ESBuild 使用 Go 语言开发。
+
+```text
+TS/JS 编译速度远快于 Babel
+```
+
+---
+
+### Vite 与 Webpack 区别
 
 | 对比项 | Vite | Webpack |
-| --- | --- | --- |
-| 开发模式 | 原生 ESM，按需加载 | 通常先打包 |
-| 冷启动 | 快 | 大项目较慢 |
-| HMR | 快，模块级更新 | 依赖打包图 |
-| 生产构建 | Rollup | Webpack |
-| 配置复杂度 | 相对简单 | 功能强但配置复杂 |
-| 生态 | 现代项目常用 | 老项目和复杂构建生态成熟 |
-
-#### 面试表达
-
-Vite 的开发体验更快，主要因为开发时不需要完整打包，而是基于原生 ESM 按需提供模块。Webpack 功能和生态非常成熟，适合复杂历史项目。现在 Vue3 新项目通常更推荐 Vite。
+| -------- | ------- | ------- |
+| 开发启动速度 | 快 | 较慢 |
+| 热更新(HMR) | 快 | 较慢 |
+| 开发模式 | ESM按需加载 | 整体打包 |
+| 生产打包 | Rollup | Webpack |
+| 学习成本 | 低 | 较高 |
 
 ---
 
-### 3. Vite 的 HMR 原理？
+### 常用命令
 
-#### 核心回答
+创建项目：
 
-Vite 通过 WebSocket 通知浏览器某个模块发生变化，浏览器只重新请求并替换变化的模块，而不是刷新整个页面。
-
-#### 流程
-
-```text
-文件修改
-  ↓
-Vite 监听到变化
-  ↓
-通过 WebSocket 通知浏览器
-  ↓
-浏览器重新请求变化模块
-  ↓
-局部更新页面
+```bash
+npm create vite@latest
 ```
 
-#### 好处
+安装依赖：
 
-1. 更新速度快。
-2. 尽量保留页面状态。
-3. 不需要整个应用重新加载。
+```bash
+npm install
+```
+
+启动项目：
+
+```bash
+npm run dev
+```
+
+打包项目：
+
+```bash
+npm run build
+```
+
+预览打包结果：
+
+```bash
+npm run preview
+```
 
 ---
 
-### 4. Tree Shaking 原理？
+### 面试回答
+
+Vite 是由 Vue 作者尤雨溪开发的新一代前端构建工具。开发环境下利用浏览器原生 ES Module 实现按需加载，无需像 Webpack 一样先打包整个项目，因此启动速度和热更新速度更快；生产环境则使用 Rollup 进行打包优化。目前 Vue3 官方推荐使用 Vite 作为默认构建工具。
+
+---
+
+### 2. Tree Shaking 原理？
 
 #### 核心回答
 
@@ -3052,7 +3483,7 @@ CommonJS 的 require 是运行时加载，静态分析较困难。
 
 ---
 
-### 5. ESM 和 CommonJS 区别？
+### 3. ESM 和 CommonJS 区别？
 
 | 对比项 | ESM | CommonJS |
 | --- | --- | --- |
@@ -3080,7 +3511,7 @@ module.exports = { count: 1 }
 
 ---
 
-### 6. import 和 require 区别？
+### 4. import 和 require 区别？
 
 #### import
 
@@ -3112,7 +3543,7 @@ const fs = require('fs')
 
 ---
 
-### 7. 如何配置环境变量？
+### 5. 如何配置环境变量？
 
 #### Vite 环境变量文件
 
@@ -3139,7 +3570,7 @@ const baseURL = import.meta.env.VITE_API_BASE_URL
 
 ---
 
-### 8. 如何区分开发 / 测试 / 生产环境？
+### 6. 如何区分开发 / 测试 / 生产环境？
 
 #### package.json
 
@@ -3179,7 +3610,7 @@ import.meta.env.PROD
 
 ---
 
-### 9. 打包体积过大怎么优化？
+### 7. 打包体积过大怎么优化？
 
 常见方案：
 
@@ -3202,7 +3633,7 @@ npm install rollup-plugin-visualizer -D
 
 ---
 
-### 10. 代码分割怎么做？
+### 8. 代码分割怎么做？
 
 #### 路由级代码分割
 
