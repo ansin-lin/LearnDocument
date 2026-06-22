@@ -198,4 +198,4 @@ nav:
   - 综合复习知识点:
       - Vue.js: all/Vue面试题教程版_基础到工程化.md
       - React: all/React基础到进阶面试教程.md
-      # - backend: all/java_backend_full_tutorial.md
+      - backend: all/java_backend_full_tutorial.md
