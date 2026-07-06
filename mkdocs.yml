@@ -195,6 +195,12 @@ nav:
         - 2.4 文件格式: python/file_operations/13_data_serialization.md
       - 3.Web 开发:
         - 3.1 Web基础,Flask入门: python/framework/14_flask_intro.md
+  - 前端工具:
+      - 常用库包: frontend_library/react-vue-common-libraries-full-tutorial.md
+      - 前端全栈框架: frontend_library/vite-next-nuxt-frontend-framework-tutorial.md
+      - 前端测试库: frontend_library/react-vue-testing-library-tutorial.md
+      - vitest详解: frontend_library/vitest_tutorial.md
+      - Jest详解: frontend_library/jest_tutorial.md
   - 综合复习知识点:
       - Vue.js: all/Vue面试题教程版_基础到工程化.md
       - React: all/React基础到进阶面试教程.md
