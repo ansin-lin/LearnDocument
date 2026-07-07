@@ -945,7 +945,9 @@ fetchUsers() // 统一从 api/userApi.ts 调用
 
 ## 18. 为什么需要 TanStack Query / SWR？
 
-普通写法：
+在 React / Vue 项目中，页面经常需要从后端 API 获取数据，例如用户一覧、商品一覧、订单详情、统计图数据等。
+
+普通写法一般会这样写：
 
 ```tsx
 const [data, setData] = useState([]);
@@ -954,6 +956,7 @@ const [error, setError] = useState(null);
 
 useEffect(() => {
   setLoading(true);
+
   fetchUsers()
     .then(setData)
     .catch(setError)
@@ -961,31 +964,937 @@ useEffect(() => {
 }, []);
 ```
 
-问题：
+这种写法可以正常工作，但是项目变大后会出现很多重复问题。
+
+### 普通写法的问题
 
 ```text
-每个页面都要写 loading / error
-重复请求没有缓存
-切换页面再回来又请求
-更新数据后不知道怎么刷新
-分页、筛选、重试逻辑麻烦
+每个页面都要重复写 loading / error
+接口数据没有统一缓存
+切换页面再回来又会重新请求
+多个组件使用同一个接口时容易重复请求
+更新数据后不知道如何自动刷新
+分页、筛选、重试、重新请求逻辑比较麻烦
+窗口重新聚焦时不会自动刷新数据
+网络失败后的重试逻辑需要自己写
 ```
 
-TanStack Query / SWR 解决的是“服务端状态 server state”问题。
+所以在中大型前端项目中，通常会使用 **TanStack Query** 或 **SWR** 来管理 API 数据。
 
-服务端状态是：
+---
+
+## TanStack Query / SWR 解决什么问题？
+
+TanStack Query 和 SWR 主要解决的是 **服务端状态 server state** 的管理问题。
+
+所谓服务端状态，就是从后端 API 获取的数据。
+
+例如：
 
 ```text
-从 API 来的数据
 用户一覧
 商品一覧
 订单详情
+案件一覧
+要员一覧
 统计图数据
+登录用户信息
+通知一覧
+分页查询结果
 ```
 
-它们和 Redux / Pinia 这种“客户端状态”不一样。
+这些数据的来源不是前端本地，而是后端服务器。
+
+它们和 Redux / Zustand / Pinia 管理的“客户端状态”不完全一样。
 
 ---
+
+## 服务端状态和客户端状态的区别
+
+| 类型 | 说明 | 例子 | 常用工具 |
+| ------------------ | ------------- | ----------------------- | ---------------------------------- |
+| 客户端状态 client state | 前端自己控制的状态 | 弹窗开关、当前 tab、主题色、表单临时输入值 | Redux / Zustand / Pinia / useState |
+| 服务端状态 server state | 从后端 API 获取的数据 | 用户一覧、订单详情、统计数据、分页结果 | TanStack Query / SWR |
+
+简单理解：
+
+```text
+客户端状态：前端自己产生、自己控制的数据
+服务端状态：后端 API 返回的数据
+```
+
+---
+
+## TanStack Query 的作用
+
+TanStack Query 主要用于管理 API 请求和服务端数据。
+
+它可以帮我们处理：
+
+```text
+API 请求
+loading 状态
+error 状态
+接口数据缓存
+重复请求去重
+数据重新获取 refetch
+分页查询
+条件查询
+失败重试
+数据失效 invalidate
+窗口重新聚焦后自动刷新
+```
+
+使用 TanStack Query 后，不需要每个页面都手动写 `useState + useEffect + loading + error`。
+
+---
+
+## TanStack Query 使用场景
+
+TanStack Query 适合这些场景：
+
+```text
+后台管理系统的一览画面
+分页查询
+详情画面
+Dashboard 统计数据
+多个组件使用同一个 API 数据
+新增、修改、删除后需要刷新列表
+需要缓存接口数据
+需要统一处理 loading / error / retry
+```
+
+例如：
+
+```text
+用户一覧画面
+案件一覧画面
+要员一覧画面
+订单管理画面
+商品管理画面
+通知一覧画面
+统计图 dashboard
+```
+
+---
+
+## TanStack Query 常用 Hook 说明
+
+TanStack Query 在 React 中主要通过 Hook 使用。
+
+常见 Hook 有：
+
+| Hook | 作用 |
+| ------------------- | ---------------------------------- |
+| `useQuery` | 查询数据，主要用于 GET 请求 |
+| `useMutation` | 修改数据，主要用于 POST / PUT / DELETE 请求 |
+| `useQueryClient` | 获取 QueryClient，用来刷新缓存、让数据失效、手动操作缓存 |
+| `refetch` | 重新执行当前查询 |
+| `invalidateQueries` | 让指定缓存失效，并触发重新请求 |
+
+简单理解：
+
+```text
+useQuery：
+用来取得数据，例如查询用户列表、订单详情。
+
+useMutation：
+用来更新数据，例如新增、修改、删除。
+
+useQueryClient：
+用来操作缓存，例如新增成功后刷新用户列表。
+
+refetch：
+手动重新请求当前接口。
+
+invalidateQueries：
+告诉 TanStack Query：这个数据旧了，需要重新取得。
+```
+
+---
+
+## TanStack Query 示例
+
+### 1. 安装
+
+```bash
+npm install @tanstack/react-query
+```
+
+或者：
+
+```bash
+pnpm add @tanstack/react-query
+```
+
+---
+
+### 2. 在入口文件中配置 QueryClientProvider
+
+```tsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import App from "./App";
+
+const queryClient = new QueryClient();
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <QueryClientProvider client={queryClient}>
+    <App />
+  </QueryClientProvider>
+);
+```
+
+### 这里的作用说明
+
+```text
+QueryClient：
+TanStack Query 的核心对象，用来管理所有 API 数据缓存。
+
+QueryClientProvider：
+把 queryClient 提供给整个 React 应用。
+这样项目中的任意组件都可以使用 useQuery、useMutation 等 Hook。
+```
+
+如果没有配置 `QueryClientProvider`，组件里直接使用 `useQuery` 会报错。
+
+---
+
+### 3. 封装 API 请求
+
+```tsx
+import axios from "axios";
+
+export type User = {
+  id: number;
+  name: string;
+  email: string;
+};
+
+export async function fetchUsers(): Promise<User[]> {
+  const response = await axios.get("/api/users");
+  return response.data;
+}
+```
+
+### 这里的作用说明
+
+```text
+fetchUsers：
+真正发送 API 请求的方法。
+
+axios.get("/api/users")：
+调用后端用户一覧接口。
+
+return response.data：
+只把后端返回的数据部分交给页面使用。
+```
+
+这里注意：
+
+```text
+TanStack Query 本身不负责发送 HTTP 请求。
+真正请求 API 的还是 axios 或 fetch。
+TanStack Query 负责管理请求状态、缓存、刷新、重试等逻辑。
+```
+
+---
+
+### 4. 在页面中使用 useQuery
+
+```tsx
+import { useQuery } from "@tanstack/react-query";
+import { fetchUsers } from "./userApi";
+
+export function UserListPage() {
+  const {
+    data: users,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["users"],
+    queryFn: fetchUsers,
+  });
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (isError) {
+    return <div>数据取得失败：{String(error)}</div>;
+  }
+
+  return (
+    <div>
+      <h2>用户一覧</h2>
+
+      <button onClick={() => refetch()}>重新取得</button>
+
+      <ul>
+        {users?.map((user) => (
+          <li key={user.id}>
+            {user.name} / {user.email}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### useQuery 的作用说明
+
+`useQuery` 用来执行查询请求，一般用于 GET 请求。
+
+例如：
+
+```text
+查询用户列表
+查询订单详情
+查询商品一覧
+查询统计数据
+```
+
+这段代码中：
+
+```tsx
+useQuery({
+  queryKey: ["users"],
+  queryFn: fetchUsers,
+});
+```
+
+含义是：
+
+```text
+queryKey: ["users"]
+表示这次请求的缓存 key 是 users。
+
+queryFn: fetchUsers
+表示真正执行请求的方法是 fetchUsers。
+```
+
+TanStack Query 会根据 `queryKey` 管理缓存。
+
+如果其他组件也写了：
+
+```tsx
+useQuery({
+  queryKey: ["users"],
+  queryFn: fetchUsers,
+});
+```
+
+TanStack Query 会知道它们使用的是同一份用户列表数据。
+
+---
+
+### useQuery 返回值说明
+
+```tsx
+const {
+  data: users,
+  isLoading,
+  isError,
+  error,
+  refetch,
+} = useQuery({
+  queryKey: ["users"],
+  queryFn: fetchUsers,
+});
+```
+
+| 返回值 | 作用 |
+| ------------- | ---------------------- |
+| `data` | API 返回的数据 |
+| `data: users` | 把 data 重命名为 users，方便理解 |
+| `isLoading` | 是否正在第一次加载 |
+| `isError` | 是否请求失败 |
+| `error` | 失败时的错误信息 |
+| `refetch` | 手动重新请求当前接口 |
+
+也就是说，原来需要自己写的：
+
+```tsx
+const [data, setData] = useState([]);
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState(null);
+```
+
+现在 TanStack Query 已经帮我们处理好了。
+
+---
+
+### 5. 新增用户后刷新列表
+
+```tsx
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+
+type CreateUserRequest = {
+  name: string;
+  email: string;
+};
+
+async function createUser(request: CreateUserRequest) {
+  const response = await axios.post("/api/users", request);
+  return response.data;
+}
+
+export function CreateUserButton() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+
+  const handleCreate = () => {
+    mutation.mutate({
+      name: "山田太郎",
+      email: "yamada@example.com",
+    });
+  };
+
+  return (
+    <button onClick={handleCreate} disabled={mutation.isPending}>
+      {mutation.isPending ? "登録中..." : "用户登録"}
+    </button>
+  );
+}
+```
+
+### useMutation 的作用说明
+
+`useMutation` 用来执行会改变数据的请求。
+
+一般用于：
+
+```text
+新增 POST
+修改 PUT / PATCH
+删除 DELETE
+状态更新
+审批处理
+上传文件
+```
+
+和 `useQuery` 的区别是：
+
+```text
+useQuery：
+主要用于查询数据，不改变服务器数据。
+
+useMutation：
+主要用于更新数据，会改变服务器数据。
+```
+
+例如：
+
+```tsx
+const mutation = useMutation({
+  mutationFn: createUser,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["users"] });
+  },
+});
+```
+
+含义是：
+
+```text
+mutationFn: createUser
+表示真正执行新增用户的 API 方法是 createUser。
+
+onSuccess
+表示新增成功后要执行的处理。
+
+queryClient.invalidateQueries({ queryKey: ["users"] })
+表示让 users 这个缓存失效，然后重新取得用户列表。
+```
+
+---
+
+### useQueryClient 的作用说明
+
+`useQueryClient` 用来取得 TanStack Query 的缓存管理对象。
+
+它常用于：
+
+```text
+让某个查询缓存失效
+手动刷新某个查询
+手动设置缓存数据
+手动取得缓存数据
+```
+
+例如：
+
+```tsx
+const queryClient = useQueryClient();
+```
+
+表示取得 QueryClient 对象。
+
+然后可以调用：
+
+```tsx
+queryClient.invalidateQueries({ queryKey: ["users"] });
+```
+
+表示：
+
+```text
+users 这份数据已经旧了，请重新请求最新数据。
+```
+
+---
+
+### mutation.mutate 的作用说明
+
+```tsx
+mutation.mutate({
+  name: "山田太郎",
+  email: "yamada@example.com",
+});
+```
+
+`mutate` 是真正触发新增请求的方法。
+
+也就是说：
+
+```text
+useMutation 只是定义一个“新增用户”的操作。
+mutation.mutate(...) 才是真正开始执行这个操作。
+```
+
+例如点击按钮时调用：
+
+```tsx
+<button onClick={handleCreate}>
+  用户登録
+</button>
+```
+
+点击按钮后：
+
+```text
+handleCreate 执行
+mutation.mutate 执行
+createUser API 被调用
+新增成功后 onSuccess 执行
+users 缓存失效
+用户列表重新请求
+页面自动更新
+```
+
+---
+
+### mutation.isPending 的作用说明
+
+```tsx
+disabled={mutation.isPending}
+```
+
+表示新增请求正在执行时，按钮禁用。
+
+```tsx
+{mutation.isPending ? "登録中..." : "用户登録"}
+```
+
+表示：
+
+```text
+请求中显示：登録中...
+请求结束显示：用户登録
+```
+
+这样可以防止用户连续点击按钮，造成重复提交。
+
+---
+
+## SWR 的作用
+
+SWR 也是用于管理 API 请求和服务端状态的库。
+
+SWR 的名字来自：
+
+```text
+stale-while-revalidate
+```
+
+意思是：
+
+```text
+先返回缓存中的旧数据，然后在后台重新请求最新数据，最后更新页面。
+```
+
+SWR 的特点是比较轻量，写法简单，非常适合普通数据获取场景。
+
+---
+
+## SWR 使用场景
+
+SWR 适合这些场景：
+
+```text
+简单的一览数据取得
+详情数据取得
+用户信息取得
+通知数据取得
+Dashboard 简单数据取得
+不想写复杂状态管理逻辑的 API 请求
+```
+
+例如：
+
+```text
+当前登录用户信息
+通知件数
+用户详情
+商品详情
+简单列表
+```
+
+如果项目 API 请求比较简单，SWR 很轻便。
+
+如果项目有大量分页、复杂缓存、复杂 mutation、依赖查询，TanStack Query 功能会更完整。
+
+---
+
+## SWR 常用 Hook 说明
+
+SWR 在 React 中主要通过 `useSWR` 使用。
+
+| Hook / 方法 | 作用 |
+| ----------- | ------------------------ |
+| `useSWR` | 查询数据，管理 loading、error、缓存 |
+| `mutate` | 手动重新请求，或者手动更新缓存 |
+| `isLoading` | 是否正在加载 |
+| `error` | 请求失败时的错误信息 |
+| `data` | API 返回的数据 |
+
+简单理解：
+
+```text
+useSWR：
+用来取得 API 数据。
+
+mutate：
+用来重新请求数据，或者手动更新缓存。
+
+data：
+接口返回的数据。
+
+isLoading：
+是否正在加载。
+
+error：
+是否请求失败。
+```
+
+---
+
+## SWR 示例
+
+### 1. 安装
+
+```bash
+npm install swr
+```
+
+或者：
+
+```bash
+pnpm add swr
+```
+
+---
+
+### 2. 封装 fetcher
+
+```tsx
+import axios from "axios";
+
+export const fetcher = (url: string) =>
+  axios.get(url).then((response) => response.data);
+```
+
+### fetcher 的作用说明
+
+`fetcher` 是 SWR 中真正发送 API 请求的方法。
+
+这里的意思是：
+
+```text
+SWR 负责管理数据状态和缓存。
+axios 负责真正发送 HTTP 请求。
+fetcher 负责把请求方法统一封装起来。
+```
+
+`useSWR` 会把 key 传给 `fetcher`。
+
+例如：
+
+```tsx
+useSWR("/api/users", fetcher);
+```
+
+实际执行时相当于：
+
+```tsx
+fetcher("/api/users");
+```
+
+---
+
+### 3. 在页面中使用 useSWR
+
+```tsx
+import useSWR from "swr";
+import { fetcher } from "./fetcher";
+
+type User = {
+  id: number;
+  name: string;
+  email: string;
+};
+
+export function UserListPage() {
+  const {
+    data: users,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR<User[]>("/api/users", fetcher);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>数据取得失败</div>;
+  }
+
+  return (
+    <div>
+      <h2>用户一覧</h2>
+
+      <button onClick={() => mutate()}>重新取得</button>
+
+      <ul>
+        {users?.map((user) => (
+          <li key={user.id}>
+            {user.name} / {user.email}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### useSWR 的作用说明
+
+`useSWR` 用来取得 API 数据，并自动管理：
+
+```text
+loading
+error
+data
+缓存
+重新请求
+窗口聚焦后的自动刷新
+```
+
+这段代码中：
+
+```tsx
+useSWR<User[]>("/api/users", fetcher);
+```
+
+含义是：
+
+```text
+"/api/users"
+表示请求的 key，同时也是 API 地址。
+
+fetcher
+表示真正执行请求的方法。
+
+User[]
+表示返回的数据类型是用户数组。
+```
+
+---
+
+### useSWR 返回值说明
+
+```tsx
+const {
+  data: users,
+  error,
+  isLoading,
+  mutate,
+} = useSWR<User[]>("/api/users", fetcher);
+```
+
+| 返回值 | 作用 |
+| ------------- | ----------------- |
+| `data` | API 返回的数据 |
+| `data: users` | 把 data 重命名为 users |
+| `error` | 请求失败时的错误信息 |
+| `isLoading` | 是否正在加载 |
+| `mutate` | 手动重新请求或更新缓存 |
+
+---
+
+### SWR 中 mutate 的作用说明
+
+```tsx
+<button onClick={() => mutate()}>重新取得</button>
+```
+
+这里的 `mutate()` 表示手动重新请求 `/api/users`。
+
+简单理解：
+
+```text
+mutate()：
+重新取得当前接口的最新数据。
+```
+
+它适合这些场景：
+
+```text
+点击“刷新”按钮
+新增数据后刷新列表
+修改数据后刷新详情
+删除数据后刷新一览
+```
+
+例如：
+
+```tsx
+await axios.post("/api/users", {
+  name: "山田太郎",
+  email: "yamada@example.com",
+});
+
+mutate();
+```
+
+表示：
+
+```text
+先新增用户
+新增成功后重新请求用户一覧
+页面显示最新数据
+```
+
+---
+
+## TanStack Query 和 SWR 的区别
+
+| 项目 | TanStack Query | SWR |
+| ----------- | --------------------------- | ---------------- |
+| 定位 | 功能完整的服务端状态管理库 | 轻量的数据请求缓存库 |
+| 适合项目 | 中大型业务系统 | 简单到中等规模项目 |
+| 分页支持 | 强 | 可以实现，但需要自己处理较多 |
+| Mutation 支持 | 强，适合新增、修改、删除后刷新 | 有 mutate，但整体能力较轻 |
+| DevTools | 强 | 有基本工具 |
+| 学习成本 | 稍高 | 较低 |
+| 常见场景 | 后台系统、复杂列表、Dashboard、CRUD 系统 | 用户信息、简单列表、详情数据 |
+
+简单选择：
+
+```text
+API 数据简单，想快速请求和缓存：SWR
+API 数据复杂，有分页、筛选、CRUD、缓存刷新：TanStack Query
+```
+
+---
+
+## 和 Redux / Zustand / Pinia 的关系
+
+TanStack Query / SWR 不是用来完全替代 Redux、Zustand、Pinia 的。
+
+它们负责的范围不一样。
+
+```text
+Redux / Zustand / Pinia：
+管理前端本地状态，例如登录状态、菜单权限、弹窗开关、当前 tab、主题色等。
+
+TanStack Query / SWR：
+管理从后端 API 获取的数据，例如用户一覧、订单详情、统计数据等。
+```
+
+实际项目中经常是一起使用：
+
+```text
+Redux / Zustand / Pinia 管理客户端状态
+TanStack Query / SWR 管理服务端状态
+Axios 负责真正发送 HTTP 请求
+```
+
+---
+
+## 实际项目中的常见组合
+
+### React 项目
+
+```text
+React
+TypeScript
+Axios
+TanStack Query / SWR
+Redux Toolkit / Zustand
+React Router
+MUI / Ant Design
+```
+
+### Vue 项目
+
+```text
+Vue 3
+TypeScript
+Axios
+TanStack Query for Vue
+Pinia
+Vue Router
+Element Plus
+```
+
+---
+
+## 面试回答示例
+
+可以这样回答：
+
+```text
+TanStack Query 和 SWR 主要用于管理服务端状态，也就是从后端 API 获取的数据。
+
+如果不用这些库，每个页面都需要自己写 useState、useEffect、loading、error、重新请求和缓存逻辑，代码会比较重复。
+
+使用 TanStack Query 或 SWR 后，可以统一处理 API 请求状态、缓存、重复请求、重新获取、失败重试等问题。
+
+例如用户一覧、订单详情、Dashboard 统计数据这类从服务器取得的数据，就比较适合使用 TanStack Query 或 SWR。
+
+Redux、Zustand、Pinia 更适合管理客户端状态，例如登录用户信息、菜单权限、弹窗开关、当前 tab 等。TanStack Query / SWR 更适合管理服务端返回的数据。
+```
+
+更简单一点可以这样说：
+
+```text
+TanStack Query / SWR 是用来管理 API 数据的。
+它们可以帮我们处理 loading、error、缓存、重新请求、失败重试等逻辑。
+普通 useEffect 写法在页面多了以后会有大量重复代码，所以中大型项目中会使用 TanStack Query 或 SWR 来统一管理服务端状态。
+```
 
 ## 19. React 使用 TanStack Query
 
@@ -1306,7 +2215,9 @@ Naive UI：Vue 3 现代 UI 组件库，TypeScript 支持较好。
 
 ## 25. 表单库解决什么问题？
 
-表单开发会遇到：
+表单开发会遇到很多重复处理。
+
+例如：
 
 ```text
 输入框值管理
@@ -1316,21 +2227,65 @@ Naive UI：Vue 3 现代 UI 组件库，TypeScript 支持较好。
 默认值
 重置表单
 复杂嵌套字段
+表单联动
+异步校验
+提交中按钮禁用
 ```
 
-小表单可以自己写，大表单建议用表单库。
+小表单可以自己写。
+但是字段变多后，建议使用表单库。
+
+表单库主要解决：
+
+```text
+统一管理表单值
+统一处理校验
+统一处理提交
+统一显示错误信息
+减少重复代码
+提高大表单可维护性
+```
 
 ---
 
 ## 26. React Hook Form
 
-### 26.1 安装
+### 26.1 这个库是什么？
+
+React Hook Form 是 React 中常用的表单库。
+
+它主要用于：
+
+```text
+管理表单字段
+处理提交
+处理校验
+显示错误信息
+减少 useState 的重复代码
+```
+
+适合场景：
+
+```text
+登录表单
+用户登録表单
+检索条件表单
+编辑画面
+后台管理系统表单
+复杂输入画面
+```
+
+---
+
+### 26.2 安装
 
 ```bash
 npm install react-hook-form
 ```
 
-### 26.2 基础示例
+---
+
+### 26.3 基础示例
 
 ```tsx
 import { useForm } from 'react-hook-form';
@@ -1345,19 +2300,26 @@ function UserForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>();
+    reset,
+    watch,
+  } = useForm<FormValues>({
+    defaultValues: {
+      name: '',
+      email: '',
+    },
+  });
 
   const onSubmit = (data: FormValues) => {
-    console.log(data);
+    console.log('提交数据:', data);
   };
+
+  const nameValue = watch('name');
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div>
         <label>用户名</label>
-        <input
-          {...register('name', { required: '用户名不能为空' })}
-        />
+        <input {...register('name', { required: '用户名不能为空' })} />
         {errors.name && <p>{errors.name.message}</p>}
       </div>
 
@@ -1375,34 +2337,183 @@ function UserForm() {
         {errors.email && <p>{errors.email.message}</p>}
       </div>
 
+      <p>当前输入的用户名：{nameValue}</p>
+
       <button type="submit">保存</button>
+      <button type="button" onClick={() => reset()}>
+        重置
+      </button>
     </form>
   );
 }
 ```
 
-记忆点：
+---
+
+### 26.4 示例中 Hook / API 的作用说明
 
 | API | 作用 |
-| --- | --- |
-| `useForm` | 创建表单 |
-| `register` | 注册输入项 |
-| `handleSubmit` | 提交表单 |
-| `errors` | 错误信息 |
+| --------------- | ----------------------------------- |
+| `useForm` | 创建并管理整个表单 |
+| `register` | 注册输入项，把 input 交给 React Hook Form 管理 |
+| `handleSubmit` | 提交前自动执行校验 |
+| `errors` | 保存校验错误信息 |
 | `reset` | 重置表单 |
 | `watch` | 监听字段变化 |
+| `defaultValues` | 设置表单默认值 |
+
+说明：
+
+```text
+useForm：
+创建表单管理对象，负责管理字段值、校验规则、错误信息和提交处理。
+
+register：
+把输入框注册到表单中。例如 register('name') 表示这个 input 对应 name 字段。
+
+handleSubmit：
+提交时先执行校验。校验成功才会执行 onSubmit。
+
+errors：
+保存校验失败后的错误信息，用来在页面上显示错误消息。
+
+reset：
+重置表单，可以清空表单，也可以恢复默认值。
+
+watch：
+监听字段变化，适合做实时预览、字段联动等。
+```
+
+---
+
+### 26.5 面试记忆点
+
+```text
+React Hook Form 主要用于管理 React 表单。
+通过 useForm 创建表单，通过 register 注册字段，通过 handleSubmit 处理提交，通过 errors 显示校验错误。
+它可以减少 useState 管理表单字段的重复代码。
+```
 
 ---
 
 ## 27. Formik
 
-Formik 也是 React 表单库，老项目中可能遇到。新项目更常见 React Hook Form。
+### 27.1 这个库是什么？
+
+Formik 也是 React 表单库。
+老项目中可能会遇到，新项目更常见 React Hook Form。
+
+常见搭配：
+
+```text
+Formik + Yup
+```
+
+适合场景：
+
+```text
+老 React 项目
+既存系统改修
+使用 Yup 做校验的项目
+```
 
 ---
 
-## 28. Vue Element Plus Form
+### 27.2 安装
 
-Element Plus 自带 Form 组件，Vue 后台项目很常见。
+```bash
+npm install formik yup
+```
+
+---
+
+### 27.3 基础示例
+
+```tsx
+import { Formik, Form, Field, ErrorMessage } from 'formik';
+import * as yup from 'yup';
+
+const schema = yup.object({
+  name: yup.string().required('用户名不能为空'),
+  email: yup.string().email('Email格式不正确').required('Email不能为空'),
+});
+
+function UserForm() {
+  return (
+    <Formik
+      initialValues={{ name: '', email: '' }}
+      validationSchema={schema}
+      onSubmit={(values) => {
+        console.log('提交数据:', values);
+      }}
+    >
+      <Form>
+        <div>
+          <label>用户名</label>
+          <Field name="name" />
+          <ErrorMessage name="name" component="p" />
+        </div>
+
+        <div>
+          <label>Email</label>
+          <Field name="email" />
+          <ErrorMessage name="email" component="p" />
+        </div>
+
+        <button type="submit">保存</button>
+      </Form>
+    </Formik>
+  );
+}
+```
+
+---
+
+### 27.4 示例中 API 的作用说明
+
+| API | 作用 |
+| ------------------ | ------------------ |
+| `Formik` | 创建表单上下文 |
+| `initialValues` | 设置初始值 |
+| `validationSchema` | 绑定 Yup 校验规则 |
+| `onSubmit` | 校验成功后执行提交 |
+| `Form` | Formik 提供的 form 组件 |
+| `Field` | Formik 提供的输入字段组件 |
+| `ErrorMessage` | 显示字段错误信息 |
+
+---
+
+### 27.5 面试记忆点
+
+```text
+Formik 是 React 的表单库，老项目中比较常见。
+它经常和 Yup 搭配使用，通过 validationSchema 统一管理校验规则。
+新项目中 React Hook Form 更常见。
+```
+
+---
+
+## 28. Element Plus Form
+
+### 28.1 这个库是什么？
+
+Element Plus Form 是 Element Plus 自带的表单组件。
+Vue 3 后台管理系统中非常常见。
+
+适合场景：
+
+```text
+后台管理系统
+检索条件区域
+新增编辑表单
+用户登録
+权限设置
+审批画面
+```
+
+---
+
+### 28.2 基础示例
 
 ```vue
 <template>
@@ -1417,6 +2528,7 @@ Element Plus 自带 Form 组件，Vue 后台项目很常见。
 
     <el-form-item>
       <el-button type="primary" @click="submit">保存</el-button>
+      <el-button @click="reset">重置</el-button>
     </el-form-item>
   </el-form>
 </template>
@@ -1434,27 +2546,99 @@ const form = reactive({
 
 const rules: FormRules = {
   name: [{ required: true, message: '用户名不能为空', trigger: 'blur' }],
-  email: [{ required: true, message: 'Email不能为空', trigger: 'blur' }],
+  email: [
+    { required: true, message: 'Email不能为空', trigger: 'blur' },
+    { type: 'email', message: 'Email格式不正确', trigger: 'blur' },
+  ],
 };
 
 async function submit() {
   await formRef.value?.validate();
-  console.log(form);
+  console.log('提交数据:', form);
+}
+
+function reset() {
+  formRef.value?.resetFields();
 }
 </script>
 ```
 
 ---
 
+### 28.3 示例中 Hook / API 的作用说明
+
+| API / 写法 | 作用 |
+| ------------------- | --------------- |
+| `reactive` | 创建响应式表单对象 |
+| `ref<FormInstance>` | 获取 el-form 表单实例 |
+| `:model` | 绑定表单数据 |
+| `:rules` | 绑定校验规则 |
+| `prop` | 指定当前表单项对应哪个字段 |
+| `v-model` | 输入框和数据双向绑定 |
+| `validate()` | 执行整个表单校验 |
+| `resetFields()` | 重置表单字段和错误信息 |
+
+说明：
+
+```text
+reactive：
+管理表单数据，例如 form.name、form.email。
+
+ref<FormInstance>：
+获取 Element Plus Form 实例，用来调用 validate、resetFields 等方法。
+
+rules：
+定义校验规则。
+
+v-model：
+让输入框和 form 数据保持同步。
+
+validate：
+提交前执行校验。
+
+resetFields：
+重置表单。
+```
+
+---
+
+### 28.4 面试记忆点
+
+```text
+Vue 项目中如果使用 Element Plus，一般用 el-form 做表单。
+通过 model 绑定数据，通过 rules 定义校验规则，通过 ref 获取表单实例，然后调用 validate 方法进行提交前校验。
+```
+
+---
+
 ## 29. vee-validate
 
-vee-validate 是 Vue 常用表单校验库，适合复杂表单，也可以配合 Zod / Yup。
+### 29.1 这个库是什么？
+
+vee-validate 是 Vue 中常用的表单校验库。
+它适合复杂表单，也可以配合 Zod / Yup 使用。
+
+适合场景：
+
+```text
+复杂表单
+多字段联动校验
+schema 校验
+跨组件表单
+TypeScript 类型推导
+```
+
+---
+
+### 29.2 安装
 
 ```bash
 npm install vee-validate zod @vee-validate/zod
 ```
 
-示例：
+---
+
+### 29.3 基础示例
 
 ```vue
 <script setup lang="ts">
@@ -1477,7 +2661,7 @@ const { value: name, errorMessage: nameError } = useField<string>('name');
 const { value: email, errorMessage: emailError } = useField<string>('email');
 
 const onSubmit = handleSubmit((values) => {
-  console.log(values);
+  console.log('提交数据:', values);
 });
 </script>
 
@@ -1496,7 +2680,32 @@ const onSubmit = handleSubmit((values) => {
 
 ---
 
+### 29.4 示例中 Hook / API 的作用说明
+
+| API | 作用 |
+| ------------------ | --------------------------------------- |
+| `useForm` | 创建表单上下文 |
+| `validationSchema` | 绑定 schema 校验规则 |
+| `useField` | 管理单个字段 |
+| `value` | 当前字段值 |
+| `errorMessage` | 当前字段错误信息 |
+| `toTypedSchema` | 把 Zod schema 转成 vee-validate 可用的 schema |
+| `handleSubmit` | 提交前自动校验 |
+
+---
+
+### 29.5 面试记忆点
+
+```text
+vee-validate 适合 Vue 中复杂表单校验。
+通过 useForm 管理整个表单，通过 useField 管理单个字段，也可以配合 Zod 或 Yup 使用 schema 统一定义校验规则。
+```
+
+---
+
 ## 30. Zod
+
+### 30.1 这个库是什么？
 
 Zod 是 TypeScript 优先的 schema 校验库。
 
@@ -1506,10 +2715,21 @@ Zod 是 TypeScript 优先的 schema 校验库。
 表单校验
 API 返回值校验
 类型自动推导
+请求参数校验
 前后端共通校验规则
 ```
 
-### 示例
+---
+
+### 30.2 安装
+
+```bash
+npm install zod
+```
+
+---
+
+### 30.3 基础示例
 
 ```ts
 import * as z from 'zod';
@@ -1535,22 +2755,51 @@ if (!result.success) {
 }
 ```
 
-记忆点：
+---
+
+### 30.4 示例中 API 的作用说明
 
 | API | 作用 |
-| --- | --- |
-| `z.string()` | 字符串 |
-| `z.number()` | 数字 |
-| `z.object()` | 对象 |
-| `parse()` | 校验失败会 throw |
-| `safeParse()` | 返回 success / error |
-| `z.infer` | 从 schema 推导 TypeScript 类型 |
+| ------------- | --------------------------- |
+| `z.object()` | 定义对象结构 |
+| `z.string()` | 字符串校验 |
+| `z.number()` | 数字校验 |
+| `.min()` | 最小长度或最小值 |
+| `.email()` | Email 格式校验 |
+| `z.infer` | 从 schema 自动推导 TypeScript 类型 |
+| `safeParse()` | 安全校验，返回 success / error |
+| `parse()` | 校验失败时直接抛异常 |
+
+---
+
+### 30.5 面试记忆点
+
+```text
+Zod 是 TypeScript 优先的 schema 校验库。
+它可以定义表单或 API 数据的校验规则，并通过 z.infer 自动推导 TypeScript 类型。
+这样可以避免校验规则和类型定义重复维护。
+```
 
 ---
 
 ## 31. Yup
 
-Yup 也是 schema 校验库，在老项目和 Formik 项目里比较常见。
+### 31.1 这个库是什么？
+
+Yup 也是 schema 校验库。
+在老项目、Formik 项目中比较常见。
+
+---
+
+### 31.2 安装
+
+```bash
+npm install yup
+```
+
+---
+
+### 31.3 基础示例
 
 ```ts
 import * as yup from 'yup';
@@ -1570,18 +2819,47 @@ async function validate() {
 }
 ```
 
-新人建议：
+---
+
+### 31.4 示例中 API 的作用说明
+
+| API | 作用 |
+| ------------------- | ---------------- |
+| `yup.object()` | 定义对象校验规则 |
+| `yup.string()` | 定义字符串字段 |
+| `.required()` | 必填校验 |
+| `.email()` | Email 格式校验 |
+| `schema.validate()` | 执行校验，失败时进入 catch |
+
+---
+
+### 31.5 面试记忆点
 
 ```text
-TypeScript 新项目：优先 Zod
-既存项目 / Formik 项目：可能用 Yup
+Yup 是常见 schema 校验库，老项目和 Formik 项目中比较常见。
+TypeScript 新项目中，现在更常见 Zod。
 ```
 
 ---
 
 ## 32. SCSS
 
+### 32.1 这个库是什么？
+
 SCSS 是 CSS 的增强写法，支持变量、嵌套、mixin。
+
+适合：
+
+```text
+统一颜色变量
+统一间距变量
+组件样式嵌套
+传统企业系统样式开发
+```
+
+---
+
+### 32.2 示例
 
 ```scss
 $primary-color: #1677ff;
@@ -1597,15 +2875,48 @@ $primary-color: #1677ff;
 }
 ```
 
-React / Vue 都可以用。
+---
+
+### 32.3 示例中语法的作用说明
+
+| 语法 | 作用 |
+| -------------------------- | ---- |
+| `$primary-color` | 定义变量 |
+| `.card { .title { ... } }` | 嵌套写法 |
+| `padding` | 内边距 |
+| `border` | 边框 |
+| `font-weight` | 字体粗细 |
+
+---
+
+### 32.4 面试记忆点
+
+```text
+SCSS 是 CSS 的增强写法，支持变量和嵌套。
+在项目中可以用来统一颜色、间距等样式变量，也可以让组件样式结构更清晰。
+```
 
 ---
 
 ## 33. CSS Modules
 
-CSS Modules 让 CSS class 只在当前组件生效，避免全局污染。
+### 33.1 这个库是什么？
 
-`Button.module.css`：
+CSS Modules 可以让 CSS class 只在当前组件生效，避免全局污染。
+
+适合：
+
+```text
+组件化开发
+避免 class 名冲突
+React / Vue 单组件样式管理
+```
+
+---
+
+### 33.2 React 示例
+
+`Button.module.css`
 
 ```css
 .primary {
@@ -1615,8 +2926,6 @@ CSS Modules 让 CSS class 只在当前组件生效，避免全局污染。
 }
 ```
 
-React 使用：
-
 ```tsx
 import styles from './Button.module.css';
 
@@ -1625,7 +2934,9 @@ export function Button() {
 }
 ```
 
-Vue 使用：
+---
+
+### 33.3 Vue 示例
 
 ```vue
 <template>
@@ -1642,9 +2953,46 @@ Vue 使用：
 
 ---
 
+### 33.4 示例中 API / 写法的作用说明
+
+| 写法 | 作用 |
+| ------------------------ | ------------------- |
+| `.module.css` | 启用 CSS Modules |
+| `import styles from ...` | React 中导入局部样式对象 |
+| `styles.primary` | React 中使用局部 class |
+| `<style module>` | Vue 中启用 CSS Modules |
+| `$style.primary` | Vue 中使用局部 class |
+
+---
+
+### 33.5 面试记忆点
+
+```text
+CSS Modules 可以避免 class 名全局冲突。
+每个组件的样式只在当前组件中生效，适合组件化开发。
+```
+
+---
+
 ## 34. Tailwind CSS
 
-Tailwind 是 utility-first CSS 框架，用很多小 class 组合样式。
+### 34.1 这个库是什么？
+
+Tailwind CSS 是 utility-first CSS 框架。
+它不是组件库，而是通过很多小 class 组合样式。
+
+适合：
+
+```text
+快速写样式
+统一设计规范
+响应式布局
+不想频繁起 class 名
+```
+
+---
+
+### 34.2 示例
 
 ```tsx
 export function Card() {
@@ -1657,27 +3005,53 @@ export function Card() {
 }
 ```
 
-优点：
+---
+
+### 34.3 示例中 class 的作用说明
+
+| class | 作用 |
+| --------------- | ------- |
+| `rounded-lg` | 大圆角 |
+| `border` | 边框 |
+| `p-4` | padding |
+| `shadow-sm` | 小阴影 |
+| `text-lg` | 较大字体 |
+| `font-bold` | 加粗 |
+| `text-gray-900` | 深灰色文字 |
+| `text-sm` | 小号字体 |
+| `text-gray-500` | 浅灰色文字 |
+
+---
+
+### 34.4 面试记忆点
 
 ```text
-不用频繁起 class 名
-样式直接写在组件附近
-适合快速开发和统一设计系统
-```
-
-缺点：
-
-```text
-class 很长
-新人刚看会觉得乱
-需要团队规范
+Tailwind CSS 不是 MUI、Element Plus 那种组件库，而是原子化 CSS 工具库。
+它通过很多小 class 快速组合页面样式，适合快速开发和统一设计规范。
 ```
 
 ---
 
 ## 35. styled-components / Emotion
 
-这是 React 里常见 CSS-in-JS 方案。
+### 35.1 这个库是什么？
+
+styled-components 和 Emotion 是 React 中常见的 CSS-in-JS 方案。
+
+适合：
+
+```text
+React 组件内写样式
+样式和组件绑定
+动态样式
+主题定制
+```
+
+MUI 默认使用 Emotion 作为样式引擎之一。
+
+---
+
+### 35.2 styled-components 示例
 
 ```bash
 npm install styled-components
@@ -1698,35 +3072,62 @@ export function App() {
 }
 ```
 
-MUI 默认使用 Emotion 作为样式引擎之一。
+---
+
+### 35.3 示例中 API 的作用说明
+
+| API / 写法 | 作用 |
+| --------------- | ------------------ |
+| `styled.button` | 创建一个带样式的 button 组件 |
+| 模板字符串 | 在 JS / TS 中写 CSS |
+| `<SaveButton>` | 像普通 React 组件一样使用 |
+
+---
+
+### 35.4 面试记忆点
+
+```text
+styled-components 和 Emotion 都属于 CSS-in-JS。
+它们可以在 React 组件中直接定义样式组件，适合动态样式和主题定制。
+```
 
 ---
 
 ## 36. UnoCSS
 
-UnoCSS 和 Tailwind 类似，也是原子化 CSS 方案。Vue / Vite 项目中有时会看到。
+### 36.1 这个库是什么？
 
-新人先学 Tailwind，遇到 UnoCSS 再迁移理解即可。
+UnoCSS 和 Tailwind 类似，也是原子化 CSS 方案。
+Vue / Vite 项目中有时会看到。
+
+---
+
+### 36.2 示例
+
+```vue
+<template>
+  <div class="rounded border p-4">
+    <p class="text-sm font-bold">用户信息</p>
+  </div>
+</template>
+```
+
+---
+
+### 36.3 面试记忆点
+
+```text
+UnoCSS 和 Tailwind 类似，都是原子化 CSS。
+新人可以先学 Tailwind，遇到 UnoCSS 时按类似思路理解。
+```
 
 ---
 
 ## 37. dayjs
 
-dayjs 是轻量日期库，写法类似 moment。
+### 37.1 这个库是什么？
 
-```bash
-npm install dayjs
-```
-
-```ts
-import dayjs from 'dayjs';
-
-const now = dayjs();
-
-console.log(now.format('YYYY-MM-DD'));
-console.log(dayjs('2026-07-06').add(7, 'day').format('YYYY-MM-DD'));
-console.log(dayjs('2026-07-06').isBefore('2026-08-01'));
-```
+dayjs 是轻量日期处理库，写法类似 moment。
 
 常见用途：
 
@@ -1740,13 +3141,73 @@ console.log(dayjs('2026-07-06').isBefore('2026-08-01'));
 
 ---
 
+### 37.2 安装
+
+```bash
+npm install dayjs
+```
+
+---
+
+### 37.3 示例
+
+```ts
+import dayjs from 'dayjs';
+
+const now = dayjs();
+
+console.log(now.format('YYYY-MM-DD'));
+console.log(dayjs('2026-07-06').add(7, 'day').format('YYYY-MM-DD'));
+console.log(dayjs('2026-07-06').isBefore('2026-08-01'));
+```
+
+---
+
+### 37.4 示例中 API 的作用说明
+
+| API | 作用 |
+| ------------ | --------- |
+| `dayjs()` | 创建当前日期对象 |
+| `format()` | 格式化日期 |
+| `add()` | 日期加算 |
+| `isBefore()` | 判断是否早于某日期 |
+
+---
+
+### 37.5 面试记忆点
+
+```text
+dayjs 常用于日期格式化、日期比较和日期加减。
+后台管理系统的一览画面、检索条件、日期显示中很常见。
+```
+
+---
+
 ## 38. date-fns
 
+### 38.1 这个库是什么？
+
 date-fns 是函数式日期工具库。
+
+适合：
+
+```text
+按需引入日期函数
+函数式写法
+减少整体包体积
+```
+
+---
+
+### 38.2 安装
 
 ```bash
 npm install date-fns
 ```
+
+---
+
+### 38.3 示例
 
 ```ts
 import { format, addDays, isBefore } from 'date-fns';
@@ -1756,7 +3217,19 @@ console.log(addDays(new Date(), 7));
 console.log(isBefore(new Date('2026-07-06'), new Date('2026-08-01')));
 ```
 
-选择建议：
+---
+
+### 38.4 示例中 API 的作用说明
+
+| API | 作用 |
+| ------------ | ------ |
+| `format()` | 格式化日期 |
+| `addDays()` | 增加天数 |
+| `isBefore()` | 判断日期先后 |
+
+---
+
+### 38.5 选择建议
 
 ```text
 想写法简单：dayjs
@@ -1767,11 +3240,34 @@ console.log(isBefore(new Date('2026-07-06'), new Date('2026-08-01')));
 
 ## 39. lodash / lodash-es
 
+### 39.1 这个库是什么？
+
 lodash 提供很多常用工具函数。
+在现代项目中，ESM 项目更常见 `lodash-es`。
+
+常见用途：
+
+```text
+防抖
+节流
+深拷贝
+数组去重
+分组
+排序
+对象处理
+```
+
+---
+
+### 39.2 安装
 
 ```bash
 npm install lodash-es
 ```
+
+---
+
+### 39.3 示例
 
 ```ts
 import { debounce, uniqBy, groupBy } from 'lodash-es';
@@ -1785,17 +3281,22 @@ const users = [
 const uniqueUsers = uniqBy(users, 'id');
 console.log(uniqueUsers);
 
+const groupedUsers = groupBy(users, 'id');
+console.log(groupedUsers);
+
 const handleSearch = debounce((keyword: string) => {
   console.log('検索:', keyword);
 }, 500);
 ```
 
-常用函数：
+---
+
+### 39.4 示例中 API 的作用说明
 
 | 函数 | 作用 |
-| --- | --- |
-| `debounce` | 防抖 |
-| `throttle` | 节流 |
+| ----------- | ---------------- |
+| `debounce` | 防抖，常用于搜索框输入后延迟请求 |
+| `throttle` | 节流，限制函数执行频率 |
 | `cloneDeep` | 深拷贝 |
 | `uniqBy` | 按字段去重 |
 | `groupBy` | 分组 |
@@ -1803,13 +3304,41 @@ const handleSearch = debounce((keyword: string) => {
 
 ---
 
+### 39.5 面试记忆点
+
+```text
+lodash 常用于数组、对象、函数节流防抖等通用处理。
+例如搜索框输入时，可以用 debounce 避免每输入一个字符就请求 API。
+```
+
+---
+
 ## 40. clsx / classnames
 
-用于条件拼接 class。
+### 40.1 这个库是什么？
+
+clsx 和 classnames 用于条件拼接 className。
+
+适合：
+
+```text
+按钮激活状态
+菜单选中状态
+错误样式切换
+根据 props 切换样式
+```
+
+---
+
+### 40.2 安装
 
 ```bash
 npm install clsx
 ```
+
+---
+
+### 40.3 示例
 
 ```tsx
 import clsx from 'clsx';
@@ -1830,13 +3359,55 @@ function Button({ active }: { active: boolean }) {
 
 ---
 
+### 40.4 示例中 API 的作用说明
+
+| 写法 | 作用 |
+| ----------------------- | -------------------- |
+| `clsx('btn', {...})` | 拼接基础 class 和条件 class |
+| `'btn-active': active` | active 为 true 时添加 |
+| `'btn-normal': !active` | active 为 false 时添加 |
+
+---
+
+### 40.5 面试记忆点
+
+```text
+clsx 用于根据条件动态拼接 className。
+在 React 项目中，按钮状态、菜单选中状态、错误样式切换时很常见。
+```
+
+---
+
 ## 41. VueUse
 
-VueUse 是 Vue 生态常用工具 hooks 集合。
+### 41.1 这个库是什么？
+
+VueUse 是 Vue 生态常用工具 Hook 集合。
+
+常见工具：
+
+```text
+useLocalStorage
+useSessionStorage
+useMouse
+useWindowSize
+useDebounceFn
+useThrottleFn
+useDark
+useClipboard
+```
+
+---
+
+### 41.2 安装
 
 ```bash
 npm install @vueuse/core
 ```
+
+---
+
+### 41.3 示例
 
 ```vue
 <script setup lang="ts">
@@ -1854,15 +3425,37 @@ const { x, y } = useMouse();
 
 ---
 
+### 41.4 示例中 Hook 的作用说明
+
+| Hook | 作用 |
+| ----------------- | -------------------------- |
+| `useLocalStorage` | 把数据保存到 localStorage，并保持响应式 |
+| `useMouse` | 获取鼠标当前位置 |
+| `x` | 鼠标横坐标 |
+| `y` | 鼠标纵坐标 |
+
+---
+
+### 41.5 面试记忆点
+
+```text
+VueUse 提供很多常用 Composition API 工具。
+例如 useLocalStorage、useMouse、useWindowSize、useDebounceFn 等，可以减少自己封装通用 Hook 的代码。
+```
+
+---
+
 ## 42. 表格库解决什么问题？
 
-业务系统最常见的页面就是“一览画面”。通常需要：
+业务系统最常见的页面就是“一览画面”。
+
+通常需要：
 
 ```text
 分页
 排序
 筛选
-列显示/隐藏
+列显示 / 隐藏
 行选择
 固定列
 编辑单元格
@@ -1874,17 +3467,24 @@ const { x, y } = useMouse();
 
 ## 43. React TanStack Table
 
-TanStack Table 是 headless table 引擎：它负责表格逻辑，你自己负责 UI。
+### 43.1 这个库是什么？
+
+TanStack Table 是 headless table 引擎。
+它负责表格逻辑，你自己负责 UI。
 
 适合：
 
 ```text
-需要高度自定义表格 UI
+高度自定义表格 UI
+复杂排序
+复杂筛选
+分页
 不想被组件库样式限制
-复杂排序、筛选、分页
 ```
 
-简化示例：
+---
+
+### 43.2 示例
 
 ```tsx
 import {
@@ -1933,6 +3533,7 @@ function UserTable() {
           </tr>
         ))}
       </thead>
+
       <tbody>
         {table.getRowModel().rows.map((row) => (
           <tr key={row.id}>
@@ -1951,9 +3552,35 @@ function UserTable() {
 
 ---
 
+### 43.3 示例中 Hook / API 的作用说明
+
+| API | 作用 |
+| ---------------------------- | --------------------- |
+| `createColumnHelper<User>()` | 创建列定义辅助工具，并绑定 User 类型 |
+| `columnHelper.accessor()` | 定义某一列显示哪个字段 |
+| `useReactTable()` | 创建表格实例，管理表格逻辑 |
+| `getCoreRowModel()` | 生成基础行数据模型 |
+| `table.getHeaderGroups()` | 获取表头分组 |
+| `table.getRowModel().rows` | 获取表格行数据 |
+| `row.getVisibleCells()` | 获取当前行可见单元格 |
+| `flexRender()` | 渲染表头或单元格内容 |
+
+---
+
+### 43.4 面试记忆点
+
+```text
+TanStack Table 是 headless table 库。
+它不提供现成 UI，而是提供表格逻辑，例如列定义、行模型、排序、筛选、分页等。
+```
+
+---
+
 ## 44. MUI Data Grid / AG Grid
 
-MUI Data Grid：适合 MUI 项目。  
+### 44.1 这两个库是什么？
+
+MUI Data Grid：适合 MUI 项目。
 AG Grid：功能非常强，适合复杂企业级表格。
 
 AG Grid 常用于：
@@ -1968,7 +3595,61 @@ Excel 风格操作
 
 ---
 
+### 44.2 MUI Data Grid 示例
+
+```tsx
+import { DataGrid } from '@mui/x-data-grid';
+
+const columns = [
+  { field: 'id', headerName: 'ID', width: 80 },
+  { field: 'name', headerName: '用户名', width: 150 },
+  { field: 'email', headerName: 'Email', width: 220 },
+];
+
+const rows = [
+  { id: 1, name: 'Taro', email: 'taro@example.com' },
+  { id: 2, name: 'Hanako', email: 'hanako@example.com' },
+];
+
+export function UserGrid() {
+  return <DataGrid rows={rows} columns={columns} />;
+}
+```
+
+---
+
+### 44.3 示例中 API 的作用说明
+
+| API | 作用 |
+| ------------ | ----------- |
+| `DataGrid` | MUI 提供的表格组件 |
+| `columns` | 定义列 |
+| `rows` | 定义行数据 |
+| `field` | 指定字段名 |
+| `headerName` | 表头显示名 |
+| `width` | 列宽 |
+
+---
+
+### 44.4 面试记忆点
+
+```text
+MUI Data Grid 适合 MUI 项目中的表格。
+AG Grid 功能更强，适合大量数据、复杂筛选、单元格编辑等企业级表格。
+```
+
+---
+
 ## 45. Vue Element Plus Table
+
+### 45.1 这个库是什么？
+
+Element Plus Table 是 Element Plus 自带的表格组件。
+Vue 后台系统中非常常见。
+
+---
+
+### 45.2 示例
 
 ```vue
 <template>
@@ -1990,6 +3671,7 @@ Excel 风格操作
 import { ref } from 'vue';
 
 const page = ref(1);
+
 const users = ref([
   { id: 1, name: 'Taro', email: 'taro@example.com' },
   { id: 2, name: 'Hanako', email: 'hanako@example.com' },
@@ -1999,9 +3681,34 @@ const users = ref([
 
 ---
 
+### 45.3 示例中 API 的作用说明
+
+| API / 写法 | 作用 |
+| ---------------------- | ------- |
+| `el-table` | 表格组件 |
+| `:data` | 表格数据 |
+| `el-table-column` | 表格列 |
+| `prop` | 对应数据字段 |
+| `label` | 表头显示名 |
+| `el-pagination` | 分页组件 |
+| `v-model:current-page` | 当前页双向绑定 |
+
+---
+
+### 45.4 面试记忆点
+
+```text
+Vue 后台项目中，Element Plus Table 很常见。
+通常配合 el-pagination 实现一览画面的分页、查询、排序等功能。
+```
+
+---
+
 ## 46. vxe-table
 
-vxe-table 是 Vue 里强大的表格库，适合复杂业务表格。
+### 46.1 这个库是什么？
+
+vxe-table 是 Vue 中强大的表格库，适合复杂业务表格。
 
 适合：
 
@@ -2010,6 +3717,38 @@ vxe-table 是 Vue 里强大的表格库，适合复杂业务表格。
 复杂合并单元格
 大量数据
 Excel 风格操作
+复杂企业系统
+```
+
+---
+
+### 46.2 简化示例
+
+```vue
+<template>
+  <vxe-table :data="users">
+    <vxe-column field="id" title="ID" width="80" />
+    <vxe-column field="name" title="用户名" />
+    <vxe-column field="email" title="Email" />
+  </vxe-table>
+</template>
+
+<script setup lang="ts">
+const users = [
+  { id: 1, name: 'Taro', email: 'taro@example.com' },
+  { id: 2, name: 'Hanako', email: 'hanako@example.com' },
+];
+</script>
+```
+
+---
+
+### 46.3 面试记忆点
+
+```text
+vxe-table 适合 Vue 中复杂业务表格。
+如果只是普通一览画面，Element Plus Table 就够用。
+如果需要编辑单元格、大量数据、复杂合并单元格，可以考虑 vxe-table。
 ```
 
 ---
@@ -2031,9 +3770,21 @@ Dashboard
 
 ## 48. React Recharts
 
+### 48.1 这个库是什么？
+
+Recharts 是 React 常用图表库，写法比较接近 React 组件。
+
+---
+
+### 48.2 安装
+
 ```bash
 npm install recharts
 ```
+
+---
+
+### 48.3 示例
 
 ```tsx
 import {
@@ -2058,7 +3809,7 @@ function SalesChart() {
       <XAxis dataKey="month" />
       <YAxis />
       <Tooltip />
-      <Line type="monotone" dataKey="sales" stroke="#1677ff" />
+      <Line type="monotone" dataKey="sales" />
     </LineChart>
   );
 }
@@ -2066,15 +3817,46 @@ function SalesChart() {
 
 ---
 
-## 49. ECharts
+### 48.4 示例中 API 的作用说明
 
-ECharts 是强大的通用图表库，React / Vue 都能用。
+| API | 作用 |
+| --------------- | ------ |
+| `LineChart` | 折线图容器 |
+| `Line` | 折线 |
+| `XAxis` | X 轴 |
+| `YAxis` | Y 轴 |
+| `Tooltip` | 鼠标悬浮提示 |
+| `CartesianGrid` | 网格线 |
+| `dataKey` | 指定数据字段 |
 
-Vue 常用 `vue-echarts`。
+---
+
+### 48.5 面试记忆点
+
+```text
+Recharts 是 React 常用图表库，适合 Dashboard、统计图、折线图、柱状图等场景。
+```
+
+---
+
+## 49. ECharts / vue-echarts
+
+### 49.1 这个库是什么？
+
+ECharts 是功能强大的通用图表库。
+React / Vue 都能使用，Vue 常用 `vue-echarts`。
+
+---
+
+### 49.2 安装
 
 ```bash
 npm install echarts vue-echarts
 ```
+
+---
+
+### 49.3 Vue 示例
 
 ```vue
 <script setup lang="ts">
@@ -2101,11 +3883,48 @@ const option = {
 
 ---
 
+### 49.4 示例中 API 的作用说明
+
+| API | 作用 |
+| ------------------ | ------------------- |
+| `VChart` | Vue 中渲染 ECharts 的组件 |
+| `use()` | 按需注册 ECharts 模块 |
+| `CanvasRenderer` | Canvas 渲染器 |
+| `BarChart` | 柱状图类型 |
+| `GridComponent` | 坐标网格 |
+| `TooltipComponent` | 鼠标提示 |
+| `option` | 图表配置对象 |
+| `series` | 图表数据系列 |
+
+---
+
+### 49.5 面试记忆点
+
+```text
+ECharts 功能比较强，适合复杂图表和 Dashboard。
+Vue 项目中可以使用 vue-echarts 封装组件。
+```
+
+---
+
 ## 50. React Icons
+
+### 50.1 这个库是什么？
+
+React Icons 是 React 中常用图标库。
+它整合了多个图标集。
+
+---
+
+### 50.2 安装
 
 ```bash
 npm install react-icons
 ```
+
+---
+
+### 50.3 示例
 
 ```tsx
 import { FaSearch, FaSave } from 'react-icons/fa';
@@ -2113,8 +3932,12 @@ import { FaSearch, FaSave } from 'react-icons/fa';
 function Buttons() {
   return (
     <div>
-      <button><FaSearch /> 查询</button>
-      <button><FaSave /> 保存</button>
+      <button>
+        <FaSearch /> 查询
+      </button>
+      <button>
+        <FaSave /> 保存
+      </button>
     </div>
   );
 }
@@ -2122,11 +3945,34 @@ function Buttons() {
 
 ---
 
+### 50.4 示例中 API 的作用说明
+
+| API | 作用 |
+| -------------- | ---------------- |
+| `FaSearch` | 搜索图标 |
+| `FaSave` | 保存图标 |
+| `<FaSearch />` | 像 React 组件一样使用图标 |
+
+---
+
+### 50.5 面试记忆点
+
+```text
+React Icons 可以把图标当作 React 组件使用，常用于按钮、菜单、操作列等位置。
+```
+
+---
+
 ## 51. Lucide React / Lucide Vue
 
-Lucide 是现代简洁风格图标库。
+### 51.1 这个库是什么？
 
-React：
+Lucide 是现代简洁风格图标库。
+React 和 Vue 都有对应版本。
+
+---
+
+### 51.2 React 示例
 
 ```bash
 npm install lucide-react
@@ -2136,11 +3982,17 @@ npm install lucide-react
 import { Search } from 'lucide-react';
 
 function SearchButton() {
-  return <button><Search size={16} /> 查询</button>;
+  return (
+    <button>
+      <Search size={16} /> 查询
+    </button>
+  );
 }
 ```
 
-Vue：
+---
+
+### 51.3 Vue 示例
 
 ```bash
 npm install lucide-vue-next
@@ -2152,8 +4004,19 @@ import { Search } from 'lucide-vue-next';
 </script>
 
 <template>
-  <button><Search :size="16" /> 查询</button>
+  <button>
+    <Search :size="16" /> 查询
+  </button>
 </template>
+```
+
+---
+
+### 51.4 面试记忆点
+
+```text
+Lucide 是简洁风格图标库，React 和 Vue 都可以使用。
+图标可以像组件一样引入和渲染。
 ```
 
 ---
@@ -2183,9 +4046,21 @@ import { Search } from 'lucide-vue-next';
 
 ## 53. React react-i18next
 
+### 53.1 这个库是什么？
+
+react-i18next 是 React 项目常用国际化库。
+
+---
+
+### 53.2 安装
+
 ```bash
 npm install i18next react-i18next
 ```
+
+---
+
+### 53.3 示例
 
 ```ts
 // src/i18n.ts
@@ -2214,24 +4089,57 @@ i18n.use(initReactI18next).init({
 export default i18n;
 ```
 
-组件使用：
-
 ```tsx
 import { useTranslation } from 'react-i18next';
 
 function SaveButton() {
   const { t } = useTranslation();
+
   return <button>{t('save')}</button>;
 }
 ```
 
 ---
 
+### 53.4 示例中 Hook / API 的作用说明
+
+| API | 作用 |
+| ---------------------------- | ------------------ |
+| `i18n.use(initReactI18next)` | 把 i18next 接入 React |
+| `resources` | 定义多语言文本 |
+| `lng` | 当前语言 |
+| `fallbackLng` | 备用语言 |
+| `useTranslation()` | 在 React 组件中取得翻译函数 |
+| `t('save')` | 根据当前语言取得 save 对应文本 |
+
+---
+
+### 53.5 面试记忆点
+
+```text
+react-i18next 用于 React 项目的国际化。
+通过 resources 管理多语言文本，组件中使用 useTranslation 取得 t 函数，然后通过 t('key') 显示对应语言的文案。
+```
+
+---
+
 ## 54. Vue vue-i18n
+
+### 54.1 这个库是什么？
+
+vue-i18n 是 Vue 项目常用国际化库。
+
+---
+
+### 54.2 安装
 
 ```bash
 npm install vue-i18n
 ```
+
+---
+
+### 54.3 示例
 
 ```ts
 import { createI18n } from 'vue-i18n';
@@ -2249,8 +4157,6 @@ const i18n = createI18n({
 export default i18n;
 ```
 
-组件：
-
 ```vue
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
@@ -2265,353 +4171,25 @@ const { t } = useI18n();
 
 ---
 
-## 55. React Framer Motion
+### 54.4 示例中 Hook / API 的作用说明
 
-```bash
-npm install framer-motion
-```
-
-```tsx
-import { motion } from 'framer-motion';
-
-function FadeInCard() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      这是一个淡入卡片
-    </motion.div>
-  );
-}
-```
+| API | 作用 |
+| ---------------- | --------------------- |
+| `createI18n()` | 创建 Vue 国际化实例 |
+| `legacy: false` | 使用 Composition API 模式 |
+| `locale` | 当前语言 |
+| `fallbackLocale` | 备用语言 |
+| `messages` | 多语言文本定义 |
+| `useI18n()` | 在 Vue 组件中取得国际化方法 |
+| `t('save')` | 根据当前语言取得文案 |
 
 ---
 
-## 56. Vue Transition
-
-Vue 自带 Transition。
-
-```vue
-<template>
-  <button @click="show = !show">切换</button>
-
-  <Transition name="fade">
-    <p v-if="show">显示内容</p>
-  </Transition>
-</template>
-
-<script setup lang="ts">
-import { ref } from 'vue';
-const show = ref(true);
-</script>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>
-```
-
----
-
-## 57. React dnd-kit
-
-拖拽用于：
+### 54.5 面试记忆点
 
 ```text
-排序列表
-看板拖拽
-菜单排序
-图片排序
-```
-
-```bash
-npm install @dnd-kit/core @dnd-kit/sortable
-```
-
-简化概念：
-
-```text
-DndContext：拖拽上下文
-SortableContext：可排序列表
-useSortable：让某个元素变成可拖拽
-```
-
-实际项目中代码会比较长，新人先理解用途和基本 API 即可。
-
----
-
-## 58. Vue Draggable Plus / SortableJS
-
-Vue 里常用 SortableJS 封装库。
-
-```bash
-npm install vue-draggable-plus
-```
-
-```vue
-<script setup lang="ts">
-import { ref } from 'vue';
-import { VueDraggable } from 'vue-draggable-plus';
-
-const list = ref([
-  { id: 1, name: '任务A' },
-  { id: 2, name: '任务B' },
-  { id: 3, name: '任务C' },
-]);
-</script>
-
-<template>
-  <VueDraggable v-model="list">
-    <div v-for="item in list" :key="item.id">
-      {{ item.name }}
-    </div>
-  </VueDraggable>
-</template>
-```
-
----
-
-## 59. 富文本是什么？
-
-富文本就是类似 Word / 编辑器，可以输入：
-
-```text
-标题
-加粗
-斜体
-列表
-链接
-图片
-表格
-代码块
-```
-
-常见场景：
-
-```text
-公告编辑
-文章发布
-邮件模板
-商品详情
-CMS 内容管理
-```
-
----
-
-## 60. React Quill
-
-```bash
-npm install react-quill quill
-```
-
-```tsx
-import { useState } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
-
-function Editor() {
-  const [value, setValue] = useState('');
-
-  return <ReactQuill theme="snow" value={value} onChange={setValue} />;
-}
-```
-
----
-
-## 61. TipTap
-
-TipTap 是更现代、可扩展的富文本编辑器，React / Vue 都能用。
-
-适合：
-
-```text
-复杂编辑器
-自定义节点
-协同编辑
-高扩展需求
-```
-
----
-
-## 62. React react-dropzone
-
-```bash
-npm install react-dropzone
-```
-
-```tsx
-import { useDropzone } from 'react-dropzone';
-
-function UploadBox() {
-  const { getRootProps, getInputProps, acceptedFiles } = useDropzone({
-    accept: {
-      'image/*': [],
-    },
-  });
-
-  return (
-    <div {...getRootProps()} style={{ border: '1px dashed #aaa', padding: 20 }}>
-      <input {...getInputProps()} />
-      <p>文件拖到这里，或点击选择文件</p>
-      <ul>
-        {acceptedFiles.map((file) => (
-          <li key={file.name}>{file.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-上传到后端：
-
-```ts
-async function uploadFile(file: File) {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  await apiClient.post('/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-}
-```
-
----
-
-## 63. Vue Element Plus Upload
-
-```vue
-<template>
-  <el-upload
-    action="/api/upload"
-    :headers="headers"
-    :on-success="handleSuccess"
-  >
-    <el-button type="primary">上传文件</el-button>
-  </el-upload>
-</template>
-
-<script setup lang="ts">
-const headers = {
-  Authorization: `Bearer ${localStorage.getItem('token')}`,
-};
-
-function handleSuccess(response: unknown) {
-  console.log('上传成功', response);
-}
-</script>
-```
-
----
-
-## 64. xlsx
-
-xlsx 用于读写 Excel。
-
-```bash
-npm install xlsx
-```
-
-导出 Excel：
-
-```ts
-import * as XLSX from 'xlsx';
-
-const users = [
-  { id: 1, name: 'Taro', email: 'taro@example.com' },
-  { id: 2, name: 'Hanako', email: 'hanako@example.com' },
-];
-
-const worksheet = XLSX.utils.json_to_sheet(users);
-const workbook = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
-XLSX.writeFile(workbook, 'users.xlsx');
-```
-
----
-
-## 65. papaparse
-
-papaparse 用于处理 CSV。
-
-```bash
-npm install papaparse
-```
-
-读取 CSV：
-
-```ts
-import Papa from 'papaparse';
-
-function parseCsv(file: File) {
-  Papa.parse(file, {
-    header: true,
-    complete: (result) => {
-      console.log(result.data);
-    },
-  });
-}
-```
-
----
-
-## 66. react-pdf / vue-pdf
-
-用于 PDF 预览。
-
-React：
-
-```tsx
-import { Document, Page } from 'react-pdf';
-
-function PdfViewer() {
-  return (
-    <Document file="/sample.pdf">
-      <Page pageNumber={1} />
-    </Document>
-  );
-}
-```
-
----
-
-## 67. pdf-lib
-
-用于生成或修改 PDF。
-
-```bash
-npm install pdf-lib
-```
-
-```ts
-import { PDFDocument, StandardFonts } from 'pdf-lib';
-
-async function createPdf() {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([600, 400]);
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-  page.drawText('Hello PDF', {
-    x: 50,
-    y: 350,
-    size: 24,
-    font,
-  });
-
-  const pdfBytes = await pdfDoc.save();
-  return pdfBytes;
-}
+vue-i18n 用于 Vue 项目的国际化。
+通过 createI18n 配置语言资源，在组件中使用 useI18n 取得 t 函数，然后通过 t('key') 显示多语言文本。
 ```
 
 ---
@@ -2619,7 +4197,7 @@ async function createPdf() {
 ## 68. 前端测试分类
 
 | 测试类型 | 说明 | 工具 |
-| --- | --- | --- |
+| ------ | -------- | -------------------------------- |
 | 单体测试 | 测函数、工具类 | Vitest / Jest |
 | 组件测试 | 测组件显示和点击 | Testing Library / Vue Test Utils |
 | E2E 测试 | 测真实浏览器流程 | Playwright / Cypress |
@@ -2628,13 +4206,22 @@ async function createPdf() {
 
 ## 69. Vitest
 
-Vitest 适合 Vite 项目。
+### 69.1 这个库是什么？
+
+Vitest 是适合 Vite 项目的测试框架。
+可以测试函数、工具类、组件逻辑。
+
+---
+
+### 69.2 安装
 
 ```bash
-npm install -D vitest jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event
+npm install -D vitest
 ```
 
-测试函数：
+---
+
+### 69.3 示例
 
 ```ts
 // calc.ts
@@ -2657,15 +4244,46 @@ describe('add', () => {
 
 ---
 
+### 69.4 示例中 API 的作用说明
+
+| API | 作用 |
+| ------------ | ---------- |
+| `describe()` | 测试分组 |
+| `test()` | 一个测试用例 |
+| `expect()` | 断言 |
+| `toBe()` | 判断结果是否严格相等 |
+
+---
+
+### 69.5 面试记忆点
+
+```text
+Vitest 适合 Vite 项目，常用于单体测试和组件测试。
+它的 API 和 Jest 很像，例如 describe、test、expect。
+```
+
+---
+
 ## 70. React Testing Library
 
+### 70.1 这个库是什么？
+
+React Testing Library 用于测试 React 组件。
+它更关注用户行为，而不是组件内部实现。
+
+---
+
+### 70.2 示例
+
 ```tsx
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 
 function Counter() {
   const [count, setCount] = React.useState(0);
+
   return (
     <div>
       <p>count: {count}</p>
@@ -2676,6 +4294,7 @@ function Counter() {
 
 test('点击按钮后 count 增加', async () => {
   const user = userEvent.setup();
+
   render(<Counter />);
 
   await user.click(screen.getByRole('button', { name: '加一' }));
@@ -2684,22 +4303,40 @@ test('点击按钮后 count 增加', async () => {
 });
 ```
 
-记忆点：
+---
+
+### 70.3 示例中 API 的作用说明
+
+| API | 作用 |
+| --------------------- | ----------------- |
+| `render()` | 把 React 组件渲染到测试环境 |
+| `screen` | 从页面上查找元素 |
+| `getByRole()` | 按用户可感知的角色查找元素 |
+| `userEvent.setup()` | 创建模拟用户操作对象 |
+| `user.click()` | 模拟用户点击 |
+| `expect()` | 断言测试结果 |
+| `toBeInTheDocument()` | 判断元素是否存在于页面中 |
+
+---
+
+### 70.4 面试记忆点
 
 ```text
-render：渲染组件
-screen：查找页面元素
-userEvent：模拟用户操作
-expect：断言结果
+React Testing Library 更关注用户行为。
+测试时不是直接检查组件内部状态，而是通过 render 渲染组件，通过 screen 查找画面元素，通过 userEvent 模拟用户操作，最后断言页面结果是否正确。
 ```
 
 ---
 
 ## 71. Vue Test Utils
 
-```bash
-npm install -D vitest @vue/test-utils jsdom
-```
+### 71.1 这个库是什么？
+
+Vue Test Utils 是 Vue 官方常用组件测试工具。
+
+---
+
+### 71.2 示例
 
 ```vue
 <!-- Counter.vue -->
@@ -2710,6 +4347,7 @@ npm install -D vitest @vue/test-utils jsdom
 
 <script setup lang="ts">
 import { ref } from 'vue';
+
 const count = ref(0);
 </script>
 ```
@@ -2730,39 +4368,49 @@ test('点击按钮后 count 增加', async () => {
 
 ---
 
-## 72. Jest
+### 71.3 示例中 API 的作用说明
 
-Jest 是老牌测试框架，很多既存项目还在用。
+| API | 作用 |
+| ---------------------- | ------------- |
+| `mount()` | 挂载 Vue 组件 |
+| `wrapper` | 测试中的组件包装对象 |
+| `wrapper.get()` | 查找组件中的元素 |
+| `trigger('click')` | 触发点击事件 |
+| `wrapper.text()` | 获取组件渲染后的文本 |
+| `expect().toContain()` | 判断文本中是否包含指定内容 |
 
-```bash
-npm install -D jest
+---
+
+### 71.4 面试记忆点
+
+```text
+Vue Test Utils 是 Vue 官方常用组件测试工具。
+通过 mount 挂载组件，通过 wrapper 查找元素和触发事件，最后断言页面显示结果是否符合预期。
 ```
-
-```ts
-test('加法测试', () => {
-  expect(1 + 2).toBe(3);
-});
-```
-
-Vitest 和 Jest API 很像：
-
-| 功能 | Vitest | Jest |
-| --- | --- | --- |
-| mock 函数 | `vi.fn()` | `jest.fn()` |
-| mock 模块 | `vi.mock()` | `jest.mock()` |
-| 清理 mock | `vi.clearAllMocks()` | `jest.clearAllMocks()` |
 
 ---
 
 ## 73. Playwright
 
-Playwright 用于 E2E 测试，真实打开浏览器测试页面流程。
+### 73.1 这个库是什么？
 
-```bash
-npm init playwright@latest
+Playwright 用于 E2E 测试。
+它会真实打开浏览器，测试用户操作流程。
+
+适合：
+
+```text
+登录流程
+检索流程
+登録流程
+编辑流程
+删除流程
+完整业务流程测试
 ```
 
-示例：
+---
+
+### 73.2 示例
 
 ```ts
 import { test, expect } from '@playwright/test';
@@ -2780,30 +4428,56 @@ test('登录成功后跳转到首页', async ({ page }) => {
 
 ---
 
-## 74. Mock 是什么？
+### 73.3 示例中 API 的作用说明
 
-Mock 就是假数据 / 假接口。
+| API | 作用 |
+| --------------------------- | -------------- |
+| `test()` | 定义一个 E2E 测试用例 |
+| `page` | 浏览器页面对象 |
+| `page.goto()` | 打开指定 URL |
+| `getByLabel()` | 根据 label 查找输入框 |
+| `fill()` | 输入文本 |
+| `getByRole()` | 根据角色查找按钮 |
+| `click()` | 点击按钮 |
+| `expect(...).toBeVisible()` | 判断元素是否可见 |
 
-什么时候用：
+---
+
+### 73.4 面试记忆点
 
 ```text
-后端 API 还没做好
-测试时不想真的调用后端
-想模拟接口成功 / 失败 / 超时
-前端独立开发
+Playwright 用于 E2E 测试，可以真实打开浏览器测试用户操作流程。
+例如登录、检索、登録、编辑、删除等完整业务流程，都可以用 Playwright 自动化测试。
 ```
 
 ---
 
 ## 75. MSW
 
-MSW 是 Mock Service Worker，可以拦截浏览器或 Node.js 环境中的请求。
+### 75.1 这个库是什么？
+
+MSW 是 Mock Service Worker，可以在网络请求层拦截 API。
+
+适合：
+
+```text
+后端 API 还没做好
+前端独立开发
+测试时不想调用真实后端
+模拟成功、失败、超时等接口情况
+```
+
+---
+
+### 75.2 安装
 
 ```bash
 npm install -D msw
 ```
 
-### 75.1 定义 handlers
+---
+
+### 75.3 示例
 
 ```ts
 // src/mocks/handlers.ts
@@ -2818,8 +4492,6 @@ export const handlers = [
   }),
 ];
 ```
-
-### 75.2 浏览器环境启动
 
 ```ts
 // src/mocks/browser.ts
@@ -2837,27 +4509,33 @@ if (import.meta.env.DEV) {
 }
 ```
 
-这样前端请求 `/api/users` 时，即使没有后端，也能拿到 mock 数据。
+---
+
+### 75.4 示例中 API 的作用说明
+
+| API | 作用 |
+| --------------------- | -------------------- |
+| `http.get()` | 拦截 GET 请求 |
+| `'/api/users'` | 要拦截的接口地址 |
+| `HttpResponse.json()` | 返回 JSON 假数据 |
+| `handlers` | 所有 mock 接口定义 |
+| `setupWorker()` | 创建浏览器环境的 mock worker |
+| `worker.start()` | 启动 mock 拦截 |
 
 ---
 
-## 76. vite-plugin-mock
-
-vite-plugin-mock 是 Vite 项目里常见 mock 插件，可以用文件方式模拟 API。
-
-适合：
+### 75.5 面试记忆点
 
 ```text
-本地开发 mock
-快速模拟后端接口
-简单项目
+MSW 可以在前端开发和测试时模拟后端 API。
+它不是简单地 mock 函数，而是在网络请求层拦截 API，所以更接近真实接口调用方式。
 ```
-
-大型项目或测试场景更推荐 MSW。
 
 ---
 
 ## 77. ESLint
+
+### 77.1 这个库是什么？
 
 ESLint 用于检查 JavaScript / TypeScript 代码问题。
 
@@ -2868,13 +4546,13 @@ ESLint 用于检查 JavaScript / TypeScript 代码问题。
 错误 Hook 用法
 可能的 bug
 不符合团队规则的写法
+import 顺序
+any 滥用
 ```
 
-```bash
-npm install -D eslint
-```
+---
 
-常见命令：
+### 77.2 示例命令
 
 ```bash
 npx eslint src
@@ -2883,15 +4561,43 @@ npx eslint src --fix
 
 ---
 
+### 77.3 命令说明
+
+| 命令 | 作用 |
+| ---------------- | -------------- |
+| `npx eslint src` | 检查 src 目录下代码问题 |
+| `--fix` | 自动修复可以修复的问题 |
+
+---
+
+### 77.4 面试记忆点
+
+```text
+ESLint 主要用于检查代码质量和团队编码规则，例如未使用变量、Hook 规则错误、潜在 bug 等。
+```
+
+---
+
 ## 78. Prettier
+
+### 78.1 这个库是什么？
 
 Prettier 用于自动格式化代码。
 
-```bash
-npm install -D prettier
+它主要处理：
+
+```text
+缩进
+换行
+单引号 / 双引号
+分号
+尾逗号
+代码宽度
 ```
 
-`.prettierrc`：
+---
+
+### 78.2 配置示例
 
 ```json
 {
@@ -2902,31 +4608,65 @@ npm install -D prettier
 }
 ```
 
-命令：
+---
+
+### 78.3 命令示例
 
 ```bash
 npx prettier "src/**/*.{ts,tsx,vue,css,scss,json,md}" --write
 ```
 
-区别：
+---
+
+### 78.4 配置说明
+
+| 配置 | 作用 |
+| -------------------- | ----------------- |
+| `singleQuote: true` | 使用单引号 |
+| `semi: true` | 语句末尾加分号 |
+| `printWidth: 100` | 每行最大长度建议为 100 |
+| `trailingComma: es5` | 在 ES5 支持的位置添加尾随逗号 |
+| `--write` | 直接格式化并写回文件 |
+
+---
+
+### 78.5 面试记忆点
 
 ```text
-ESLint：检查代码质量和规则
-Prettier：格式化代码风格
+Prettier 主要负责代码格式化，例如缩进、换行、单双引号、分号等。
+ESLint 偏代码质量检查，Prettier 偏代码风格统一。
 ```
 
 ---
 
 ## 79. Husky + lint-staged
 
-Husky 可以在 Git commit 前执行检查。
+### 79.1 这两个库是什么？
 
+Husky 可以在 Git commit 前执行检查。
 lint-staged 只检查本次修改的文件。
+
+适合：
+
+```text
+提交前自动检查
+提交前自动格式化
+避免不规范代码进入仓库
+减少代码 review 中的格式问题
+```
+
+---
+
+### 79.2 安装
 
 ```bash
 npm install -D husky lint-staged
 npx husky init
 ```
+
+---
+
+### 79.3 配置示例
 
 `package.json`：
 
@@ -2950,7 +4690,37 @@ npx husky init
 npx lint-staged
 ```
 
-这样提交代码前会自动检查和格式化。
+---
+
+### 79.4 示例中工具的作用说明
+
+| 工具 | 作用 |
+| ------------------ | ------------------------- |
+| `Husky` | 在 Git commit、push 等时机执行脚本 |
+| `lint-staged` | 只处理本次修改过的文件 |
+| `pre-commit` | commit 前自动执行 |
+| `eslint --fix` | 自动修复代码规则问题 |
+| `prettier --write` | 自动格式化代码 |
+
+执行流程：
+
+```text
+执行 git commit
+触发 Husky 的 pre-commit
+执行 npx lint-staged
+lint-staged 找出本次修改的文件
+对这些文件执行 ESLint 和 Prettier
+检查通过后才允许提交
+```
+
+---
+
+### 79.5 面试记忆点
+
+```text
+项目中可以使用 Husky + lint-staged 在提交前自动执行 ESLint 和 Prettier。
+这样可以避免不规范代码进入仓库，也能减少代码 review 时关于格式问题的讨论。
+```
 
 ---
 
