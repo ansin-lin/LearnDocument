@@ -1,4 +1,4 @@
-# 第4章 SQLAlchemy 常用 CRUD 与事务方法
+# SQLAlchemy 常用 CRUD 与事务方法
 
 > 本章目标：继续只讲 `SQLAlchemy` 本身，不进入员工项目文件。重点掌握 ORM 模型的查询、新增、更新、删除，以及 `flush()`、`commit()`、`rollback()` 等事务方法。
 

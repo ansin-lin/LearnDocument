@@ -15,8 +15,8 @@
 
 ### 前两周考察期
 
-- [SQL 基础](sql/00_Database_Introduction.md)
-- [Java 基础](java/index.md)
+- [SQL 基础](database/sql/00_Database_Introduction.md)
+- [Java 基础](backend/java/index.md)
 
 ### 前端主线
 
@@ -33,15 +33,16 @@
 
 ### 后端主线
 
-- [MyBatis 教程](mybatis/01_mybatis_overview.md)
-- [Spring Boot 教程](springboot/01_intridution.md)
+- [MyBatis 教程](backend/mybatis/01_mybatis_overview.md)
+- [Spring Boot 教程](backend/springboot/01_intridution.md)
 - Spring 体系其他依赖
 
 ### 工具主线
 
-- [Linux 教程](linux_shell/01_linux_intro.md)
-- [Git 教程](git/index.md)
-- [PL/SQL 教程](PLSQL/01_environment.md)
+- [Linux 教程](tools/linux/01_linux_intro.md)
+- [Shell 教程](tools/shell/05_shell_basic.md)
+- [Git 教程](tools/git/index.md)
+- [PL/SQL 教程](database/plsql/01_environment.md)
 
 ### Python 主线
 
@@ -59,10 +60,10 @@
 
 ### 前端库与测试
 
-- [前端常用库与生态](frontend_library/react-vue-common-libraries-full-tutorial.md)
-- [Vite / Next / Nuxt](frontend_library/vite-next-nuxt-frontend-framework-tutorial.md)
-- [Vitest 教程](frontend_library/vitest_tutorial.md)
-- [Jest 教程](frontend_library/jest_tutorial.md)
+- [前端常用库与生态](frontend/libraries/react-vue-common-libraries-full-tutorial.md)
+- [Vite / Next / Nuxt](frontend/libraries/vite-next-nuxt-frontend-framework-tutorial.md)
+- [Vitest 教程](frontend/libraries/vitest_tutorial.md)
+- [Jest 教程](frontend/libraries/jest_tutorial.md)
 
 ### 综合课程
 

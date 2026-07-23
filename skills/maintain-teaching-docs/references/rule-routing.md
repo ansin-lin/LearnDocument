@@ -26,12 +26,12 @@
 | FastAPI 课程 | `python.md`、`web-basics.md`、`fastapi.md` |
 | Flask 课程 | `python.md`、`web-basics.md`、`flask.md` |
 | SQLAlchemy、Alembic 或 Python 数据库项目 | `python.md`、`sql.md`、`sqlalchemy.md` |
-| `docs/java/` | `java.md` |
-| `docs/java/jdbc/` 或 JDBC 内容 | `java.md`、`sql.md`、`jdbc.md` |
-| `docs/springboot/` | `java.md`、`web-basics.md`、`spring-boot.md` |
-| `docs/mybatis/` | `java.md`、`mybatis.md`、`sql.md` |
-| `docs/sql/` | `sql.md` |
-| `docs/PLSQL/` | `sql.md`、`plsql.md` |
+| `docs/backend/java/` | `java.md` |
+| `docs/backend/java/jdbc/` 或 JDBC 内容 | `java.md`、`sql.md`、`jdbc.md` |
+| `docs/backend/springboot/` | `java.md`、`web-basics.md`、`spring-boot.md` |
+| `docs/backend/mybatis/` | `java.md`、`mybatis.md`、`sql.md` |
+| `docs/database/sql/` | `sql.md` |
+| `docs/database/plsql/` | `sql.md`、`plsql.md` |
 | HTML 内容 | `html.md` |
 | CSS 内容 | `css.md` |
 | JavaScript 内容 | `javascript.md` |
@@ -39,17 +39,18 @@
 | Vue 内容 | `html.md`、`css.md`、`javascript.md`、`vue.md` |
 | React 内容 | `html.md`、`css.md`、`javascript.md`、`react.md` |
 | 前端测试内容 | `javascript.md`、`frontend-testing.md`，并加载所测框架规则 |
-| `docs/ui/` 或通用 UI 内容 | `html.md`、`css.md`、`ui.md` |
-| `docs/ui/bootstrap/` | `html.md`、`css.md`、`javascript.md`、`ui.md`、`bootstrap.md` |
-| `docs/ui/vuetify/` | `html.md`、`css.md`、`javascript.md`、`vue.md`、`ui.md`、`vuetify.md` |
-| `docs/git/` | `git.md` |
-| Linux 内容 | `linux.md` |
-| Shell 脚本内容 | `shell.md`，并按运行系统加载 `linux.md` 或其他相关规则 |
+| `docs/frontend/ui/` 或通用 UI 内容 | `html.md`、`css.md`、`ui.md` |
+| `docs/frontend/ui/bootstrap/` | `html.md`、`css.md`、`javascript.md`、`ui.md`、`bootstrap.md` |
+| `docs/frontend/ui/vuetify/` | `html.md`、`css.md`、`javascript.md`、`vue.md`、`ui.md`、`vuetify.md` |
+| `docs/frontend/libraries/` | 根据正文内容加载，不依赖目录名判断 |
+| `docs/tools/git/` | `git.md` |
+| `docs/tools/linux/` 或 Linux 内容 | `linux.md` |
+| `docs/tools/shell/` 或 Shell 脚本内容 | `shell.md`，并按运行系统加载 `linux.md` 或其他相关规则 |
 | `docs/aws/` | `aws.md`，并按任务加载 `linux.md`、`docker.md` 或 `deployment.md` |
 | Docker 内容 | `docker.md` |
 | 部署、发布、运行维护内容 | `deployment.md`，并加载应用、操作系统、云或容器规则 |
 | `docs/training_project/` | 根据项目实际技术组合加载，不按目录预设单一技术 |
-| `docs/all/`、`docs/frontend_library/` | 根据正文内容加载，不依赖目录名判断 |
+| `docs/all/` | 根据正文内容加载，不依赖目录名判断 |
 
 ## 内容关键词补充分发
 

@@ -13,7 +13,7 @@
 
 ## 二、本章开始状态
 
-开始前应已经完成[Python Web 开发环境准备](../../overview/02_web_development_environment.md)，并能够：
+开始前应已经完成 [Python 入门与环境](../../../common/00_intro.md)，并能够：
 
 - 打开 PowerShell 或 Bash
 - 创建和激活 `.venv`

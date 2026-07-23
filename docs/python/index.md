@@ -2,9 +2,12 @@
 
 ## 学习入口
 
-- [Python 通用基础](common/00_intro.md)
+- [Python 基础知识](common/00_intro.md)
 - [Web 开发公共基础](../web_development_basics/00_web_development_basics.md)
-- [Python Web 路线](web/overview/01_web_overview.md)
+- [Python Web 与框架概览](web/overview/01_web_overview.md)
+- [Django 框架主线](web/django_main/server_rendered/index.md)
+- [FastAPI 框架路线](web/fastapi_topics/01_fastapi_intro.md)
+- [Flask 框架路线](web/flask_topics/01_flask_intro.md)
 - [数据分析路线](data_analysis/index.md)
 - [自动化路线](automation/index.md)
 

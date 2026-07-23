@@ -1,4 +1,4 @@
-# 第8章 Repository 与 Service 分层
+# Repository 与 Service 分层
 
 > 本章目标：把上一章已经写通的员工项目 CRUD 代码，整理成更符合真实 Web 项目的分层结构，让数据库访问、业务判断和后续接口代码各司其职。
 

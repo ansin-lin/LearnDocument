@@ -1,4 +1,4 @@
-# 第24章 Flask Blueprint 与项目分层
+# 第3章 Flask Blueprint 与项目分层
 
 > 项目增量：使用 Blueprint 拆分员工和部门模块，并建立 Service、Repository 调用方向。
 

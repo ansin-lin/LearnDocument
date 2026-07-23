@@ -51,12 +51,13 @@
 
 ## 三、Python Web 路线
 
-## 1. Web 入口章节
+## 1. Web 公共概览
 
 | 章节 | 文件 | 核心内容 |
 | ---: | --- | --- |
-| 1 | `web/01_web_overview.md` | Python Web 开发概览 |
-| 2 | `web/02_web_development_environment.md` | 环境准备、依赖、项目启动基础 |
+| 1 | `web/overview/01_web_overview.md` | Python Web 职责、框架定位与路线选择 |
+
+框架相关环境和项目结构放入对应框架路线，不在公共概览中提前固定实现方式。
 
 ## 2. Django 主线
 
@@ -125,32 +126,21 @@ Django 是 Python Web 的零基础主线，分为两个连续阶段：
 
 ## 3. FastAPI 扩展专题
 
-当前 FastAPI 扩展目录：
+FastAPI 路线由三组连续内容组成：
 
-```text
-docs/python/web/fastapi_topics/
-```
+1. `web/overview/02_web_development_environment.md` 与 `web/fastapi_topics/01`–`03`：环境、请求响应和数据校验。
+2. `web/database_tools/`、`web/database_project/` 与 `web/fastapi_topics/04`–`05`：SQLAlchemy、Alembic、数据库项目和 FastAPI 集成。
+3. `web/fastapi_topics/06`–`16`：依赖注入、项目结构、认证、测试、部署和验收。
 
-当前主线顺序：
+数据库工具不再作为与框架并列的独立路线。当前项目用它为 FastAPI 的数据库会话、Repository、Service 和事务边界建立前置知识；Flask 在自己的路线中使用 Flask-SQLAlchemy 和 Flask-Migrate。
 
-| 章节 | 文件 | 核心内容 |
-| ---: | --- | --- |
-| 1 | `01_fastapi_intro.md` | FastAPI 定位、启动项目、第一个接口、自动文档 |
-| 2 | `02_request_response.md` | 路径参数、查询参数、请求体、响应、状态码 |
-| 3 | `03_pydantic_validation.md` | Pydantic 模型、字段校验、响应模型、校验错误 |
-| 4 | `04_database_sqlalchemy.md` | SQLAlchemy、MySQL 连接、Engine、Session、ORM Model |
-| 5 | `05_crud_transaction.md` | CRUD、事务、commit、rollback、refresh、逻辑删除 |
-| 6 | `06_router_dependency.md` | APIRouter、Depends、数据库 Session 依赖 |
-| 7 | `07_project_structure.md` | schemas、models、repositories、services、routers 分层 |
-| 8 | `08_exception_logging_config.md` | 配置、环境变量、日志、HTTPException、统一异常处理 |
-| 9 | `09_authentication_authorization_jwt.md` | 登录认证、密码哈希、JWT、当前用户、权限依赖 |
-| 10 | `10_frontend_integration_cors.md` | 前后端联调、CORS、Fetch、Axios、Token Header |
-| 11 | `11_file_csv_excel.md` | 文件上传、下载、CSV 导出、Excel 基础 |
-| 12 | `12_external_api_email_batch.md` | 外部 API、超时、邮件、BackgroundTasks、批处理 |
-| 13 | `13_web_testing_pytest.md` | pytest、TestClient、接口测试、认证测试 |
-| 14 | `14_security_performance.md` | 参数校验、SQL 安全、分页、超时、日志安全 |
-| 15 | `15_linux_docker_deployment.md` | Linux 启动、环境变量、Docker、健康检查、部署基础 |
-| 16 | `16_fastapi_project_completion.md` | 员工管理 API 项目验收、测试、交付材料 |
+| 阶段 | 主要文件 | 核心内容 |
+| --- | --- | --- |
+| FastAPI 基础 | `overview/02_web_development_environment.md`、`fastapi_topics/01`–`03` | 环境、第一个接口、请求响应、Pydantic 校验 |
+| 数据库基础 | `database_tools/01`–`03` | SQLAlchemy 2.x、CRUD、事务、Alembic |
+| 数据库项目 | `database_project/01`–`03` | 模型、项目 CRUD、Repository、Service |
+| 框架集成 | `fastapi_topics/04`–`05` | FastAPI 数据库会话、CRUD 与事务集成 |
+| 工程化与交付 | `fastapi_topics/06`–`16` | 依赖注入、分层、认证、测试、安全、部署和验收 |
 
 ## 4. Flask 扩展专题
 
@@ -169,13 +159,13 @@ docs/python/web/flask_topics/
 | 3 | `03_blueprint_layering.md` | Blueprint、基础分层 |
 | 4 | `04_database_migration.md` | 数据库访问与迁移 |
 | 5 | `05_validation_auth_testing.md` | 校验、认证、测试概览 |
-| 6 | `06_flask_vs_django.md` | Flask 与 Django 的对比总结 |
+| 6 | `07_flask_project_completion.md` | Flask 项目验收与交付 |
 
 ## 5. 框架综合对比
 
 | 文件 | 作用 |
 | --- | --- |
-| `web/99_framework_comparison.md` | 综合比较 Django、FastAPI 与 Flask |
+| `web/appendices/appendix_a_framework_comparison.md` | 综合比较 Django、FastAPI 与 Flask |
 
 ---
 
@@ -200,7 +190,7 @@ docs/python/web/flask_topics/
 ### 不放回 `common`
 
 - HTTP 基础：放在 `docs/web_development_basics/`
-- Git：放在 `docs/git/`
+- Git：放在 `docs/tools/git/`
 - 框架认证授权与部署：放在 `web`
 
 ---

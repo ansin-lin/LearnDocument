@@ -1,4 +1,4 @@
-# 第25章 Flask 数据库与迁移
+# 第4章 Flask 数据库与迁移
 
 > 项目增量：使用 Flask-SQLAlchemy 保存员工和部门数据，并使用 Flask-Migrate 管理数据库结构。
 
