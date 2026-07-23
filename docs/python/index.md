@@ -1,3 +1,29 @@
-# Python 基础教程
+# Python 课程首页
 
-欢迎学习 Python 基础教程，本教程将带你从零开始学习 Python 编程。
+## 学习入口
+
+- [Python 通用基础](common/00_intro.md)
+- [Web 开发公共基础](../web_development_basics/00_web_development_basics.md)
+- [Python Web 路线](web/overview/01_web_overview.md)
+- [数据分析路线](data_analysis/index.md)
+- [自动化路线](automation/index.md)
+
+## 当前结构
+
+```text
+docs/python/
+├── common/
+├── web/
+├── data_analysis/
+├── automation/
+├── index.md
+└── python-course-roadmap.md
+```
+
+## 说明
+
+- `common`：Python 通用基础
+- `web`：Python Web 路线
+- `data_analysis`：数据分析路线
+- `automation`：自动化路线
+- `python-course-roadmap.md`：课程整理用指导文件，不作为学员讲义章节

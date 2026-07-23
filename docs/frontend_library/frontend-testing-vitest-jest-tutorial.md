@@ -7,29 +7,29 @@
 
 ## 目录
 
-1. [为什么前端也需要写测试](#1-为什么前端也需要写测试)
-2. [前端测试分为哪几类](#2-前端测试分为哪几类)
-3. [Vitest 和 Jest 是什么](#3-vitest-和-jest-是什么)
-4. [Vitest 与 Jest 的区别](#4-vitest-与-jest-的区别)
-5. [测试代码的基本结构](#5-测试代码的基本结构)
-6. [Vitest 入门教程](#6-vitest-入门教程)
-7. [Jest 入门教程](#7-jest-入门教程)
-8. [React 组件测试入门](#8-react-组件测试入门)
-9. [React Testing Library 是什么](#9-react-testing-library-是什么)
-10. [Mock 的概念和用法](#10-mock-的概念和用法)
-11. [API 请求测试](#11-api-请求测试)
-12. [异步测试](#12-异步测试)
-13. [覆盖率 Coverage](#13-覆盖率-coverage)
-14. [Snapshot 快照测试](#14-snapshot-快照测试)
-15. [真实项目中应该测什么](#15-真实项目中应该测什么)
-16. [常见错误与注意点](#16-常见错误与注意点)
-17. [学习路线](#17-学习路线)
-18. [面试回答模板](#18-面试回答模板)
-19. [练习题](#19-练习题)
+1. [为什么前端也需要写测试](#why-frontend-testing)
+2. [前端测试分为哪几类](#testing-types)
+3. [Vitest 和 Jest 是什么](#vitest-and-jest)
+4. [Vitest 与 Jest 的区别](#vitest-jest-comparison)
+5. [测试代码的基本结构](#test-structure)
+6. [Vitest 入门教程](#vitest-tutorial)
+7. [Jest 入门教程](#jest-tutorial)
+8. [React 组件测试入门](#react-component-testing)
+9. [React Testing Library 是什么](#react-testing-library)
+10. [Mock 的概念和用法](#mock-basics)
+11. [API 请求测试](#api-testing)
+12. [异步测试](#async-testing)
+13. [覆盖率 Coverage](#coverage)
+14. [Snapshot 快照测试](#snapshot-testing)
+15. [真实项目中应该测什么](#project-testing)
+16. [常见错误与注意点](#common-errors)
+17. [学习路线](#learning-path)
+18. [面试回答模板](#interview-answers)
+19. [练习题](#exercises)
 
 ---
 
-## 1. 为什么前端也需要写测试
+## 1. 为什么前端也需要写测试 { #why-frontend-testing }
 
 很多刚学习前端的人会觉得：
 
@@ -65,7 +65,7 @@
 
 ---
 
-## 2. 前端测试分为哪几类
+## 2. 前端测试分为哪几类 { #testing-types }
 
 前端测试常见分为以下几类。
 
@@ -90,7 +90,7 @@ Vitest / Jest + React Testing Library
 
 ---
 
-## 3. Vitest 和 Jest 是什么
+## 3. Vitest 和 Jest 是什么 { #vitest-and-jest }
 
 ### 3.1 Jest 是什么
 
@@ -146,7 +146,7 @@ Vitest = 适合 Vite 项目的 Jest 风格测试框架
 
 ---
 
-## 4. Vitest 与 Jest 的区别
+## 4. Vitest 与 Jest 的区别 { #vitest-jest-comparison }
 
 | 对比项 | Vitest | Jest |
 | --- | --- | --- |
@@ -174,7 +174,7 @@ Vitest 和 Jest 的测试写法非常像。
 
 ---
 
-## 5. 测试代码的基本结构
+## 5. 测试代码的基本结构 { #test-structure }
 
 无论 Vitest 还是 Jest，最常见的测试结构都是：
 
@@ -256,7 +256,7 @@ expect(1 + 2).toBe(3);
 
 ---
 
-## 6. Vitest 入门教程
+## 6. Vitest 入门教程 { #vitest-tutorial }
 
 下面以 React + Vite + TypeScript 项目为例。
 
@@ -387,7 +387,7 @@ npm run test
 
 ---
 
-## 7. Jest 入门教程
+## 7. Jest 入门教程 { #jest-tutorial }
 
 如果你的项目不是 Vite，或者既存项目已经用了 Jest，就可以继续使用 Jest。
 
@@ -480,7 +480,7 @@ describe('multiply', () => {
 
 ---
 
-## 8. React 组件测试入门
+## 8. React 组件测试入门 { #react-component-testing }
 
 测试 React 组件时，我们通常不是直接测试内部变量，而是测试用户能看到什么、能做什么。
 
@@ -536,7 +536,7 @@ describe('Counter', () => {
 
 ---
 
-## 9. React Testing Library 是什么
+## 9. React Testing Library 是什么 { #react-testing-library }
 
 React Testing Library 不是 Vitest，也不是 Jest。
 
@@ -619,7 +619,7 @@ expect(await screen.findByText('加载完成')).toBeInTheDocument();
 
 ---
 
-## 10. Mock 的概念和用法
+## 10. Mock 的概念和用法 { #mock-basics }
 
 Mock 可以理解为“假的替身”。
 
@@ -707,7 +707,7 @@ Jest 基本是 jest。
 
 ---
 
-## 11. API 请求测试
+## 11. API 请求测试 { #api-testing }
 
 假设有一个 API 方法：
 
@@ -756,7 +756,7 @@ describe('fetchUserName', () => {
 
 ---
 
-## 12. 异步测试
+## 12. 异步测试 { #async-testing }
 
 前端项目里很多逻辑都是异步的，例如：
 
@@ -831,7 +831,7 @@ await screen.findByText('Taro')
 
 ---
 
-## 13. 覆盖率 Coverage
+## 13. 覆盖率 Coverage { #coverage }
 
 覆盖率表示测试代码覆盖了多少业务代码。
 
@@ -871,7 +871,7 @@ Lines        : 86%
 
 ---
 
-## 14. Snapshot 快照测试
+## 14. Snapshot 快照测试 { #snapshot-testing }
 
 Snapshot 快照测试会把组件渲染结果保存下来，下次测试时进行对比。
 
@@ -905,7 +905,7 @@ test('Counter snapshot', () => {
 
 ---
 
-## 15. 真实项目中应该测什么
+## 15. 真实项目中应该测什么 { #project-testing }
 
 新人刚开始写测试时，容易不知道应该测哪里。
 
@@ -984,7 +984,7 @@ expect(screen.getByRole('button', { name: '保存' })).toBeInTheDocument();
 
 ---
 
-## 16. 常见错误与注意点
+## 16. 常见错误与注意点 { #common-errors }
 
 ### 16.1 没有配置 jsdom
 
@@ -1081,7 +1081,7 @@ screen.getByRole('button', { name: '提交' });
 
 ---
 
-## 17. 学习路线
+## 17. 学习路线 { #learning-path }
 
 建议新人按下面顺序学习：
 
@@ -1128,7 +1128,7 @@ screen.getByRole('button', { name: '提交' });
 
 ---
 
-## 18. 面试回答模板
+## 18. 面试回答模板 { #interview-answers }
 
 ### 18.1 中文回答
 
@@ -1163,7 +1163,7 @@ API 呼び出しがある場合は、mock を使ってレスポンスを再現�
 
 ---
 
-## 19. 练习题
+## 19. 练习题 { #exercises }
 
 ## 练习 1：测试普通函数
 
@@ -1289,4 +1289,3 @@ Vitest 和 Jest 都是前端测试中非常重要的工具。
 ```text
 前端测试应该尽量接近用户真实使用页面的方式。
 ```
-

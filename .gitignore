@@ -1,0 +1,64 @@
+# Historical and generated documentation
+/BK/
+/docs/python/_archive/
+/site/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.hypothesis/
+
+# Python environments and packaging
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test and coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+junit.xml
+
+# Local application state
+*.sqlite3
+*.sqlite3-*
+*.log
+media/
+staticfiles/
+
+# Local secrets; keep distributable examples
+.env
+.env.*
+!.env.example
+
+# Frontend dependencies and generated output
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.vite/
+.next/
+.nuxt/
+coverage/
+
+# Editor, operating-system, and temporary files
+.idea/
+*.swp
+*.swo
+*.tmp
+*.bak
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini

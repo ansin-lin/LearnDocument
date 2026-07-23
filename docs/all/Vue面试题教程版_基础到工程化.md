@@ -7,20 +7,20 @@
 
 ## 目录
 
-1. [Vue 基础](#一vue-基础)
-2. [响应式系统](#二响应式系统)
-3. [生命周期](#三生命周期)
-4. [组件通信](#四组件通信)
-5. [Vue Router](#五vue-router)
-6. [状态管理：Vuex / Pinia](#六状态管理vuex--pinia)
-7. [性能优化](#七性能优化)
-8. [Vue3 新特性](#八vue3-新特性重点)
-9. [真实项目与场景题](#九真实项目--场景题)
-10. [工程化与构建](#十工程化--构建)
+1. [Vue 基础](#vue-basics)
+2. [响应式系统](#reactivity)
+3. [生命周期](#lifecycle)
+4. [组件通信](#component-communication)
+5. [Vue Router](#vue-router)
+6. [状态管理：Vuex / Pinia](#state-management)
+7. [性能优化](#performance)
+8. [Vue3 新特性](#vue3-features)
+9. [真实项目与场景题](#project-scenarios)
+10. [工程化与构建](#engineering-build)
 
 ---
 
-## 一、Vue 基础
+## 一、Vue 基础 { #vue-basics }
 
 ### 1. Vue 是什么？核心思想是什么？
 
@@ -609,7 +609,7 @@ Vue3 中更推荐使用 `v-model:xxx`。
 
 ---
 
-## 二、响应式系统
+## 二、响应式系统 { #reactivity }
 
 ### 1. Vue2 响应式原理？
 
@@ -1009,7 +1009,7 @@ watchEffect(() => {
 
 ---
 
-## 三、生命周期
+## 三、生命周期 { #lifecycle }
 
 ### 1. Vue 生命周期有哪些？
 
@@ -1249,7 +1249,7 @@ onBeforeUnmount(() => {
 
 ---
 
-## 四、组件通信
+## 四、组件通信 { #component-communication }
 
 ### 1. 父 → 子通信方式？
 
@@ -1857,7 +1857,7 @@ slots.default?.()
 
 ---
 
-## 五、Vue Router
+## 五、Vue Router { #vue-router }
 
 ### 1. hash 模式和 history 模式区别？
 
@@ -2169,7 +2169,7 @@ router.beforeEach(async (to) => {
 
 ---
 
-## 六、状态管理（Vuex / Pinia）
+## 六、状态管理（Vuex / Pinia） { #state-management }
 
 ### 1. Vuex 核心概念有哪些？
 
@@ -2368,7 +2368,7 @@ export const useUserStore = defineStore('user', {
 
 ---
 
-## 七、性能优化
+## 七、性能优化 { #performance }
 
 ### 1. 如何减少组件重新渲染？
 
@@ -2606,7 +2606,7 @@ export default {
 
 ---
 
-## 八、Vue3 新特性（重点）
+## 八、Vue3 新特性（重点） { #vue3-features }
 
 ### 1. Composition API 优点？
 
@@ -2916,7 +2916,7 @@ Vue3 更快不是单一原因，而是响应式系统、编译器和运行时一
 
 ---
 
-## 九、真实项目 & 场景题
+## 九、真实项目 & 场景题 { #project-scenarios }
 
 ### 1. 表格编辑如何实现？
 
@@ -3282,7 +3282,7 @@ window.addEventListener('unhandledrejection', (event) => {
 
 ---
 
-## 十、工程化 & 构建
+## 十、工程化 & 构建 { #engineering-build }
 
 ### 1.Vite 是什么？
 
@@ -3729,4 +3729,3 @@ v-if 是条件渲染，条件为 false 时 DOM 不存在；v-show 是显示隐�
 - Vue `<script setup>` 官方文档：`defineProps` 和 `defineEmits` 是 `<script setup>` 中的编译器宏。
 - Pinia 官方文档：Pinia 的 state 通常定义为返回初始状态的函数，并支持插件扩展。
 - Vite 官方文档：Vite 包含基于原生 ESM 的开发服务器和生产构建能力，开发环境支持快速 HMR。
-

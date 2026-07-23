@@ -1,0 +1,4 @@
+interface:
+  display_name: "教学文档一致性维护"
+  short_description: "维护多技术课程的内容、示例与导航一致性"
+  default_prompt: "使用 $maintain-teaching-docs 新增、修改或审核教学文档，并验证受影响范围。"

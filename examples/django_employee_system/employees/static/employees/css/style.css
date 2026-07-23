@@ -1,0 +1,30 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #243043; background: #f3f5f8; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: #155eef; }
+button, .button { display: inline-block; border: 0; border-radius: 6px; padding: .65rem 1rem; color: white; background: #155eef; font: inherit; text-decoration: none; cursor: pointer; }
+input, select { width: 100%; min-height: 2.5rem; padding: .45rem; border: 1px solid #aab3c2; border-radius: 5px; }
+label { display: block; margin-bottom: .25rem; font-weight: 600; }
+.container { width: min(1080px, calc(100% - 2rem)); margin-inline: auto; }
+.site-header { margin-bottom: 2rem; border-bottom: 1px solid #d9dee8; background: white; }
+.nav, .account, .actions, .page-heading { display: flex; align-items: center; gap: 1rem; }
+.nav, .page-heading { justify-content: space-between; }
+.nav { min-height: 4rem; }
+.brand { color: #17213a; font-size: 1.1rem; font-weight: 700; text-decoration: none; }
+.account form { margin: 0; }
+.link-button { padding: 0; color: #155eef; background: transparent; }
+.panel, .search-panel, table { border: 1px solid #d9dee8; border-radius: 8px; background: white; }
+.panel { padding: 1.5rem; }
+.narrow { max-width: 36rem; margin-inline: auto; }
+.search-panel { display: grid; grid-template-columns: 2fr 1fr 1fr auto auto; gap: 1rem; align-items: end; margin-bottom: 1.25rem; padding: 1rem; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: .8rem; border-bottom: 1px solid #e5e8ef; text-align: left; }
+.messages { padding: .8rem 1rem; border: 1px solid #8bc7a2; border-radius: 6px; background: #eefbf2; list-style: none; }
+.error, .errorlist { color: #b42318; }
+.secondary { background: #4d5a70; }
+.danger { background: #b42318; }
+.detail-list { display: grid; grid-template-columns: 8rem 1fr; padding: 1rem; background: white; }
+.detail-list dt, .detail-list dd { margin: 0; padding: .5rem; }
+.pagination { display: flex; justify-content: center; gap: 1rem; margin: 1.5rem; }
+@media (max-width: 760px) { .search-panel { grid-template-columns: 1fr; } .page-heading { align-items: flex-start; flex-direction: column; } }

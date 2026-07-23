@@ -60,7 +60,7 @@ com.example.demo
  ├─ mapper
  ├─ util
  ├─ common
-``
+```
 
 问题：
 - util / common 无限膨胀

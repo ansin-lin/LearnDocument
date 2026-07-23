@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}上传附件 | 员工管理系统{% endblock %}
+{% block content %}
+  <section class="panel narrow">
+    <h1>为 {{ employee.name }} 上传附件</h1>
+    <p>仅允许不超过 5 MB 的 PDF。</p>
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="actions"><button type="submit">上传</button><a href="{% url 'employees:detail' employee.pk %}">取消</a></div>
+    </form>
+  </section>
+{% endblock %}
