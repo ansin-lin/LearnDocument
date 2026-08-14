@@ -1,4 +1,4 @@
-# Java 入门简介
+# 第1章 Java 入门简介
 
 ## 一、前言
 
@@ -43,7 +43,7 @@
 | Java SE 17 (LTS) | 2021 年 9 月 | 增强伪随机数生成器 |
 | Java SE 18 | 2022 年 3 月 | 默认 UTF-8 编码、轻量级 HTTP 服务器 |
 
-> 当前国内企业仍以 Java 8 为主流版本，LTS（长期支持版）在企业开发中更受青睐。
+> Java 8、Java 11、Java 17 都是常见版本，其中 Java 17 是当前课程推荐版本。
 
 ---
 
@@ -59,7 +59,7 @@ Java 是世界范围内最流行的编程语言之一，TIOBE 排行榜长期保
 
 ### 3. 强大的社区支持
 
-Java 拥有全球最完善的开发生态和开源社区，提供丰富的框架和 API（如 Spring、Hibernate、MyBatis）。
+Java 拥有完善的开发生态和开源社区，提供丰富的标准库和第三方库。
 
 ### 4. 高效率与易用性平衡
 
@@ -71,12 +71,12 @@ Java 拥有全球最完善的开发生态和开源社区，提供丰富的框架
 
 Java 在现实中应用广泛，以下是主要领域：
 
-- 🖥 **桌面 GUI 应用**（如 Swing、JavaFX）  
-- 🌐 **服务器端开发**（Spring、Spring Boot、Servlet）  
-- 🏢 **企业级系统开发**（ERP、CRM 等）  
-- 📊 **大数据生态**（Hadoop、Spark、Flink 等）  
-- 📱 **移动应用开发**（早期 Android 平台）  
-- 🎮 **游戏开发**（Minecraft 等）  
+- 🖥 **桌面 GUI 应用**（如 Swing、JavaFX）
+- 🌐 **服务器端开发**
+- 🏢 **信息系统开发**
+- 📊 **大数据生态**（Hadoop、Spark、Flink 等）
+- 📱 **移动应用开发**（早期 Android 平台）
+- 🎮 **游戏开发**（Minecraft 等）
 
 ---
 
@@ -93,7 +93,7 @@ Java 技术体系主要包括三部分：
 | 平台 | 全称 | 特点 |
 |------|------|------|
 | **Java SE** | Java Standard Edition | 标准版，桌面与核心应用开发基础 |
-| **Java EE** | Java Enterprise Edition | 企业版，支持 Web 与分布式系统 |
+| **Java EE** | Java Enterprise Edition | 扩展版，支持 Web 与分布式系统 |
 | **Java ME** | Java Micro Edition | 小型版，用于移动设备与嵌入式系统 |
 
 ---

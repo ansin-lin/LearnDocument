@@ -187,21 +187,21 @@ nav:
     - 2. 综合练习与总结: tools/shell/08_exercises_summary.md
 - 数据库:
   - SQL:
-    - 课程概览: database/sql/00_Database_Introduction.md
-    - DDL 与表结构:
-      - 1. SQL 基础入门: database/sql/DDL/00_instruction.md
-      - 2. 语法结构与基本查询: database/sql/DDL/01_create.md
-      - 3. 约束: database/sql/DDL/02_constraint.md
-      - 4. 修改表结构: database/sql/DDL/03_alter_table.md
-      - 5. 索引: database/sql/DDL/04_index.md
-      - 6. 自增列: database/sql/DDL/05_auto_increment.md
-    - DML 与数据查询:
-      - 1. DML 基础语法: database/sql/DML/00_instruction.md
-      - 2. SELECT 基础查询: database/sql/DML/01_select_bastic.md
-      - 3. 多表与高级查询: database/sql/DML/02_join_subquery_union.md
-      - 4. 分组与聚合函数: database/sql/DML/03_groupby_functions.md
-      - 5. 窗口函数与条件表达式: database/sql/DML/04_window_condition.md
-      - 6. 常用函数: database/sql/DML/05_common_functions.md
+    - 0. 数据库与 SQL 入门: database/sql/00_Database_Introduction.md
+    - 1. 数据库工具与连接基础: database/sql/01_sql_intro.md
+    - 2. CREATE DATABASE、SCHEMA 与 CREATE TABLE: database/sql/02_create_table_basic.md
+    - 3. 约束基础: database/sql/03_constraints.md
+    - 4. ALTER、DROP 与 TRUNCATE: database/sql/04_alter_table.md
+    - 5. 自增列与主键设计: database/sql/05_auto_increment.md
+    - 6. 索引基础: database/sql/06_index.md
+    - 7. INSERT 新增数据: database/sql/07_insert.md
+    - 8. UPDATE 与 DELETE: database/sql/08_update_delete.md
+    - 9. SELECT 基础查询: database/sql/09_select_basic.md
+    - 10. 多表查询、子查询与集合操作: database/sql/10_join_subquery_union.md
+    - 11. 分组与聚合函数: database/sql/11_groupby_aggregate.md
+    - 12. 窗口函数与条件表达式: database/sql/12_window_condition.md
+    - 13. SQL 常用函数: database/sql/13_common_functions.md
+    - 14. SQL 综合练习: database/sql/14_sql_comprehensive_practice.md
   - PL/SQL:
     - 1. 入门与环境配置: database/plsql/01_environment.md
     - 2. 基本语法: database/plsql/02_basic_syntax.md
@@ -225,29 +225,38 @@ nav:
     - 课程入口: backend/java/index.md
     - 1. Java 入门简介: backend/java/01_intro.md
     - 2. Java 程序结构: backend/java/02_structure.md
-    - 3. 变量与常量: backend/java/03_dataType_variable.md
+    - 3. 变量与常量: backend/java/03_data_types_variables.md
     - 4. 运算符: backend/java/04_operators.md
     - 5. 流程控制: backend/java/05_controls.md
     - 6. 数组: backend/java/06_arrays.md
-    - 7. 类的基础知识: backend/java/07_class.md
-    - 8. 面向对象基础: backend/java/08_oop_object.md
-    - 9. 包与 JAR 文件: backend/java/09_package.md
-    - 10. 类与面向对象进阶: backend/java/10_oop.md
-    - 11. 异常处理: backend/java/11_exception_handling.md
-    - 12. 字符串: backend/java/12_String.md
-    - 13. 常用系统类与包: backend/java/13_class_package.md
-    - 14. 集合框架: backend/java/14_collection.md
-    - 15. JDBC 数据库连接: backend/java/15_jdbc.md
+    - 7. 字符串: backend/java/07_strings.md
+    - 8. 类与对象基础: backend/java/08_class_object_basics.md
+    - 9. 方法基础: backend/java/09_methods.md
+    - 10. 构造方法、封装与 JavaBean: backend/java/10_constructor_encapsulation_javabean.md
+    - 11. 继承、重写与多态: backend/java/11_inheritance_override_polymorphism.md
+    - 12. static、final、抽象类与接口: backend/java/12_static_final_abstract_interface.md
+    - 13. 包、import 与 JAR 文件: backend/java/13_package_import_jar.md
+    - 14. 异常处理: backend/java/14_exception_handling.md
+    - 15. 集合框架: backend/java/15_collections.md
+    - 16. 泛型: backend/java/16_generics.md
+    - 17. 常用类: backend/java/17_common_classes.md
+    - 18. I/O 与文件处理: backend/java/18_io_file.md
+    - 19. Maven 基础: backend/java/19_maven_basics.md
+    - 20. JDBC 数据库连接: backend/java/20_jdbc.md
+    - 21. JUnit 测试基础: backend/java/21_junit_basics.md
   - MyBatis:
-    - 1. MyBatis 简介与框架结构: backend/mybatis/01_mybatis_overview.md
-    - 2. MyBatis 实战: backend/mybatis/02_mybatis_hello_world.md
-    - 3.1 核心对象与执行流程: backend/mybatis/03_mybatis_core_classes.md
-    - 3.2 核心对象与执行流程补充: backend/mybatis/03_mybatis_core_classes2.md
-    - 4. 主配置文件: backend/mybatis/04_mybatis_config_file.md
-    - 5. CRUD 与参数映射: backend/mybatis/05_mybatis_crud_mapper.md
-    - 6. 动态 SQL: backend/mybatis/06_mybatis_dynamic_sql.md
-    - 7. ResultMap 与关联关系: backend/mybatis/07_mybatis_resultmap_association.md
-    - 8. 缓存与插件机制: backend/mybatis/08_mybatis_cache_and_plugins.md
+    - 1. MyBatis 简介与使用场景: backend/mybatis/01_mybatis_overview.md
+    - 2. 第一个 MyBatis 程序: backend/mybatis/02_mybatis_hello_world.md
+    - 3. MyBatis 配置文件: backend/mybatis/03_mybatis_config_file.md
+    - 4. Mapper 接口与 XML 映射: backend/mybatis/04_mapper_interface_xml.md
+    - 5. 核心对象与执行流程: backend/mybatis/05_core_objects_execution_flow.md
+    - 6. 查询与结果映射: backend/mybatis/06_select_result_mapping.md
+    - 7. INSERT、UPDATE、DELETE: backend/mybatis/07_insert_update_delete.md
+    - 8. 参数映射: backend/mybatis/08_parameter_mapping.md
+    - 9. 动态 SQL: backend/mybatis/09_dynamic_sql.md
+    - 10. 关联查询与 ResultMap: backend/mybatis/10_association_resultmap.md
+    - 11. 缓存机制: backend/mybatis/11_cache_mechanism.md
+    - 12. MyBatis 综合练习: backend/mybatis/12_comprehensive_practice.md
   - Spring Boot:
     - 基础与工程实践:
       - 1. Spring Boot 入门: backend/springboot/01_intridution.md

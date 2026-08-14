@@ -1,337 +1,306 @@
-# 第2章 MyBatis 实战
+# 第2章 第一个 MyBatis 程序
 
----
+> 本章目标：使用 Maven、MySQL 和 MyBatis 完成一个最小查询程序，理解项目中每个文件的作用。
 
-## 一、项目创建与结构
+## 一、本章完成结果
 
-### 1️⃣ 使用 Maven 创建项目
+本章完成后，可以通过 Java 程序查询 `employees` 表，并在控制台输出员工信息。
 
-**命令方式：**
+目标结果：
 
-```bash
-mvn archetype:generate -DgroupId=com.example     -DartifactId=mybatis-helloworld     -DarchetypeArtifactId=maven-archetype-quickstart     -DinteractiveMode=false
+```text
+Employee{id=1, name='Tanaka', departmentId=10, email='tanaka@example.com'}
+Employee{id=2, name='Suzuki', departmentId=20, email='suzuki@example.com'}
 ```
 
-**目录结构生成：**
+## 二、项目结构
 
-```java
-mybatis-helloworld/
- ├─ pom.xml
- ├─ src/
- │   ├─ main/
- │   │   ├─ java/com/example/
- │   │   │   ├─ entity/User.java
- │   │   │   ├─ mapper/UserMapper.java
- │   │   └─ resources/
- │   │       ├─ mybatis-config.xml
- │   │       └─ mapper/UserMapper.xml
- │   └─ test/java/com/example/MainTest.java
+本章使用 Maven 项目。
+
+```text
+mybatis-basic
+├── pom.xml
+└── src
+    └── main
+        ├── java
+        │   └── com
+        │       └── example
+        │           └── mybatis
+        │               ├── Main.java
+        │               ├── entity
+        │               │   └── Employee.java
+        │               └── mapper
+        │                   └── EmployeeMapper.java
+        └── resources
+            ├── db.properties
+            ├── mybatis-config.xml
+            └── mapper
+                └── EmployeeMapper.xml
 ```
 
----
+## 三、Maven 依赖
 
-### 2️⃣ 使用 Gradle 创建项目
+`pom.xml`：
 
-**命令方式：**
-
-```bash
-gradle init --type java-application
-```
-
-修改 `build.gradle`：
-
-```groovy
-plugins {
-    id 'java'
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'org.mybatis:mybatis:3.5.15'
-    implementation 'mysql:mysql-connector-j:8.4.0'
-    testImplementation 'junit:junit:4.13.2'
-}
-```
-
-
-
-### 3️⃣ 使用 Eclipse 创建项目
-
-**步骤说明：**
-
-1. **打开 Eclipse → File → New → Maven Project**  
-   - 如果提示「Create a simple project」，勾选后点击 **Next**。  
-   - 选择 **Use default Workspace location**（默认路径）或自定义路径。  
-
-2. **配置项目信息：**
-   - **Group Id**：`com.example`  
-   - **Artifact Id**：`mybatis-helloworld`  
-   - **Version**：保持默认（如 `1.0-SNAPSHOT`）  
-   - **Packaging**：选择 `jar`  
-   - **Name**：可填 `MyBatis HelloWorld`  
-   - 点击 **Finish**。
-
-3. **添加 MyBatis 依赖：**  
-   打开项目根目录下的 `pom.xml`，在 `<dependencies>` 标签中添加：
-
-   ```xml
+```xml
+<dependencies>
     <dependency>
         <groupId>org.mybatis</groupId>
         <artifactId>mybatis</artifactId>
         <version>3.5.15</version>
     </dependency>
+
     <dependency>
         <groupId>com.mysql</groupId>
         <artifactId>mysql-connector-j</artifactId>
-        <version>8.2.0</version>
+        <version>8.4.0</version>
     </dependency>
-   ```
-
-4. **创建包结构：**
-   在 `src/main/java` 下手动创建：
-
-   ```java
-   com.example.entity
-   com.example.mapper
-   ```
-
-   在 `src/main/resources` 下创建：
-
-   ```java
-   mapper/
-   mybatis-config.xml
-   db.properties
-   ```
-
-5. **右键项目 → Build Path → Configure Build Path → Libraries → Add Library → JRE System Library**  
-   确保 JDK 已正确配置。
-
-6. **执行测试：**
-   - 右键 `MainTest.java` → `Run As → Java Application`
-   - 控制台输出：
-
-     ```java
-     User{id=1, name='Alice', age=20}
-     User{id=2, name='Bob', age=22}
-     ```
-
-
----
-
-## 二、数据库准备
-
-```sql
-CREATE DATABASE test CHARACTER SET utf8mb4;
-USE test;
-
-CREATE TABLE user (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(50),
-  age INT
-);
-
-INSERT INTO user(name, age)
-VALUES ('Alice', 20), ('Bob', 22);
+</dependencies>
 ```
 
----
+## 四、准备数据库
 
-## 三、配置文件准备
+MySQL：
 
-### 1️⃣ `resources/db.properties`
+```sql
+CREATE DATABASE mybatis_training;
+
+USE mybatis_training;
+
+CREATE TABLE departments (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE employees (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    department_id BIGINT NOT NULL,
+    email VARCHAR(200),
+    CONSTRAINT fk_employees_department
+        FOREIGN KEY (department_id)
+        REFERENCES departments(id)
+);
+
+INSERT INTO departments (id, name)
+VALUES
+    (10, 'Sales'),
+    (20, 'Development');
+
+INSERT INTO employees (name, department_id, email)
+VALUES
+    ('Tanaka', 10, 'tanaka@example.com'),
+    ('Suzuki', 20, 'suzuki@example.com');
+```
+
+## 五、数据库连接配置
+
+`src/main/resources/db.properties`：
 
 ```properties
 driver=com.mysql.cj.jdbc.Driver
-url=jdbc:mysql://localhost:3306/test?useSSL=false&serverTimezone=Asia/Tokyo
+url=jdbc:mysql://localhost:3306/mybatis_training?serverTimezone=Asia/Tokyo
 username=root
-password=123456
+password=password
 ```
 
----
+## 六、MyBatis 主配置文件
 
-### 2️⃣ `resources/mybatis-config.xml`
+`src/main/resources/mybatis-config.xml`：
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE configuration
-  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-config.dtd">
-
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-config.dtd">
 <configuration>
+    <properties resource="db.properties"/>
 
-  <!-- 引入数据库配置文件 -->
-  <properties resource="mapper/db.properties"/>
+    <typeAliases>
+        <typeAlias type="com.example.mybatis.entity.Employee" alias="Employee"/>
+    </typeAliases>
 
-  <!-- 类型别名 -->
-  <typeAliases>
-    <package name="com.example.entity"/>
-  </typeAliases>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
 
-  <!-- 环境配置 -->
-  <environments default="dev">
-    <environment id="dev">
-      <transactionManager type="JDBC"/>
-      <dataSource type="POOLED">
-        <property name="driver" value="${driver}"/>
-        <property name="url" value="${url}"/>
-        <property name="username" value="${username}"/>
-        <property name="password" value="${password}"/>
-      </dataSource>
-    </environment>
-  </environments>
-
-  <!-- 映射文件注册 -->
-  <mappers>
-    <mapper resource="mapper/UserMapper.xml"/>
-  </mappers>
-
+    <mappers>
+        <mapper resource="mapper/EmployeeMapper.xml"/>
+    </mappers>
 </configuration>
 ```
 
----
+## 七、实体类
 
-## 四、代码编写
-
-### 1️⃣ 实体类  
-
-**路径：** `src/main/java/com/example/entity/User.java`
+`src/main/java/com/example/mybatis/entity/Employee.java`：
 
 ```java
-package com.example.entity;
+package com.example.mybatis.entity;
 
-public class User {
-    private Integer id;
+public class Employee {
+    private Long id;
     private String name;
-    private Integer age;
+    private Long departmentId;
+    private String email;
 
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public Integer getAge() { return age; }
-    public void setAge(Integer age) { this.age = age; }
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Long getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Long departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
     @Override
     public String toString() {
-        return "User{id=" + id + ", name='" + name + "', age=" + age + '}';
+        return "Employee{id=" + id
+                + ", name='" + name + '\''
+                + ", departmentId=" + departmentId
+                + ", email='" + email + '\''
+                + '}';
     }
 }
 ```
 
----
+## 八、Mapper 接口
 
-### 2️⃣ Mapper 接口  
-
-**路径：** `src/main/java/com/example/mapper/UserMapper.java`
+`src/main/java/com/example/mybatis/mapper/EmployeeMapper.java`：
 
 ```java
-package com.example.mapper;
+package com.example.mybatis.mapper;
 
-import com.example.entity.User;
+import com.example.mybatis.entity.Employee;
 import java.util.List;
 
-public interface UserMapper {
-    List<User> selectAllUsers();
+public interface EmployeeMapper {
+    List<Employee> selectAll();
 }
 ```
 
----
+## 九、Mapper XML
 
-### 3️⃣ Mapper 映射文件  
-
-**路径：** `src/main/resources/mapper/UserMapper.xml`
+`src/main/resources/mapper/EmployeeMapper.xml`：
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-
-<mapper namespace="com.example.mapper.UserMapper">
-
-  <!-- 查询全部用户 -->
-  <select id="selectAllUsers" resultType="com.example.entity.User">
-    SELECT id, name, age FROM user;
-  </select>
-
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mybatis.mapper.EmployeeMapper">
+    <select id="selectAll" resultType="Employee">
+        SELECT
+            id,
+            name,
+            department_id AS departmentId,
+            email
+        FROM employees
+        ORDER BY id
+    </select>
 </mapper>
 ```
 
----
+`namespace` 必须和 Mapper 接口的全限定名一致。
 
-### 4️⃣ 测试类（主方法）  
+`id="selectAll"` 必须和接口方法名一致。
 
-**路径：** `src/test/java/com/example/MainTest.java`
+## 十、运行程序
+
+`src/main/java/com/example/mybatis/Main.java`：
 
 ```java
-package com.example;
+package com.example.mybatis;
 
-import com.example.entity.User;
-import com.example.mapper.UserMapper;
+import com.example.mybatis.entity.Employee;
+import com.example.mybatis.mapper.EmployeeMapper;
 import org.apache.ibatis.io.Resources;
-import org.apache.ibatis.session.*;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 
 import java.io.InputStream;
 import java.util.List;
 
-public class MainTest {
+public class Main {
+
     public static void main(String[] args) throws Exception {
-        // 1. 读取 MyBatis 配置文件
-        InputStream is = Resources.getResourceAsStream("mapper/mybatis-config.xml");
+        InputStream inputStream = Resources.getResourceAsStream("mybatis-config.xml");
+        SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
 
-        // 2. 构建 SqlSessionFactory
-        SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(is);
+        try (SqlSession sqlSession = sqlSessionFactory.openSession()) {
+            EmployeeMapper employeeMapper = sqlSession.getMapper(EmployeeMapper.class);
+            List<Employee> employees = employeeMapper.selectAll();
 
-        // 3. 打开 SqlSession
-        try (SqlSession session = factory.openSession()) {
-            // 4. 获取 Mapper 接口
-            UserMapper mapper = session.getMapper(UserMapper.class);
-
-            // 5. 执行查询
-            List<User> list = mapper.selectAllUsers();
-
-            // 6. 输出结果
-            list.forEach(System.out::println);
+            for (Employee employee : employees) {
+                System.out.println(employee);
+            }
         }
     }
 }
 ```
 
----
+## 十一、运行流程
 
-## 五、运行结果
+1. 读取 `mybatis-config.xml`。
+2. 创建 `SqlSessionFactory`。
+3. 打开 `SqlSession`。
+4. 获取 `EmployeeMapper` 代理对象。
+5. 调用 `selectAll()`。
+6. 执行 `EmployeeMapper.xml` 中的 SQL。
+7. 把查询结果转换成 `Employee` 对象。
+8. 输出结果。
 
-控制台输出：
+## 十二、常见错误
 
-```java
-User{id=1, name='Alice', age=20}
-User{id=2, name='Bob', age=22}
-```
+| 错误 | 原因 | 修正 |
+| --- | --- | --- |
+| 找不到 XML | `mapper resource` 路径错误 | 确认 `resources/mapper/EmployeeMapper.xml` |
+| Mapper 方法找不到 | `namespace` 或 `id` 不一致 | namespace 对应接口全限定名，id 对应方法名 |
+| 字段没有值 | 数据库列名和 Java 属性名不一致 | 使用别名或 `resultMap` |
+| 连接失败 | 数据库地址、账号或密码错误 | 检查 `db.properties` |
 
----
+## 十三、本章练习
 
-## 六、项目运行总结
+请完成：
 
-- **核心流程：**
-  1. MyBatis 读取配置文件  
-  2. 构建 SqlSessionFactory  
-  3. 获取 SqlSession（会话）  
-  4. 获取 Mapper 代理对象  
-  5. 执行 SQL，返回结果  
-  6. 关闭会话  
+1. 按本章结构创建项目。
+2. 查询所有员工。
+3. 修改 SQL，只查询 `department_id = 20` 的员工。
+4. 故意改错 `namespace`，观察错误信息。
 
-- **文件位置对应关系：**
+## 十四、本章总结
 
-| 文件名 | 类路径/资源路径 | 作用 |
-|---------|-----------------|------|
-| `User.java` | `com/example/entity/User.java` | 实体类 |
-| `UserMapper.java` | `com/example/mapper/UserMapper.java` | Mapper 接口 |
-| `UserMapper.xml` | `resources/mapper/UserMapper.xml` | SQL 映射文件 |
-| `mybatis-config.xml` | `resources/mybatis-config.xml` | 全局配置 |
-| `db.properties` | `resources/db.properties` | 数据库连接配置 |
-| `MainTest.java` | `com/example/MainTest.java` | 测试入口 |
+- MyBatis 最小程序需要配置文件、实体类、Mapper 接口和 Mapper XML。
+- Mapper 接口方法通过 XML 中的 `namespace` 和 `id` 找到 SQL。
+- 查询结果可以映射成 Java 对象。

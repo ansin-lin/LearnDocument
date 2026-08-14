@@ -1,6 +1,6 @@
-# Java 程序结构
+# 第2章 Java 程序结构
 
-> 本文件讲解 Java 程序的组成与 **项目目录结构**。配套示例可直接复制使用。
+> 本章讲解 Java 程序的组成、目录结构和最小可运行代码。配套示例可直接复制使用。
 
 ---
 
@@ -79,6 +79,6 @@ public class Main {
 | `package xxx does not exist` | 依赖未加入类路径；导入包名写错 | 添加 jar 到 `-cp` 或构建依赖；检查 `import` |
 | `NoSuchMethodError: main` | `main` 签名不对 | 必须是 `public static void main(String[] args)` |
 | 中文输出乱码 | 编码不一致 | 统一 UTF‑8；编译时 `-encoding UTF-8`；IDE 配置 |
-| 运行 jar 找不到依赖 | 不是 fat‑jar；类路径缺依赖 | 使用打包插件（如 Maven shade、Spring Boot）或手动 `-cp lib/*` |
+| 运行 jar 找不到依赖 | 类路径缺少依赖 | 检查 `-cp` 参数或依赖位置 |
 
 ---
