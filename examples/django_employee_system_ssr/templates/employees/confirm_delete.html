@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}离职确认 | 员工管理系统{% endblock %}
+{% block content %}
+  <section class="panel narrow">
+    <h1>确认将 {{ employee.name }} 设为离职吗？</h1>
+    <p>记录会保留，但不再显示在在职员工列表中。</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="actions"><button class="danger" type="submit">确认</button><a href="{% url 'employees:detail' employee.pk %}">取消</a></div>
+    </form>
+  </section>
+{% endblock %}

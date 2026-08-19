@@ -1,4 +1,15 @@
+import logging
 import uuid
+from contextvars import ContextVar
+
+
+request_id_context = ContextVar('request_id', default='-')
+
+
+class RequestIdFilter(logging.Filter):
+    def filter(self, record):
+        record.request_id = request_id_context.get()
+        return True
 
 
 class RequestIdMiddleware:
@@ -7,6 +18,10 @@ class RequestIdMiddleware:
 
     def __call__(self, request):
         request.request_id = uuid.uuid4().hex
-        response = self.get_response(request)
-        response['X-Request-ID'] = request.request_id
-        return response
+        token = request_id_context.set(request.request_id)
+        try:
+            response = self.get_response(request)
+            response['X-Request-ID'] = request.request_id
+            return response
+        finally:
+            request_id_context.reset(token)

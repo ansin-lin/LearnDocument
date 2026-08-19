@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>员工 API 联调</title>
+  </head>
+  <body>
+    <main>
+      <h1>员工 API 联调</h1>
+      <form id="login-form">
+        <label>
+          用户名
+          <input id="username" name="username" required>
+        </label>
+        <label>
+          密码
+          <input id="password" name="password" type="password" required>
+        </label>
+        <button type="submit">登录</button>
+      </form>
+
+      <button id="logout-button" type="button">退出</button>
+      <p id="status" role="status"></p>
+      <ul id="employee-list"></ul>
+      <nav aria-label="员工分页">
+        <button id="previous-button" type="button">上一页</button>
+        <span id="page-label"></span>
+        <button id="next-button" type="button">下一页</button>
+      </nav>
+
+      <form id="attachment-form">
+        <label>
+          员工ID
+          <input id="attachment-employee-id" type="number" min="1" required>
+        </label>
+        <label>
+          PDF附件
+          <input id="attachment-file" type="file" accept=".pdf,application/pdf" required>
+        </label>
+        <button type="submit">上传附件</button>
+        <button id="load-attachments-button" type="button">读取附件</button>
+      </form>
+      <ul id="attachment-list"></ul>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

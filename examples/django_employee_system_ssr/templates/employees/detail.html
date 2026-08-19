@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ employee.name }} | 员工管理系统{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <div><h1>{{ employee.name }}</h1><p>{{ employee.employee_number }}</p></div>
+    <div class="actions">
+      {% if perms.employees.change_employee %}<a class="button secondary" href="{% url 'employees:update' employee.pk %}">编辑</a>{% endif %}
+      {% if perms.employees.delete_employee %}<a class="button danger" href="{% url 'employees:delete' employee.pk %}">设为离职</a>{% endif %}
+    </div>
+  </div>
+  <dl class="detail-list">
+    <dt>部门</dt><dd>{{ employee.department.name }}</dd>
+    <dt>邮箱</dt><dd>{{ employee.email|default:"未登记" }}</dd>
+    <dt>入职日期</dt><dd>{{ employee.joined_on|date:"Y-m-d" }}</dd>
+  </dl>
+
+  <section class="panel">
+    <div class="page-heading">
+      <h2>员工附件</h2>
+      {% if perms.employees.add_employeeattachment %}<a href="{% url 'employees:attachment_upload' employee.pk %}">上传 PDF</a>{% endif %}
+    </div>
+    <ul>
+      {% for attachment in employee.attachments.all %}
+        <li><a href="{% url 'employees:attachment_download' attachment.pk %}">{{ attachment.original_name }}</a></li>
+      {% empty %}
+        <li>还没有附件。</li>
+      {% endfor %}
+    </ul>
+  </section>
+  <p><a href="{% url 'employees:list' %}">返回员工列表</a></p>
+{% endblock %}

@@ -21,7 +21,7 @@
 
 ## 二、项目目录结构
 
-本章使用[员工管理系统贯穿项目](../../../training_project/employee_management_system/00_project_overview.md)作为练习背景，Python 后端项目目录命名为 `employee_api`。
+本章使用员工管理系统作为练习背景，Python 后端项目目录命名为 `employee_api`。
 
 完成本章后，目录结构如下：
 
@@ -782,7 +782,7 @@ employee_api/.venv/bin/python
 
 ## 十六、API 调试工具准备
 
-本章只确认工具可用，不重复讲 HTTP 调试方法。具体使用参见[HTTP、JSON 与 REST API](../../../web_development_basics/01_http_json_rest_api.md)。
+本章只确认工具可用，不重复讲 HTTP 调试方法。具体使用参见[HTTP、REST、Cookie、Session 与 CORS](../../../web_basics/01_http_rest_cookie_cors.md)。
 
 建议至少准备一种：
 

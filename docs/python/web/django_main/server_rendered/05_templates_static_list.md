@@ -34,20 +34,35 @@ employees/views.py
 本章新增：
 
 ```text
+templates/
+├── base.html
+└── employees/
+    └── list.html
 employees/
-├── static/
-│   └── employees/
-│       └── css/
-│           └── style.css
-└── templates/
-    ├── base.html
+└── static/
     └── employees/
-        └── list.html
+        ├── css/
+        │   └── style.css
+        └── js/
+            └── employee-list.js
 ```
 
-模板和静态资源都使用 App 名作为中间目录，避免多个 App 出现同名文件时互相覆盖。
+项目共通的 `base.html` 放在项目级 `templates/`；员工业务模板放在 `templates/employees/`。静态资源继续使用 App 名作为中间目录，避免多个 App 出现同名 CSS 或 JavaScript 时互相覆盖。
+
+在 `company_portal/settings.py` 中确认项目级模板目录已经加入 `DIRS`：
+
+```python
+"DIRS": [BASE_DIR / "templates"],
+```
+
+`APP_DIRS=True` 允许 Django 继续查找各 App 内的 `templates/`。本课程统一使用项目级模板目录，后续章节和最终参考项目不再切换位置。
 
 ## 三、准备静态员工数据
+
+- **Template是什么**：包含HTML和Django模板语法的页面文件，用View提供的数据生成响应内容。
+- **为什么需要**：页面结构不应写成大段Python字符串，共通结构也需要复用。
+- **什么时候使用**：View需要返回带数据的HTML页面时使用。
+- **Static是什么**：由开发者随代码发布的CSS、JavaScript和图片；页面需要固定样式或脚本时使用，不保存用户上传内容。
 
 打开：
 
@@ -98,11 +113,11 @@ def employee_list(request: HttpRequest) -> HttpResponse:
 
 `render()` 的三个常用参数：
 
-| 参数 | 当前值 | 作用 |
-| --- | --- | --- |
-| 请求 | `request` | 当前请求对象 |
-| 模板 | `"employees/list.html"` | 要使用的模板路径 |
-| 上下文 | `context` | 交给模板的数据字典 |
+| 参数 | 当前值 | 可接受的值与必填性 | 作用 |
+| --- | --- | --- | --- |
+| 请求 | `request` | `HttpRequest`对象，必填 | 提供当前请求上下文 |
+| 模板 | `"employees/list.html"` | 模板路径字符串，必填 | 指定要使用的模板 |
+| 上下文 | `context` | 字典，可选；省略时为空 | 把数据交给模板 |
 
 返回值仍然是 `HttpResponse`。区别是响应体由模板生成，而不是直接写在 Python 字符串中。
 
@@ -111,7 +126,7 @@ def employee_list(request: HttpRequest) -> HttpResponse:
 新建：
 
 ```text
-employees/templates/base.html
+templates/base.html
 ```
 
 内容：
@@ -125,6 +140,7 @@ employees/templates/base.html
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}员工管理系统{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'employees/css/style.css' %}">
+    <script src="{% static 'employees/js/employee-list.js' %}" defer></script>
 </head>
 <body>
     <header class="site-header">
@@ -157,7 +173,7 @@ employees/templates/base.html
 新建：
 
 ```text
-employees/templates/employees/list.html
+templates/employees/list.html
 ```
 
 内容：
@@ -174,6 +190,9 @@ employees/templates/employees/list.html
         <h1>员工列表</h1>
         <p>当前使用固定数据。后续章节会切换到数据库查询。</p>
     </div>
+    <button id="toggle-email" type="button" aria-pressed="false">
+        隐藏邮箱
+    </button>
 </section>
 
 <div class="table-wrap">
@@ -182,7 +201,7 @@ employees/templates/employees/list.html
             <tr>
                 <th scope="col">员工编号</th>
                 <th scope="col">姓名</th>
-                <th scope="col">邮箱</th>
+                <th class="email-column" scope="col">邮箱</th>
                 <th scope="col">部门</th>
                 <th scope="col">状态</th>
                 <th scope="col">操作</th>
@@ -193,7 +212,7 @@ employees/templates/employees/list.html
             <tr>
                 <td>{{ employee.employee_code }}</td>
                 <td>{{ employee.name }}</td>
-                <td>{{ employee.email }}</td>
+                <td class="email-column">{{ employee.email }}</td>
                 <td>{{ employee.department }}</td>
                 <td>
                     <span class="status status--{{ employee.status|lower }}">
@@ -400,7 +419,53 @@ th {
 }
 ```
 
+CSS的 `calc(expression)` 接收一个长度计算表达式，返回计算后的CSS值；这里用视口宽度减去两侧留白。`min(value1, value2, ...)` 至少接收两个可比较值，返回其中较小值；因此容器最大不超过1120px，窄屏时又能保留32px总留白。
+
 这里使用横向滚动保护窄屏表格，避免列被强行压缩到无法阅读。
+
+### 9.1 增加一个最小 JavaScript 交互
+
+新建 `employees/static/employees/js/employee-list.js`：
+
+```javascript
+const toggleButton = document.querySelector("#toggle-email");
+const emailCells = document.querySelectorAll(".email-column");
+
+if (toggleButton) {
+    toggleButton.addEventListener("click", () => {
+        const willHide = toggleButton.getAttribute("aria-pressed") === "false";
+
+        emailCells.forEach((cell) => {
+            cell.hidden = willHide;
+        });
+        toggleButton.setAttribute("aria-pressed", String(willHide));
+        toggleButton.textContent = willHide ? "显示邮箱" : "隐藏邮箱";
+    });
+}
+```
+
+| API | 作用 | 主要参数 | 可接受的值与必填性 | 返回值或状态变化 |
+|---|---|---|---|---|
+| `querySelector(selector)` | 查找第一个元素 | CSS选择器 | 字符串，必填；这里按ID找按钮 | 第一个匹配元素；找不到返回 `null` |
+| `querySelectorAll(selector)` | 查找全部元素 | CSS选择器 | 字符串，必填；这里按class找邮箱单元格 | 可迭代的 `NodeList`，没有匹配时为空 |
+| `addEventListener(type, listener)` | 注册事件处理 | 事件名、回调 | 两者必填 | 注册监听器，无业务返回值 |
+| `getAttribute(name)` | 读取HTML属性 | 属性名 | 字符串，必填 | 属性字符串；不存在时返回 `null` |
+| `setAttribute(name, value)` | 修改HTML属性 | 属性名、值 | 两者必填；值会转换成字符串 | 修改DOM属性，无业务返回值 |
+| `forEach(callback)` | 逐项处理集合 | 回调函数 | 函数，必填 | 逐项执行回调，无业务返回值 |
+
+`String(value)` 接收任意JavaScript值并返回对应字符串；这里把布尔值转换为 `"true"` 或 `"false"`，满足HTML属性值是字符串的要求。
+
+代码先检查 `toggleButton` 是否存在，避免在没有该按钮的页面调用方法而报错。`hidden` 是HTML元素的布尔属性，赋值后只改变当前浏览器中的显示状态，不会修改服务器数据。
+
+`defer` 让脚本在 HTML 解析完成后执行。脚本通过稳定的 `id` 找到按钮，通过 class 找到邮箱列；点击后只改变浏览器显示，不修改服务器数据和权限。
+
+在开发者工具中确认：
+
+1. Network 中 `employee-list.js` 返回200。
+2. Console 没有 JavaScript 错误。
+3. 点击按钮后邮箱列隐藏，再次点击后恢复。
+
+前端隐藏不等于安全保护：邮箱仍在服务器响应的 HTML 中。真正不允许查看的数据必须在 View、QuerySet 和权限层阻止返回。
 
 ## 十、运行并验证
 
@@ -424,6 +489,7 @@ http://127.0.0.1:8000/employees/
 - 三条员工数据
 - 不同颜色的状态标签
 - 每行的详情链接
+- 可显示和隐藏邮箱列的按钮
 
 点击第一行详情，应访问：
 
@@ -439,6 +505,7 @@ http://127.0.0.1:8000/employees/
 
 ```text
 style.css
+employee-list.js
 ```
 
 确认状态码为200。也可以打开 Elements 面板，确认最终链接类似：
@@ -456,7 +523,7 @@ style.css
 检查文件是否位于：
 
 ```text
-employees/templates/employees/list.html
+templates/employees/list.html
 ```
 
 以及 `render()` 是否写：
@@ -525,7 +592,7 @@ context = {"employees": employees}
 
 把员工列表暂时设为空，确认页面出现明确提示；恢复数据后再次验证详情链接。
 
-## 十四、本章完成检查
+## 十四、页面运行检查
 
 - [ ] 列表视图使用 `render()`
 - [ ] `base.html` 和员工列表模板路径正确
@@ -536,9 +603,7 @@ context = {"employees": employees}
 - [ ] 窄屏时表格可以横向滚动
 - [ ] 能使用错误信息和 Network 面板排查模板或静态文件问题
 
-## 十五、本章总结
-
-## 十六、模板中还必须会读的语法
+## 十五、现场识读：模板中还必须会读的语法
 
 ```html
 {% if employee.is_active %}
@@ -556,7 +621,9 @@ context = {"employees": employees}
 
 常见过滤器包括：`date` 格式化日期、`default` 提供空值显示、`length` 读取长度。`safe` 会把字符串标记为可信 HTML，应只用于服务端明确生成并清洗过的内容。用户输入默认自动转义，这是重要的 XSS 防线，不要为了显示 HTML 随意关闭 `autoescape`。
 
-## 十七、Static 的完整最小认识
+过滤器写在变量后的 `|` 右侧。`date:"Y-m-d"` 的参数是格式字符串，返回格式化文本；`default:"未登记"` 的参数是替代文本，原值为空时返回它；`length` 不接参数，返回长度；`safe` 不接参数，返回被标记为可信HTML的值。`safe` 会改变转义状态，不能用于未经清洗的用户输入。
+
+## 十六、Static 的完整最小认识
 
 `STATIC_URL` 定义静态资源对外 URL 前缀，`{% static %}` 根据配置生成地址。开发阶段 `runserver` 可协助提供静态文件；生产环境通常由构建/收集步骤和 Web 服务器或对象存储提供，第17章会学习 `collectstatic`。
 
@@ -569,7 +636,7 @@ context = {"employees": employees}
 
 CSS、JavaScript 和图片都属于 Static；员工上传的附件属于 Media，两者不能混用。页面脚本首次加入时，用 Network 确认资源为200，并用 Console 确认没有语法错误。
 
-## 十八、模板排错的三层证据
+## 十七、模板排错的三层证据
 
 1. View 的 context 中是否存在正确变量。
 2. 页面源代码/Elements 中是否生成了预期 HTML。
@@ -577,9 +644,34 @@ CSS、JavaScript 和图片都属于 Static；员工上传的附件属于 Media�
 
 如果页面文字正确但样式不对，优先调查静态资源与 CSS；如果变量为空，调查 context 名称和数据；如果模板根本没打开，调查模板路径和 settings。把不同层的问题分开，能显著缩短现场调查时间。
 
+## 十八、本章总结
+
 - View 通过 context 把数据交给 Template
 - 模板变量、循环和空数据分支负责生成不同页面内容
 - 模板继承减少共享 HTML 重复
 - 命名路由避免在模板中硬编码 URL
 - App 静态目录和 `{% static %}` 负责加载 CSS
 - 第一阶段已经形成可见员工列表，第6章会建立数据库模型和迁移
+
+## 十九、日本项目中的实际使用
+
+企业项目会把共通页面结构放在基础模板，把业务页面放在带 App 名称的目录中，并通过 Static 管理 CSS、JavaScript 和图片。这样既能减少重复，又能避免多个 App 的同名文件互相覆盖。模板只负责显示，权限和数据合法性仍由后端保证。
+
+## 二十、新人常见错误
+
+- 模板路径与 `render()` 中的字符串不一致，出现 `TemplateDoesNotExist`。
+- 忘记 `{% load static %}` 或把静态 URL 写死，导致换环境后资源路径失效。
+- 在子模板中漏写 `{% extends %}` 或把内容写在 `block` 外，页面结构与预期不一致。
+- 把复杂判断和数据加工放进 Template。应在 View 或业务代码中准备好适合显示的数据。
+- 对用户输入使用 `safe` 或关闭自动转义，可能引入 XSS。只有确认内容可信时才能绕过转义。
+
+## 二十一、本章知识将在后续章节继续使用
+
+```text
+View context
+→ Template 变量、for、if
+→ extends / block 复用页面结构
+→ static 加载 CSS 与 JavaScript
+→ 第8章把固定字典替换为 Model 对象
+→ 第9～14章复用模板完成表单、权限和附件页面
+```

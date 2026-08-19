@@ -1,9 +1,16 @@
-site_name: LearnDocument 技术课程
+﻿site_name: LearnDocument 技术课程
 site_url: https://ansin-lin.github.io/LearnDocument/
 use_directory_urls: false
 exclude_docs: |
+  archive/
+  _archive/
+  frontend/backup/
+  frontend/CSS/
+  frontend/training/
   python/_archive/
+  python/web/fastapi_topics/
   python/python-course-roadmap.md
+  training_projects/
 theme:
   name: material
   language: zh
@@ -38,14 +45,8 @@ markdown_extensions:
 nav:
 - 首页: index.md
 - Web 开发基础:
-  - 1. Web 开发基础概念: web_development_basics/00_web_development_basics.md
-  - 2. HTTP、JSON 与 REST API: web_development_basics/01_http_json_rest_api.md
-- 贯穿式教学项目:
-  - 1. 项目总览: training_project/employee_management_system/00_project_overview.md
-  - 2. 要件定义: training_project/employee_management_system/01_requirements_definition.md
-  - 3. 接口与数据规格: training_project/employee_management_system/02_interface_and_data_specification.md
-  - 4. 画面规格: training_project/employee_management_system/03_screen_specification.md
-  - 5. 教学使用指南: training_project/employee_management_system/04_teaching_usage_guide.md
+  - 1. 前后端与请求响应基础: web_basics/00_frontend_backend_request_response.md
+  - 2. HTTP、REST、Cookie、Session 与 CORS: web_basics/01_http_rest_cookie_cors.md
 - Python:
   - 课程入口: python/index.md
   - 1. Python 基础知识:
@@ -88,53 +89,72 @@ nav:
         - 最终参考项目: python/web/django_main/server_rendered/reference_project.md
         - 练习参考答案: python/web/django_main/server_rendered/practice_answers.md
         - SES 现场日语: python/web/django_main/server_rendered/ses_japanese.md
-    - 3.2 前后端分离与 DRF:
+    - 3.2 Django 企业级 REST API（DRF）:
       - 学习路线: python/web/django_main/separated/index.md
-      - 19. 从页面请求走向 REST API: python/web/django_main/separated/19_rest_basics.md
+      - 开始：从零创建 Django 项目: python/web/django_main/separated/setup.md
+      - 19. REST API、HTTP 与 Django JSON 响应: python/web/django_main/separated/19_rest_basics.md
       - 20. 安装 DRF 与 Serializer: python/web/django_main/separated/20_drf_intro.md
       - 21. DRF Request、Response 与 CRUD: python/web/django_main/separated/21_drf_request_response.md
       - 22. API 认证与权限: python/web/django_main/separated/22_api_auth_permissions.md
-      - 23. API 文件上传与安全下载: python/web/django_main/separated/23_api_file_endpoints.md
+      - 23. 过滤、排序、分页与 OpenAPI: python/web/django_main/separated/23_filtering_pagination_openapi.md
       - 24. 前端联调、Fetch 与 CORS: python/web/django_main/separated/24_frontend_integration_cors.md
-      - 25. 过滤、排序、分页与 OpenAPI: python/web/django_main/separated/25_common_libraries.md
+      - 25. API 文件上传与安全下载: python/web/django_main/separated/25_api_file_endpoints.md
       - 26. DRF API 自动测试: python/web/django_main/separated/26_api_testing.md
       - 27. API 配置、日志与异常响应: python/web/django_main/separated/27_logging_and_config.md
-      - 28. 前后端分离项目部署: python/web/django_main/separated/28_deployment.md
-      - 29. 前后端分离 SES 改修实战: python/web/django_main/separated/29_separated_project.md
+      - 28. REST API 部署设计与发布手顺: python/web/django_main/separated/28_deployment.md
+      - 29. REST API SES 改修实战: python/web/django_main/separated/29_separated_project.md
   - 4. FastAPI 框架:
-    - 4.1 FastAPI 基础:
+    - 学习路线: python/web/fastapi/index.md
+    - 员工管理 API 项目规格: python/web/fastapi/project_spec.md
+    - 4.1 Web API 基础:
       - 开发环境准备: python/web/overview/02_web_development_environment.md
-      - 1. FastAPI 入门: python/web/fastapi_topics/01_fastapi_intro.md
-      - 2. FastAPI 请求与响应: python/web/fastapi_topics/02_request_response.md
-      - 3. Pydantic 数据模型与校验: python/web/fastapi_topics/03_pydantic_validation.md
-    - 4.2 SQLAlchemy、Alembic 与数据库项目:
-      - SQLAlchemy 基础概念与常用对象: python/web/database_tools/01_sqlalchemy_core_basics.md
-      - SQLAlchemy CRUD 与事务方法: python/web/database_tools/02_sqlalchemy_crud_transactions.md
-      - Alembic 迁移基础: python/web/database_tools/03_alembic_basics.md
-      - 项目数据库配置与模型定义: python/web/database_project/01_project_database_model_setup.md
-      - 项目中的 CRUD 与事务控制: python/web/database_project/02_project_crud_transaction_flow.md
-      - Repository 与 Service 分层: python/web/database_project/03_repository_service_layering.md
-      - 4. FastAPI 与 SQLAlchemy 集成: python/web/fastapi_topics/04_database_sqlalchemy.md
-      - 5. FastAPI CRUD 与事务集成: python/web/fastapi_topics/05_crud_transaction.md
-    - 4.3 FastAPI 工程化与交付:
-      - 6. APIRouter 与依赖注入: python/web/fastapi_topics/06_router_dependency.md
-      - 7. FastAPI 项目结构: python/web/fastapi_topics/07_project_structure.md
-      - 8. 配置、日志与异常: python/web/fastapi_topics/08_exception_logging_config.md
-      - 9. 登录认证、授权与 JWT: python/web/fastapi_topics/09_authentication_authorization_jwt.md
-      - 10. 前后端联调与跨域: python/web/fastapi_topics/10_frontend_integration_cors.md
-      - 11. 文件、CSV 与 Excel: python/web/fastapi_topics/11_file_csv_excel.md
-      - 12. 外部 API、邮件与批处理: python/web/fastapi_topics/12_external_api_email_batch.md
-      - 13. Web 测试基础: python/web/fastapi_topics/13_web_testing_pytest.md
-      - 14. 安全与性能基础: python/web/fastapi_topics/14_security_performance.md
-      - 15. Linux、Docker 与部署: python/web/fastapi_topics/15_linux_docker_deployment.md
-      - 16. FastAPI 项目验收: python/web/fastapi_topics/16_fastapi_project_completion.md
+      - 1. FastAPI 入门: python/web/fastapi/01_web_api_basics/01_intro.md
+      - 2. FastAPI 请求与响应: python/web/fastapi/01_web_api_basics/02_request_response.md
+      - 3. Pydantic、响应模型与 OpenAPI: python/web/fastapi/01_web_api_basics/03_pydantic_openapi.md
+    - 4.2 FastAPI 核心:
+      - 4. APIRouter 与多文件路由: python/web/fastapi/02_fastapi_core/04_apirouter.md
+      - 5. Depends 与请求级复用: python/web/fastapi/02_fastapi_core/05_depends.md
+      - 6. yield 依赖与资源清理: python/web/fastapi/02_fastapi_core/06_yield_resource_lifecycle.md
+    - 4.3 SQLAlchemy 与 Alembic:
+      - 7. SQLAlchemy 基础概念与常用对象: python/web/fastapi/03_sqlalchemy/07_core_concepts.md
+      - 8. SQLAlchemy ORM CRUD 与事务: python/web/fastapi/03_sqlalchemy/08_orm_crud_transactions.md
+      - 9. Alembic 迁移基础: python/web/fastapi/03_sqlalchemy/09_alembic_migrations.md
+    - 4.4 数据库项目:
+      - 10. 数据库模型与迁移: python/web/fastapi/04_database_project/10_models_migrations.md
+      - 11. EmployeeRepository 与数据库 CRUD: python/web/fastapi/04_database_project/11_crud_transactions.md
+      - 12. EmployeeService、事务边界与 DTO: python/web/fastapi/04_database_project/12_repository_service_dto.md
+    - 4.5 FastAPI 数据库 API:
+      - 13. Session 依赖与只读查询 API: python/web/fastapi/05_database_api/13_session_dependency_query.md
+      - 14. 写入 API 与异常边界: python/web/fastapi/05_database_api/14_crud_response_exception.md
+    - 4.6 工程化:
+      - 15. FastAPI 项目结构: python/web/fastapi/06_engineering/15_project_structure.md
+      - 16. 配置管理与 Lifespan: python/web/fastapi/06_engineering/16_config_lifespan.md
+      - 17. Middleware、日志与统一异常: python/web/fastapi/06_engineering/17_middleware_logging_exceptions.md
+      - 18. 用户账号与密码哈希: python/web/fastapi/06_engineering/18_user_accounts_passwords.md
+      - 19. JWT 签发与登录接口: python/web/fastapi/06_engineering/19_jwt_login.md
+      - 20. 当前用户与角色权限: python/web/fastapi/06_engineering/20_current_user_permissions.md
+      - 21. pytest、TestClient 与隔离数据库: python/web/fastapi/06_engineering/21_testing_foundation.md
+      - 22. 员工 CRUD 与事务测试: python/web/fastapi/06_engineering/22_testing_crud.md
+      - 23. 认证、权限与迁移测试: python/web/fastapi/06_engineering/23_testing_auth_migrations.md
+    - 4.7 联调与交付:
+      - 24. 前后端联调与 CORS: python/web/fastapi/07_integration_delivery/24_frontend_cors.md
+      - 25. 安全与性能基础: python/web/fastapi/07_integration_delivery/25_security_performance.md
+      - 26. FastAPI 运行与容器交付: python/web/fastapi/07_integration_delivery/26_deployment.md
+      - 27. FastAPI 项目验收: python/web/fastapi/07_integration_delivery/27_project_completion.md
+      - 最终参考项目: python/web/fastapi/07_integration_delivery/reference_project.md
+    - 4.8 可选扩展:
+      - 文件、CSV 与 Excel: python/web/fastapi/08_extensions/01_file_csv_excel.md
+      - 外部 API、邮件与批处理: python/web/fastapi/08_extensions/02_external_api_email_batch.md
+      - Redis 缓存: python/web/fastapi/08_extensions/03_redis_cache.md
+      - S3 对象存储: python/web/fastapi/08_extensions/04_s3_storage.md
+      - AI 员工资料摘要接口: python/web/fastapi/08_extensions/05_ai_integration.md
   - 5. Flask 框架:
     - 1. Flask 入门与项目创建: python/web/flask_topics/01_flask_intro.md
     - 2. Flask 路由与请求响应: python/web/flask_topics/02_routing_request_response.md
     - 3. Flask Blueprint 与分层: python/web/flask_topics/03_blueprint_layering.md
     - 4. Flask 数据库与迁移: python/web/flask_topics/04_database_migration.md
     - 5. Flask 校验、认证与测试: python/web/flask_topics/05_validation_auth_testing.md
-    - 6. Flask 项目验收: python/web/flask_topics/07_flask_project_completion.md
+    - 6. Flask 项目验收: python/web/flask_topics/06_flask_project_completion.md
   - 6. Web 框架比较与附录:
     - 三个框架对比: python/web/appendices/appendix_a_framework_comparison.md
     - Web 术语日语对照: python/web/appendices/appendix_b_web_terms_japanese.md
@@ -144,22 +164,26 @@ nav:
     - 7.1 路线入口: python/data_analysis/index.md
     - 7.2 路线总览: python/data_analysis/01_intro.md
     - 7.3 数据基础概念: python/data_analysis/02_data_concepts.md
-    - 7.4 使用 Pandas 读取并检查数据: python/data_analysis/03_pandas_read_inspect.md
-    - 7.5 数据清洗: python/data_analysis/04_data_cleaning.md
-    - 7.6 分组汇总、表关联与核心指标: python/data_analysis/05_groupby_merge.md
-    - 7.7 数据可视化: python/data_analysis/06_visualization.md
-    - 7.8 Excel 与 CSV 报表: python/data_analysis/07_excel_csv_report.md
-    - 7.9 数据分析实战: python/data_analysis/08_analysis_project.md
+    - 7.4 Excel / CSV 读取与检查: python/data_analysis/03_pandas_read_inspect.md
+    - 7.5 Excel / CSV 数据清洗: python/data_analysis/04_data_cleaning.md
+    - 7.6 Excel / CSV 分组汇总、表关联与透视: python/data_analysis/05_groupby_merge.md
+    - 7.7 Excel / CSV 可视化与结果输出: python/data_analysis/06_visualization.md
+    - 7.8 数据库读取分析与结果回写: python/data_analysis/07_excel_csv_report.md
+    - 7.9 综合练习：四份数据的销售分析与报表输出: python/data_analysis/08_analysis_project.md
   - 8. 自动化路线:
     - 8.1 路线入口: python/automation/index.md
-    - 8.2 路线总览: python/automation/01_intro.md
-    - 8.3 文件与路径处理: python/automation/02_file_operations.md
-    - 8.4 CSV、JSON 与 Excel: python/automation/03_csv_json_excel.md
-    - 8.5 正则与文本处理: python/automation/04_regex_text.md
-    - 8.6 接口自动化: python/automation/05_requests_api.md
-    - 8.7 批处理与定时任务: python/automation/06_batch_schedule.md
-    - 8.8 日志与重试: python/automation/07_logging_retry.md
-    - 8.9 自动化实战: python/automation/08_automation_project.md
+    - 8.2 什么是 Python 自动化与批处理: python/automation/01_intro.md
+    - 8.3 文件、路径与目录处理: python/automation/02_file_path.md
+    - 8.4 CSV / Excel / JSON 文件自动化处理: python/automation/03_csv_excel_json.md
+    - 8.5 文本、日志与正则处理: python/automation/04_text_regex_log.md
+    - 8.6 批量处理与命令行参数: python/automation/05_batch_cli.md
+    - 8.7 接口调用自动化: python/automation/06_requests_api.md
+    - 8.8 邮件与通知自动化: python/automation/07_email_notify.md
+    - 8.9 定时任务与执行入口: python/automation/08_schedule_entry.md
+    - 8.10 日志、异常、重试与可维护性: python/automation/09_logging_retry.md
+    - 8.11 企业自动化报表项目: python/automation/10_report_automation_project.md
+    - 8.12 日志分析自动化项目: python/automation/11_log_analysis_project.md
+    - 8.13 运维辅助自动化项目: python/automation/12_ops_support_project.md
 - 工具与运维:
   - Git:
     - 课程入口: tools/git/index.md
@@ -178,16 +202,16 @@ nav:
     - 2. 文件与目录操作: tools/linux/02_file_dir_command.md
     - 3. 用户与权限管理: tools/linux/03_user_permission.md
     - 4. 进程与系统管理: tools/linux/04_process_system.md
-    - 5. 定时任务管理: tools/linux/06_crontab_scheduler.md
-    - 6. 日志系统与分析: tools/linux/07_log_management.md
-    - 7. vi 与 vim: tools/linux/09_vi_vim_basic.md
-    - Linux 命令速查表: tools/linux/Linux_Command_Cheat_Sheet.md
+    - 5. 定时任务管理: tools/linux/05_crontab_scheduler.md
+    - 6. 日志系统与分析: tools/linux/06_log_management.md
+    - 7. vi 与 vim: tools/linux/07_vi_vim_basic.md
+    - Linux 命令速查表: tools/linux/linux_command_cheatsheet.md
   - Shell:
-    - 1. Shell 脚本基础: tools/shell/05_shell_basic.md
-    - 2. 综合练习与总结: tools/shell/08_exercises_summary.md
+    - 1. Shell 脚本基础: tools/shell/01_shell_basic.md
+    - 2. 综合练习与总结: tools/shell/02_exercises_summary.md
 - 数据库:
   - SQL:
-    - 0. 数据库与 SQL 入门: database/sql/00_Database_Introduction.md
+    - 0. 数据库与 SQL 入门: database/sql/00_database_introduction.md
     - 1. 数据库工具与连接基础: database/sql/01_sql_intro.md
     - 2. CREATE DATABASE、SCHEMA 与 CREATE TABLE: database/sql/02_create_table_basic.md
     - 3. 约束基础: database/sql/03_constraints.md
@@ -201,7 +225,8 @@ nav:
     - 11. 分组与聚合函数: database/sql/11_groupby_aggregate.md
     - 12. 窗口函数与条件表达式: database/sql/12_window_condition.md
     - 13. SQL 常用函数: database/sql/13_common_functions.md
-    - 14. SQL 综合练习: database/sql/14_sql_comprehensive_practice.md
+    - 14. 视图: database/sql/14_view.md
+    - 15. SQL 综合练习: database/sql/15_sql_comprehensive_practice.md
   - PL/SQL:
     - 1. 入门与环境配置: database/plsql/01_environment.md
     - 2. 基本语法: database/plsql/02_basic_syntax.md
@@ -258,43 +283,52 @@ nav:
     - 11. 缓存机制: backend/mybatis/11_cache_mechanism.md
     - 12. MyBatis 综合练习: backend/mybatis/12_comprehensive_practice.md
   - Spring Boot:
-    - 基础与工程实践:
-      - 1. Spring Boot 入门: backend/springboot/01_intridution.md
-      - 2. Spring Boot 与 MyBatis: backend/springboot/02_springboot_mybatis_intro.md
-      - 3. 基础与核心注解: backend/springboot/03_springboot_annotations.md
-      - 4. Bean 管理与生命周期: backend/springboot/04_springbean_annotations.md
-      - 5. Spring MVC 与参数绑定: backend/springboot/05_mvc_annotations.md
-      - 6. 数据校验: backend/springboot/06_validation_annotations.md
-      - 7. 全局异常处理与事务: backend/springboot/07_exception_transaction.md
-      - 8. Spring Data JPA 与 JSON: backend/springboot/08_datajpa_json_annotations.md
-      - 9. 配置、多环境与多数据源: backend/springboot/09_env_profile_multids.md
-      - 10. 日志体系与 Logback: backend/springboot/10_logging_System.md
-      - 11. Spring MVC 扩展: backend/springboot/11_mvc_advanced_guide.md
-      - 12. 常用模块: backend/springboot/12_springboot_common_modules.md
-      - 13. 部署与运行机制: backend/springboot/13_springboot_deployment_runtime.md
-      - 14. 自动配置、AOP 与事件: backend/springboot/14_springboot_aop_event.md
-    - 架构设计:
-      - 1. 项目结构设计: backend/springboot/Architecture/01_Project_Structure_Design.md
-      - 2. 分层架构设计: backend/springboot/Architecture/02_Layered_Architecture_Design.md
-      - 3. 常用设计模式: backend/springboot/Architecture/03_Common_Design_Patterns.md
-      - 4. MVC 架构设计: backend/springboot/Architecture/04_MVC_Architecture_Design.md
-      - 5. DTO、VO、PO、DO 与 Entity: backend/springboot/Architecture/05_DTO_VO_PO_DO_Entity_Differences.md
-      - 6. 事务设计与边界: backend/springboot/Architecture/06_Transaction_Design_and_Boundary.md
-      - 7. 异常处理设计: backend/springboot/Architecture/07_Exception_Handling_Design.md
-      - 8. REST 接口设计: backend/springboot/Architecture/08_API_Design_REST_DTO_VO.md
-    - 测试:
-      - 1. Spring Boot 测试: backend/springboot/Test/01_Test_Tutorial_Full.md
-      - 2. 测试断言: backend/springboot/Test/02_Assertion_Complete_Tutorial.md
-- 前端 UI 与生态:
+    - 课程入口: backend/springboot/index.md
+    - 1. Spring Boot 是什么: backend/springboot/mainline/01_springboot_overview.md
+    - 2. 创建项目与第一个接口: backend/springboot/mainline/02_create_project_and_first_api.md
+    - 3. Controller 与请求响应: backend/springboot/mainline/03_controller_request_response.md
+    - 4. 项目分层结构: backend/springboot/mainline/04_project_structure_and_layers.md
+    - 5. DTO、VO 与统一返回: backend/springboot/mainline/05_dto_vo_and_unified_response.md
+    - 6. 参数校验与错误返回: backend/springboot/mainline/06_validation_and_error_response.md
+    - 7. MyBatis 数据库连接: backend/springboot/mainline/07_mybatis_database_connection.md
+    - 8. 员工 CRUD API: backend/springboot/mainline/08_employee_crud_api.md
+    - 9. Service 与事务: backend/springboot/mainline/09_service_transaction.md
+    - 10. 查询与分页: backend/springboot/mainline/10_search_pagination.md
+    - 11. 日志与统一异常: backend/springboot/mainline/11_logging_and_exception_handling.md
+    - 12. 登录与权限基础: backend/springboot/mainline/12_login_session_or_jwt.md
+    - 13. 测试基础: backend/springboot/mainline/13_unit_and_api_testing.md
+    - 14. 多环境配置与打包: backend/springboot/mainline/14_profile_config_and_packaging.md
+    - 15. Linux 部署基础: backend/springboot/mainline/15_linux_deployment_basic.md
+    - 16. 项目整理与验收: backend/springboot/mainline/16_employee_management_project.md
+    - 17. SES 改修练习: backend/springboot/mainline/17_ses_change_practice.md
+    - 18. 常见问题与复习: backend/springboot/mainline/18_common_issues_review.md
+- 前端基础、UI 与生态:
+  - HTML 零基础教程:
+    - 学习路线: frontend/HTML/index.md
+    - 1. 认识 HTML: frontend/HTML/01_html_intro.md
+    - 2. HTML 文档结构: frontend/HTML/02_document_structure.md
+    - 3. 元素、属性与嵌套: frontend/HTML/03_elements_attributes.md
+    - 4. 文本内容标签: frontend/HTML/04_text_content.md
+    - 5. 链接与文件路径: frontend/HTML/05_links_paths.md
+    - 6. 图片标签: frontend/HTML/06_images.md
+    - 7. 列表标签: frontend/HTML/07_lists.md
+    - 8. 表格标签: frontend/HTML/08_tables.md
+    - 9. 表单基础: frontend/HTML/09_form_basics.md
+    - 10. 常用表单控件: frontend/HTML/10_form_controls.md
+    - 11. 表单验证属性: frontend/HTML/11_form_validation.md
+    - 12. 语义化页面结构: frontend/HTML/12_semantic_structure.md
+    - 13. 页面元数据与检查: frontend/HTML/13_metadata_validation.md
+    - 14. HTML 新人综合练习: frontend/HTML/14_html_project.md
+    - 15. 新人综合练习参考答案: frontend/HTML/15_newcomer_practice_answers.md
   - UI 组件库:
     - Bootstrap:
-      - 1. 入门与基础结构: frontend/ui/bootstrap/Bootstrap_Basics_Tutorial.md
-      - 2. 常用组件与交互: frontend/ui/bootstrap/Bootstrap_Components_Tutorial.md
-      - 3. 布局与主题系统: frontend/ui/bootstrap/Bootstrap_Layout_And_Theme_Tutorial.md
+      - 1. 入门与基础结构: frontend/ui/bootstrap/01_bootstrap_basics.md
+      - 2. 常用组件与交互: frontend/ui/bootstrap/02_bootstrap_components.md
+      - 3. 布局与主题系统: frontend/ui/bootstrap/03_bootstrap_layout_theme.md
     - Vuetify:
-      - 1. 基础结构: frontend/ui/vuetify/Vuetify_App_Structure_Tutorial.md
-      - 2. 组件: frontend/ui/vuetify/Vuetify_Components.md
-      - 3. 布局与主题系统: frontend/ui/vuetify/Vuetify_Layout_And_Theme_Tutorial.md
+      - 1. 基础结构: frontend/ui/vuetify/01_vuetify_app_structure.md
+      - 2. 组件: frontend/ui/vuetify/02_vuetify_components.md
+      - 3. 布局与主题系统: frontend/ui/vuetify/03_vuetify_layout_theme.md
   - 前端工具、生态与测试:
     - React、Vue 常用库包: frontend/libraries/react-vue-common-libraries-full-tutorial.md
     - Vite、Next.js 与 Nuxt: frontend/libraries/vite-next-nuxt-frontend-framework-tutorial.md
@@ -302,22 +336,22 @@ nav:
     - Vitest 配置详解: frontend/libraries/vitest_tutorial.md
     - Jest 配置详解: frontend/libraries/jest_tutorial.md
 - AWS:
-  - 0. 学习预备知识: aws/00_aws_pre_knowledge.md
-  - 1. 账号与权限: aws/01_stage_iam_fundamentals.md
-  - 2. EC2 与 SSH: aws/02_aws_stage2_ec2_ssh.md
-  - 3. S3 对象存储: aws/03_aws_stage3_s3.md
-  - 4. CloudFront 与 CDN: aws/04_aws_stage4_cloudFront.md
-  - 5. RDS: aws/05_aws_stage5_rds.md
-  - 6. VPC 与网络设计: aws/06_aws_stage6_vpc.md
-  - 7. 负载均衡与自动扩缩容: aws/07_aws_stage7_alb.md
-  - 8. CloudWatch 监控与告警: aws/08_aws_stage8_CloudWatch.md
-  - 9. HTTPS 与 ACM: aws/09_aws_stage9_https_acm.md
-  - 10. CloudWatch 日志与故障排查: aws/10_aws_stage10_CloudWatch.md
-  - 11. Lambda 与 Serverless: aws/11_aws_stage11_lambda_serverless.md
-  - 12. Serverless 实战: aws/12_aws_stage12_serverless_practice.md
-  - 13. EC2 与 Serverless 架构对比: aws/13_aws_stage13_architecture_comparison.md
-  - 14. 常用 AWS 服务总览: aws/14_aws_stage14_common_services_overview.md
+  - 0. 学习预备知识: cloud/aws/00_prerequisites.md
+  - 1. 账号与权限: cloud/aws/01_iam_fundamentals.md
+  - 2. EC2 与 SSH: cloud/aws/02_ec2_ssh.md
+  - 3. S3 对象存储: cloud/aws/03_s3_storage.md
+  - 4. CloudFront 与 CDN: cloud/aws/04_cloudfront_cdn.md
+  - 5. RDS: cloud/aws/05_rds.md
+  - 6. VPC 与网络设计: cloud/aws/06_vpc_network.md
+  - 7. 负载均衡与自动扩缩容: cloud/aws/07_alb_auto_scaling.md
+  - 8. CloudWatch 监控与告警: cloud/aws/08_cloudwatch_monitoring.md
+  - 9. HTTPS 与 ACM: cloud/aws/09_https_acm.md
+  - 10. CloudWatch 日志与故障排查: cloud/aws/10_cloudwatch_logs.md
+  - 11. Lambda 与 Serverless: cloud/aws/11_lambda_serverless.md
+  - 12. Serverless 实战: cloud/aws/12_serverless_practice.md
+  - 13. EC2 与 Serverless 架构对比: cloud/aws/13_architecture_comparison.md
+  - 14. 常用 AWS 服务总览: cloud/aws/14_common_services_overview.md
 - 复习与综合资料:
-  - Java 后端综合教程: all/java_backend_full_tutorial.md
-  - Vue 面试题教程: all/Vue面试题教程版_基础到工程化.md
-  - React 面试题教程: all/React基础到进阶面试教程.md
+  - Java 后端综合教程: review/java_backend_full_tutorial.md
+  - Vue 面试题教程: review/Vue面试题教程版_基础到工程化.md
+  - React 面试题教程: review/React基础到进阶面试教程.md

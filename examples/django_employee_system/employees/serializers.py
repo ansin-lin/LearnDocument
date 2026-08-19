@@ -2,7 +2,7 @@ from pathlib import Path
 
 from rest_framework import serializers
 
-from .models import Department, Employee, EmployeeAttachment
+from .models import Department, Employee, EmployeeAttachment, UserDepartmentAccess
 
 
 class DepartmentSummarySerializer(serializers.ModelSerializer):
@@ -36,6 +36,22 @@ class EmployeeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('员工编号创建后不能修改。')
         return value
 
+    def validate_department(self, department):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and user.is_superuser:
+            return department
+        if (
+            user
+            and user.is_authenticated
+            and UserDepartmentAccess.objects.filter(
+                user=user,
+                department=department,
+            ).exists()
+        ):
+            return department
+        raise serializers.ValidationError('不能选择未授权部门。')
+
 
 class AttachmentSerializer(serializers.ModelSerializer):
     original_name = serializers.CharField(read_only=True)
@@ -53,4 +69,10 @@ class AttachmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('文件不能超过 5 MB。')
         if Path(value.name).suffix.lower() != '.pdf':
             raise serializers.ValidationError('只允许上传 PDF。')
+        original_position = value.tell()
+        value.seek(0)
+        header = value.read(5)
+        value.seek(original_position)
+        if header != b'%PDF-':
+            raise serializers.ValidationError('文件内容不是可识别的 PDF。')
         return value

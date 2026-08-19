@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
 from django.db import models
@@ -32,6 +33,9 @@ class Employee(models.Model):
 
     class Meta:
         ordering = ['employee_number']
+        permissions = [
+            ('view_inactive_employee', 'Can view inactive employees'),
+        ]
 
     def __str__(self) -> str:
         return f'{self.employee_number} {self.name}'
@@ -52,3 +56,27 @@ class EmployeeAttachment(models.Model):
 
     def __str__(self) -> str:
         return self.original_name
+
+
+class UserDepartmentAccess(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='department_accesses',
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        related_name='user_accesses',
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'department'],
+                name='unique_user_department_access',
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.user} → {self.department}'

@@ -1,6 +1,8 @@
 # 员工管理系统最终参考项目
 
-完成各章练习后，可以下载[最终参考项目](downloads/django_employee_system.zip)核对文件组合方式。参考项目不是起步模板；如果一开始就复制最终代码，会失去观察系统逐步变化的机会。
+完成各章练习后，可以下载[第18章服务端渲染参考项目](downloads/django_employee_system_ssr.zip)核对文件组合方式。它严格对应第1～18章，不包含第19章以后才学习的 DRF、JWT、CORS 和 OpenAPI。
+
+对于服务端渲染课程，这个参考项目不是第1章的起步模板；如果一开始就复制最终代码，会失去观察系统逐步变化的机会。对于独立的 REST API 课程，它可以作为已经完成基础业务模型的开始项目。第19～29章全部完成后的组合状态保存在 `examples/django_employee_system`，不要用最终状态代替逐章练习。
 
 ## 参考项目包含什么
 
@@ -11,8 +13,7 @@
 - 日志、请求 ID、403/404/500 页面
 - 11个覆盖权限、筛选、CRUD 和附件的自动测试
 - README、依赖文件、环境变量示例和 `.gitignore`
-- DRF 员工 CRUD、JWT、权限、筛选分页、附件 API 与 OpenAPI
-- 服务端页面测试和 API 自动测试，可同时验证一体式与分离式开发
+- 仅包含第18章已经学习的服务端渲染页面、配置和测试
 
 ## 从零运行
 
@@ -33,10 +34,9 @@ python manage.py runserver
 python manage.py check
 python manage.py test
 python manage.py makemigrations --check
-python manage.py spectacular --file schema.yml --validate
 ```
 
-API 入口为 `/api/employees/`，JWT 获取入口为 `/api/auth/token/`，开发文档为 `/api/docs/`。完整学习顺序见[前后端分离路线](../separated/index.md)，不要只运行最终代码跳过接口契约、权限和测试过程。
+希望继续学习 API 时，可进入[Django 企业级 REST API 开发（DRF）](../separated/index.md)。REST API 课程也支持具备 Python、HTTP 和 SQL 基础的读者从本参考项目直接开始；两种路线都不要复制第29章最终状态跳过接口契约、权限和测试过程。
 
 ## 章节检查点
 

@@ -58,9 +58,9 @@ UI 组件库：MUI / Ant Design / Element Plus / Vuetify
 
 ---
 
-## 2. 学习顺序建议
+## 2. 掌握路径
 
-不要一上来全部学。建议按这个顺序：
+前端项目常用库可以按下面路径逐步掌握：
 
 ```text
 第一阶段：React / Vue 基础 + Vite

@@ -153,6 +153,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'EXCEPTION_HANDLER': 'company_portal.exceptions.api_exception_handler',
 }
 
 SPECTACULAR_SETTINGS = {
@@ -164,7 +165,24 @@ SPECTACULAR_SETTINGS = {
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'filters': {
+        'request_id': {
+            '()': 'company_portal.middleware.RequestIdFilter',
+        },
+    },
+    'formatters': {
+        'standard': {
+            'format': '{asctime} {levelname} request_id={request_id} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'filters': ['request_id'],
+            'formatter': 'standard',
+        },
+    },
     'loggers': {
         'employees': {'handlers': ['console'], 'level': 'INFO'},
     },

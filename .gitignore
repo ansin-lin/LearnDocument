@@ -1,6 +1,14 @@
 # Historical and generated documentation
 /BK/
+/backup/
+/backups/
+/docs/_archive/
 /docs/python/_archive/
+/docs/training_projects/
+/docs/python/web/fastapi_topics/
+/docs/**/backup/
+/docs/**/backups/
+/docs/**/备份/
 /site/
 
 # Python bytecode and caches
@@ -54,6 +62,7 @@ coverage/
 
 # Editor, operating-system, and temporary files
 .idea/
+.obsidian/
 *.swp
 *.swo
 *.tmp

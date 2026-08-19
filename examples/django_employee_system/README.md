@@ -4,7 +4,7 @@
 
 ## 环境
 
-- Python 3.12+
+- Python 3.10+
 - Django 5.2 LTS
 - SQLite（本地学习环境）
 
@@ -48,3 +48,11 @@ python manage.py spectacular --file schema.yml --validate
 用户上传文件保存在本地 `media/`，但没有配置公开 Media 路由；附件只能通过带权限检查的下载 View 获取。
 
 API 默认使用 JWT。先在 Admin 为练习用户授予 employees 的查看或维护权限，再获取 token。允许联调的前端来源由 `DJANGO_CORS_ALLOWED_ORIGINS` 配置；生产不得保留不需要的本地来源。
+
+普通API用户还需要在Admin的“用户部门访问”中分配可查看部门；超级用户可查看全部部门。启动最小联调前端：
+
+```powershell
+python -m http.server 5173 --directory frontend
+```
+
+然后访问 `http://localhost:5173/`。前端只用于课程联调，不保存真实账号或token。

@@ -79,6 +79,10 @@ def home(request: HttpRequest) -> HttpResponse:
 
 这是一个函数视图。
 
+- **是什么**：函数 View 是接收 `HttpRequest` 并返回 `HttpResponse` 的 Python 函数。
+- **为什么需要**：URL 只负责匹配地址，实际读取请求、调用业务处理和构造结果需要由 View 完成。
+- **什么时候使用**：本课程的页面、表单、删除确认和文件下载都从函数 View 开始实现。
+
 ### 4.1 函数参数 `request`
 
 Django 收到浏览器请求后会建立请求对象。URL 匹配成功时，Django 把这个对象作为第一个参数传给视图：
@@ -123,6 +127,8 @@ urlpatterns = [
     path("", views.home),
 ]
 ```
+
+`path()` 的作用是把路径规则和 View 建立对应关系。第一个参数接受路径字符串，空字符串表示网站根路径；第二个参数接受可调用的 View，这里传 `views.home` 而不是执行函数。`path()` 返回 URL pattern，放入 `urlpatterns` 后由 Django 按顺序匹配请求。
 
 这里保留 Django 默认的 Admin 路由，并新增首页路由。
 
@@ -371,7 +377,7 @@ return HttpResponse("employee-service: OK")
 
 使用文件名和函数名画出 `/health/` 的执行流程，不只写“路由 → 视图”。
 
-## 十三、本章完成检查
+## 十三、请求处理运行检查
 
 - [ ] `python manage.py check` 通过
 - [ ] `/` 显示自定义文本
@@ -382,9 +388,7 @@ return HttpResponse("employee-service: OK")
 - [ ] 能从浏览器和终端确认状态码200
 - [ ] 完成 `/health/` 练习并恢复为规定的响应
 
-## 十四、本章总结
-
-## 十五、在 View 中观察 `request`
+## 十四、现场识读：在 View 中观察 `request`
 
 本章不要求处理复杂表单，但必须知道 View 收到的是 `HttpRequest` 对象。先增加一个只读观察用 View：
 
@@ -397,9 +401,9 @@ def request_info(request: HttpRequest) -> HttpResponse:
     return HttpResponse(f"method={request.method}, q={keyword}")
 ```
 
-访问 `/request-info/?q=E001`，应看到 `method=GET, q=E001`。`request.GET` 保存 URL 查询参数；即使名字叫 GET，它也是类似字典的 `QueryDict`。第9章处理表单时会使用 `request.POST`，第19章处理原始 JSON 时再使用 `request.body`。
+访问 `/request-info/?q=E001`，应看到 `method=GET, q=E001`。`request.GET` 保存URL查询参数；即使名字叫GET，它也是类似字典的 `QueryDict`。`get(key, default=None)` 的 `key` 是要读取的参数名，`default` 是参数不存在时的返回值；存在时返回字符串，不存在时返回默认值。同名参数可能有多个值时应使用 `getlist()`，当前关键字搜索只取一个值。第9章处理表单时会使用 `request.POST`，第19章处理原始JSON时再使用 `request.body`。
 
-## 十六、`render()`、`redirect()` 与其他响应
+## 十五、`render()`、`redirect()` 与其他响应
 
 View 的最终职责是返回响应，不一定都直接构造 `HttpResponse`：
 
@@ -410,9 +414,19 @@ View 的最终职责是返回响应，不一定都直接构造 `HttpResponse`：
 
 这些工具不是“跳过 HTTP”，而是帮助开发者正确构造不同类型的 HTTP 响应。
 
-## 十七、路径参数与查询参数不要混淆
+| API | 作用 | 当前主要参数 | 可接受的值与必填性 | 返回值 | 什么时候使用 |
+|---|---|---|---|---|---|
+| `render()` | 用数据渲染模板 | `request`、模板路径、context 字典 | `request` 和模板路径必填；context 可省略，当前页面传字典 | `HttpResponse` | 返回 HTML 页面时 |
+| `redirect()` | 要求浏览器访问另一个地址 | 路由名称及必要参数 | 路由名称必填；路径参数按目标路由决定 | 3xx 响应 | POST 成功后进入结果页时 |
+| `JsonResponse()` | 把字典等数据编码为 JSON | JSON 数据 | 默认接受字典；其他类型需要额外配置 | JSON 响应 | 第19章以后 API 入门时 |
+
+`render()` 必须接收 `request`，使模板处理能够使用当前请求上下文；模板路径告诉 Django加载哪个文件；context 必须是键值结构，模板通过键名读取数据。View 仍然必须 `return render(...)`，因为 `render()` 只是创建响应对象，不会替 View 自动返回。
+
+## 十六、路径参数与查询参数不要混淆
 
 `/employees/12/` 中的 `12` 用来确定一个具体资源，适合路径参数；`/employees/?q=dev` 中的 `q` 用来筛选资源，适合查询参数。路径转换器负责匹配和转换路径值，例如 `<int:employee_id>`；不要把任意用户输入直接当数据库查询或文件路径使用。
+
+## 十七、本章总结
 
 - URL 配置把访问路径交给 View
 - 函数视图接收 `HttpRequest` 并返回响应
@@ -420,3 +434,26 @@ View 的最终职责是返回响应，不一定都直接构造 `HttpResponse`：
 - `urlpatterns` 按顺序保存 URL 与 View 的对应关系
 - 浏览器、Django终端和 `manage.py check` 提供不同验证证据
 - 第4章会把员工 URL 从项目总路由拆到自己的 App 中
+
+## 十八、日本项目中的实际使用
+
+企业项目通常要求每个 View 明确接收什么请求、返回什么状态。`return` 不只是 Python 语法要求：Django 必须取得一个响应对象，才能把状态码、响应头和响应体发回浏览器。健康检查地址也常用于发布后的存活确认，但不能代替数据库和外部服务检查。
+
+## 十九、新人常见错误
+
+- View 忘记 `return`，函数得到 `None`，Django 无法生成响应。
+- 在 `path()` 中写错 View 名称或漏写导入，启动检查或请求时出现错误。
+- 把路径参数和查询参数混用。资源标识放路径，筛选条件通常放查询字符串。
+- 使用 `request.POST` 读取 GET 查询参数，结果始终为空。应根据请求位置选择 `request.GET` 或 `request.POST`。
+- 把 `redirect()` 当作最终页面内容。它先返回重定向响应，浏览器还会发起下一次请求。
+
+## 二十、本章知识将在后续章节继续使用
+
+```text
+path()
+→ View(request)
+→ HttpResponse / render() / redirect()
+→ 第4章拆分 App 路由
+→ 第5章返回 Template
+→ 第8章查询数据库
+```

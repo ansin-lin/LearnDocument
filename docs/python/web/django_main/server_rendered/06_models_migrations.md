@@ -20,6 +20,20 @@
 
 不要手工创建表。开发者修改 Model，Django 根据迁移文件修改数据库。
 
+### Model 与 Migration 的第一次理解
+
+- **是什么**：Model 是用 Python 类描述业务数据的定义；Migration 是记录数据库结构变化的版本文件。
+- **为什么需要**：团队需要让代码中的数据结构与各环境数据库保持一致，并能追踪每次变化。
+- **什么时候使用**：新增或修改字段、关联和约束后，先生成并审查 Migration，再更新数据库。
+
+```text
+修改 Model
+→ makemigrations 生成 Migration
+→ 阅读迁移操作
+→ migrate 修改 Database
+→ check / 页面 / Admin 验证
+```
+
 ## 定义部门和员工
 
 编辑 `employees/models.py`：
@@ -57,6 +71,20 @@ class Employee(models.Model):
 
 这里先掌握四件事：字段决定可保存的数据；`unique=True` 防止编号重复；`ForeignKey` 表示多名员工属于一个部门；`PROTECT` 防止误删仍有员工的部门。
 
+当前字段参数必须能读懂：
+
+| 写法或参数 | 可接受的值与必填性 | 当前作用 |
+|---|---|---|
+| 字段第一个位置参数 | 人类可读名称，可选 | Admin和Form显示“员工编号”等标签 |
+| `max_length` | 正整数；`CharField`必填 | 限制字符串最大长度并影响表结构 |
+| `unique` | 布尔值，默认 `False` | `True` 时由数据库和校验共同限制重复值 |
+| `ForeignKey(to, on_delete, ...)` | 目标Model和删除策略必填 | 建立多对一关系 |
+| `related_name` | 合法属性名，可选 | 允许从部门通过 `employees` 反向取得员工 |
+| `blank` | 布尔值，默认 `False` | `True` 时表单允许留空 |
+| `default` | 固定值或可调用对象，可选 | 新记录未提供该字段时使用初始值 |
+
+字段实例在Model类定义阶段描述数据库列；真正保存记录后，访问 `employee.name` 等属性得到对应Python值。`Meta.ordering` 是默认排序字段列表，不创建新列。
+
 ## 生成并执行迁移
 
 ```bash
@@ -66,7 +94,14 @@ python manage.py showmigrations employees
 python manage.py check
 ```
 
-`makemigrations` 生成变更记录，`migrate` 执行变更。迁移文件属于源代码，必须提交 Git。
+| 命令 | 参数 | 可接受的值与必填性 | 执行结果 | 什么时候执行 |
+|---|---|---|---|---|
+| `makemigrations [app_label]` | App标签 | 可选；省略时检查全部App | 根据Model差异生成迁移文件，不修改业务表 | 修改Model后，先生成并审查 |
+| `migrate [app_label] [migration_name]` | App、目标迁移 | 均可选；省略时应用全部待执行迁移 | 对当前数据库执行目标范围迁移 | 审查迁移后，在目标环境执行 |
+| `showmigrations [app_label]` | App标签 | 可选；省略时显示全部App | 输出迁移清单；`[X]` 表示已应用 | 调查环境状态或发布确认时 |
+| `check` | 无 | 本章不传参数 | 输出配置和Model系统检查结果 | 改动后及提交前 |
+
+迁移文件属于源代码，必须提交Git。`makemigrations`成功不代表数据库已改变，必须再执行 `migrate`。
 
 ## 读懂结果
 
@@ -100,15 +135,15 @@ System check identified no issues (0 silenced).
 
 参考方向见[章节练习参考答案](practice_answers.md)。
 
-## 完成检查
+`sqlmigrate app_label migration_name` 的两个位置参数都必填，分别是App标签和迁移名称；它把该迁移预计执行的SQL打印到终端，不会直接修改数据库。迁移编号以实际生成文件为准，审查SQL后再执行 `migrate`。
+
+## 数据库运行检查
 
 - [ ] 能说明 Model、迁移文件和数据库的区别
 - [ ] 两个 Model 可通过系统检查
 - [ ] 知道模型变更的固定顺序：修改、生成迁移、审查、执行、测试
 
-下一章不急着写业务页面，先使用 Admin 安全地录入初始数据。
-
-## 字段与选项的现场读法
+## 现场识读：字段与选项
 
 不需要一次背完所有字段，但要能从定义判断数据库值、表单行为和业务约束。
 
@@ -129,3 +164,45 @@ System check identified no issues (0 silenced).
 ## 迁移是团队交付物
 
 修改 Model 后固定执行“生成 → 阅读 → 执行 → 验证”。使用 `sqlmigrate` 观察将执行的 SQL，使用 `showmigrations` 核对环境状态。生产迁移还要确认锁表时间、旧代码兼容、数据回填、备份和回滚边界。多人同时创建冲突迁移时，应理解两条变更的业务含义后合并，不要随意删除别人已经部署的迁移。
+
+### 结构迁移与数据迁移
+
+`AddField`、`AlterField` 等操作修改表结构；`RunPython` 用于可重复执行的数据转换。数据迁移必须通过 `apps.get_model()` 取得当时版本的历史 Model，不要直接导入当前 `models.py`：
+
+```python
+def create_default_department(apps, schema_editor):
+    Department = apps.get_model("employees", "Department")
+    Department.objects.get_or_create(name="未分配")
+```
+
+`get_or_create(defaults=None, **lookups)` 先按查询条件查找唯一对象：存在时返回该对象和 `False`，不存在时用查询条件与可选 `defaults` 创建对象并返回它和 `True`。因此返回值是 `(object, created)` 二元组。并发创建仍应由数据库唯一约束兜底，不能只依赖这次查询。
+
+把函数交给 `migrations.RunPython()` 前，要同时设计反向操作、重复执行影响和数据量。大表回填可能长时间锁表或占用资源，应分批、监控，并与旧代码保持兼容。课程主线不实际创建这条迁移；本节用于识读既有项目中的数据迁移。
+
+`apps.get_model(app_label, model_name)` 的App标签和历史Model名都必填，返回该迁移时点对应的历史Model类；找不到时抛出查找错误。`migrations.RunPython(code, reverse_code=None)` 的正向函数必填，反向函数可选，返回一个迁移操作对象。正向和反向函数都会接收 `apps`、`schema_editor` 两个参数；数据迁移需要可回退时必须提供安全的反向逻辑。
+
+## 本章总结
+
+Model 描述业务数据，迁移文件记录结构变化，数据库保存实际状态。修改模型后必须生成、审查、执行并验证迁移，不能只修改 Python 代码。下一章不急着写业务页面，先使用 Admin 录入可供后续页面查询的初始数据。
+
+## 日本项目中的实际使用
+
+迁移文件与源代码一起 Review 和提交。担当者通常要说明表结构变化、既有数据处理、执行时间、锁表风险和回滚方案。已经在共享环境执行的迁移不能随意删除或改写，否则其他成员的数据库状态会与仓库记录不一致。
+
+## 新人常见错误
+
+- 只修改 Model，不执行 `makemigrations`，数据库结构不会自动变化。
+- 生成迁移后不阅读内容，可能把意外字段删除或改成不可逆操作。
+- 混淆 `null` 与 `blank`：前者主要影响数据库，后者主要影响表单校验。
+- 修改字段后删除别人已经部署的迁移，导致环境历史不一致。
+
+## 本章知识将在后续章节继续使用
+
+```text
+Model + Migration + Database
+→ 第7章 Admin 录入数据
+→ 第8章 ORM 查询
+→ 第9～10章表单保存和修改
+→ 第14章附件 Model
+→ 第17章发布与迁移确认
+```

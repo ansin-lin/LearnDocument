@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Department, Employee, EmployeeAttachment
+from .models import Department, Employee, EmployeeAttachment, UserDepartmentAccess
 
 
 @admin.register(Department)
@@ -21,3 +21,11 @@ class EmployeeAttachmentAdmin(admin.ModelAdmin):
     list_display = ['original_name', 'employee', 'uploaded_by', 'uploaded_at']
     search_fields = ['original_name', 'employee__employee_number', 'employee__name']
     readonly_fields = ['uploaded_by', 'uploaded_at']
+
+
+@admin.register(UserDepartmentAccess)
+class UserDepartmentAccessAdmin(admin.ModelAdmin):
+    list_display = ['user', 'department']
+    list_filter = ['department']
+    search_fields = ['user__username', 'department__name']
+    autocomplete_fields = ['user', 'department']

@@ -17,5 +17,8 @@ class EmployeePermission(BasePermission):
         if view.action == 'destroy':
             return user.has_perm('employees.delete_employee')
         if view.action == 'attachments':
-            return user.has_perm('employees.add_employeeattachment')
+            return (
+                user.has_perm('employees.change_employee')
+                and user.has_perm('employees.add_employeeattachment')
+            )
         return False

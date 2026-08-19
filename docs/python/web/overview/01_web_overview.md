@@ -14,7 +14,7 @@
 
 ## 二、员工管理系统中的Python后端
 
-本章使用[员工管理系统](../../../training_project/employee_management_system/00_project_overview.md)作为示例讲解 Python Web 开发。
+本章使用员工管理系统作为示例讲解 Python Web 开发。
 
 在这个系统中，浏览器页面负责显示员工列表和接收用户输入；Python后端负责接收请求、校验数据、执行员工管理规则、访问数据库并返回结果。
 

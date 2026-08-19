@@ -47,6 +47,8 @@ employees/urls.py
 employee_detail(request, employee_id=1001)
 ```
 
+图中的 `include()` 是把剩余路径交给另一个URL配置的路由工具；本章第六节会结合实际代码说明它的参数和返回结果。
+
 ## 三、为什么拆分 App 路由
 
 如果所有业务 URL 都写在 `company_portal/urls.py`，项目变大后会混在一起：
@@ -88,10 +90,10 @@ def employee_detail(
 
 `employee_detail()` 有两个参数：
 
-| 参数 | 来源 |
-| --- | --- |
-| `request` | Django 创建的请求对象 |
-| `employee_id` | URL 中匹配到的整数 |
+| 参数 | 来源 | 可接受的值与必填性 |
+| --- | --- | --- |
+| `request` | Django 创建的请求对象 | `HttpRequest`对象，由Django必定传入 |
+| `employee_id` | URL 中匹配到的整数 | 符合 `<int:employee_id>` 的非负整数，详情路由必填 |
 
 ## 五、创建 employees App 路由
 
@@ -209,6 +211,8 @@ urlpatterns = [
 2. 去掉已经匹配的部分。
 3. 把剩余路径交给 `employees/urls.py`。
 
+`include(module)` 的必填参数是另一个URL配置模块或模块路径；当前传入 `"employees.urls"`。它返回可交给 `path()` 的URL配置引用，不直接生成页面，也不调用View。业务路由需要按App拆分时使用。
+
 ## 七、运行并验证路由
 
 先检查配置：
@@ -281,6 +285,8 @@ http://127.0.0.1:8000/employees/abc/
 python manage.py shell
 ```
 
+`python manage.py shell` 不需要位置参数，会加载当前项目settings并打开Python交互环境。成功后出现交互提示符，可以导入Django对象；它用于短时间观察路由、Model或配置，不用于长期保存业务脚本。操作前确认当前目录和虚拟环境。
+
 输入：
 
 ```python
@@ -299,6 +305,14 @@ reverse("employees:detail", args=[1001])
 
 `reverse()` 接收路由名称以及路径参数，返回一个 URL 字符串。它不会向服务器发送请求，也不会调用 `employee_list()` 或 `employee_detail()`。
 
+| 参数 | 可接受的值与必填性 | 当前作用 |
+|---|---|---|
+| `viewname` | 路由名称字符串，必填 | 例如 `"employees:detail"` |
+| `args` | 位置参数序列，可选 | 按路由参数顺序提供，例如 `[1001]` |
+| `kwargs` | 关键字参数字典，可选 | 按路由参数名提供，例如 `{"employee_id": 1001}` |
+
+`args` 与 `kwargs` 用于同一组路径参数时二选一。返回值是以 `/` 开头的URL字符串；参数缺失或无法匹配时抛出 `NoReverseMatch`。
+
 当前存在两个相反方向：
 
 ```text
@@ -312,7 +326,7 @@ reverse("employees:detail", args=[1001])
 exit()
 ```
 
-退出 Shell。
+`exit()` 不接参数，结束当前Python交互环境并返回终端；它不会停止另一个终端中正在运行的开发服务器。
 
 第5章会在模板中使用相同路由名生成详情链接。
 
@@ -418,7 +432,7 @@ employees:create
 
 只把路由参数暂时改为 `employee_pk`，保持视图参数不变，访问详情页并记录错误。然后把路由参数恢复为 `employee_id`，确认 `/employees/1001/` 再次返回200。
 
-## 十二、本章完成检查
+## 十二、路由运行检查
 
 本章结束时不保留练习中的临时 `new/` 路由。正式路由状态如下：
 
@@ -439,9 +453,7 @@ employees:create
 - [ ] 能说明 `app_name` 与 `name` 的组合关系
 - [ ] 已删除练习中的临时新增视图和路由
 
-## 十三、本章总结
-
-## 十四、反向解析的三种常见写法
+## 十三、现场识读：反向解析的三种常见写法
 
 命名路由的价值是避免在 Python 和模板里写死 URL。下面三种写法最终都依赖 `app_name`、`name` 和参数保持一致：
 
@@ -459,7 +471,7 @@ return redirect("employees:detail", employee_id=12)
 
 也可以使用位置参数 `args=[12]` 或 `{% url 'employees:detail' employee.pk %}`。同一项目应遵守已有风格；参数较多时，关键字参数通常更容易读懂。
 
-## 十五、现场路由调查法
+## 十四、现场路由调查法
 
 收到“这个页面在哪里处理”的问题时，按下面顺序调查：
 
@@ -471,7 +483,7 @@ return redirect("employees:detail", employee_id=12)
 
 自定义 path converter 适合复用复杂且稳定的路径规则，本课程只要求能识读。普通整数、字符串、slug、UUID 路径优先使用 Django 内置 converter，避免过早增加维护成本。
 
-## 十六、路由设计的企业约定
+## 十五、路由设计的企业约定
 
 - URL 表达资源或操作意图，命名保持一致。
 - 项目路由负责入口和 App 分发，业务路由留在 App。
@@ -479,8 +491,32 @@ return redirect("employees:detail", employee_id=12)
 - 改路由名时搜索 `reverse()`、`redirect()`、`{% url %}`、测试和前端调用方。
 - 不能用“页面能打开”替代 404、权限和 HTTP 方法验证。
 
+## 十六、本章总结
+
 - 项目级路由负责业务模块入口，App 级路由负责模块内部地址
 - `include()` 把匹配后的剩余路径交给另一个 URL 配置
 - 路径转换器可以限制参数格式并把值传给视图
 - 命名空间和路由名称提供稳定的反向解析入口
 - 第5章会使用这些路由渲染带详情链接的员工列表
+
+## 十七、日本项目中的实际使用
+
+大型项目很少把全部地址写在一个 `urls.py` 中。项目级路由负责系统入口，App 路由负责业务内部地址；`app_name`、`name` 和反向解析让团队可以调整实际 URL，而不必逐个修改 View 和 Template 中的字符串。
+
+## 十八、新人常见错误
+
+- 忘记 `include()` 后的路径只接收“剩余部分”，导致重复写 `employees/`。
+- `app_name`、路由 `name` 和模板中的 `{% url %}` 名称不一致，产生 `NoReverseMatch`。
+- 把动态路由放在固定路由前面，使 `new/` 被当成员工编号匹配。
+- 修改 URL 字符串后只测试页面入口，没有检查重定向、模板链接和测试代码。
+- 在代码中硬编码 `/employees/...`，使以后改路由时产生遗漏。
+
+## 十九、本章知识将在后续章节继续使用
+
+```text
+项目 urls.py
+→ include("employees.urls")
+→ app_name + name
+→ reverse() / redirect() / {% url %}
+→ 第8～14章列表、详情、CRUD、登录和附件路由
+```

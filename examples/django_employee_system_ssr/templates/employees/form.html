@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} | 员工管理系统{% endblock %}
+{% block content %}
+  <section class="panel narrow">
+    <h1>{{ page_title }}</h1>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {{ form.as_p }}
+      <div class="actions"><button type="submit">保存</button><a href="{% url 'employees:list' %}">取消</a></div>
+    </form>
+  </section>
+{% endblock %}

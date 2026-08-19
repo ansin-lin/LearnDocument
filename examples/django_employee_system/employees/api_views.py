@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 
+from .access import scope_employee_queryset
 from .filters import EmployeeFilter
 from .models import Employee, EmployeeAttachment
 from .permissions import EmployeePermission
@@ -32,7 +33,14 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     ordering = ['employee_number', 'pk']
 
     def get_queryset(self):
-        return Employee.objects.select_related('department').order_by('employee_number', 'pk')
+        queryset = Employee.objects.select_related('department').order_by(
+            'employee_number',
+            'pk',
+        )
+        queryset = scope_employee_queryset(queryset, self.request.user)
+        if not self.request.user.has_perm('employees.view_inactive_employee'):
+            queryset = queryset.filter(is_active=True)
+        return queryset
 
     def destroy(self, request, *args, **kwargs):
         employee = self.get_object()
@@ -70,10 +78,14 @@ class AttachmentDownloadView(APIView):
 
     @extend_schema(responses={(200, 'application/pdf'): OpenApiTypes.BINARY})
     def get(self, request, attachment_id):
+        allowed_employees = scope_employee_queryset(
+            Employee.objects.filter(is_active=True),
+            request.user,
+        )
         attachment = get_object_or_404(
             EmployeeAttachment.objects.select_related('employee'),
             pk=attachment_id,
-            employee__is_active=True,
+            employee__in=allowed_employees,
         )
         if not request.user.has_perm('employees.view_employee'):
             self.permission_denied(request)

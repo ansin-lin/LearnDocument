@@ -60,6 +60,8 @@ company_portal
 
 PowerShell 的 `-Force` 可以在目录已存在时继续执行，但不会清空目录。若该目录已经存放其他项目或文件，请换一个空目录，不要覆盖原有内容。
 
+`New-Item -ItemType Directory -Path <路径> -Force` 创建目录：`-ItemType` 指定资源类型，`-Path` 必须提供目标路径，`-Force` 允许目录已存在时继续；返回创建或取得的目录对象。`Set-Location <路径>` 切换当前目录。Bash中的 `mkdir -p <路径>` 和 `cd <路径>` 分别完成相同目的。执行后必须确认自己位于空的项目目录。
+
 ## 四、创建并激活虚拟环境
 
 Windows PowerShell：
@@ -76,11 +78,15 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
+`python -m venv <目录>` 使用当前Python创建隔离环境，目录参数必填；成功后生成独立解释器和包目录，不会自动激活。PowerShell的 `Activate.ps1` 和Bash的 `source .../activate` 修改当前终端环境，使后续 `python`、`pip` 指向 `.venv`；只对当前终端会话有效。
+
 激活后确认解释器：
 
 ```powershell
 python -c "import sys; print(sys.executable)"
 ```
+
+`python -c <代码>` 执行命令行给出的Python代码并退出；`-c` 后的代码字符串必填。这里的结果通过终端输出解释器路径，用于验证环境，不修改项目文件。
 
 输出路径应指向当前项目的 `.venv`。如果仍然指向系统 Python，先解决虚拟环境问题再继续。
 
@@ -117,6 +123,8 @@ Django>=5.2,<5.3
 python -m pip install -r requirements.txt
 ```
 
+这条命令中，`python -m` 使用当前Python解释器运行模块，避免把依赖装到其他Python环境；`pip install` 安装依赖；`-r` 后必须提供依赖文件路径。成功后，当前虚拟环境中会安装 `requirements.txt` 列出的Django版本；执行时机是创建或更新项目环境之后。
+
 确认版本：
 
 ```powershell
@@ -139,7 +147,9 @@ python -m django --version
 python -m django startproject company_portal .
 ```
 
-命令最后的 `.` 表示把项目文件创建在当前目录中。完成后的关键结构如下：
+`startproject` 创建Django项目骨架；第一个位置参数 `company_portal` 是项目配置包名，第二个位置参数 `.` 是目标目录，表示写入当前目录。命令成功时会生成 `manage.py` 和配置包；它只在项目初始化时执行，不要在已有项目目录中重复执行。
+
+完成后的关键结构如下：
 
 ```text
 company_portal/
@@ -177,6 +187,8 @@ Django 项目可以包含多个 App。项目负责整体配置，App 负责一�
 ```powershell
 python manage.py startapp employees
 ```
+
+`startapp` 创建App代码骨架，必填位置参数 `employees` 同时成为Python包名和默认App标签。执行结果是新增 `employees/` 目录，但不会自动写入 `INSTALLED_APPS`；每个业务App通常只创建一次，创建后还必须注册。
 
 新增结构如下：
 
@@ -229,6 +241,13 @@ USE_I18N = True
 USE_TZ = True
 ```
 
+| 配置 | 当前值 | 可接受的值与必填性 | 作用 |
+|---|---|---|---|
+| `LANGUAGE_CODE` | `"zh-hans"` | Django支持的语言代码；项目必须有有效值 | 决定框架默认显示语言 |
+| `TIME_ZONE` | `"Asia/Tokyo"` | IANA时区名称；项目必须有有效值 | 定义项目默认业务时区 |
+| `USE_I18N` | `True` | 布尔值，默认启用 | 是否启用Django翻译系统 |
+| `USE_TZ` | `True` | 布尔值，Django新项目默认启用 | 是否使用时区感知的日期时间 |
+
 `TIME_ZONE` 是 Django 的默认时区，会影响表单输入的日期时间如何解释，以及模板中日期时间如何显示。日志时间还会受到日志配置和操作系统环境影响，不能只依靠这个选项判断。课程以日本业务时间 `Asia/Tokyo` 统一练习。
 
 ## 十一、检查项目配置
@@ -254,6 +273,8 @@ System check identified no issues (0 silenced).
 ```powershell
 python manage.py runserver
 ```
+
+`runserver [addrport]` 启动开发服务器；不传参数时默认监听 `127.0.0.1:8000`，传入 `8001` 可改端口，也可传 `IP:端口`。命令会持续运行并输出请求日志，使用 `Ctrl+C` 停止；只在本地开发和验证时执行，不能作为生产服务器。
 
 终端应出现类似地址：
 
@@ -312,6 +333,8 @@ python -c "import sys; print(sys.executable)"
 python -m pip show Django
 ```
 
+`python -m pip show <包名>` 的包名必填，输出已安装版本、位置和依赖等元数据，不修改环境。这里用于调查“当前解释器是否安装了Django以及装在哪里”；如果没有输出，应先确认虚拟环境和安装步骤。
+
 常见原因是虚拟环境未激活，或者安装依赖时使用了另一个 Python。
 
 ### 14.2 找不到 `manage.py`
@@ -366,7 +389,7 @@ python manage.py runserver 8001
 - `company_portal/settings.py` 为什么属于项目配置
 - `employees/views.py` 为什么属于员工业务 App
 
-## 十六、本章完成检查
+## 十六、项目运行检查
 
 - [ ] 当前解释器位于 `.venv`
 - [ ] `.gitignore` 已忽略虚拟环境、Python 缓存和开发数据库
@@ -378,15 +401,13 @@ python manage.py runserver 8001
 - [ ] 知道首次启动时未应用迁移提示的含义
 - [ ] 知道如何停止开发服务器并重新启动
 
-## 十七、本章总结
-
-## 十八、`django-admin` 与 `manage.py` 的关系
+## 十七、现场识读：`django-admin` 与 `manage.py` 的关系
 
 `django-admin` 是 Django 安装后提供的通用管理命令；`manage.py` 会自动指定当前项目的 settings，所以进入项目后通常使用 `python manage.py ...`。例如创建项目时使用 `django-admin startproject`，项目创建后使用 `python manage.py startapp`、`runserver`、`migrate` 和 `test`。
 
 运行命令前先确认终端所在目录和虚拟环境。现场最常见的“同一命令在我电脑可以、在别人电脑不行”，往往来自 Python 解释器、依赖版本、环境变量或当前目录不同。
 
-## 十九、读懂核心配置，而不是背配置名
+## 十八、读懂核心配置，而不是背配置名
 
 | 配置 | 作用 | 开发现场的检查重点 |
 |---|---|---|
@@ -398,7 +419,7 @@ python manage.py runserver 8001
 
 `employees/apps.py` 中的 `EmployeesConfig` 保存 App 名称及启动配置。使用 `"employees.apps.EmployeesConfig"` 注册，比只写 `"employees"` 更明确。不要把访问数据库、调用外部 API 等重工作随意放进 App 启动过程。
 
-## 二十、启动成功后的四项验证
+## 十九、启动成功后的四项验证
 
 只看到首页不代表环境完全正确。至少执行：
 
@@ -409,7 +430,11 @@ python manage.py check
 python manage.py runserver
 ```
 
+`python --version` 不接业务参数，输出当前终端正在使用的Python版本；它用于确认解释器基线。随后用 `python -m django --version` 确认同一解释器中的Django版本，二者应与项目README和依赖要求一致。
+
 然后记录访问 URL、HTTP 状态、终端日志和停止服务器的方法。`runserver` 只用于开发，不是生产应用服务器；第28章会学习生产部署链路。
+
+## 二十、本章总结
 
 - 虚拟环境隔离当前项目依赖
 - `.gitignore` 防止本机生成文件进入版本管理
@@ -417,3 +442,26 @@ python manage.py runserver
 - Django 项目保存整体配置，App 组织具体业务
 - `manage.py` 是开发阶段最常用的项目命令入口
 - 本章完成了可启动的项目，第3章将在其中加入第一个页面
+
+## 二十一、日本项目中的实际使用
+
+企业项目强调“任何成员都能重建相同环境”。因此 Python 版本、Django 版本、依赖文件、环境变量和启动命令都要明确。`Project` 保存全站配置，`App` 按业务职责拆分代码，使多人修改不同业务时更容易调查影响范围。
+
+## 二十二、新人常见错误
+
+- 没有激活虚拟环境就安装 Django，导致依赖进入错误的 Python 环境。执行命令前先确认解释器和版本。
+- 在错误目录执行 `manage.py`，出现“找不到文件”。先用当前目录和项目结构确认位置。
+- 创建 App 后忘记加入 `INSTALLED_APPS`，导致 Model、Admin 等功能未被项目加载。
+- 把 `runserver` 当作生产服务器。它只用于本地开发和验证。
+- 将真实 `SECRET_KEY` 或本机 `.env` 提交到 Git。仓库只保存变量说明和安全示例。
+
+## 二十三、本章知识将在后续章节继续使用
+
+```text
+Project 配置
+├─ urls.py → 第3～4章路由
+├─ settings.py → 第5章模板与Static、第12章认证、第15章日志
+└─ App employees
+   ├─ views.py → 第3章以后
+   └─ models.py → 第6章以后
+```

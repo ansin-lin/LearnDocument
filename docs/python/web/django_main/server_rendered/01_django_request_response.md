@@ -26,8 +26,8 @@
 开始本章前，应能运行简单 Python 程序，并了解 URL、浏览器和服务器这些基本概念。需要复习时可先阅读：
 
 - [Python 通用基础](../../../common/00_intro.md)
-- [Web 开发基础概念](../../../../web_development_basics/00_web_development_basics.md)
-- [HTTP、JSON 与 REST API](../../../../web_development_basics/01_http_json_rest_api.md)中的 HTTP 部分
+- [前后端与请求响应基础](../../../../web_basics/00_frontend_backend_request_response.md)
+- [HTTP、REST、Cookie、Session 与 CORS](../../../../web_basics/01_http_rest_cookie_cors.md)中的 HTTP 部分
 
 当前只需要 HTTP 的基础知识。JSON 与 REST API 会在第19章以后的前后端分离阶段正式使用。
 
@@ -125,6 +125,11 @@ GET 通常不应产生删除或修改等业务变化。POST 也不代表请求�
 
 浏览器发送的是 HTTP 请求消息，Django View 收到的不是一段原始文字，而是 Django 已经整理好的 `HttpRequest` 对象。
 
+| 概念 | 是什么 | 为什么需要 | 什么时候使用 |
+|---|---|---|---|
+| `HttpRequest` | Django 对一次 HTTP 请求的对象表示 | 让 View 用统一属性读取方法、参数、文件和用户，而不必自行解析原始报文 | 每个 View 接收请求，以及读取 `method`、`GET`、`POST` 等信息时 |
+| `HttpResponse` | Django 对一次 HTTP 响应的对象表示 | 把响应体、状态码和响应头统一交给 Django 返回浏览器 | View 完成处理并返回文本、HTML、文件或错误结果时 |
+
 ```text
 浏览器发送 HTTP Request
         ↓
@@ -159,7 +164,15 @@ render(request, ...)        # 渲染模板并返回响应
 redirect("employees:list") # 返回重定向响应
 ```
 
-`render()` 和 `redirect()` 最终也会生成响应，不是绕过 HTTP。
+这里先建立三者的最小区别，具体模板和路由写法在第3～5章实际操作：
+
+| API | 作用 | 当前参数 | 可接受的值与必填性 | 返回值 | 什么时候使用 |
+|---|---|---|---|---|---|
+| `HttpResponse(content)` | 直接构造响应 | `content` | 文本或字节内容，可省略为空内容 | `HttpResponse` | 健康检查或简单文本响应 |
+| `render(request, template_name, context=None)` | 用模板和数据生成HTML响应 | 请求、模板路径、context | 请求与模板路径必填；`context` 是可选字典 | `HttpResponse` | 返回服务端渲染页面 |
+| `redirect(to, *args, **kwargs)` | 生成重定向响应 | 目标及路由参数 | `to` 必填，通常是路由名；其余参数按目标路由决定 | 3xx响应 | POST成功后跳转结果页 |
+
+`render()` 和 `redirect()` 只负责创建响应对象，View仍必须使用 `return` 把它交给Django；它们不是绕过HTTP。
 
 ## 七、Django 请求处理中的核心角色
 
@@ -173,6 +186,15 @@ redirect("employees:list") # 返回重定向响应
 | Model | 描述数据并通过 ORM 访问数据库 | 不负责接收浏览器请求 |
 | Template | 使用 View 提供的数据生成 HTML | 不负责长期保存数据和后端权限 |
 | `HttpResponse` | 表示 View 要返回的结果 | 不代表页面一定成功，状态码可能是错误 |
+
+这些角色的使用原因和时机如下：
+
+| 概念 | 为什么需要 | 什么时候使用 |
+|---|---|---|
+| URL Dispatcher | 系统必须根据访问路径选择处理入口 | 每次请求进入 Django 时 |
+| View | 需要一个位置组织请求、业务调用和响应 | 实现页面、提交处理、下载和健康检查时 |
+| Model | 需要用 Python 对象统一描述和访问持久化数据 | 第6章以后保存和查询部门、员工时 |
+| Template | 页面结构与 Python 处理代码需要分离 | 第5章以后生成服务端 HTML 时 |
 
 Model 和 Template 都不是每次请求必定使用：
 
@@ -278,8 +300,10 @@ Content-Type: text/html; charset=utf-8
 
 当前只需知道：
 
-- WSGI 是 Python Web 应用常见的同步服务器接口。
-- ASGI 还支持异步连接等能力，也可以运行普通 Django 请求。
+- **WSGI是什么**：Python Web服务器与同步Web应用之间的标准调用接口。需要它，是为了让不同服务器能用统一方式运行Django；传统同步部署中使用。
+- **ASGI是什么**：同时支持同步请求和异步连接的应用接口。需要它，是为了承载异步请求及WebSocket等长连接能力；使用ASGI服务器或异步功能时使用。
+
+当前项目不直接调用WSGI/ASGI函数，只需知道服务器会通过 `wsgi.py` 或 `asgi.py` 进入Django。生产环境选择哪一种取决于项目部署方式和实际并发需求。
 - Middleware 在 View 前后执行 Session、安全、认证、日志等共通处理。
 - 反向代理位于 Django 前方，可处理 TLS、转发和静态资源等工作。
 
@@ -375,3 +399,25 @@ Template 负责生成显示内容，不负责长期保存员工数据。
 - MTV 分别是 Model、Template 和 View；Django View 负责请求处理，不是页面文件。
 - Project 保存全站配置，App 组织具体业务。
 - 第2章将创建 `company_portal` Project 和 `employees` App。
+
+## 十七、日本项目中的实际使用
+
+日本企业项目通常先用请求路径说明系统行为，再讨论代码实现。例如调查“员工列表打不开”时，会依次确认浏览器请求、URL、View、数据库访问和响应状态。这样记录调查过程，其他成员能够复现，也便于 Review 判断问题属于前端、Django 还是数据库。
+
+## 十八、新人常见错误
+
+- 把 View 理解成 HTML 页面。View 是处理请求的 Python 函数或类，Template 才负责页面结构。
+- 把 Django 的 `HttpRequest` 当成浏览器发送的原始文本。它是 Django 解析 HTTP 请求后创建的对象。
+- 看到页面就只记录200。跳转、403、404和500都表达不同结果，应同时确认状态码。
+- 认为 GET 和 POST 只是名字不同。GET 主要读取资源，POST 常用于产生状态变化。
+
+## 十九、本章知识将在后续章节继续使用
+
+```text
+HTTP Request
+→ URL Dispatcher（第3～4章）
+→ View（第3章以后）
+→ Template / Model（第5～8章）
+→ HttpResponse
+→ 登录、权限、日志与测试（第12～16章）
+```

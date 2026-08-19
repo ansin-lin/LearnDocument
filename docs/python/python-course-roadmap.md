@@ -61,10 +61,10 @@
 
 ## 2. Django 主线
 
-Django 是 Python Web 的零基础主线，分为两个连续阶段：
+Django 课程分为两个可以衔接、也可以分别进入的方向：
 
-1. `web/django_main/server_rendered/`：先完成服务端渲染业务系统
-2. `web/django_main/separated/`：再学习 REST、DRF 和前后端分离
+1. `web/django_main/server_rendered/`：从 Python 与 Web 基础开始完成服务端渲染业务系统。
+2. `web/django_main/separated/`：学习 Django 企业级 REST API（DRF）；既可衔接服务端渲染课程，也可在具备 Python、HTTP 和 SQL 基础后使用课程提供的基础项目直接进入。
 
 ### 2.1 服务端渲染正式路线
 
@@ -114,9 +114,9 @@ Django 是 Python Web 的零基础主线，分为两个连续阶段：
 | `_archive/django_server_rendered_v1/15_server_rendered_project.md` | 新 08–17 | 已拆入渐进项目；交付内容集中到新 17 |
 | 当前没有独立章节 | 新 16、18 | 已新增基础测试和 SES 改修实战 |
 
-### 2.3 前后端分离阶段编号影响
+### 2.3 REST API 课程编号
 
-服务端渲染扩展为 18 章后，分离式阶段已顺延为第 19–29 章，并同步文件名、章标题和 `mkdocs.yml`。
+REST API 课程保留第19–29章编号，用于与既有教材和员工项目保持连续；编号不表示必须完成第1–18章。课程入口负责说明两种学习路线和基础项目的开始状态。
 
 ### 2.4 迁移执行边界
 
@@ -124,23 +124,31 @@ Django 是 Python Web 的零基础主线，分为两个连续阶段：
 - 后续内容修改继续按“可运行成果 → 新知识 → 验证 → 现场任务”的结构迭代。
 - 后续可建立学员入口 `server_rendered/index.md`，只展示学习前提、阶段成果和学习路线，不展示旧文件迁移说明。
 
-## 3. FastAPI 扩展专题
+## 3. FastAPI 框架路线
 
-FastAPI 路线由三组连续内容组成：
+FastAPI 路线按认知负担分为八个连续模块：
 
-1. `web/overview/02_web_development_environment.md` 与 `web/fastapi_topics/01`–`03`：环境、请求响应和数据校验。
-2. `web/database_tools/`、`web/database_project/` 与 `web/fastapi_topics/04`–`05`：SQLAlchemy、Alembic、数据库项目和 FastAPI 集成。
-3. `web/fastapi_topics/06`–`16`：依赖注入、项目结构、认证、测试、部署和验收。
+1. `web/fastapi/01_web_api_basics/`：HTTP、Request、Response、Pydantic 和 OpenAPI。
+2. `web/fastapi/02_fastapi_core/`：拆分`APIRouter`，再独立掌握函数依赖、请求级复用和`yield`资源清理。
+3. `web/fastapi/03_sqlalchemy/`：在FastAPI主线中学习ORM、Session、CRUD、事务和Alembic。
+4. `web/fastapi/04_database_project/`：建立员工模型、迁移、事务和 Repository/Service/DTO 边界。
+5. `web/fastapi/05_database_api/`：把已经掌握的依赖生命周期用于数据库Session和CRUD接口。
+6. `web/fastapi/06_engineering/`：项目结构、Config、Lifespan、Middleware、日志、异常、JWT 和测试。
+7. `web/fastapi/07_integration_delivery/`：前端联调、CORS、安全检查、部署和验收。
+8. `web/fastapi/08_extensions/`：文件、外部 API、Redis、S3 和 AI 选修专题。
 
-数据库工具不再作为与框架并列的独立路线。当前项目用它为 FastAPI 的数据库会话、Repository、Service 和事务边界建立前置知识；Flask 在自己的路线中使用 Flask-SQLAlchemy 和 Flask-Migrate。
+`web/fastapi/project_spec.md`定义FastAPI课程自己的贯穿业务、样例数据和验收规则。数据库工具作为主线第三阶段，为数据库会话、Repository、Service和事务边界建立基础；学员不需要先学习其他Web框架。
 
 | 阶段 | 主要文件 | 核心内容 |
 | --- | --- | --- |
-| FastAPI 基础 | `overview/02_web_development_environment.md`、`fastapi_topics/01`–`03` | 环境、第一个接口、请求响应、Pydantic 校验 |
-| 数据库基础 | `database_tools/01`–`03` | SQLAlchemy 2.x、CRUD、事务、Alembic |
-| 数据库项目 | `database_project/01`–`03` | 模型、项目 CRUD、Repository、Service |
-| 框架集成 | `fastapi_topics/04`–`05` | FastAPI 数据库会话、CRUD 与事务集成 |
-| 工程化与交付 | `fastapi_topics/06`–`16` | 依赖注入、分层、认证、测试、安全、部署和验收 |
+| Web API 基础 | `overview/02_web_development_environment.md`、`fastapi/01_web_api_basics/` | 环境、第一个接口、请求响应、Pydantic 和 OpenAPI |
+| FastAPI 核心 | `fastapi/02_fastapi_core/` | `APIRouter`、`Depends`、请求级复用与`yield`资源清理 |
+| 数据库基础 | `sqlalchemy/01`–`03` | SQLAlchemy 2.x、CRUD、事务、Alembic |
+| 数据库项目 | `fastapi/04_database_project/` | 模型、迁移、项目 CRUD、Repository、Service 和 DTO |
+| 数据库 API | `fastapi/05_database_api/` | Session 依赖、CRUD、响应模型和异常 |
+| 工程化 | `fastapi/06_engineering/` | 结构、配置、生命周期、日志、认证和测试 |
+| 联调与交付 | `fastapi/07_integration_delivery/` | 前端联调、安全、部署和验收 |
+| 可选扩展 | `fastapi/08_extensions/` | 文件、外部 API、Redis、S3 和 AI |
 
 ## 4. Flask 扩展专题
 
@@ -189,7 +197,7 @@ docs/python/web/flask_topics/
 
 ### 不放回 `common`
 
-- HTTP 基础：放在 `docs/web_development_basics/`
+- HTTP 基础：放在 `docs/web_basics/`
 - Git：放在 `docs/tools/git/`
 - 框架认证授权与部署：放在 `web`
 

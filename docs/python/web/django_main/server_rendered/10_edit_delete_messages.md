@@ -10,6 +10,12 @@
 
 ## 编辑员工
 
+本章第一次集中使用消息框架和 PRG：
+
+- **messages 是什么**：跨一次重定向向用户显示操作结果的临时消息。
+- **为什么需要**：POST 成功后页面跳转，仍需要告诉用户新增、更新或删除是否完成。
+- **什么时候使用**：写操作成功或需要给出一次性反馈时使用；它不替代审计日志。
+
 ```python
 from django.contrib import messages
 
@@ -29,6 +35,10 @@ def employee_update(request: HttpRequest, employee_id: int) -> HttpResponse:
 
 `instance=employee` 是新增与编辑的关键差异。遗漏它会新增一条记录。
 
+`messages.success(request, message)` 的 `request` 是当前请求，`message` 是要在下一次页面中显示的文本；它把消息加入消息存储，业务代码不使用其返回值。`warning()` 和 `error()` 参数形式相同，只改变消息级别。
+
+代码先查询当前员工，再根据请求方法创建表单。POST 时 `instance=employee` 表示更新现有对象；GET 时同一参数把原值显示在表单中。校验成功后保存、写入成功消息并重定向，校验失败则继续渲染带错误的表单。
+
 ## 删除必须先确认
 
 ```python
@@ -43,6 +53,8 @@ def employee_delete(request: HttpRequest, employee_id: int) -> HttpResponse:
 ```
 
 删除不能使用 GET。GET 应只显示确认页，真正修改数据必须由 POST 完成。
+
+`employee.save(update_fields=["is_active"])` 只让Django生成该字段的更新SQL；`update_fields` 必须是当前Model字段名组成的可迭代对象。`save()` 返回 `None`，执行后数据库记录仍存在但状态已改变。
 
 ```html
 {% extends "base.html" %}
@@ -94,7 +106,7 @@ Django 新项目默认已经启用 messages；若无显示，再检查 `INSTALLE
 
 参考方向见[章节练习参考答案](practice_answers.md)。
 
-## 完成检查
+## CRUD 运行检查
 
 - [ ] 已形成新增、详情、编辑、逻辑删除的 CRUD 主流程
 - [ ] 所有改写数据操作都使用 POST
@@ -117,3 +129,62 @@ employee.save()
 `messages.success()`、`warning()`、`error()` 表达不同结果。消息是用户反馈，不是审计日志。失败原因属于表单时优先显示字段/非字段错误；系统异常写日志并显示安全错误页。
 
 物理删除真正移除记录，逻辑删除保留记录并改变状态。选择取决于规格、关联数据、审计和法规要求。逻辑删除后，所有列表、详情、唯一性、报表和 API 都要明确是否包含已删除数据；不能只在一个列表加过滤就认为完成。
+
+## 事务与并发的基础
+
+Django 默认使用自动提交：没有显式事务时，每次数据库写入通常独立提交。一个业务操作需要同时修改多条记录时，用 `transaction.atomic()` 保证全部成功或全部回滚。
+
+`transaction.atomic()` 不传参数时返回事务上下文管理器；正常退出时提交，块内异常向外传播时回滚。它也可作为装饰器使用。本章只在Shell实验中使用，事务范围应尽量短。
+
+下面是独立的 Shell 实验，不修改业务 View。先准备 `E001`、`E002` 两名员工，再执行：
+
+```python
+from django.db import transaction
+
+from employees.models import Department, Employee
+
+
+with transaction.atomic():
+    target = Department.objects.get(name="开发部")
+    Employee.objects.filter(employee_number="E001").update(department=target)
+    Employee.objects.filter(employee_number="E002").update(department=target)
+```
+
+如果第二次更新前抛出异常，退出 `atomic()` 时第一次更新也会回滚。事务块应尽量短，不在其中等待用户输入、调用慢速外部 API 或传输大文件。
+
+既有项目处理库存、审批或编号分配时，还可能使用 `select_for_update()` 锁定即将修改的记录。它必须结合事务使用，具体锁行为取决于 PostgreSQL、MySQL 等数据库；SQLite 学习环境不能代表生产并发行为。现场改修写操作时至少确认：
+
+`select_for_update()` 返回带行锁要求的新QuerySet，查询真正执行时才尝试加锁；常用可选参数如 `nowait`、`skip_locked` 的支持情况取决于数据库。本课程不实际加入业务View，进入既有项目时应先确认事务范围、锁顺序和超时策略。
+
+- 是否一次修改多张表或多条记录。
+- 中途失败时哪些变化必须一起回滚。
+- 是否可能有两个请求同时修改同一数据。
+- 数据库约束、唯一性和锁等待如何处理。
+- 重试是否可能造成重复写入。
+
+## 本章总结
+
+新增和编辑复用 ModelForm，写操作通过 POST 提交，并在成功后遵循 PRG 重定向。删除必须先确认业务含义；本项目使用逻辑删除保留记录。下一章在现有列表上增加搜索、排序和分页。
+
+## 日本项目中的实际使用
+
+企业系统通常要求 GET 不产生数据变更，删除或状态变更必须通过 POST 并显示确认画面。是否采用逻辑删除由规格、审计和关联数据决定。多记录更新还要确认事务范围、并发冲突和失败后的恢复方法。
+
+## 新人常见错误
+
+- 编辑时遗漏 `instance`，提交一次却新增一条员工记录。
+- 使用 GET 执行删除，链接预览、爬虫或误点击都可能改变数据。
+- POST 成功后直接返回页面，刷新时可能重复提交；应使用 PRG。
+- 逻辑删除只过滤列表，没有同步检查详情、报表和关联功能。
+- 把 messages 当成日志，导致调查时缺少操作者和请求信息。
+
+## 本章知识将在后续章节继续使用
+
+```text
+ModelForm + instance
+→ Update
+POST 确认 → 逻辑删除
+写操作 → messages → redirect → GET
+→ 第13章增加权限
+→ 第16章增加回归测试
+```
