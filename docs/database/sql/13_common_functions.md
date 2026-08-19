@@ -134,15 +134,28 @@ SELECT name,
 FROM employees;
 ```
 
-### 2.3 提取年月日
+### 2.3 提取年月日、周和星期
 
 提取年月日常用于分组统计，例如按年、按月统计订单数量。
+
+提取周和星期常用于周报、排班、预约、勤怠管理和按星期分析订单数量。
 
 | 功能 | MySQL | Oracle | PostgreSQL | SQL Server |
 | --- | --- | --- | --- | --- |
 | 年 | `YEAR(hire_date)` | `EXTRACT(YEAR FROM hire_date)` | `EXTRACT(YEAR FROM hire_date)` | `YEAR(hire_date)` |
 | 月 | `MONTH(hire_date)` | `EXTRACT(MONTH FROM hire_date)` | `EXTRACT(MONTH FROM hire_date)` | `MONTH(hire_date)` |
 | 日 | `DAY(hire_date)` | `EXTRACT(DAY FROM hire_date)` | `EXTRACT(DAY FROM hire_date)` | `DAY(hire_date)` |
+| 周 | `WEEK(hire_date, 1)` | `TO_CHAR(hire_date, 'IW')` | `EXTRACT(WEEK FROM hire_date)` | `DATEPART(iso_week, hire_date)` |
+| 星期 | `WEEKDAY(hire_date)` | `TRUNC(hire_date) - TRUNC(hire_date, 'IW') + 1` | `EXTRACT(ISODOW FROM hire_date)` | `DATEPART(weekday, hire_date)` |
+
+周和星期的返回值需要注意：
+
+- MySQL 的 `WEEK(hire_date, 1)` 表示按周一作为一周开始计算周数。
+- MySQL 的 `WEEKDAY(hire_date)` 返回 `0` 到 `6`，其中 `0` 表示周一，`6` 表示周日。
+- Oracle 的 `TO_CHAR(hire_date, 'IW')` 表示 ISO 周数，通常按周一作为一周开始。
+- Oracle 的 `TRUNC(hire_date) - TRUNC(hire_date, 'IW') + 1` 返回 `1` 到 `7`，其中 `1` 表示周一，`7` 表示周日。
+- PostgreSQL 的 `EXTRACT(ISODOW FROM hire_date)` 返回 `1` 到 `7`，其中 `1` 表示周一，`7` 表示周日。
+- SQL Server 的 `DATEPART(weekday, hire_date)` 会受到 `DATEFIRST` 设置影响，不同环境返回值可能不同。
 
 示例：按入职年月统计员工数量。
 
@@ -175,6 +188,51 @@ SELECT YEAR(hire_date) AS hire_year,
        COUNT(*) AS employee_count
 FROM employees
 GROUP BY YEAR(hire_date), MONTH(hire_date);
+```
+
+示例：按入职周统计员工数量。
+
+MySQL：
+
+```sql
+SELECT YEAR(hire_date) AS hire_year,
+       WEEK(hire_date, 1) AS hire_week,
+       COUNT(*) AS employee_count
+FROM employees
+GROUP BY YEAR(hire_date), WEEK(hire_date, 1);
+```
+
+Oracle：
+
+```sql
+SELECT TO_CHAR(hire_date, 'IYYY') AS hire_year,
+       TO_CHAR(hire_date, 'IW') AS hire_week,
+       COUNT(*) AS employee_count
+FROM employees
+GROUP BY TO_CHAR(hire_date, 'IYYY'),
+         TO_CHAR(hire_date, 'IW');
+```
+
+PostgreSQL：
+
+```sql
+SELECT EXTRACT(ISOYEAR FROM hire_date) AS hire_year,
+       EXTRACT(WEEK FROM hire_date) AS hire_week,
+       COUNT(*) AS employee_count
+FROM employees
+GROUP BY EXTRACT(ISOYEAR FROM hire_date),
+         EXTRACT(WEEK FROM hire_date);
+```
+
+SQL Server：
+
+```sql
+SELECT DATEPART(year, hire_date) AS hire_year,
+       DATEPART(iso_week, hire_date) AS hire_week,
+       COUNT(*) AS employee_count
+FROM employees
+GROUP BY DATEPART(year, hire_date),
+         DATEPART(iso_week, hire_date);
 ```
 
 ### 2.4 月初和月末
