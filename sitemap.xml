@@ -2,590 +2,1090 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://ansin-lin.github.io/LearnDocument/index.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/01_environment.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/index.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/02_basic_syntax.md.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/01_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/03_data_types.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/02_structure.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/04_variables_constants.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/03_data_types_variables.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/05_operators.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/04_operators.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/06_control_flow.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/05_controls.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/07_exception.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/06_arrays.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/08_procedures_and_functions.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/07_strings.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/09_cursors.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/08_class_object_basics.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/10_triggers.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/09_methods.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/11_package.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/10_constructor_encapsulation_javabean.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/12_composite_data_types.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/11_inheritance_override_polymorphism.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/13_bulk_processing_and_performance.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/12_static_final_abstract_interface.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/14_dynamic_sql.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/13_package_import_jar.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/15_batch_and_scheduler.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/14_exception_handling.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/16_java_spring_integration.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/15_collections.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/PLSQL/17_common_pitfalls_and_interview.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/16_generics.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/00_aws_pre_knowledge.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/17_common_classes.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/01_stage_iam_fundamentals.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/18_io_file.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/02_aws_stage2_ec2_ssh.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/19_maven_basics.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/03_aws_stage3_s3.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/20_jdbc.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/04_aws_stage4_cloudFront.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/java/21_junit_basics.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/05_aws_stage5_rds.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/01_mybatis_overview.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/06_aws_stage6_vpc.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/02_mybatis_hello_world.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/07_aws_stage7_alb.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/03_mybatis_config_file.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/08_aws_stage8_CloudWatch.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/04_mapper_interface_xml.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/09_aws_stage9_https_acm.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/05_core_objects_execution_flow.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/10_aws_stage10_CloudWatch.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/06_select_result_mapping.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/11_aws_stage11_lambda_serverless.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/07_insert_update_delete.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/12_aws_stage12_serverless_practice.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/08_parameter_mapping.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/13_aws_stage13_architecture_comparison.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/09_dynamic_sql.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/aws/14_aws_stage14_common_services_overview.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/10_association_resultmap.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/01_basic_concepts.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/11_cache_mechanism.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/02_install_and_config.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/mybatis/12_comprehensive_practice.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/03_common_commands.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/index.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/04_branches_and_merge.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/01_springboot_overview.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/05_remote_repo.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/02_create_project_and_first_api.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/06_undo_and_reset.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/03_controller_request_response.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/07_tags_and_release.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/04_project_structure_and_layers.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/08_advanced_operations.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/05_dto_vo_and_unified_response.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/09_teamwork_and_conflicts.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/06_validation_and_error_response.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/git/cheatsheet.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/07_mybatis_database_connection.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/index.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/08_employee_crud_api.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/01_intro.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/09_service_transaction.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/02_structure.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/10_search_pagination.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/03_dataType_variable.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/11_logging_and_exception_handling.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/04_operators.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/12_login_session_or_jwt.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/05_controls.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/13_unit_and_api_testing.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/06_arrays.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/14_profile_config_and_packaging.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/07_class.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/15_linux_deployment_basic.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/08_oop_object.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/16_employee_management_project.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/09_package.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/17_ses_change_practice.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/10_oop.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/backend/springboot/mainline/18_common_issues_review.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/11_exception_handling.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/00_prerequisites.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/12_String.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/01_iam_fundamentals.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/13_class_package.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/02_ec2_ssh.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/14_collection.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/03_s3_storage.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/java/15_jdbc.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/04_cloudfront_cdn.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/01_linux_intro.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/05_rds.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/02_file_dir_command.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/06_vpc_network.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/03_user_permission.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/07_alb_auto_scaling.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/04_process_system.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/08_cloudwatch_monitoring.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/05_shell_basic.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/09_https_acm.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/06_crontab_scheduler.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/10_cloudwatch_logs.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/07_log_management.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/11_lambda_serverless.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/08_exercises_summary.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/12_serverless_practice.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/09_vi_vim_basic.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/13_architecture_comparison.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/linux_shell/Linux_Command_Cheat_Sheet.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/cloud/aws/14_common_services_overview.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/mybatis/01_mybatis_overview.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/01_environment.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/mybatis/02_mybatis_hello_world.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/02_basic_syntax.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/mybatis/03_mybatis_core_classes.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/03_data_types.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/mybatis/03_mybatis_core_classes2.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/04_variables_constants.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/mybatis/04_mybatis_config_file.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/05_operators.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/mybatis/05_mybatis_crud_mapper.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/06_control_flow.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/mybatis/06_mybatis_dynamic_sql.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/07_exception.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/mybatis/07_mybatis_resultmap_association.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/08_procedures_and_functions.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/mybatis/08_mybatis_cache_and_plugins.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/09_cursors.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/10_triggers.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/11_package.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/12_composite_data_types.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/13_bulk_processing_and_performance.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/14_dynamic_sql.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/15_batch_and_scheduler.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/16_java_spring_integration.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/plsql/17_common_pitfalls_and_interview.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/00_database_introduction.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/01_sql_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/02_create_table_basic.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/03_constraints.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/04_alter_table.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/05_auto_increment.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/06_index.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/07_insert.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/08_update_delete.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/09_select_basic.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/10_join_subquery_union.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/11_groupby_aggregate.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/12_window_condition.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/13_common_functions.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/14_view.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/database/sql/15_sql_comprehensive_practice.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/index.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/01_html_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/02_document_structure.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/03_elements_attributes.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/04_text_content.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/05_links_paths.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/06_images.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/07_lists.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/08_tables.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/09_form_basics.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/10_form_controls.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/11_form_validation.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/12_semantic_structure.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/13_metadata_validation.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/14_html_project.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/HTML/15_newcomer_practice_answers.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/libraries/frontend-testing-vitest-jest-tutorial.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/libraries/jest_tutorial.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/libraries/react-vue-common-libraries-full-tutorial.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/libraries/vite-next-nuxt-frontend-framework-tutorial.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/libraries/vitest_tutorial.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/ui/bootstrap/01_bootstrap_basics.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/ui/bootstrap/02_bootstrap_components.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/ui/bootstrap/03_bootstrap_layout_theme.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/ui/vuetify/01_vuetify_app_structure.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/ui/vuetify/02_vuetify_components.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/frontend/ui/vuetify/03_vuetify_layout_theme.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
          <loc>https://ansin-lin.github.io/LearnDocument/python/index.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/basic/01_intro.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/index.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/basic/02_variables_and_operators.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/01_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/basic/03_control_flow_match_case.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/02_file_path.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/basic/04_collections.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/03_csv_excel_json.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/basic/05_functions_detailed.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/04_text_regex_log.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/basic/06_exceptions_modern.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/05_batch_cli.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/basic/07_string_detailed.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/06_requests_api.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/basic/08_object_oriented_programming.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/07_email_notify.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/basic/09_btFunctions_and_modules.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/08_schedule_entry.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/file_operations/10_file_path_operations.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/09_logging_retry.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/file_operations/11_modules_and_env.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/10_report_automation_project.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/file_operations/12_database_and_orm.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/11_log_analysis_project.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/file_operations/13_data_serialization.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/automation/12_ops_support_project.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/14_web_mode_intro.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/00_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/15_django_project_structure.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/01_variables_types_operators.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/16_django_model_orm.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/02_control_flow.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/17_django_template_basic.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/03_collections.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/18_django_rest_framework_intro.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/04_strings.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/19_django_auth_jwt.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/05_functions.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/20_cors_frontend_integration.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/06_iterators_generators.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/21_vue_integration_example.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/07_exceptions.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/22_django_task_api_project.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/08_oop.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/23_django_api_deploy.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/09_modules_stdlib.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/bk/14_flask_intro.md.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/10_file_data_processing.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/python/framework/bk/15_fastapi_intro.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/common/11_pymysql_database_access.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/01_intridution.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/data_analysis/index.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/02_springboot_mybatis_intro.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/data_analysis/01_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/03_springboot_annotations.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/data_analysis/02_data_concepts.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/04_springbean_annotations.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/data_analysis/03_pandas_read_inspect.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/05_mvc_annotations.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/data_analysis/04_data_cleaning.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/06_validation_annotations.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/data_analysis/05_groupby_merge.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/07_exception_transaction.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/data_analysis/06_visualization.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/08_datajpa_json_annotations.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/data_analysis/07_excel_csv_report.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/09_env_profile_multids.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/data_analysis/08_analysis_project.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/10_logging_System.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/appendices/appendix_a_framework_comparison.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/11_mvc_advanced_guide.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/appendices/appendix_b_web_terms_japanese.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/12_springboot_common_modules.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/appendices/appendix_c_common_errors.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/13_springboot_deployment_runtime.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/appendices/appendix_d_project_checklist.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/14_springboot_aop_event.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/index.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Architecture/01_Project_Structure_Design.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/19_rest_basics.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Architecture/02_Layered_Architecture_Design.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/20_drf_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Architecture/03_Common_Design_Patterns.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/21_drf_request_response.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Architecture/04_MVC_Architecture_Design.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/22_api_auth_permissions.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Architecture/05_DTO_VO_PO_DO_Entity_Differences.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/23_filtering_pagination_openapi.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Architecture/06_Transaction_Design_and_Boundary.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/24_frontend_integration_cors.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Architecture/07_Exception_Handling_Design.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/25_api_file_endpoints.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Architecture/08_API_Design_REST_DTO_VO.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/26_api_testing.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Test/01_Test_Tutorial_Full.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/27_logging_and_config.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/springboot/Test/02_Assertion_Complete_Tutorial.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/28_deployment.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/00_Database_Introduction.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/29_separated_project.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DDL/00_instruction.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/separated/setup.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DDL/01_create.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/index.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DDL/02_constraint.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/01_django_request_response.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DDL/03_alter_table.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/02_project_and_app.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DDL/04_index.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/03_first_url_view.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DDL/05_auto_increment.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/04_app_routing_named_urls.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DML/00_instruction.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/05_templates_static_list.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DML/01_select_bastic.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/06_models_migrations.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DML/02_join_subquery_union.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/07_django_admin.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DML/03_groupby_functions.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/08_orm_list_detail.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DML/04_window_condition.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/09_form_create_validation.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/sql/DML/05_common_functions.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/10_edit_delete_messages.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/ui/bootstrap/Bootstrap_Basics_Tutorial.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/11_search_pagination.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/ui/bootstrap/Bootstrap_Components_Tutorial.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/12_login_session.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/ui/bootstrap/Bootstrap_Layout_And_Theme_Tutorial.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/13_groups_permissions.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/ui/vuetify/Vuetify_App_Structure_Tutorial.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/14_file_upload_secure_download.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/ui/vuetify/Vuetify_Components.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/15_logging_errors_middleware.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
     <url>
-         <loc>https://ansin-lin.github.io/LearnDocument/ui/vuetify/Vuetify_Layout_And_Theme_Tutorial.html</loc>
-         <lastmod>2026-04-23</lastmod>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/16_django_tests.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/17_project_delivery.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/18_ses_change_delivery.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/practice_answers.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/reference_project.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/django_main/server_rendered/ses_japanese.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/index.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/project_spec.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/01_web_api_basics/01_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/01_web_api_basics/02_request_response.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/01_web_api_basics/03_pydantic_openapi.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/02_fastapi_core/04_apirouter.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/02_fastapi_core/05_depends.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/02_fastapi_core/06_yield_resource_lifecycle.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/03_sqlalchemy/07_core_concepts.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/03_sqlalchemy/08_orm_crud_transactions.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/03_sqlalchemy/09_alembic_migrations.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/04_database_project/10_models_migrations.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/04_database_project/11_crud_transactions.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/04_database_project/12_repository_service_dto.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/05_database_api/13_session_dependency_query.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/05_database_api/14_crud_response_exception.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/06_engineering/15_project_structure.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/06_engineering/16_config_lifespan.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/06_engineering/17_middleware_logging_exceptions.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/06_engineering/18_user_accounts_passwords.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/06_engineering/19_jwt_login.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/06_engineering/20_current_user_permissions.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/06_engineering/21_testing_foundation.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/06_engineering/22_testing_crud.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/06_engineering/23_testing_auth_migrations.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/07_integration_delivery/24_frontend_cors.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/07_integration_delivery/25_security_performance.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/07_integration_delivery/26_deployment.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/07_integration_delivery/27_project_completion.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/07_integration_delivery/reference_project.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/08_extensions/01_file_csv_excel.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/08_extensions/02_external_api_email_batch.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/08_extensions/03_redis_cache.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/08_extensions/04_s3_storage.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/fastapi/08_extensions/05_ai_integration.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/flask_topics/01_flask_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/flask_topics/02_routing_request_response.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/flask_topics/03_blueprint_layering.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/flask_topics/04_database_migration.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/flask_topics/05_validation_auth_testing.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/flask_topics/06_flask_project_completion.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/overview/01_web_overview.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/python/web/overview/02_web_development_environment.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/review/React%E5%9F%BA%E7%A1%80%E5%88%B0%E8%BF%9B%E9%98%B6%E9%9D%A2%E8%AF%95%E6%95%99%E7%A8%8B.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/review/Vue%E9%9D%A2%E8%AF%95%E9%A2%98%E6%95%99%E7%A8%8B%E7%89%88_%E5%9F%BA%E7%A1%80%E5%88%B0%E5%B7%A5%E7%A8%8B%E5%8C%96.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/review/java_backend_full_tutorial.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/index.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/01_install_and_config.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/02_basic_concepts.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/03_common_commands.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/04_branches_and_merge.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/05_remote_repo.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/06_teamwork_and_conflicts.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/07_undo_and_reset.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/08_tags_and_release.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/09_advanced_operations.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/git/cheatsheet.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/linux/01_linux_intro.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/linux/02_file_dir_command.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/linux/03_user_permission.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/linux/04_process_system.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/linux/05_crontab_scheduler.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/linux/06_log_management.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/linux/07_vi_vim_basic.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/linux/linux_command_cheatsheet.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/shell/01_shell_basic.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/tools/shell/02_exercises_summary.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/web_basics/00_frontend_backend_request_response.html</loc>
+         <lastmod>2026-08-19</lastmod>
+    </url>
+    <url>
+         <loc>https://ansin-lin.github.io/LearnDocument/web_basics/01_http_rest_cookie_cors.html</loc>
+         <lastmod>2026-08-19</lastmod>
     </url>
 </urlset>
