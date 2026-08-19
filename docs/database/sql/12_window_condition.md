@@ -245,6 +245,18 @@ FROM employees;
 - `CURRENT ROW` 表示当前行。
 - 合起来表示“前 1 行到当前行”。
 
+窗口范围中常用的写法如下：
+
+| 写法 | 含义 |
+| --- | --- |
+| `CURRENT ROW` | 当前行 |
+| `1 PRECEDING` | 当前行前 1 行 |
+| `2 PRECEDING` | 当前行前 2 行 |
+| `1 FOLLOWING` | 当前行后 1 行 |
+| `2 FOLLOWING` | 当前行后 2 行 |
+| `UNBOUNDED PRECEDING` | 从分区第一行开始 |
+| `UNBOUNDED FOLLOWING` | 一直到分区最后一行 |
+
 ## 十一、CASE WHEN
 
 `CASE WHEN` 用于条件表达式。
