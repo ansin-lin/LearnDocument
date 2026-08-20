@@ -25,7 +25,7 @@ public int calculateTotalPrice(int unitPrice, int quantity) {
     return totalPrice;
 }
 ```
- 
+
 格式说明：
 
 1. 访问限定符用于决定这个方法可以被哪些地方调用。
