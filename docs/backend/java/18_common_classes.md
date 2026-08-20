@@ -1,6 +1,6 @@
-# 第17章 Java 常用类与常用方法
+# 第18章 Java 常用类与常用方法
 
-> 本章目标：掌握 Java 标准库中高频使用的类、包和方法，能够完成对象比较、字符串拼接、数字计算、金额处理、日期时间处理、集合辅助操作、空值判断和唯一编号生成。
+> 本章目标：掌握 Java 标准库中高频使用的类、包和方法，能够完成对象比较、数字计算、金额处理、日期时间处理、集合辅助操作、空值判断和唯一编号生成。
 
 ## 一、为什么学习常用类
 
@@ -9,7 +9,6 @@ Java 标准库已经提供了很多稳定的工具类。实际开发时，不需
 常用类主要解决这些问题：
 
 - 对象怎么安全比较
-- 字符串怎么高效拼接
 - 数字怎么取整、比较、计算
 - 金额怎么避免精度问题
 - 日期时间怎么创建、格式化、计算
@@ -21,7 +20,7 @@ Java 标准库已经提供了很多稳定的工具类。实际开发时，不需
 
 | 包名 | 常见类 | 主要用途 |
 | --- | --- | --- |
-| `java.lang` | `Object`、`StringBuilder`、`Integer`、`Long`、`Double`、`Boolean`、`System` | Java 基础类，默认导入 |
+| `java.lang` | `Object`、`Integer`、`Long`、`Double`、`Boolean`、`System` | Java 基础类，默认导入 |
 | `java.util` | `Objects`、`Optional`、`Arrays`、`Collections`、`UUID` | 工具类、集合辅助、空值处理、唯一编号 |
 | `java.math` | `BigDecimal`、`RoundingMode` | 精确金额和小数计算 |
 | `java.time` | `LocalDate`、`LocalDateTime`、`LocalTime` | 日期和时间 |
@@ -197,95 +196,7 @@ public class ObjectsDemo {
 
 `Objects.equals(a, b)` 比 `a.equals(b)` 更安全，因为 `a` 为 `null` 时不会抛出异常。
 
-## 四、StringBuilder
-
-`StringBuilder` 用于高效拼接字符串。
-
-普通字符串每次拼接都会产生新的字符串对象。循环中大量拼接时，优先使用 `StringBuilder`。
-
-### 4.1 常用方法定义
-
-```java
-public StringBuilder append(String str)
-public StringBuilder append(int value)
-public StringBuilder append(long value)
-public StringBuilder append(boolean value)
-```
-
-在末尾追加内容，返回当前 `StringBuilder` 对象，因此可以继续链式调用。`append()` 有很多重载方法，可以接收字符串、数字、布尔值、对象等。
-
-```java
-public StringBuilder insert(int offset, String str)
-```
-
-接收插入位置和字符串，返回当前 `StringBuilder` 对象。`offset` 从 0 开始。
-
-```java
-public StringBuilder delete(int start, int end)
-```
-
-接收起始位置和结束位置，删除指定范围内容，包含 `start`，不包含 `end`。
-
-```java
-public StringBuilder replace(int start, int end, String str)
-```
-
-接收起始位置、结束位置和新字符串，把指定范围替换成新内容。
-
-```java
-public StringBuilder reverse()
-```
-
-无参数，反转当前内容，返回当前 `StringBuilder` 对象。
-
-```java
-public int length()
-```
-
-无参数，返回当前字符数量。
-
-```java
-public String toString()
-```
-
-无参数，把 `StringBuilder` 内容转换成普通 `String`。
-
-### 4.2 示例
-
-```java
-public class StringBuilderDemo {
-
-    public static void main(String[] args) {
-        StringBuilder builder = new StringBuilder();
-
-        builder.append("员工：");
-        builder.append("Tanaka");
-        builder.append("，部门：");
-        builder.append("Sales");
-
-        String result = builder.toString();
-        System.out.println(result); // 输出：员工：Tanaka，部门：Sales
-
-        builder.insert(0, "[INFO] ");
-        System.out.println(builder.toString()); // 输出：[INFO] 员工：Tanaka，部门：Sales
-    }
-}
-```
-
-`append()` 返回当前 `StringBuilder` 对象，因此可以链式调用。
-
-```java
-String text = new StringBuilder()
-        .append("id=")
-        .append(1001)
-        .append(", name=")
-        .append("Tanaka")
-        .toString();
-
-System.out.println(text); // 输出：id=1001, name=Tanaka
-```
-
-## 五、包装类
+## 四、包装类
 
 Java 有基本类型，也有对应的包装类。
 
@@ -299,7 +210,7 @@ Java 有基本类型，也有对应的包装类。
 
 包装类可以表示 `null`，也提供字符串转换、比较等常用方法。
 
-### 5.1 Integer 和 Long 常用方法定义
+### 4.1 Integer 和 Long 常用方法定义
 
 ```java
 public static int parseInt(String s)
@@ -357,7 +268,7 @@ public class WrapperDemo {
 
 `parseInt()` 返回基本类型，`valueOf()` 返回包装类。项目中如果值允许为空，通常使用包装类；如果一定有值并且只做计算，可以使用基本类型。
 
-### 5.2 Boolean 常用方法定义
+### 4.2 Boolean 常用方法定义
 
 ```java
 public static boolean parseBoolean(String s)
@@ -395,11 +306,11 @@ public class BooleanDemo {
 
 不要直接写 `enabled == true`，因为 `enabled` 为 `null` 时可能发生空指针异常。
 
-## 六、Math
+## 五、Math
 
 `Math` 用于常见数学计算。它在 `java.lang` 包中，不需要手动导入。
 
-### 6.1 常用方法定义
+### 5.1 常用方法定义
 
 ```java
 public static int max(int a, int b)
@@ -462,7 +373,7 @@ public static double random()
 
 无参数，返回 `[0.0, 1.0)` 之间的随机数。
 
-### 6.2 示例
+### 5.2 示例
 
 ```java
 public class MathDemo {
@@ -482,11 +393,11 @@ public class MathDemo {
 
 金额计算不要使用 `Math.round()` 加 `double` 简单处理，应使用 `BigDecimal` 明确精度和舍入规则。
 
-## 七、BigDecimal
+## 六、BigDecimal
 
 金额、税率、汇率等精确小数计算不要使用 `double`，应使用 `BigDecimal`。
 
-### 7.1 常用方法定义
+### 6.1 常用方法定义
 
 ```java
 public BigDecimal(String val)
@@ -543,7 +454,7 @@ public String toPlainString()
 
 无参数，返回普通数字字符串。
 
-### 7.2 金额计算示例
+### 6.2 金额计算示例
 
 ```java
 import java.math.BigDecimal;
@@ -567,7 +478,7 @@ public class BigDecimalDemo {
 }
 ```
 
-### 7.3 比较大小
+### 6.3 比较大小
 
 ```java
 import java.math.BigDecimal;
@@ -586,7 +497,7 @@ public class BigDecimalCompareDemo {
 
 `equals()` 会比较数值和小数位，`compareTo()` 只比较数值大小。金额判断相等时，通常优先使用 `compareTo()`。
 
-## 八、LocalDate、LocalTime 和 LocalDateTime
+## 七、LocalDate、LocalTime 和 LocalDateTime
 
 `java.time` 包用于处理日期和时间。
 
@@ -596,7 +507,7 @@ public class BigDecimalCompareDemo {
 | `LocalTime` | 时间，不包含日期 | `09:30:00` |
 | `LocalDateTime` | 日期时间，不包含时区 | `2026-08-19T09:30:00` |
 
-### 8.1 常用方法定义
+### 7.1 常用方法定义
 
 ```java
 public static LocalDate now()
@@ -672,7 +583,7 @@ public LocalDate toLocalDate()
 
 `LocalDateTime` 的实例方法，无参数，返回日期部分。
 
-### 8.2 示例
+### 7.2 示例
 
 ```java
 import java.time.LocalDate;
@@ -695,11 +606,11 @@ public class DateTimeDemo {
 
 `LocalDate` 和 `LocalDateTime` 是不可变对象。`plusMonths()`、`plusDays()` 等方法不会修改原对象，而是返回新对象。
 
-## 九、DateTimeFormatter
+## 八、DateTimeFormatter
 
 `DateTimeFormatter` 用于日期时间格式化和解析。
 
-### 9.1 常用方法定义
+### 8.1 常用方法定义
 
 ```java
 public static DateTimeFormatter ofPattern(String pattern)
@@ -734,7 +645,7 @@ public static LocalDateTime parse(CharSequence text, DateTimeFormatter formatter
 | `yyyyMMdd` | `20260819` | 文件名、批处理参数常见 |
 | `yyyy-MM-dd HH:mm:ss` | `2026-08-19 09:30:00` | 日期时间格式 |
 
-### 9.2 示例
+### 8.2 示例
 
 ```java
 import java.time.LocalDate;
@@ -762,13 +673,13 @@ public class DateFormatDemo {
 
 格式字符串大小写有含义。`MM` 表示月份，`mm` 表示分钟，写错会导致结果不符合预期。
 
-## 十、Optional
+## 九、Optional
 
 `Optional` 用于表达“可能有值，也可能没有值”。
 
 它常用于方法返回值，不建议滥用为实体类字段或方法参数。
 
-### 10.1 常用方法定义
+### 9.1 常用方法定义
 
 ```java
 public static <T> Optional<T> of(T value)
@@ -830,7 +741,7 @@ public Optional<T> filter(Predicate<? super T> predicate)
 
 接收判断函数。有值且满足条件时保留，否则返回空的 `Optional`。
 
-### 10.2 示例
+### 9.2 示例
 
 ```java
 import java.util.Optional;
@@ -856,11 +767,11 @@ public class OptionalDemo {
 
 不要在没有判断的情况下直接调用 `get()`。如果没有值，`get()` 会抛出 `NoSuchElementException`。
 
-## 十一、Arrays
+## 十、Arrays
 
 `Arrays` 是 `java.util` 包下的数组工具类。
 
-### 11.1 常用方法定义
+### 10.1 常用方法定义
 
 ```java
 public static String toString(int[] a)
@@ -902,7 +813,7 @@ public static <T> List<T> asList(T... a)
 
 接收多个元素或数组，返回固定长度列表。
 
-### 11.2 示例
+### 10.2 示例
 
 ```java
 import java.util.Arrays;
@@ -927,11 +838,11 @@ public class ArraysDemo {
 
 `Arrays.asList()` 返回的列表长度固定，不能直接 `add()` 或 `remove()`。如果需要可变列表，可以再创建 `new ArrayList<>(Arrays.asList(...))`。
 
-## 十二、Collections
+## 十一、Collections
 
 `Collections` 是 `java.util` 包下的集合工具类，注意它和集合接口 `Collection` 不是同一个东西。
 
-### 12.1 常用方法定义
+### 11.1 常用方法定义
 
 ```java
 public static <T extends Comparable<? super T>> void sort(List<T> list)
@@ -975,7 +886,7 @@ public static <T> List<T> unmodifiableList(List<? extends T> list)
 
 接收一个列表，返回不可修改列表视图。
 
-### 12.2 示例
+### 11.2 示例
 
 ```java
 import java.util.ArrayList;
@@ -1007,13 +918,13 @@ public class CollectionsDemo {
 
 `Collections.emptyList()` 常用于返回“没有结果”的空集合，优于返回 `null`。
 
-## 十三、UUID
+## 十二、UUID
 
 `UUID` 是 `java.util` 包下的唯一编号工具类。
 
 它常用于生成临时唯一编号、外部公开编号、文件名后缀、请求追踪编号等。
 
-### 13.1 常用方法定义
+### 12.1 常用方法定义
 
 ```java
 public static UUID randomUUID()
@@ -1033,7 +944,7 @@ public static UUID fromString(String name)
 
 接收 UUID 字符串，返回 `UUID` 对象。字符串格式不正确时会抛出异常。
 
-### 13.2 示例
+### 12.2 示例
 
 ```java
 import java.util.UUID;
@@ -1054,11 +965,11 @@ public class UuidDemo {
 
 `randomUUID()` 每次运行结果不同，示例输出只是格式说明，不是固定值。
 
-## 十四、System
+## 十三、System
 
 `System` 是 `java.lang` 包下的系统工具类。
 
-### 14.1 常用方法和属性定义
+### 13.1 常用方法和属性定义
 
 ```java
 public static final PrintStream out
@@ -1104,7 +1015,7 @@ public static String lineSeparator()
 
 无参数，返回当前系统换行符。
 
-### 14.2 示例
+### 13.2 示例
 
 ```java
 public class SystemDemo {
@@ -1126,12 +1037,11 @@ public class SystemDemo {
 
 `currentTimeMillis()` 适合记录当前时间点，`nanoTime()` 更适合计算代码执行耗时。
 
-## 十五、常用类选择建议
+## 十四、常用类选择建议
 
 | 需求 | 推荐类或方法 | 不推荐写法 |
 | --- | --- | --- |
 | 安全比较两个对象 | `Objects.equals(a, b)` | `a.equals(b)` |
-| 循环拼接字符串 | `StringBuilder` | 循环中大量使用 `+` |
 | 字符串转数字 | `Integer.parseInt()`、`Long.valueOf()` | 手动逐字符转换 |
 | 金额计算 | `BigDecimal` | `double` |
 | 日期时间 | `java.time` | 旧的 `Date` 处理所有场景 |
@@ -1140,7 +1050,7 @@ public class SystemDemo {
 | 数组打印 | `Arrays.toString()` | 直接 `System.out.println(array)` |
 | 唯一编号 | `UUID.randomUUID()` | 自己用时间戳随意拼接 |
 
-## 十六、常见错误
+## 十五、常见错误
 
 | 错误 | 原因 | 修正 |
 | --- | --- | --- |
@@ -1153,7 +1063,7 @@ public class SystemDemo {
 | 修改 `Arrays.asList()` 返回的列表长度 | 该列表长度固定 | 需要可变列表时创建 `new ArrayList<>(...)` |
 | 使用 `Math.random()` 生成安全令牌 | 随机性不适合安全场景 | 安全场景使用专门的安全随机方案 |
 
-## 十七、本章练习
+## 十六、本章练习
 
 请完成：
 
@@ -1161,16 +1071,14 @@ public class SystemDemo {
 2. 使用 `LocalDate` 保存入社日期，并计算试用期结束日期。
 3. 使用 `DateTimeFormatter` 输出 `yyyy/MM/dd` 和 `yyyyMMdd` 两种格式。
 4. 使用 `Objects.equals()` 比较两个状态值。
-5. 使用 `StringBuilder` 拼接一行员工导出文本，例如 `1001,Tanaka,Sales`。
-6. 使用 `Arrays.sort()` 对分数数组排序并输出。
-7. 使用 `Collections.emptyList()` 表示没有查询结果。
-8. 使用 `UUID.randomUUID()` 生成一个请求编号并打印。
+5. 使用 `Arrays.sort()` 对分数数组排序并输出。
+6. 使用 `Collections.emptyList()` 表示没有查询结果。
+7. 使用 `UUID.randomUUID()` 生成一个请求编号并打印。
 
-## 十八、本章总结
+## 十七、本章总结
 
 - `Object` 是所有类的父类，常用方法包括 `toString()`、`equals()` 和 `hashCode()`。
 - `Objects` 可以进行空值安全比较和默认值处理。
-- `StringBuilder` 适合循环或多段字符串拼接。
 - 包装类用于基本类型和对象类型之间的转换，也可以表达空值。
 - `BigDecimal` 适合金额和精确小数计算。
 - `java.time` 和 `DateTimeFormatter` 用于日期时间处理。

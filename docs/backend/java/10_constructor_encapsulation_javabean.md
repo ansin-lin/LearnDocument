@@ -63,7 +63,43 @@ public class Employee {
 
 如果手动写了有参构造方法，Java 不会自动再提供无参构造方法。
 
-## 四、this 的作用
+## 四、构造方法重载
+
+构造方法也可以重载。构造方法重载是指一个类中可以有多个构造方法，但参数列表不同。
+
+```java
+public class Employee {
+    private Long id;
+    private String name;
+    private String department;
+
+    public Employee() {
+    }
+
+    public Employee(Long id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public Employee(Long id, String name, String department) {
+        this.id = id;
+        this.name = name;
+        this.department = department;
+    }
+}
+```
+
+调用时，Java 会根据传入参数选择对应的构造方法。
+
+```java
+Employee employee1 = new Employee();
+Employee employee2 = new Employee(1001L, "Tanaka");
+Employee employee3 = new Employee(1002L, "Suzuki", "Development");
+```
+
+构造方法重载适合对象有多种创建方式的场景。
+
+## 五、this 的作用
 
 `this` 表示当前对象。
 
@@ -79,7 +115,7 @@ public class Employee {
 
 `this.name` 表示成员变量，右侧 `name` 表示构造方法参数。
 
-## 五、封装是什么
+## 六、封装是什么
 
 封装是把对象内部属性保护起来，通过方法控制访问。
 
@@ -112,7 +148,7 @@ public class Employee {
 
 `private` 可以防止外部直接修改属性，`setName()` 可以加入校验逻辑。
 
-## 六、访问修饰符
+## 七、访问修饰符
 
 | 修饰符 | 可访问范围 | 常见用途 |
 | --- | --- | --- |
@@ -121,7 +157,7 @@ public class Employee {
 | 默认 | 同包 | 包内使用 |
 | `private` | 当前类内部 | 保护成员变量 |
 
-## 七、JavaBean
+## 八、JavaBean
 
 JavaBean 是 Java 中常见的数据类写法。
 
@@ -162,7 +198,59 @@ public class Employee {
 
 JavaBean 常用于封装一组相关数据。
 
-## 八、常见错误
+### 8.1 无参构造为什么常见
+
+很多框架会先通过无参构造方法创建对象，然后再给属性赋值。
+
+例如：
+
+- MyBatis 查询数据库后，把结果封装成 Java 对象。
+- Jackson 把 JSON 转换成 Java 对象。
+- Spring 创建和管理对象。
+
+因此，JavaBean 通常会保留无参构造方法。
+
+```java
+public class Employee {
+    private Long id;
+    private String name;
+
+    public Employee() {
+    }
+}
+```
+
+如果只写有参构造方法，不写无参构造方法，某些框架在创建对象时可能失败。
+
+### 8.2 toString() 在调试中的作用
+
+`toString()` 用于把对象转换成容易阅读的字符串。打印对象、调试数据、查看日志时很常用。
+
+```java
+public class Employee {
+    private Long id;
+    private String name;
+
+    public Employee(Long id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return "Employee{id=" + id + ", name='" + name + "'}";
+    }
+
+    public static void main(String[] args) {
+        Employee employee = new Employee(1001L, "Tanaka");
+        System.out.println(employee); // 输出：Employee{id=1001, name='Tanaka'}
+    }
+}
+```
+
+如果不重写 `toString()`，直接打印对象时通常只能看到类名和哈希值，不容易确认对象内部数据。
+
+## 九、常见错误
 
 | 错误 | 原因 | 修正 |
 | --- | --- | --- |
@@ -170,8 +258,9 @@ JavaBean 常用于封装一组相关数据。
 | 有参构造后忘记无参构造 | 只能使用有参方式创建对象 | 根据需要补充无参构造 |
 | 属性全部 public | 破坏封装 | 使用 private 和 getter/setter |
 | setter 不做校验 | 非法数据进入对象 | 在 setter 中加入必要校验 |
+| 打印对象看不到属性值 | 没有重写 `toString()` | 根据需要重写 `toString()` |
 
-## 九、本章练习
+## 十、本章练习
 
 请完成：
 

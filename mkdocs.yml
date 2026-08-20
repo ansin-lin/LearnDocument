@@ -254,21 +254,21 @@ nav:
     - 4. 运算符: backend/java/04_operators.md
     - 5. 流程控制: backend/java/05_controls.md
     - 6. 数组: backend/java/06_arrays.md
-    - 7. 字符串: backend/java/07_strings.md
+    - 7. 字符串基础: backend/java/07_strings.md
     - 8. 类与对象基础: backend/java/08_class_object_basics.md
     - 9. 方法基础: backend/java/09_methods.md
     - 10. 构造方法、封装与 JavaBean: backend/java/10_constructor_encapsulation_javabean.md
     - 11. 继承、重写与多态: backend/java/11_inheritance_override_polymorphism.md
-    - 12. static、final、抽象类与接口: backend/java/12_static_final_abstract_interface.md
+    - 12. static、final、抽象类、接口与内部类: backend/java/12_static_final_abstract_interface.md
     - 13. 包、import 与 JAR 文件: backend/java/13_package_import_jar.md
     - 14. 异常处理: backend/java/14_exception_handling.md
     - 15. 集合框架: backend/java/15_collections.md
     - 16. 泛型: backend/java/16_generics.md
-    - 17. 常用类: backend/java/17_common_classes.md
-    - 18. I/O 与文件处理: backend/java/18_io_file.md
-    - 19. Maven 基础: backend/java/19_maven_basics.md
-    - 20. JDBC 数据库连接: backend/java/20_jdbc.md
-    - 21. JUnit 测试基础: backend/java/21_junit_basics.md
+    - 17. 字符串相关类与枚举: backend/java/17_strings_and_enum.md
+    - 18. 常用类: backend/java/18_common_classes.md
+    - 19. I/O 与文件处理: backend/java/19_io_file.md
+    - 20. Maven 基础: backend/java/20_maven_basics.md
+    - 22. JUnit 测试基础: backend/java/22_junit_basics.md
   - MyBatis:
     - 1. MyBatis 简介与使用场景: backend/mybatis/01_mybatis_overview.md
     - 2. 第一个 MyBatis 程序: backend/mybatis/02_mybatis_hello_world.md

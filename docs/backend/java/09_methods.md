@@ -2,40 +2,9 @@
 
 > 本章目标：系统掌握方法的定义、调用、参数、返回值、重载和值传递，能够写出职责清楚的方法。
 
-## 一、方法解决什么问题
+## 一、方法的作用
 
 方法用于把一段可以重复使用的逻辑封装起来。
-
-不使用方法：
-
-```java
-public class PriceDemo {
-
-    public static void main(String[] args) {
-        int total1 = 100 * 3;
-        int total2 = 200 * 5;
-
-        System.out.println(total1); // 输出：300
-        System.out.println(total2); // 输出：1000
-    }
-}
-```
-
-使用方法：
-
-```java
-public class PriceDemo {
-
-    public static int calculateTotalPrice(int unitPrice, int quantity) {
-        return unitPrice * quantity;
-    }
-
-    public static void main(String[] args) {
-        System.out.println(calculateTotalPrice(100, 3)); // 输出：300
-        System.out.println(calculateTotalPrice(200, 5)); // 输出：1000
-    }
-}
-```
 
 ## 二、方法的结构
 
@@ -56,15 +25,7 @@ public int calculateTotalPrice(int unitPrice, int quantity) {
     return totalPrice;
 }
 ```
-
-| 部分 | 说明 |
-| --- | --- |
-| `public` | 访问修饰符，表示外部可以调用 |
-| `int` | 返回值类型 |
-| `calculateTotalPrice` | 方法名 |
-| `int unitPrice, int quantity` | 参数列表 |
-| `return totalPrice` | 返回计算结果 |
-
+ 
 格式说明：
 
 1. 访问限定符用于决定这个方法可以被哪些地方调用。
@@ -77,14 +38,7 @@ public int calculateTotalPrice(int unitPrice, int quantity) {
 
 ### 2.1 方法访问限定符的简单说明
 
-| 访问限定符 | 简单含义 | 常见使用 |
-| --- | --- | --- |
-| `public` | 其他类可以调用 | 对外提供的方法 |
-| `private` | 只有当前类内部可以调用 | 内部辅助方法 |
-| `protected` | 同包或子类可以调用 | 继承相关场景 |
-| 默认不写 | 同包可以调用 | 包内使用 |
-
-新人阶段最常见的是 `public` 方法和 `private` 辅助方法。
+方法的访问限定符和类的访问限定符相同
 
 ### 2.2 方法修饰符的简单说明
 

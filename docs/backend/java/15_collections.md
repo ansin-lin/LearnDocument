@@ -93,8 +93,8 @@ Map（接口）
 |------|-----------|------|
 | `ArrayList` | 动态数组 | 查询快、增删慢 |
 | `LinkedList` | 双向链表 |  增删快、查询慢 |
-| `Vector` | 动态数组（线程安全） | 过时但安全 |
-| `Stack` | 继承自 `Vector` | 栈结构（LIFO） |
+| `Vector` | 动态数组（线程安全） | 老项目可能看到，新项目较少主动使用 |
+| `Stack` | 继承自 `Vector` | 老式栈结构，新项目通常优先考虑 `Deque` |
 
 ### ArrayList 常用方法
 
@@ -333,7 +333,124 @@ list.forEach(item -> System.out.println(item));
 
 ---
 
-## 十、性能与适用场景对比
+## 十、项目常见集合方法补充
+
+### 10.1 List.of()
+
+`List.of()` 用于快速创建不可修改列表。
+
+```java
+import java.util.List;
+
+public class ListOfDemo {
+
+    public static void main(String[] args) {
+        List<String> statuses = List.of("ACTIVE", "RETIRED");
+
+        System.out.println(statuses); // 输出：[ACTIVE, RETIRED]
+        // statuses.add("SUSPENDED"); // 运行时异常：不可修改列表不能新增元素
+    }
+}
+```
+
+`List.of()` 适合保存固定选项。需要增删元素时，使用 `new ArrayList<>()`。
+
+### 10.2 Map.of()
+
+`Map.of()` 用于快速创建不可修改 Map。
+
+```java
+import java.util.Map;
+
+public class MapOfDemo {
+
+    public static void main(String[] args) {
+        Map<String, String> labels = Map.of(
+                "ACTIVE", "在职",
+                "RETIRED", "退职"
+        );
+
+        System.out.println(labels.get("ACTIVE")); // 输出：在职
+    }
+}
+```
+
+`Map.of()` 适合少量固定键值对。需要动态增删时，使用 `HashMap`。
+
+### 10.3 removeIf()
+
+`removeIf()` 用于按条件删除集合元素。
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class RemoveIfDemo {
+
+    public static void main(String[] args) {
+        List<String> names = new ArrayList<>();
+        names.add("Tanaka");
+        names.add("");
+        names.add("Suzuki");
+
+        names.removeIf(name -> name == null || name.isBlank());
+
+        System.out.println(names); // 输出：[Tanaka, Suzuki]
+    }
+}
+```
+
+`removeIf()` 比手动在循环中删除元素更清晰，也能避免部分遍历删除错误。
+
+### 10.4 stream()
+
+`stream()` 用于把集合转换成流式处理对象，可以进行过滤、转换、统计等操作。
+
+```java
+import java.util.List;
+
+public class StreamIntroDemo {
+
+    public static void main(String[] args) {
+        List<String> names = List.of("Tanaka", "Suzuki", "Yamada");
+
+        long count = names.stream()
+                .filter(name -> name.startsWith("T"))
+                .count();
+
+        System.out.println(count); // 输出：1
+    }
+}
+```
+
+本章只要求能看懂简单 `stream()`。复杂 Stream 用法可以后续单独学习。
+
+### 10.5 Comparator.comparing()
+
+`Comparator.comparing()` 常用于按照对象属性排序。
+
+```java
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+public class ComparatorDemo {
+
+    public static void main(String[] args) {
+        List<Employee> employees = new ArrayList<>();
+        employees.add(new Employee("Tanaka", 320000));
+        employees.add(new Employee("Suzuki", 280000));
+
+        employees.sort(Comparator.comparing(Employee::getSalary));
+
+        System.out.println(employees.get(0).getName()); // 输出：Suzuki
+    }
+}
+```
+
+`Comparator.comparing(Employee::getSalary)` 表示按员工工资排序。
+
+## 十一、性能与适用场景对比
 
 | 类型 | 实现类 | 查询效率 | 增删效率 | 线程安全 | 特点 |
 |------|---------|------------|------------|-------------|------|
@@ -343,15 +460,17 @@ list.forEach(item -> System.out.println(item));
 | Set | TreeSet | 中 | 中 | 否 | 自动排序 |
 | Map | HashMap | 高 | 高 | 否 | 常用键值存储 |
 | Map | TreeMap | 中 | 中 | 否 | 按 key 排序 |
-| Map | Hashtable | 中 | 中 | 是 | 线程安全，老旧 |
+| Map | Hashtable | 中 | 中 | 是 | 老项目可能看到，新项目较少主动使用 |
 
 ---
 
-## 十一、总结
+## 十二、总结
 
 - 集合是 Java 最核心的容器框架之一，是数据存储与处理的基础。  
 - `List`：有序可重复；`Set`：无序不可重复；`Map`：键值对存储。  
 - 选择集合实现类时，应根据 **访问频率、线程安全、排序要求** 来确定。  
 - `Collections` 工具类提供了常用的集合操作与辅助方法。
+- `List.of()`、`Map.of()` 适合固定数据，返回结果不可修改。
+- `removeIf()`、`stream()`、`Comparator.comparing()` 是项目中经常看到的集合处理写法。
 
 > 熟练掌握集合框架，是继续学习 Java 的重要基础。

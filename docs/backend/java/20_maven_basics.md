@@ -1,4 +1,4 @@
-# 第19章 Maven 基础
+# 第20章 Maven 基础
 
 > 本章目标：理解 Maven 的作用，掌握 Maven 项目结构、`pom.xml`、依赖、scope 和常用构建命令。
 
