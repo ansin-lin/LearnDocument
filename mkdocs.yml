@@ -268,7 +268,7 @@ nav:
     - 18. 常用类: backend/java/18_common_classes.md
     - 19. I/O 与文件处理: backend/java/19_io_file.md
     - 20. Maven 基础: backend/java/20_maven_basics.md
-    - 22. JUnit 测试基础: backend/java/22_junit_basics.md
+    - 21. JDBC 数据库连接: backend/java/21_jdbc.md
   - MyBatis:
     - 1. MyBatis 简介与使用场景: backend/mybatis/01_mybatis_overview.md
     - 2. 第一个 MyBatis 程序: backend/mybatis/02_mybatis_hello_world.md
