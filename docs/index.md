@@ -14,8 +14,12 @@
 ### 前端主线
 
 - [HTML 零基础教程](frontend/HTML/index.md)
-- JavaScript
-- ES6
+- [CSS 零基础教程](frontend/CSS/index.md)
+- [JavaScript 零基础教程](frontend/JavaScript/index.md)
+- [前端递进练习：HTML 阶段](frontend/training/01_html_task.md)
+- [前端递进练习：CSS 阶段](frontend/training/02_css_task.md)
+- [前端递进练习：JavaScript 阶段](frontend/training/03_javascript_task.md)
+- ES6 与现代 JavaScript
 - TypeScript
 - Axios
 - Fetch

@@ -5,12 +5,11 @@ exclude_docs: |
   archive/
   _archive/
   frontend/backup/
-  frontend/CSS/
-  frontend/training/
   python/_archive/
   python/web/fastapi_topics/
   python/python-course-roadmap.md
   training_projects/
+  frontend/training/paid-leave-system/
 theme:
   name: material
   language: zh
@@ -319,7 +318,51 @@ nav:
     - 12. 语义化页面结构: frontend/HTML/12_semantic_structure.md
     - 13. 页面元数据与检查: frontend/HTML/13_metadata_validation.md
     - 14. HTML 新人综合练习: frontend/HTML/14_html_project.md
-    - 15. 新人综合练习参考答案: frontend/HTML/15_newcomer_practice_answers.md
+    - 15. HTML 递进练习自测核对: frontend/HTML/15_newcomer_practice_answers.md
+  - CSS 零基础教程:
+    - 学习路线: frontend/CSS/index.md
+    - 1. 认识 CSS 与引入样式: frontend/CSS/01_css_intro.md
+    - 2. 选择器与 CSS 的三大特性: frontend/CSS/02_selectors_cascade.md
+    - 3. 文字、颜色与背景: frontend/CSS/03_text_color_background.md
+    - 4. 盒模型与间距: frontend/CSS/04_box_model_spacing.md
+    - 5. 显示模式、文档流与溢出: frontend/CSS/05_display_flow_overflow.md
+    - 6. 定位、层级与显示隐藏: frontend/CSS/06_position_zindex_visibility.md
+    - 7. Flexbox 一维布局: frontend/CSS/07_flexbox_layout.md
+    - 8. Grid 二维布局: frontend/CSS/08_grid_layout.md
+    - 9. 响应式布局与媒体查询: frontend/CSS/09_responsive_media.md
+    - 10. 变量、命名与样式组织: frontend/CSS/10_variables_naming_organization.md
+    - 11. 过渡、动画与可用性: frontend/CSS/11_transition_animation_accessibility.md
+    - 12. CSS 新人综合练习: frontend/CSS/12_css_project.md
+  - JavaScript 零基础教程:
+    - 学习路线: frontend/JavaScript/index.md
+    - 1. 认识 JavaScript 与运行环境: frontend/JavaScript/01_js_intro_runtime.md
+    - 2. 值、变量与数据类型: frontend/JavaScript/02_values_variables_types.md
+    - 3. 运算符与条件判断: frontend/JavaScript/03_operators_conditions.md
+    - 4. 循环与数组基础: frontend/JavaScript/04_loops_arrays.md
+    - 5. 数组基本方法: frontend/JavaScript/05_array_methods.md
+    - 6. 对象与数据结构: frontend/JavaScript/06_objects_data_structure.md
+    - 7. 函数、作用域、闭包与递归: frontend/JavaScript/07_functions_scope_callbacks.md
+    - 8. 数组回调方法: frontend/JavaScript/08_array_callback_methods.md
+    - 9. 字符串常用方法: frontend/JavaScript/09_string_methods.md
+    - 10. DOM 基础、元素获取与节点操作: frontend/JavaScript/10_dom_query_content.md
+    - 11. 事件监听、事件传播与表单操作: frontend/JavaScript/11_events_forms.md
+    - 12. 表单校验与错误提示: frontend/JavaScript/12_form_validation_errors.md
+    - 13. JSON 与浏览器本地存储: frontend/JavaScript/13_json_browser_storage.md
+    - 14. BOM、页面跳转与浏览器信息: frontend/JavaScript/14_bom_navigation_session.md
+    - 15. 日期、数字与常用工具函数: frontend/JavaScript/15_date_number_utils.md
+    - 16. 正则表达式与格式校验: frontend/JavaScript/16_regex_validation.md
+    - 17. 错误阅读与浏览器调试: frontend/JavaScript/17_error_debugging.md
+    - 18. 异步处理、Promise 与 async/await: frontend/JavaScript/18_async_promise_async_await.md
+    - 19. HTTP 基础与 fetch: frontend/JavaScript/19_fetch_http_intro.md
+    - 20. ES6+ 常用进阶语法: frontend/JavaScript/20_destructuring_spread_modern_syntax.md
+    - 21. Set、Map 与元编程基础: frontend/JavaScript/21_set_map_modern_objects.md
+    - 22. ES 模块与项目脚本组织: frontend/JavaScript/22_modules_script_organization.md
+    - 23. Axios 请求与接口层封装: frontend/JavaScript/23_axios_request_wrapper.md
+    - 24. JavaScript 新人综合练习: frontend/JavaScript/24_js_project.md
+  - 前端递进练习:
+    - 1. HTML 阶段: frontend/training/01_html_task.md
+    - 2. CSS 阶段: frontend/training/02_css_task.md
+    - 3. JavaScript 阶段: frontend/training/03_javascript_task.md
   - UI 组件库:
     - Bootstrap:
       - 1. 入门与基础结构: frontend/ui/bootstrap/01_bootstrap_basics.md
