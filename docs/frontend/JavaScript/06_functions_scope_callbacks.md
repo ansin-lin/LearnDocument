@@ -1,4 +1,4 @@
-# 第七章 函数、作用域、闭包与递归
+# 第六章 函数、作用域、闭包与递归
 
 ## 学习目标
 
@@ -13,14 +13,25 @@
 - 看懂立即执行函数 IIFE。
 - 说明闭包为什么能够保留外层变量。
 - 编写包含终止条件的简单递归函数。
-- 看懂使用递归克隆普通数组和对象的基本思路。
 
 ## 掌握要求
 
 - **必须掌握**：函数声明、参数、返回值、作用域、箭头函数和回调函数。
 - **需要掌握**：默认参数、剩余参数、参数个数、函数表达式和函数提升。
 - **会使用、能看懂**：闭包和简单递归。
-- **了解即可**：`arguments`、IIFE 和递归克隆实现；实际项目优先采用更清楚的现代写法。
+- **了解即可**：`arguments` 和 IIFE；实际项目优先采用更清楚的现代写法。
+
+## 本章学习路线
+
+本章保留在一个文件中，分为基础和进阶两部分：
+
+| 部分 | 对应小节 | 掌握要求 |
+| --- | --- | --- |
+| 函数基础 | 第1～8节 | 定义、调用、参数、返回值、作用域和回调必须掌握 |
+| 函数进阶 | 第9～11节 | IIFE了解即可；闭包和简单递归需要能看懂 |
+| 代码组织与练习 | 第12～13节 | 能拆分职责，并验证函数输入和输出 |
+
+第一次学习先完成第1～8节和对应练习，再学习闭包与递归。
 
 ## 1. 函数解决什么问题
 
@@ -434,7 +445,7 @@ const pendingApplications = applications.filter(
 console.log(pendingApplications);
 ```
 
-`filter()` 会逐项调用回调函数，把判断结果为真值的元素组成新数组；这里得到所有状态为 `"pending"` 的申请。第八章会详细讲解它的参数和返回值。
+`filter()` 会逐项调用回调函数，把判断结果为真值的元素组成新数组；这里得到所有状态为 `"pending"` 的申请。第七章会详细讲解它的参数和返回值。
 
 HTML：
 
@@ -644,81 +655,7 @@ repeat(); // RangeError: Maximum call stack size exceeded
 
 处理普通列表时优先使用循环和数组方法。递归更适合树形结构、嵌套数据和天然可以逐层缩小的问题。
 
-## 12. 使用递归理解深克隆
-
-直接赋值不会克隆对象：
-
-```js
-const original = {
-  user: {
-    name: "山田"
-  }
-};
-
-const copied = original;
-copied.user.name = "鈴木";
-
-console.log(original.user.name); // 鈴木
-```
-
-`original` 和 `copied` 指向同一个对象。
-
-下面的函数通过递归克隆普通数组和普通对象：
-
-```js
-function clonePlainData(value) {
-  if (Array.isArray(value)) {
-    const result = [];
-
-    for (const item of value) {
-      result.push(clonePlainData(item));
-    }
-
-    return result;
-  }
-
-  if (value !== null && typeof value === "object") {
-    const result = {};
-
-    for (const key in value) {
-      if (Object.hasOwn(value, key)) {
-        result[key] = clonePlainData(value[key]);
-      }
-    }
-
-    return result;
-  }
-
-  return value;
-}
-```
-
-对象分支中的 `for...in` 用于依次取得对象的可枚举属性名。`Object.hasOwn(value, key)` 用于确认该属性直接属于当前对象，避免复制从原型链继承的属性。
-
-执行思路：
-
-1. 遇到数组，创建新数组，并递归克隆每一项。
-2. 遇到普通对象，创建新对象，并递归克隆每个自有属性。
-3. 遇到字符串、数字、布尔值、`null` 等值，直接返回。
-
-```js
-const original = {
-  user: {
-    name: "山田"
-  },
-  statuses: ["pending", "approved"]
-};
-
-const copied = clonePlainData(original);
-copied.user.name = "鈴木";
-
-console.log(original.user.name); // 山田
-console.log(copied.user.name);   // 鈴木
-```
-
-这个函数只用于理解递归和深克隆原理，不是通用克隆库。它没有处理循环引用、`Date`、`Map`、`Set`、函数、DOM 节点和对象原型等特殊情况。实际项目中的浅克隆、深克隆和 `structuredClone()` 会在第二十章说明。
-
-## 13. 函数职责要单一
+## 12. 函数职责要单一
 
 一个函数应集中完成一个清楚的任务。
 
@@ -746,7 +683,7 @@ function goToCompletePage() {
 }
 ```
 
-## 14. 本章练习
+## 13. 本章练习
 
 ### 练习 1：参数和返回值
 

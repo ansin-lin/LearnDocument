@@ -1,4 +1,4 @@
-# 第六章 对象与数据结构
+# 第十二章 对象与数据结构
 
 ## 学习目标
 
@@ -16,9 +16,9 @@
 ## 掌握要求
 
 - **必须掌握**：对象字面量、属性操作、对象方法、嵌套对象、对象数组、常用遍历方式和引用特点。
-- **需要掌握**：计算属性名、属性存在性判断、`this`、构造函数与实例。
-- **会使用、能看懂**：`prototype`、原型链查找、自有属性与继承属性。
-- **后续学习**：对象解构、展开语法、深浅克隆、`Map`、`Set`、`Proxy` 和 `Reflect`。
+- **需要掌握**：计算属性名、属性存在性判断、`this`、浅复制和`structuredClone()`的适用边界。
+- **会使用、能看懂**：构造函数、实例、`prototype`、原型链查找、自有属性与继承属性。
+- **后续学习**：对象解构、完整展开语法、`Map`、`Set`、`Proxy` 和 `Reflect`。
 
 ## 1. 认识和创建对象
 
@@ -417,7 +417,7 @@ for (const application of applications) {
 }
 ```
 
-第八章会学习使用数组回调方法查找、筛选和转换对象数组。
+第七章已经讲解使用数组回调方法查找、筛选和转换元素；本章把这些方法用于对象数组。
 
 ### 4.3 映射对象与稳定的数据结构
 
@@ -554,7 +554,74 @@ console.log(applicationA === applicationC); // true
 
 内容看起来相同的两个对象，仍然是分别创建的对象。严格相等比较的是它们是否为同一个对象。
 
-直接赋值不是复制对象。浅复制、嵌套对象的影响和 `structuredClone()` 会在第二十章集中讲解。
+直接赋值不是复制对象。下面继续比较浅复制和深复制。
+
+### 6.2 浅复制
+
+展开语法 `{ ...original }` 会创建一个新的最外层对象，但嵌套对象仍然共享引用，这称为**浅复制**。
+
+```js
+const original = {
+  id: "REQ-001",
+  applicant: { name: "山田" }
+};
+
+const copied = { ...original };
+copied.id = "REQ-002";
+copied.applicant.name = "鈴木";
+
+console.log(original.id);             // REQ-001
+console.log(original.applicant.name); // 鈴木
+```
+
+最外层的 `id` 已经独立，但 `applicant` 仍指向同一个对象。展开语法会在第二十章系统讲解；这里先观察复制结果。
+
+### 6.3 使用 structuredClone() 深复制
+
+**深复制**会为嵌套数据也创建独立副本。`structuredClone(value)` 使用浏览器的结构化克隆算法复制支持的数据：
+
+```js
+const original = {
+  applicant: { name: "山田" },
+  dates: ["2026-09-01", "2026-09-02"]
+};
+
+const copied = structuredClone(original);
+copied.applicant.name = "鈴木";
+
+console.log(original.applicant.name); // 山田
+console.log(copied.applicant.name);   // 鈴木
+```
+
+`structuredClone()` 不能复制函数和 DOM 节点，复制类实例时也不会保留完整的自定义原型行为。不要使用 `JSON.stringify()` 和 `JSON.parse()` 充当通用深复制方法，因为它们会丢失部分数据类型。
+
+### 6.4 用递归理解深复制过程（了解即可）
+
+下面的函数只演示普通数组和普通对象如何逐层复制，不是通用克隆库：
+
+```js
+function clonePlainData(value) {
+  if (Array.isArray(value)) {
+    return value.map(clonePlainData);
+  }
+
+  if (value !== null && typeof value === "object") {
+    const result = {};
+
+    for (const key in value) {
+      if (Object.hasOwn(value, key)) {
+        result[key] = clonePlainData(value[key]);
+      }
+    }
+
+    return result;
+  }
+
+  return value;
+}
+```
+
+它没有处理循环引用、`Date`、`Map`、`Set`、函数、DOM节点和对象原型。实际项目应先确认数据类型和复制目的，再选择浅复制或 `structuredClone()`。
 
 ## 7. 构造函数、实例与原型
 
@@ -662,7 +729,7 @@ console.log(
 | 特殊属性名访问时报错 | 对包含连字符的属性使用了点语法 | 改为 `object["content-type"]` |
 | 调用方法没有结果 | 只写了 `user.showName` | 写成 `user.showName()` |
 | 方法中的 `this` 不是当前对象 | 使用箭头函数定义了依赖自身 `this` 的方法 | 使用普通方法简写 |
-| 修改副本时原对象也变化 | 直接赋值只复制了对象引用 | 第二十章选择合适的复制方式 |
+| 修改副本时原对象也变化 | 直接赋值只复制了对象引用 | 根据嵌套层级选择浅复制或 `structuredClone()` |
 | 两个内容相同的对象比较为 `false` | `===` 比较对象引用 | 按需要比较业务字段 |
 | `for...in` 输出继承属性 | 没有限制为自有属性 | 配合 `Object.hasOwn()` |
 | 构造函数调用时报错 | 忘记使用 `new` | 使用 `new Constructor(...)` |
@@ -719,9 +786,9 @@ const priorityLabels = {
 
 把一个设备对象赋给另一个变量，再通过第二个变量修改保管位置。输出两个变量并解释结果。然后创建两个内容相同的新对象，使用 `===` 比较。
 
-### 9.5 构造函数和原型
+### 9.5 扩展练习：构造函数和原型
 
-编写 `Equipment(assetId, name)`：
+本练习用于阅读既有代码，不作为零基础主线验收要求。编写 `Equipment(assetId, name)`：
 
 1. 使用 `new` 创建两个实例。
 2. 在 `Equipment.prototype` 上定义 `showLabel()`。

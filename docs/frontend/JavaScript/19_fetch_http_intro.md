@@ -1,4 +1,4 @@
-# 第 19 章 HTTP 基础与 fetch
+# 第 19 章 HTTP 请求、fetch 与 Axios 基础
 
 前面的页面数据主要来自 JavaScript 数组、`localStorage` 或本地模拟函数。真实项目中，员工信息、申请记录等业务数据通常保存在服务器，由前端通过 HTTP 请求读取或提交。
 
@@ -15,8 +15,10 @@
 - 使用 `AbortController` 取消超时请求。
 - 在页面中处理加载中、成功、空数据和失败状态。
 - 使用浏览器 Network 面板检查请求和响应。
+- 使用Axios发送基础GET、POST请求并读取`response.data`。
+- 根据项目规范选择`fetch()`或Axios，不在同一功能中无理由混用。
 
-本章只使用浏览器原生的 `fetch()`。第 23 章会在掌握 HTTP 和 ES 模块后，再学习第三方请求库 Axios。
+本章先使用浏览器原生的 `fetch()` 理解HTTP请求，再学习第三方请求库Axios的基础用法。
 
 如果需要系统学习前后端职责、REST、Cookie、Session 和 CORS，请参阅 [HTTP、REST、Cookie、Session 与 CORS](../../web_basics/01_http_rest_cookie_cors.md)。本章只回顾编写请求代码所需的 HTTP 概念。
 
@@ -705,9 +707,102 @@ body: JSON.stringify(application)
 
 204 没有响应体，继续解析 JSON 可能报错。根据状态码和接口规格决定是否读取响应体。
 
-## 13. 本章练习
+## 13. Axios 基础使用
 
-### 13.1 初始文件
+Axios 是基于 Promise 的 HTTP 客户端。它不是 JavaScript 内置功能，需要先安装或由页面加载。零基础阶段只要求会发送常见请求、读取响应数据并处理失败；实例、拦截器和认证封装应在具体框架或项目课程中继续学习。
+
+### 13.1 在本章练习页面中引入
+
+本章还没有进入构建工具，练习页面先使用CDN脚本。把Axios放在自己的`app.js`之前加载：
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/axios@1/dist/axios.min.js"></script>
+<script src="./js/app.js" defer></script>
+```
+
+第一个`<script>`加载Axios，并提供全局变量`axios`；第二个加载自己的页面脚本。这个示例需要网络连接。
+
+使用npm和构建工具的项目改为：
+
+```bash
+npm install axios
+```
+
+```js
+import axios from "axios";
+```
+
+`import`属于第22章的模块知识。学完模块并进入Vue、React等构建项目后再使用npm写法；不能把包名`axios`直接当作普通浏览器相对路径。
+
+### 13.2 发送 GET 请求
+
+```js
+async function loadApplications() {
+  try {
+    const response = await axios.get("/api/applications", {
+      params: { status: "pending" },
+      timeout: 5000
+    });
+
+    console.log(response.data);
+  } catch (error) {
+    console.error("申请列表读取失败", error);
+  }
+}
+```
+
+- `axios.get(url, config?)` 发送GET请求；
+- `params` 把对象转换为URL查询参数；
+- `timeout` 指定等待的毫秒数；
+- `response.data` 是响应正文；
+- Axios会把超出默认成功范围的HTTP状态作为失败交给`catch`。
+
+### 13.3 发送 POST 请求
+
+```js
+async function createApplication(application) {
+  const response = await axios.post(
+    "/api/applications",
+    application,
+    { timeout: 5000 }
+  );
+
+  return response.data;
+}
+```
+
+`axios.post(url, data?, config?)` 的第二个参数是请求数据，第三个参数是配置对象。传入普通对象时，Axios通常会按JSON请求处理。
+
+### 13.4 识别 Axios 错误
+
+```js
+try {
+  await axios.get("/api/applications", { timeout: 5000 });
+} catch (error) {
+  if (axios.isAxiosError(error)) {
+    console.error(error.response?.status, error.message);
+  } else {
+    console.error("未知错误", error);
+  }
+}
+```
+
+`axios.isAxiosError(error)` 判断捕获值是否是Axios错误。`error.response` 表示服务器返回了响应；没有响应时还可能是网络、超时或取消问题。页面仍应分别处理加载、成功、空数据和失败状态。
+
+### 13.5 fetch 与 Axios 如何选择
+
+| 场景 | 建议 |
+| --- | --- |
+| 不增加依赖，使用浏览器标准API | 使用`fetch()` |
+| 既有项目已经统一使用Axios | 遵守项目约定使用Axios |
+| 只需要发送一个简单请求 | 两者都可以，优先保持项目一致 |
+| 需要统一客户端、拦截器和认证处理 | 在项目或框架课程中建立Axios接口层 |
+
+不要在同一功能中无理由混用两套请求方式。
+
+## 14. 本章练习
+
+### 14.1 初始文件
 
 新建：
 
@@ -725,7 +820,7 @@ https://jsonplaceholder.typicode.com/todos?_limit=5
 
 每条数据包含 `userId`、`id`、`title` 和 `completed`。
 
-### 13.2 任务要求
+### 14.2 任务要求
 
 1. 在 HTML 中准备“读取任务”按钮、状态区域和列表。
 2. 使用 `fetch()` 请求上面的完整 URL。
@@ -739,7 +834,7 @@ https://jsonplaceholder.typicode.com/todos?_limit=5
 10. 把 `_limit` 改为 `0`，确认页面能够显示空数据状态。
 11. 写出一个 POST 请求代码片段，用于提交新的任务对象；不要求公开测试服务永久保存数据。
 
-### 13.3 完成标准
+### 14.3 完成标准
 
 - 能解释 `fetch()` 与 `response.json()` 为什么都需要等待。
 - 能说明为什么 404 不一定自动进入 `catch`。

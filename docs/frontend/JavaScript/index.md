@@ -39,7 +39,7 @@
 - `location.href`、页面跳转、登录状态检查
 - Promise、`async` / `await`
 - `fetch` 基础
-- Axios 常用请求与请求封装
+- Axios 基础请求
 - ES 模块
 - `Set`、`Map`
 
@@ -61,25 +61,24 @@
 3. [运算符、条件判断与真值判断](03_operators_conditions.md)
 4. [循环与数组基础](04_loops_arrays.md)
 5. [数组基本方法](05_array_methods.md)
-6. [对象与数据结构](06_objects_data_structure.md)
-7. [函数、作用域、闭包与递归](07_functions_scope_callbacks.md)
-8. [数组回调方法](08_array_callback_methods.md)
-9. [字符串常用方法](09_string_methods.md)
-10. [DOM 基础、元素获取与节点操作](10_dom_query_content.md)
-11. [事件监听、事件传播与表单操作](11_events_forms.md)
-12. [表单校验与错误显示](12_form_validation_errors.md)
+6. [函数、作用域、闭包与递归](06_functions_scope_callbacks.md)
+7. [数组回调方法](07_array_callback_methods.md)
+8. [字符串常用方法](08_string_methods.md)
+9. [DOM 基础、元素获取与节点操作](09_dom_query_content.md)
+10. [事件监听、事件传播与表单操作](10_events_forms.md)
+11. [表单校验与错误显示](11_form_validation_errors.md)
+12. [对象与数据结构](12_objects_data_structure.md)
 13. [JSON 与浏览器存储](13_json_browser_storage.md)
 14. [BOM、页面跳转与登录状态](14_bom_navigation_session.md)
 15. [日期、编号与业务工具函数](15_date_number_utils.md)
 16. [正则表达式基础](16_regex_validation.md)
 17. [错误处理与调试](17_error_debugging.md)
 18. [异步基础、Promise 与 async/await](18_async_promise_async_await.md)
-19. [HTTP 基础与 fetch](19_fetch_http_intro.md)
+19. [HTTP 请求、fetch 与 Axios 基础](19_fetch_http_intro.md)
 20. [ES6+ 常用进阶语法](20_destructuring_spread_modern_syntax.md)
 21. [Set、Map 与元编程基础](21_set_map_modern_objects.md)
 22. [ES 模块与项目脚本组织](22_modules_script_organization.md)
-23. [Axios 请求与接口层封装](23_axios_request_wrapper.md)
-24. [JavaScript 新人综合练习](24_js_project.md)
+23. [JavaScript 新人综合练习](23_js_project.md)
 
 ## 贯穿项目
 

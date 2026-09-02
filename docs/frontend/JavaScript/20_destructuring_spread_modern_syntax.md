@@ -14,7 +14,18 @@
 - 使用 `Array.from()` 把类数组或可迭代对象转换为数组。
 - 阅读包含 `class`、`constructor`、`extends` 和 `super` 的基础代码。
 
-对象字面量、计算属性名和对象遍历已在[第 6 章](06_objects_data_structure.md)讲解；箭头函数、默认参数和函数剩余参数已在[第 7 章](07_functions_scope_callbacks.md)讲解。本章只在组合使用时进行必要回顾。
+对象字面量、计算属性名、对象遍历和对象复制已在[第12章](12_objects_data_structure.md)讲解；箭头函数、默认参数和函数剩余参数已在[第6章](06_functions_scope_callbacks.md)讲解。本章只在组合使用时进行必要回顾。
+
+## 本章学习路线
+
+| 部分 | 对应小节 | 掌握要求 |
+| --- | --- | --- |
+| 解构数据 | 第1～3节 | 必须掌握对象和数组的常用解构 |
+| 展开并生成新数据 | 第4～7节 | 必须掌握数组、对象展开；对象复制复习第12章 |
+| 安全取值和默认值 | 第8～10节 | 必须掌握`?.`和`??`，能看懂逻辑赋值 |
+| 集合转换 | 第11节 | 会使用`Array.from()` |
+| Class识读 | 第12节 | 能创建简单实例，继承体系了解即可 |
+| 排错与练习 | 第13～14节 | 能判断符号作用并验证结果 |
 
 ## 1. 现代语法主要解决什么问题
 
@@ -478,104 +489,9 @@ console.log(wrongApplication.status); // pending
 
 这种创建新对象的方式在 React 状态更新和 Vue 数据转换中很常见。
 
-## 7. 直接赋值、浅克隆与深克隆
+## 7. 使用展开语法复制对象时的边界
 
-### 7.1 直接赋值不会复制对象
-
-```js
-const original = {
-  status: "pending",
-};
-
-const copied = original;
-copied.status = "approved";
-
-console.log(original.status); // approved
-```
-
-两个变量指向同一个对象。
-
-### 7.2 展开语法只进行浅克隆
-
-```js
-const original = {
-  id: 101,
-  applicant: {
-    name: "田中太郎",
-  },
-};
-
-const copied = { ...original };
-copied.applicant.name = "鈴木花子";
-
-console.log(original.applicant.name); // 鈴木花子
-```
-
-外层对象已经不同，但两者的 `applicant` 仍然指向同一个嵌套对象。数组展开也只复制第一层。
-
-如果只更新某个已知嵌套层级，可以逐层展开：
-
-```js
-const copied = {
-  ...original,
-  applicant: {
-    ...original.applicant,
-    name: "鈴木花子",
-  },
-};
-
-console.log(original.applicant.name); // 田中太郎
-```
-
-### 7.3 使用 `structuredClone()` 深克隆
-
-```js
-const original = {
-  id: 101,
-  applicant: {
-    name: "田中太郎",
-  },
-  statuses: ["pending", "approved"],
-};
-
-const copied = structuredClone(original);
-copied.applicant.name = "鈴木花子";
-copied.statuses.push("rejected");
-
-console.log(original.applicant.name); // 田中太郎
-console.log(original.statuses);       // ["pending", "approved"]
-```
-
-`structuredClone(value, options?)` 使用结构化克隆算法创建深层副本：
-
-| 参数 | 可接受的值 | 默认值或必填性 | 作用 |
-| --- | --- | --- | --- |
-| `value` | 可被结构化克隆的值 | 必填 | 指定要复制的数据 |
-| `options` | 包含 `transfer` 等配置的对象 | 可选 | 转移特殊对象的所有权；基础项目通常省略 |
-
-返回值是深层复制后的新值，不修改原数据。它可以处理普通对象、数组、`Date`、`Map`、`Set` 和循环引用等常见数据，但不能克隆函数。
-
-```js
-const value = {
-  handler: () => {
-    console.log("click");
-  },
-};
-
-structuredClone(value); // DataCloneError
-```
-
-选择方式：
-
-| 需求 | 推荐方式 |
-| --- | --- |
-| 只复制一层数组 | `[...array]` |
-| 只复制一层对象 | `{ ...object }` |
-| 更新已知嵌套属性 | 对需要修改的层级逐层展开 |
-| 深层复制可结构化克隆的数据 | `structuredClone(value)` |
-| 类实例、函数等特殊数据 | 编写明确的转换或复制逻辑 |
-
-不要把 `JSON.parse(JSON.stringify(value))` 当作通用深克隆方案。它会丢失某些值，不能正确保留所有 JavaScript 类型，也无法处理循环引用。
+对象展开只复制最外层。嵌套对象仍可能与原对象共享引用；需要深复制时，应回到[第12章的对象复制专题](12_objects_data_structure.md)选择逐层展开或`structuredClone()`。本章只关注展开语法怎样生成新的最外层对象，不重复讲解深复制。
 
 ## 8. 可选链 `?.`
 
