@@ -14,7 +14,7 @@
 
 ---
 
-## 第一部分：认识模块
+## 第一部分：运行最小模块
 
 ### 1. 为什么要使用模块
 
@@ -59,7 +59,7 @@
 
 ES 模块是 JavaScript 语言内置的模块系统，也称为 ESM。
 
-一个 JavaScript 文件只要使用了 `export` 或 `import`，就可以作为模块使用。
+ES 模块可以通过 `export` 公开内容，通过 `import` 使用其他模块的内容。在浏览器中，还必须通过 `type="module"` 入口或其他模块的导入来加载文件；仅把 `export` 写入普通脚本不会自动改变加载方式。
 
 ```js
 // format.js
@@ -82,13 +82,37 @@ console.log(formatApplicationDate("2026-09-01"));
 
 ### 3. 在 HTML 中加载模块
 
-浏览器通过 `type="module"` 识别模块入口。
+先建立独立实验目录，使用上一节两个 JavaScript 文件的代码，不与综合项目混放：
 
-```html
-<script type="module" src="./js/app.js"></script>
+```text
+module-intro/
+├─ index.html
+└─ js/
+   ├─ app.js
+   └─ format.js
 ```
 
-`app.js` 是入口模块，它可以继续导入其他模块。
+`index.html` 完整内容如下：
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>模块加载实验</title>
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+  <h1>在 Console 查看格式化日期</h1>
+</body>
+</html>
+```
+
+浏览器通过 `type="module"` 识别入口。HTML 只加载 `app.js`，`app.js` 再导入同目录的 `format.js`。本例不需要安装第三方 JavaScript 包。
+
+在 `module-intro` 目录启动本地服务器，步骤见本节后面的说明。打开页面后，Console 应输出 `2026/09/01`。把 `app.js` 传入的日期改为 `2026-09-02`，保存并刷新，应输出 `2026/09/02`。
+
+若没有结果，先在 Network 检查 HTML、app.js、format.js 是否成功加载，再确认导出名称与导入名称一致。不要在未运行成功之前增加更多文件。
 
 #### 3.1 type="module" 带来的行为
 
@@ -128,7 +152,7 @@ http://localhost:8000/
 
 ---
 
-## 第二部分：命名导出与导入
+## 第二部分：导出内容与模块路径
 
 ### 4. 命名导出
 
@@ -207,108 +231,9 @@ export {
 
 ---
 
-### 5. 默认导出
+### 5. 浏览器如何解析模块路径
 
-一个模块最多只能有一个默认导出。
-
-```js
-// application-storage.js
-const STORAGE_KEY = "leave-applications";
-
-function saveApplications(applications) {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(applications)
-  );
-}
-
-export default saveApplications;
-```
-
-默认导入时，名称可以由导入方决定：
-
-```js
-import saveApplications from "./application-storage.js";
-```
-
-下面也能工作，但随意改名会降低可读性：
-
-```js
-import save from "./application-storage.js";
-```
-
-#### 5.1 命名导出与默认导出的区别
-
-| 比较项 | 命名导出 | 默认导出 |
-| --- | --- | --- |
-| 每个模块数量 | 可以有多个 | 最多一个 |
-| 导入时是否使用 `{}` | 使用 | 不使用 |
-| 导入名称 | 默认与导出名一致 | 可自行命名 |
-| 重构时是否容易追踪 | 较容易 | 名称可能不统一 |
-| 建议用途 | 工具函数、常量、多个业务函数 | 模块只有一个主要职责时 |
-
-教学项目中优先使用命名导出。它能让导入名称保持一致，也更容易通过搜索找到来源。
-
-#### 5.2 同时使用默认导出和命名导出
-
-```js
-// logger.js
-export const LOG_LEVEL = "info";
-
-export default function log(message) {
-  console.log(`[${LOG_LEVEL}] ${message}`);
-}
-```
-
-```js
-import log, { LOG_LEVEL } from "./logger.js";
-```
-
-这种语法需要能够阅读，但同一模块导出方式过多时会增加理解成本，不要为了展示语法而混用。
-
----
-
-### 6. 导入全部命名内容
-
-`import * as name` 会把模块的命名导出组织到一个模块对象中。
-
-```js
-import * as validation from "./application-validation.js";
-
-console.log(validation.MAX_REASON_LENGTH);
-console.log(validation.isDateSelected("2026-09-01"));
-```
-
-内容较少时，明确列出需要的名称通常更清楚：
-
-```js
-import {
-  isDateSelected,
-  isReasonValid
-} from "./application-validation.js";
-```
-
----
-
-### 7. 只执行模块，不接收导出值
-
-有些模块的作用是执行初始化代码，例如注册事件或加载全局样式，不需要接收它的导出内容。
-
-```js
-import "./initialize-logging.js";
-```
-
-这种写法称为“副作用导入”。
-
-业务代码中应谨慎使用，因为只看导入语句不容易知道它改变了什么。初始化入口可以使用，普通工具模块应优先导出明确的函数。
-
----
-
-## 第三部分：模块路径
-
-### 8. 浏览器如何解析模块路径
-
-#### 8.1 当前目录
+#### 5.1 当前目录
 
 ```js
 import { formatDate } from "./format.js";
@@ -316,7 +241,7 @@ import { formatDate } from "./format.js";
 
 `./` 表示相对于当前 JavaScript 文件所在目录。
 
-#### 8.2 上一级目录
+#### 5.2 上一级目录
 
 ```js
 import { statusTextMap } from "../config/status.js";
@@ -324,7 +249,7 @@ import { statusTextMap } from "../config/status.js";
 
 `../` 表示当前目录的上一级。
 
-#### 8.3 站点根路径
+#### 5.3 站点根路径
 
 ```js
 import { formatDate } from "/js/utils/format.js";
@@ -332,7 +257,7 @@ import { formatDate } from "/js/utils/format.js";
 
 以 `/` 开头表示从当前网站根路径查找。项目部署在子目录时，这种写法可能需要额外配置。
 
-#### 8.4 完整 URL
+#### 5.4 完整 URL
 
 ```js
 import { helper } from "https://example.com/modules/helper.js";
@@ -340,7 +265,7 @@ import { helper } from "https://example.com/modules/helper.js";
 
 浏览器可以导入符合跨域规则的完整 URL，但项目主线通常使用本地模块或包管理工具。
 
-#### 8.5 裸模块名称
+#### 5.5 裸模块名称
 
 ```js
 // 浏览器通常不能直接理解
@@ -353,7 +278,7 @@ import { helper } from "https://example.com/modules/helper.js";
 
 ---
 
-### 9. 相对路径以谁为基准
+### 6. 相对路径以谁为基准
 
 导入路径相对于**当前写 import 的 JavaScript 文件**，不是相对于 HTML 文件。
 
@@ -387,9 +312,534 @@ import { something } from "../something.js";
 
 ---
 
-## 第四部分：模块的运行规则
+## 第三部分：按职责组织完整页面
 
-### 10. 模块只执行一次
+先确认最小模块实验能够运行，再在新的 `leave-application` 目录中完成下面的示例。这里复用已学的 DOM、事件、对象、集合和存储，新增的工作是确定每段代码由哪个文件负责。
+
+### 7. 示例目标
+
+制作一个简单的“申请日期管理”页面：
+
+- 输入日期；
+- 拒绝空日期和重复日期；
+- 把日期保存到 `localStorage`；
+- 刷新页面后恢复数据；
+- 显示格式化后的日期；
+- 可以清空全部日期。
+
+本章只使用本地数据。实际项目接入后端时，可以根据第19章的HTTP请求知识，把存储模块替换为接口模块。
+
+---
+
+### 8. 项目目录
+
+```text
+leave-application/
+├─ index.html
+└─ js/
+   ├─ app.js
+   ├─ config/
+   │  └─ status.js
+   ├─ storage/
+   │  └─ application-storage.js
+   ├─ utils/
+   │  └─ format.js
+   └─ validation/
+      └─ application-validation.js
+```
+
+职责如下：
+
+| 文件 | 职责 |
+| --- | --- |
+| `index.html` | 页面结构和模块入口 |
+| `app.js` | 页面元素、事件和整体流程 |
+| `status.js` | 状态常量与显示文本 |
+| `application-storage.js` | 本地存储读写 |
+| `format.js` | 日期、显示文本及练习编号生成 |
+| `application-validation.js` | 输入值校验 |
+
+---
+
+### 9. 编写 HTML
+
+```html
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+  <title>申请日期管理</title>
+</head>
+<body>
+  <h1>申请日期管理</h1>
+
+  <form id="application-form">
+    <label for="application-date">申请日期</label>
+    <input id="application-date" type="date">
+    <button type="submit">添加</button>
+  </form>
+
+  <p id="message" role="status"></p>
+  <ul id="application-list"></ul>
+  <button id="clear-button" type="button">全部清空</button>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
+```
+
+页面中只加载入口模块 `app.js`。其他模块由 `app.js` 继续导入。
+
+---
+
+### 10. 状态配置模块
+
+```js
+// js/config/status.js
+export const APPLICATION_STATUS = {
+  DRAFT: "draft"
+};
+
+export const statusTextMap = new Map([
+  [APPLICATION_STATUS.DRAFT, "草稿"]
+]);
+```
+
+常量集中定义后，其他模块不必重复手写 `"draft"`。
+
+---
+
+### 11. 校验模块
+
+```js
+// js/validation/application-validation.js
+export function validateApplicationDate(dateText, selectedDates) {
+  if (dateText === "") {
+    return {
+      valid: false,
+      message: "请选择申请日期"
+    };
+  }
+
+  if (selectedDates.has(dateText)) {
+    return {
+      valid: false,
+      message: "该日期已经添加"
+    };
+  }
+
+  return {
+    valid: true,
+    message: ""
+  };
+}
+```
+
+`validateApplicationDate()` 接收输入日期和已选择日期集合，返回统一的校验结果对象。
+
+它只负责判断，不读取页面元素，也不直接显示错误。
+
+---
+
+### 12. 格式化模块
+
+```js
+// js/utils/format.js
+export function formatApplicationDate(dateText) {
+  return dateText.replaceAll("-", "/");
+}
+
+export function formatApplicationLabel(application, statusTextMap) {
+  const statusText =
+    statusTextMap.get(application.status) ?? "未知状态";
+
+  return `${formatApplicationDate(application.date)}（${statusText}）`;
+}
+
+function formatBasicDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}${month}${day}`;
+}
+
+export function createApplicationId(applications, now = new Date()) {
+  const dateText = formatBasicDate(now);
+  const prefix = `REQ-${dateText}-`;
+
+  const sequenceNumbers = applications
+    .filter((application) => application.id.startsWith(prefix))
+    .map((application) => Number(application.id.slice(prefix.length)))
+    .filter((number) => Number.isInteger(number));
+
+  let maxSequence = 0;
+  for (const sequence of sequenceNumbers) {
+    if (sequence > maxSequence) {
+      maxSequence = sequence;
+    }
+  }
+  const nextSequence = String(maxSequence + 1).padStart(3, "0");
+
+  return `${prefix}${nextSequence}`;
+}
+```
+
+`formatApplicationDate()` 把 `2026-09-01` 转成 `2026/09/01`。
+
+`formatApplicationLabel()` 组合日期和状态显示文本。`createApplicationId()` 复用第14章的编号算法：找出当天最大序号后加一；这里将它导出供入口调用。函数的默认now参数也可传入固定日期，方便测试。本例只用于单浏览器练习，不保证多窗口或多用户并发唯一性。
+
+---
+
+### 13. 存储模块
+
+```js
+// js/storage/application-storage.js
+const STORAGE_KEY = "leave-applications";
+
+export function loadApplications() {
+  const jsonText = localStorage.getItem(STORAGE_KEY);
+
+  if (jsonText === null) {
+    return [];
+  }
+
+  const parsedValue = JSON.parse(jsonText);
+  if (!Array.isArray(parsedValue)) {
+    throw new Error("保存的数据不是申请数组");
+  }
+  for (const application of parsedValue) {
+    if (
+      application === null ||
+      typeof application !== "object" ||
+      typeof application.id !== "string" ||
+      typeof application.date !== "string" ||
+      typeof application.status !== "string"
+    ) {
+      throw new Error("保存的申请记录字段不完整");
+    }
+  }
+  return parsedValue;
+}
+
+export function saveApplications(applications) {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(applications)
+  );
+}
+
+export function clearApplications() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+```
+
+三个函数分别负责读取、保存和清空。页面模块不需要知道存储键名。只有键不存在时返回空数组；JSON 损坏、结构不符合约定或存储访问失败时，把错误交给入口处理，不能伪装成没有记录，否则下一次保存可能覆盖旧数据。
+
+---
+
+### 14. 页面入口模块
+
+```js
+// js/app.js
+import {
+  APPLICATION_STATUS,
+  statusTextMap
+} from "./config/status.js";
+
+import {
+  clearApplications,
+  loadApplications,
+  saveApplications
+} from "./storage/application-storage.js";
+
+import {
+  formatApplicationLabel,
+  createApplicationId
+} from "./utils/format.js";
+
+import {
+  validateApplicationDate
+} from "./validation/application-validation.js";
+
+const form = document.querySelector("#application-form");
+const dateInput = document.querySelector("#application-date");
+const message = document.querySelector("#message");
+const list = document.querySelector("#application-list");
+const clearButton = document.querySelector("#clear-button");
+
+let applications = [];
+const selectedDates = new Set();
+let dataReady = false;
+
+function showMessage(text) {
+  message.textContent = text;
+}
+
+function renderApplications() {
+  list.replaceChildren();
+
+  for (const application of applications) {
+    const listItem = document.createElement("li");
+    listItem.textContent = formatApplicationLabel(
+      application,
+      statusTextMap
+    );
+    list.append(listItem);
+  }
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!dataReady) {
+    showMessage("数据未正常读取，不能新增");
+    return;
+  }
+
+  const date = dateInput.value;
+  const result = validateApplicationDate(
+    date,
+    selectedDates
+  );
+
+  if (!result.valid) {
+    showMessage(result.message);
+    return;
+  }
+
+  const application = {
+    id: createApplicationId(applications),
+    date,
+    status: APPLICATION_STATUS.DRAFT
+  };
+
+  const nextApplications = [...applications, application];
+  try {
+    saveApplications(nextApplications);
+  } catch (error) {
+    console.error("保存失败", error);
+    showMessage("保存失败，输入内容已保留");
+    return;
+  }
+
+  applications = nextApplications;
+  selectedDates.add(date);
+  renderApplications();
+  form.reset();
+  showMessage("申请日期已添加");
+});
+
+clearButton.addEventListener("click", () => {
+  if (!dataReady) {
+    showMessage("数据读取失败，请先调查原因，不自动清空");
+    return;
+  }
+  try {
+    clearApplications();
+  } catch (error) {
+    console.error("清空失败", error);
+    showMessage("清空失败，原列表未改变");
+    return;
+  }
+  applications = [];
+  selectedDates.clear();
+
+  renderApplications();
+  showMessage("申请日期已全部清空");
+});
+
+try {
+  applications = loadApplications();
+  for (const application of applications) {
+    selectedDates.add(application.date);
+  }
+  renderApplications();
+  dataReady = true;
+} catch (error) {
+  console.error("初始化失败", error);
+  showMessage("读取失败，请检查存储数据；原数据未覆盖");
+}
+```
+
+`form.reset()` 是表单元素的方法，不需要参数、返回undefined，把表单控件恢复为HTML设置的默认值。本例日期输入没有默认值，所以重置后为空；它不会删除数组或浏览器存储中的申请。
+
+入口模块负责连接各个模块：
+
+```text
+用户提交表单
+      ↓
+校验模块判断输入
+      ↓
+准备新数组
+      ↓
+存储模块保存成功
+      ↓
+更新页面数组和 Set
+      ↓
+格式化模块生成显示文本
+      ↓
+入口模块更新 DOM
+```
+
+初始化和保存都遵循第 18 章的存储错误处理约定：先完成可能失败的存储操作，成功后才更新页面状态。`dataReady` 为 false 时阻止新增和清空，保留失败现场；请在修正实验数据后刷新重试。
+
+各模块之间通过参数和返回值协作，不直接修改彼此内部变量。
+
+---
+
+### 15. 运行和验证
+
+在 `leave-application` 目录启动本地服务器：
+
+```bash
+python -m http.server 8000
+```
+
+访问：
+
+```text
+http://localhost:8000/
+```
+
+依次验证：
+
+1. 不选日期直接提交，显示错误；
+2. 添加一个日期，列表出现数据；
+3. 重复添加相同日期，显示重复提示；
+4. 刷新页面，数据仍然存在；
+5. 点击“全部清空”，列表和本地存储都被清除；
+6. 打开浏览器开发者工具，确认 Console 没有错误。
+
+---
+
+### 保存失败的验证
+
+仅在独立实验目录中，将 `saveApplications()` 临时改为 `throw new Error("模拟保存失败");`。提交后应显示失败，输入日期仍保留，列表和已保存记录都不增加。验证后恢复函数，再确认正常保存。
+
+在 Application 中把本例 `leave-applications` 的值临时改为无效 JSON，刷新后应显示读取失败，点击新增或清空都不能覆盖该值。先备份实验值，验证后恢复；不要修改其他项目的存储键。
+
+---
+
+### 16. 如何决定代码放在哪个模块
+
+可以先问下面的问题：
+
+- 是否直接读取或修改 DOM？放在页面模块；
+- 是否只判断数据是否合法？放在校验模块；
+- 是否只处理数据保存和读取？放在存储或接口模块；
+- 是否是多个页面可复用的纯转换？放在工具模块；
+- 是否是状态代码、固定选项？放在配置模块。
+
+不要仅因为文件变长就随意拆分。模块应围绕明确职责，而不是把每几个函数机械地分到一个新文件。
+
+---
+
+## 第四部分：其他导入形式与运行规则
+
+命名导出已足以完成上面的页面。下面的写法用于阅读已有项目或满足特定加载需求；不要把所有形式同时用于一个简单模块。
+
+### 17. 默认导出
+
+一个模块最多只能有一个默认导出。
+
+```js
+// application-storage.js
+const STORAGE_KEY = "leave-applications";
+
+function saveApplications(applications) {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(applications)
+  );
+}
+
+export default saveApplications;
+```
+
+默认导入时，名称可以由导入方决定：
+
+```js
+import saveApplications from "./application-storage.js";
+```
+
+下面也能工作，但随意改名会降低可读性：
+
+```js
+import save from "./application-storage.js";
+```
+
+#### 17.1 命名导出与默认导出的区别
+
+| 比较项 | 命名导出 | 默认导出 |
+| --- | --- | --- |
+| 每个模块数量 | 可以有多个 | 最多一个 |
+| 导入时是否使用 `{}` | 使用 | 不使用 |
+| 导入名称 | 默认与导出名一致 | 可自行命名 |
+| 重构时是否容易追踪 | 较容易 | 名称可能不统一 |
+| 建议用途 | 工具函数、常量、多个业务函数 | 模块只有一个主要职责时 |
+
+教学项目中优先使用命名导出。它能让导入名称保持一致，也更容易通过搜索找到来源。
+
+#### 17.2 同时使用默认导出和命名导出
+
+```js
+// logger.js
+export const LOG_LEVEL = "info";
+
+export default function log(message) {
+  console.log(`[${LOG_LEVEL}] ${message}`);
+}
+```
+
+```js
+import log, { LOG_LEVEL } from "./logger.js";
+```
+
+这种语法需要能够阅读，但同一模块导出方式过多时会增加理解成本，不要为了展示语法而混用。
+
+---
+
+### 18. 导入全部命名内容
+
+`import * as name` 会把模块的命名导出组织到一个模块对象中。
+
+```js
+import * as validation from "./application-validation.js";
+
+console.log(validation.MAX_REASON_LENGTH);
+console.log(validation.isDateSelected("2026-09-01"));
+```
+
+内容较少时，明确列出需要的名称通常更清楚：
+
+```js
+import {
+  isDateSelected,
+  isReasonValid
+} from "./application-validation.js";
+```
+
+---
+
+### 19. 只执行模块，不接收导出值
+
+有些模块的作用是执行初始化代码，例如注册事件或加载全局样式，不需要接收它的导出内容。
+
+```js
+import "./initialize-logging.js";
+```
+
+这种写法称为“副作用导入”。
+
+业务代码中应谨慎使用，因为只看导入语句不容易知道它改变了什么。初始化入口可以使用，普通工具模块应优先导出明确的函数。
+
+---
+
+### 20. 模块只执行一次
 
 多个模块导入同一个模块时，该模块通常只初始化一次。
 
@@ -414,7 +864,7 @@ counter.value += 1;
 
 ---
 
-### 11. 导入的是实时绑定
+### 21. 导入的是实时绑定
 
 ES 模块导入的值与导出模块保持关联，称为实时绑定。
 
@@ -452,7 +902,7 @@ console.log(applicationCount); // 1
 
 ---
 
-### 12. 模块的执行顺序
+### 22. 模块的执行顺序
 
 浏览器会先加载并执行依赖模块，再执行导入它们的模块。
 
@@ -473,7 +923,7 @@ app.js
 
 ---
 
-### 13. 动态导入 import()
+### 23. 动态导入 import()
 
 普通 `import` 会在模块加载阶段处理依赖。`import()` 可以在运行过程中按需加载模块。
 
@@ -496,7 +946,7 @@ reportButton.addEventListener("click", async () => {
 
 ---
 
-### 14. 重新导出与入口文件
+### 24. 重新导出与入口文件
 
 一个目录可以使用入口文件统一重新导出内容。
 
@@ -519,349 +969,7 @@ import {
 
 ---
 
-## 第五部分：完整可运行示例
-
-### 15. 示例目标
-
-制作一个简单的“申请日期管理”页面：
-
-- 输入日期；
-- 拒绝空日期和重复日期；
-- 把日期保存到 `localStorage`；
-- 刷新页面后恢复数据；
-- 显示格式化后的日期；
-- 可以清空全部日期。
-
-本章只使用本地数据。实际项目接入后端时，可以根据第19章的HTTP请求知识，把存储模块替换为接口模块。
-
----
-
-### 16. 项目目录
-
-```text
-leave-application/
-├─ index.html
-└─ js/
-   ├─ app.js
-   ├─ config/
-   │  └─ status.js
-   ├─ storage/
-   │  └─ application-storage.js
-   ├─ utils/
-   │  └─ format.js
-   └─ validation/
-      └─ application-validation.js
-```
-
-职责如下：
-
-| 文件 | 职责 |
-| --- | --- |
-| `index.html` | 页面结构和模块入口 |
-| `app.js` | 页面元素、事件和整体流程 |
-| `status.js` | 状态常量与显示文本 |
-| `application-storage.js` | 本地存储读写 |
-| `format.js` | 日期和显示文本格式化 |
-| `application-validation.js` | 输入值校验 |
-
----
-
-### 17. 编写 HTML
-
-```html
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-  <title>申请日期管理</title>
-</head>
-<body>
-  <h1>申请日期管理</h1>
-
-  <form id="application-form">
-    <label for="application-date">申请日期</label>
-    <input id="application-date" type="date">
-    <button type="submit">添加</button>
-  </form>
-
-  <p id="message" role="status"></p>
-  <ul id="application-list"></ul>
-  <button id="clear-button" type="button">全部清空</button>
-
-  <script type="module" src="./js/app.js"></script>
-</body>
-</html>
-```
-
-页面中只加载入口模块 `app.js`。其他模块由 `app.js` 继续导入。
-
----
-
-### 18. 状态配置模块
-
-```js
-// js/config/status.js
-export const APPLICATION_STATUS = {
-  DRAFT: "draft"
-};
-
-export const statusTextMap = new Map([
-  [APPLICATION_STATUS.DRAFT, "草稿"]
-]);
-```
-
-常量集中定义后，其他模块不必重复手写 `"draft"`。
-
----
-
-### 19. 校验模块
-
-```js
-// js/validation/application-validation.js
-export function validateApplicationDate(dateText, selectedDates) {
-  if (dateText === "") {
-    return {
-      valid: false,
-      message: "请选择申请日期"
-    };
-  }
-
-  if (selectedDates.has(dateText)) {
-    return {
-      valid: false,
-      message: "该日期已经添加"
-    };
-  }
-
-  return {
-    valid: true,
-    message: ""
-  };
-}
-```
-
-`validateApplicationDate()` 接收输入日期和已选择日期集合，返回统一的校验结果对象。
-
-它只负责判断，不读取页面元素，也不直接显示错误。
-
----
-
-### 20. 格式化模块
-
-```js
-// js/utils/format.js
-export function formatApplicationDate(dateText) {
-  return dateText.replaceAll("-", "/");
-}
-
-export function formatApplicationLabel(application, statusTextMap) {
-  const statusText =
-    statusTextMap.get(application.status) ?? "未知状态";
-
-  return `${formatApplicationDate(application.date)}（${statusText}）`;
-}
-```
-
-`formatApplicationDate()` 把 `2026-09-01` 转成 `2026/09/01`。
-
-`formatApplicationLabel()` 组合日期和状态显示文本。
-
----
-
-### 21. 存储模块
-
-```js
-// js/storage/application-storage.js
-const STORAGE_KEY = "leave-applications";
-
-export function loadApplications() {
-  const jsonText = localStorage.getItem(STORAGE_KEY);
-
-  if (jsonText === null) {
-    return [];
-  }
-
-  try {
-    const parsedValue = JSON.parse(jsonText);
-    return Array.isArray(parsedValue) ? parsedValue : [];
-  } catch (error) {
-    console.error("申请数据解析失败", error);
-    return [];
-  }
-}
-
-export function saveApplications(applications) {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(applications)
-  );
-}
-
-export function clearApplications() {
-  localStorage.removeItem(STORAGE_KEY);
-}
-```
-
-三个函数分别负责读取、保存和清空。页面模块不需要知道存储键名。
-
----
-
-### 22. 页面入口模块
-
-```js
-// js/app.js
-import {
-  APPLICATION_STATUS,
-  statusTextMap
-} from "./config/status.js";
-
-import {
-  clearApplications,
-  loadApplications,
-  saveApplications
-} from "./storage/application-storage.js";
-
-import {
-  formatApplicationLabel
-} from "./utils/format.js";
-
-import {
-  validateApplicationDate
-} from "./validation/application-validation.js";
-
-const form = document.querySelector("#application-form");
-const dateInput = document.querySelector("#application-date");
-const message = document.querySelector("#message");
-const list = document.querySelector("#application-list");
-const clearButton = document.querySelector("#clear-button");
-
-let applications = loadApplications();
-const selectedDates = new Set(
-  applications.map((application) => application.date)
-);
-
-function showMessage(text) {
-  message.textContent = text;
-}
-
-function renderApplications() {
-  list.replaceChildren();
-
-  for (const application of applications) {
-    const listItem = document.createElement("li");
-    listItem.textContent = formatApplicationLabel(
-      application,
-      statusTextMap
-    );
-    list.append(listItem);
-  }
-}
-
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-
-  const date = dateInput.value;
-  const result = validateApplicationDate(
-    date,
-    selectedDates
-  );
-
-  if (!result.valid) {
-    showMessage(result.message);
-    return;
-  }
-
-  const application = {
-    id: crypto.randomUUID(),
-    date,
-    status: APPLICATION_STATUS.DRAFT
-  };
-
-  applications.push(application);
-  selectedDates.add(date);
-  saveApplications(applications);
-
-  renderApplications();
-  form.reset();
-  showMessage("申请日期已添加");
-});
-
-clearButton.addEventListener("click", () => {
-  applications = [];
-  selectedDates.clear();
-  clearApplications();
-
-  renderApplications();
-  showMessage("申请日期已全部清空");
-});
-
-renderApplications();
-```
-
-入口模块负责连接各个模块：
-
-```text
-用户提交表单
-      ↓
-校验模块判断输入
-      ↓
-更新数组和 Set
-      ↓
-存储模块保存数据
-      ↓
-格式化模块生成显示文本
-      ↓
-入口模块更新 DOM
-```
-
-各模块之间通过参数和返回值协作，不直接修改彼此内部变量。
-
----
-
-### 23. 运行和验证
-
-在 `leave-application` 目录启动本地服务器：
-
-```bash
-python -m http.server 8000
-```
-
-访问：
-
-```text
-http://localhost:8000/
-```
-
-依次验证：
-
-1. 不选日期直接提交，显示错误；
-2. 添加一个日期，列表出现数据；
-3. 重复添加相同日期，显示重复提示；
-4. 刷新页面，数据仍然存在；
-5. 点击“全部清空”，列表和本地存储都被清除；
-6. 打开浏览器开发者工具，确认 Console 没有错误。
-
----
-
-## 第六部分：组织原则与常见错误
-
-### 24. 如何决定代码放在哪个模块
-
-可以先问下面的问题：
-
-- 是否直接读取或修改 DOM？放在页面模块；
-- 是否只判断数据是否合法？放在校验模块；
-- 是否只处理数据保存和读取？放在存储或接口模块；
-- 是否是多个页面可复用的纯转换？放在工具模块；
-- 是否是状态代码、固定选项？放在配置模块。
-
-不要仅因为文件变长就随意拆分。模块应围绕明确职责，而不是把每几个函数机械地分到一个新文件。
-
----
+## 第五部分：排错、练习与交付
 
 ### 25. 避免循环依赖
 

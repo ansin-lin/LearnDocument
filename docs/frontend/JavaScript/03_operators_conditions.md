@@ -73,10 +73,8 @@ console.log(count); // 1
 
 ```js
 const status = "pending";
-
-if (status === "pending") {
-  console.log("申請中です");
-}
+console.log(status === "pending"); // true
+console.log(status === "approved"); // false
 ```
 
 常见比较：
@@ -95,12 +93,12 @@ if (status === "pending") {
 ## 3. if 条件判断
 
 ```js
-const password = "training123";
+const remainingDays = 8;
 
-if (password.length >= 8) {
-  console.log("パスワード長さ OK");
+if (remainingDays >= 1) {
+  console.log("有可用休假天数");
 } else {
-  console.log("パスワードは8文字以上です");
+  console.log("剩余天数不足");
 }
 ```
 
@@ -122,7 +120,74 @@ if (days <= 0) {
 
 多个条件从上到下判断，先满足哪个就执行哪个。
 
-## 5. switch...case 多分支判断
+## 5. 逻辑运算符
+
+| 写法 | 含义 | 示例 |
+| --- | --- | --- |
+| `&&` | 并且，两个条件都要满足 | `days > 0 && days <= 12` |
+| <code>&#124;&#124;</code> | 或者，满足一个即可 | <code>status === "pending" &#124;&#124; status === "approved"</code> |
+| `!` | 取反 | `!isLoggedIn` |
+
+示例：
+
+```js
+const accountId = "yamada.taro";
+const password = "training123";
+
+if (accountId !== "" && password !== "") {
+  console.log("入力済み");
+}
+```
+
+这里先分别比较：账号不是空字符串得到 `true`，密码不是空字符串也得到 `true`，`&&` 才得到 `true`。把其中一个值改为 `""` 后重新运行，消息就不会输出。
+
+`&&` 表示条件必须同时满足，`||` 表示至少一个满足，`!` 把判断结果反过来。复杂条件可以用括号明确组合范围。
+
+## 6. 真值和假值
+
+在条件判断中，不是只有 `true` 和 `false` 会被判断。
+
+常见假值：
+
+| 值 | 含义 |
+| --- | --- |
+| `false` | 布尔假 |
+| `0` | 数字 0 |
+| `""` | 空字符串 |
+| `null` | 明确没有值 |
+| `undefined` | 未定义 |
+| `NaN` | 非数字 |
+
+其他大多数值会被当成真值。
+
+下面是独立实验。账号来自输入框时是字符串，空字符串在条件位置按假处理：
+
+```js
+const accountId = "";
+if (!accountId) {
+  console.log("アカウントを入力してください");
+}
+```
+
+含义：空字符串按假处理，`!` 将它转换为 `true`，所以显示错误。对于已确定为字符串的输入值，`if (accountId && password)` 就是前面非空判断的简写；它不会自动去掉空格。
+
+注意，`&&`、`||` 本身返回某个操作数，不一定返回布尔值：`console.log("田中" && "已填写")` 输出“已填写”。只有放在条件位置时，结果才按真值或假值决定是否进入分支。`&&` 遇到假值、`||` 遇到真值时会停止计算后续操作数，这称为短路。
+
+## 7. 三元运算符
+
+三元运算符适合简单二选一。
+
+```js
+const status = "pending";
+const statusText = status === "pending" ? "申請中" : "処理済み";
+console.log(statusText); // 申請中
+```
+
+写法为 `条件 ? 成立时的值 : 不成立时的值`。先判断条件，只选择其中一个值，最后把选中的值赋给 `statusText`。
+
+复杂逻辑不要硬写成三元，使用 `if` 更清楚。
+
+## 8. switch...case 多分支判断
 
 当同一个变量需要与多个固定值进行比较时，可以使用 `switch...case`。
 
@@ -152,7 +217,7 @@ switch (status) {
 4. `break` 结束整个 `switch`，防止继续执行后面的分支。
 5. 如果所有 `case` 都不匹配，就执行 `default`。
 
-### 5.1 为什么通常要写 break
+### 8.1 为什么通常要写 break
 
 如果省略 `break`，程序会从匹配的分支开始，继续执行后面的分支。这种现象称为贯穿执行（fall-through）。
 
@@ -192,7 +257,7 @@ switch (status) {
 }
 ```
 
-### 5.2 选择 if...else 还是 switch...case
+### 8.2 选择 if...else 还是 switch...case
 
 | 判断方式 | 适合的场景 | 示例 |
 | --- | --- | --- |
@@ -200,62 +265,6 @@ switch (status) {
 | `switch...case` | 同一个值与多个固定值比较 | 状态是 `pending`、`approved` 还是 `cancelled` |
 
 `switch...case` 不是 `if...else` 的完全替代品。根据判断条件选择更容易阅读的写法。
-
-## 6. 逻辑运算符
-
-| 写法 | 含义 | 示例 |
-| --- | --- | --- |
-| `&&` | 并且，两个条件都要满足 | `startDate && endDate` |
-| <code>&#124;&#124;</code> | 或者，满足一个即可 | <code>status === "pending" &#124;&#124; status === "approved"</code> |
-| `!` | 取反 | `!isLoggedIn` |
-
-示例：
-
-```js
-const accountId = "yamada.taro";
-const password = "training123";
-
-if (accountId && password) {
-  console.log("入力済み");
-}
-```
-
-## 7. 真值和假值
-
-在条件判断中，不是只有 `true` 和 `false` 会被判断。
-
-常见假值：
-
-| 值 | 含义 |
-| --- | --- |
-| `false` | 布尔假 |
-| `0` | 数字 0 |
-| `""` | 空字符串 |
-| `null` | 明确没有值 |
-| `undefined` | 未定义 |
-| `NaN` | 非数字 |
-
-其他大多数值会被当成真值。
-
-项目中常见写法：
-
-```js
-if (!accountId) {
-  console.log("アカウントを入力してください");
-}
-```
-
-含义：如果 `accountId` 是空字符串，就显示错误。
-
-## 8. 三元运算符
-
-三元运算符适合简单二选一。
-
-```js
-const statusText = status === "pending" ? "申請中" : "処理済み";
-```
-
-复杂逻辑不要硬写成三元，使用 `if` 更清楚。
 
 ## 本章练习
 

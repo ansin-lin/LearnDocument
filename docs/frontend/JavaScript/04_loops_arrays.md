@@ -123,7 +123,32 @@ for (let i = 0; i < statuses.length; i += 1) {
 - `i < statuses.length`：没有超过数组长度时继续。
 - `i += 1`：每次循环后下标加 1。
 
-## 7. while 循环
+上例按下面的顺序执行；初始化只做一次，条件检查则每轮都做：
+
+| 检查时的 i | i < 3 | 本轮操作 | 更新后 i |
+| --- | --- | --- | --- |
+| 0 | true | 输出申請中 | 1 |
+| 1 | true | 输出承認済 | 2 |
+| 2 | true | 输出取消済 | 3 |
+| 3 | false | 不执行循环体，结束循环 | 不再更新 |
+
+不能写成 `i <= statuses.length`，否则会多读取下标 3，得到 `undefined`。
+
+## 7. for...of
+
+如果只需要读取每一项，`for...of` 更清楚。
+
+```js
+const statuses = ["申請中", "承認済", "取消済"];
+
+for (const status of statuses) {
+  console.log(status);
+}
+```
+
+项目主线优先使用 `for...of` 或数组方法，只有需要下标时再使用普通 `for`。
+
+## 8. while 循环
 
 `while` 表示：只要指定条件为 `true`，就重复执行代码块。
 
@@ -162,7 +187,7 @@ while (count <= 3) {
 
 上面的代码没有输出，因为 `5 <= 3` 一开始就是 `false`。
 
-### 7.1 while 适合什么场景
+### 8.1 while 适合什么场景
 
 当重复次数事先不确定，需要根据条件决定是否继续时，`while` 更容易表达。
 
@@ -177,7 +202,7 @@ while (remainingDays > 0) {
 
 如果已经明确知道循环次数，或者需要使用数组下标，通常使用 `for` 更直观；如果只需要依次读取数组中的每一项，通常使用 `for...of` 更直观。
 
-### 7.2 注意死循环
+### 8.2 注意死循环
 
 如果循环条件始终为 `true`，循环就不会结束，这称为死循环。
 
@@ -192,58 +217,7 @@ while (count <= 3) {
 
 死循环可能使页面失去响应。编写 `while` 时必须确认：循环体中的某段代码会改变循环条件，使条件最终变成 `false`。
 
-## 8. for...of
-
-如果只需要读取每一项，`for...of` 更清楚。
-
-```js
-const statuses = ["申請中", "承認済", "取消済"];
-
-for (const status of statuses) {
-  console.log(status);
-}
-```
-
-项目主线优先使用 `for...of` 或数组方法，只有需要下标时再使用普通 `for`。
-
-## 9. break 和 continue
-
-### 9.1 `break`：提前结束循环
-
-`break` 会立即结束当前循环。
-
-```js
-const statuses = ["pending", "approved", "cancelled"];
-
-for (const status of statuses) {
-  if (status === "approved") {
-    console.log("承認済みを見つけました");
-    break;
-  }
-}
-```
-
-找到目标后不需要继续处理剩余元素时，可以使用 `break`。
-
-### 9.2 `continue`：跳过当前一次
-
-`continue` 跳过本次循环后面的代码，直接进入下一次循环。
-
-```js
-const statuses = ["pending", "cancelled", "approved"];
-
-for (const status of statuses) {
-  if (status === "cancelled") {
-    continue;
-  }
-
-  console.log(status);
-}
-```
-
-输出结果不包含 `"cancelled"`。
-
-## 10. do...while 循环
+## 9. do...while 循环
 
 `do...while` 会先执行一次循环体，再检查条件，因此至少执行一次。
 
@@ -267,6 +241,43 @@ do {
 ```
 
 `do...while` 使用频率低于 `for` 和 `while`，需要能够看懂。编写时注意结尾的 `while (条件);` 后有分号。
+
+## 10. break 和 continue
+
+### 10.1 `break`：提前结束循环
+
+`break` 会立即结束当前循环。
+
+```js
+const statuses = ["pending", "approved", "cancelled"];
+
+for (const status of statuses) {
+  if (status === "approved") {
+    console.log("承認済みを見つけました");
+    break;
+  }
+}
+```
+
+找到目标后不需要继续处理剩余元素时，可以使用 `break`。
+
+### 10.2 `continue`：跳过当前一次
+
+`continue` 跳过本次循环后面的代码，直接进入下一次循环。
+
+```js
+const statuses = ["pending", "cancelled", "approved"];
+
+for (const status of statuses) {
+  if (status === "cancelled") {
+    continue;
+  }
+
+  console.log(status);
+}
+```
+
+输出结果不包含 `"cancelled"`。
 
 ## 本章练习
 

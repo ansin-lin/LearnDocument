@@ -250,7 +250,7 @@ console.log(statuses.includes("rejected")); // false
 - 返回值：包含时为 `true`，否则为 `false`。
 - 是否修改原数组：否。
 
-只需要判断“有没有”时，`includes()` 比 `indexOf() !== -1` 更容易阅读。这两个方法适合直接查找字符串、数字等简单值。第七章会使用回调方法查找对象数组。
+只需要判断“有没有”时，`includes()` 比 `indexOf() !== -1` 更容易阅读。这两个方法适合直接查找字符串、数字等简单值。[第七章](07_array_callback_methods.md)用数字数组讲解回调查找；对象数组的查找应用见[第十二章](12_objects_data_structure.md)。
 
 ## 9. `join()`：连接成字符串
 
@@ -346,6 +346,19 @@ const skills = ["HTML", "CSS", "JavaScript"];
 2. 使用 `indexOf()` 取得 `"JavaScript"` 的下标。
 3. 使用 `join(" / ")` 得到 `"HTML / CSS / JavaScript"`。
 4. 复制数组后调用 `reverse()`，确认原数组没有变化。
+
+### 对照验证：返回值不是修改后的数组
+
+```js
+const items = ["A", "B"];
+const count = items.push("C");
+const removed = items.pop();
+console.log(count);   // 3：push 返回新长度
+console.log(removed); // C：pop 返回被删除的元素
+console.log(items);   // ["A", "B"]
+```
+
+`slice(开始, 结束)` 的第二个参数是不包含的结束下标；`splice(开始, 数量)` 的第二个参数是删除数量。请分别对新建的 `["A", "B", "C", "D"]` 使用 `slice(1, 2)` 和 `splice(1, 2)`，同时输出返回值与原数组，验证两者区别。
 
 ## 本章检查点
 

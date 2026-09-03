@@ -20,12 +20,13 @@
 
 | 部分 | 对应小节 | 掌握要求 |
 | --- | --- | --- |
-| 解构数据 | 第1～3节 | 必须掌握对象和数组的常用解构 |
-| 展开并生成新数据 | 第4～7节 | 必须掌握数组、对象展开；对象复制复习第12章 |
-| 安全取值和默认值 | 第8～10节 | 必须掌握`?.`和`??`，能看懂逻辑赋值 |
-| 集合转换 | 第11节 | 会使用`Array.from()` |
-| Class识读 | 第12节 | 能创建简单实例，继承体系了解即可 |
-| 排错与练习 | 第13～14节 | 能判断符号作用并验证结果 |
+| 解构基础 | 第1～3节 | 能按属性名或位置取得数据 |
+| 解构变化 | 第4～5节 | 会使用改名、默认值，能阅读嵌套与参数解构 |
+| 展开并生成新数据 | 第6～9节 | 能区分剩余、展开与浅复制 |
+| 安全取值和默认值 | 第10～12节 | 掌握 `?.`、`??`，逻辑赋值用于识读 |
+| 集合转换 | 第13节 | 会使用 `Array.from()` |
+| Class识读 | 第14节 | 能创建简单实例，继承体系了解即可 |
+| 排错与练习 | 第15～16节 | 能判断符号作用并验证结果 |
 
 ## 1. 现代语法主要解决什么问题
 
@@ -89,7 +90,29 @@ const leaveType = application.leaveType;
 
 花括号左侧的名字必须与对象属性名对应。
 
-### 2.2 解构时改名
+## 3. 数组解构
+
+数组解构按照位置取值，不看变量名称。
+
+### 3.1 基本取值
+
+```js
+const dates = ["2026-09-10", "2026-09-12"];
+const [startDate, endDate] = dates;
+
+console.log(startDate); // 2026-09-10
+console.log(endDate);   // 2026-09-12
+```
+
+### 基础对照：先确定按名字还是按位置
+
+`const { id } = application` 读取名为 `id` 的属性；`const [firstDate] = dates` 读取下标 0 的元素。它们都是把已有数据交给新变量，不会删除原对象属性或原数组元素。
+
+先分别改动一个属性值和数组第一项，运行确认变量接收的结果，再继续学习改名和默认值。
+
+## 4. 对象解构的常用变化
+
+### 4.1 解构时改名
 
 ```js
 const application = {
@@ -103,7 +126,7 @@ console.log(typeLabel); // 有給休暇
 
 `leaveType: typeLabel` 表示读取 `leaveType` 属性，并把结果保存到变量 `typeLabel`。这里不会创建名为 `leaveType` 的变量。
 
-### 2.3 解构默认值
+### 4.2 解构默认值
 
 ```js
 const application = {
@@ -144,7 +167,7 @@ console.log(reviewer); // null
 
 `0`、空字符串、`false` 和 `null` 都不会触发解构默认值。
 
-### 2.4 嵌套对象解构
+### 4.3 嵌套对象解构
 
 ```js
 const application = {
@@ -179,9 +202,9 @@ const {
 console.log(name); // 未设置
 ```
 
-如果数据层级很深，使用第 8 节的可选链通常更容易阅读。
+如果数据层级很深，使用第 10 节的可选链通常更容易阅读。
 
-### 2.5 收集剩余属性
+### 4.4 收集剩余属性
 
 ```js
 const application = {
@@ -199,7 +222,7 @@ console.log(applicationDetails);
 
 `applicationDetails` 是一个不包含 `id` 的新对象。`...applicationDetails` 在解构左侧负责收集剩余属性，并且必须放在最后。
 
-### 2.6 解构函数参数
+### 4.5 解构函数参数
 
 ```js
 function renderApplication({
@@ -223,7 +246,7 @@ renderApplication({
 
 如果调用方明确传入 `null`，参数默认值不会生效，仍应根据接口规格处理。
 
-### 2.7 给已经声明的变量解构赋值
+### 4.6 给已经声明的变量解构赋值
 
 ```js
 let leaveType;
@@ -242,21 +265,9 @@ console.log(status);
 
 外层圆括号不能省略，否则开头的花括号可能被解析成代码块。新代码通常在声明变量时直接解构；这种写法主要用于识读既有代码。
 
-## 3. 数组解构
+## 5. 数组解构的常用变化
 
-数组解构按照位置取值，不看变量名称。
-
-### 3.1 基本取值
-
-```js
-const dates = ["2026-09-10", "2026-09-12"];
-const [startDate, endDate] = dates;
-
-console.log(startDate); // 2026-09-10
-console.log(endDate);   // 2026-09-12
-```
-
-### 3.2 跳过元素
+### 5.1 跳过元素
 
 ```js
 const statuses = ["pending", "approved", "rejected"];
@@ -268,7 +279,7 @@ console.log(thirdStatus); // rejected
 
 两个逗号之间留空，表示跳过第二个元素。需要跳过很多位置时，使用下标可能更清楚。
 
-### 3.3 默认值
+### 5.2 默认值
 
 ```js
 const dates = ["2026-09-10"];
@@ -280,7 +291,7 @@ console.log(endDate);   // 2026-09-10
 
 数组解构默认值同样只在对应元素为 `undefined` 时生效。
 
-### 3.4 收集剩余元素
+### 5.3 收集剩余元素
 
 ```js
 const applications = [
@@ -298,7 +309,7 @@ console.log(remainingApplications); // [{ id: 102 }, { id: 103 }]
 
 剩余元素会组成一个新数组，并且必须写在解构的最后。
 
-### 3.5 交换变量
+### 5.4 交换变量
 
 ```js
 let primaryStatus = "pending";
@@ -315,7 +326,7 @@ console.log(secondaryStatus); // pending
 
 这种写法适合简单交换。变量很多时，不要为了缩短代码而使用难以理解的多项交换。
 
-### 3.6 接收函数返回的多个结果
+### 5.5 接收函数返回的多个结果
 
 ```js
 function splitApplications(applications) {
@@ -339,7 +350,7 @@ const [pendingApplications, completedApplications] =
 
 数组返回值依赖位置。结果字段较多或含义可能变化时，返回对象通常更清楚。
 
-## 4. 剩余语法与展开语法
+## 6. 剩余语法与展开语法
 
 两者都使用 `...`，含义由所在位置决定。
 
@@ -367,11 +378,11 @@ console.log(copied); // [1, 2, 3]
 一个值拆开放到当前位置：展开
 ```
 
-函数剩余参数的完整规则已在第 7 章讲解。
+函数剩余参数的完整规则见[第 6 章函数](06_functions_scope_callbacks.md)。
 
-## 5. 数组展开语法
+## 7. 数组展开语法
 
-### 5.1 复制和合并数组
+### 7.1 复制和合并数组
 
 ```js
 const pendingApplications = [{ id: 101 }];
@@ -390,7 +401,7 @@ console.log(allApplications);
 
 展开顺序就是新数组的元素顺序。
 
-### 5.2 新增数组元素
+### 7.2 新增数组元素
 
 追加到末尾：
 
@@ -420,7 +431,7 @@ const nextApplications = [
 
 `slice(start)` 从指定下标开始复制元素并返回新数组，不修改原数组。
 
-### 5.3 展开为函数实参
+### 7.3 展开为函数实参
 
 ```js
 const scores = [72, 91, 85];
@@ -433,9 +444,9 @@ console.log(highestScore); // 91
 
 不能直接写 `Math.max(scores)`，因为这只会传入一个数组。
 
-## 6. 对象展开语法
+## 8. 对象展开语法
 
-### 6.1 复制和合并对象
+### 8.1 复制和合并对象
 
 ```js
 const defaultApplication = {
@@ -458,7 +469,7 @@ console.log(application.urgent); // true
 
 对象展开把对象自身可枚举属性复制到新对象中。后展开的同名属性会覆盖先前属性。
 
-### 6.2 在不修改原对象的情况下更新
+### 8.2 在不修改原对象的情况下更新
 
 ```js
 const application = {
@@ -489,15 +500,27 @@ console.log(wrongApplication.status); // pending
 
 这种创建新对象的方式在 React 状态更新和 Vue 数据转换中很常见。
 
-## 7. 使用展开语法复制对象时的边界
+## 9. 使用展开语法复制对象时的边界
 
-对象展开只复制最外层。嵌套对象仍可能与原对象共享引用；需要深复制时，应回到[第12章的对象复制专题](12_objects_data_structure.md)选择逐层展开或`structuredClone()`。本章只关注展开语法怎样生成新的最外层对象，不重复讲解深复制。
+第12章通过逐项赋值说明了浅复制。对象展开同样只复制最外层，嵌套对象仍可能共享引用。已知只有一层嵌套时，可以分别展开外层和内层：
 
-## 8. 可选链 `?.`
+```js
+const original = { id: "REQ-001", applicant: { name: "山田" } };
+const copied = {
+  ...original,
+  applicant: { ...original.applicant }
+};
+copied.applicant.name = "鈴木";
+console.log(original.applicant.name); // 山田
+```
+
+这次applicant也创建了新对象。如果它内部还有嵌套引用，仍需继续处理，不能把有限层展开视为通用深复制。更复杂的数据复制应参照[第12章](12_objects_data_structure.md)中structuredClone的适用范围。
+
+## 10. 可选链 `?.`
 
 当左侧可能是 `null` 或 `undefined` 时，可选链会停止后续访问并返回 `undefined`。
 
-### 8.1 可选属性访问
+### 10.1 可选属性访问
 
 ```js
 const loginUser = null;
@@ -508,7 +531,7 @@ console.log(displayName); // undefined
 
 每个可能为空的层级都要写 `?.`。如果 `loginUser` 存在但 `profile` 可能为空，只写 `loginUser?.profile.name` 仍可能报错。
 
-### 8.2 可选下标访问
+### 10.2 可选下标访问
 
 ```js
 const applications = [];
@@ -519,7 +542,7 @@ console.log(firstType); // undefined
 
 `value?.[key]` 适合数组下标或动态属性名。
 
-### 8.3 可选函数调用
+### 10.3 可选函数调用
 
 ```js
 const options = {};
@@ -532,7 +555,7 @@ options.onComplete?.({
 
 `functionValue?.(arguments)` 只在左侧不是 `null` 或 `undefined` 时尝试调用。左侧存在但不是函数时，仍会抛出 `TypeError`。
 
-### 8.4 可选链的边界
+### 10.4 可选链的边界
 
 下面是语法错误，不能运行：
 
@@ -549,7 +572,7 @@ console.log(notDeclared?.name); // ReferenceError
 
 只有变量已经声明，但值可能是 `null` 或 `undefined` 时，才使用可选链。
 
-## 9. 空值合并 `??`
+## 11. 空值合并 `??`
 
 `left ?? right` 只在左侧是 `null` 或 `undefined` 时使用右侧值。
 
@@ -561,7 +584,7 @@ const displayName =
 console.log(displayName); // 访客
 ```
 
-### 9.1 `??` 与 `||` 的区别
+### 11.1 `??` 与 `||` 的区别
 
 | 左侧值 | `value || "默认值"` | `value ?? "默认值"` |
 | --- | --- | --- |
@@ -573,7 +596,7 @@ console.log(displayName); // 访客
 
 `||` 根据真假值选择，`??` 只处理缺少值。数字 `0`、空字符串和 `false` 是合法业务值时，应优先考虑 `??`。
 
-### 9.2 与 `&&`、`||` 混合时加括号
+### 11.2 与 `&&`、`||` 混合时加括号
 
 ```js
 const configuredName = "";
@@ -585,11 +608,11 @@ const displayName =
 
 JavaScript 不允许在没有括号时直接把 `??` 与 `&&`、`||` 混写。复杂组合应通过中间变量或括号表达清楚。
 
-## 10. 逻辑赋值运算符
+## 12. 逻辑赋值运算符
 
 逻辑赋值把判断和赋值写在一起。
 
-### 10.1 `||=`：左侧是假值时赋值
+### 12.1 `||=`：左侧是假值时赋值
 
 ```js
 let displayName = "";
@@ -600,7 +623,7 @@ console.log(displayName); // 访客
 
 `||=` 会把 `0`、空字符串、`false`、`null` 和 `undefined` 等假值都视为需要替换。
 
-### 10.2 `??=`：左侧缺少值时赋值
+### 12.2 `??=`：左侧缺少值时赋值
 
 ```js
 let remainingDays = 0;
@@ -611,7 +634,7 @@ console.log(remainingDays); // 0
 
 `??=` 只在左侧是 `null` 或 `undefined` 时赋值，适合保留合法的假值。
 
-### 10.3 `&&=`：左侧是真值时赋值
+### 12.3 `&&=`：左侧是真值时赋值
 
 ```js
 let canApprove = true;
@@ -630,11 +653,11 @@ console.log(canApprove); // false
 | `value ??= fallback` | 左侧是 `null` 或 `undefined` | 保留合法的假值 |
 | `value &&= next` | 左侧是真值 | 简单的条件更新 |
 
-## 11. 使用 `Array.from()` 转换为数组
+## 13. 使用 `Array.from()` 转换为数组
 
 `Array.from(source, mapFunction?, thisArg?)` 从可迭代对象或类数组对象创建新数组。
 
-### 11.1 把 NodeList 转成数组
+### 13.1 把 NodeList 转成数组
 
 配套 HTML：
 
@@ -661,7 +684,7 @@ console.log(labels);
 
 `querySelectorAll()` 返回 NodeList，不是数组。`Array.from(nodeList)` 返回真正的数组，之后可以使用数组方法。
 
-### 11.2 转换时同时处理元素
+### 13.2 转换时同时处理元素
 
 ```js
 const scores = Array.from(
@@ -682,7 +705,7 @@ console.log(scores); // [72, 91, 85]
 | `mapFunction` | 转换函数 | 可选 | 在放入新数组前处理每个元素 |
 | `thisArg` | 任意值 | 可选 | 指定转换函数中的 `this`；箭头函数不使用该绑定 |
 
-### 11.3 与展开语法的选择
+### 13.3 与展开语法的选择
 
 ```js
 const text = "ABC";
@@ -696,11 +719,11 @@ console.log(Array.from(text)); // ["A", "B", "C"]
 
 Set 和 Map 的系统讲解放在第 21 章。
 
-## 12. Class 基础识读
+## 14. Class 基础识读
 
 JavaScript 的 `class` 提供了创建同类对象的清晰语法。它的底层仍建立在原型机制上，不等同于 Java 的类系统。基础阶段重点是能阅读和编写简单类，不要求设计复杂继承体系。
 
-### 12.1 定义类并创建实例
+### 14.1 定义类并创建实例
 
 ```js
 class LeaveApplication {
@@ -747,7 +770,7 @@ console.log(application.getSummary());
 
 类中的方法使用方法简写，不需要写 `function`。调用实例方法时，`this` 指向调用该方法的实例。
 
-### 12.2 静态方法
+### 14.2 静态方法
 
 ```js
 class LeaveApplication {
@@ -768,7 +791,7 @@ console.log(
 
 `static` 方法属于类本身，通过 `LeaveApplication.isPending()` 调用，不通过实例调用。适合不依赖某个实例状态的辅助判断。
 
-### 12.3 使用 `extends` 和 `super`
+### 14.3 使用 `extends` 和 `super`
 
 ```js
 class LeaveApplication {
@@ -813,7 +836,7 @@ class PaidLeaveApplication extends LeaveApplication {
 
 继承适合确实存在稳定“属于一种”的关系。业务数据只需要存取和转换时，普通对象和函数通常更简单。
 
-### 12.4 Class 的常见边界
+### 14.4 Class 的常见边界
 
 - 类声明不会像函数声明一样在声明前安全使用，应先声明再创建实例。
 - 调用类必须使用 `new`。
@@ -821,9 +844,9 @@ class PaidLeaveApplication extends LeaveApplication {
 - 从实例中单独取出方法再调用，可能丢失原本的 `this`。
 - Class 实例包含行为和原型关系，不要认为对象展开或 `structuredClone()` 后仍会自动保留完整类行为。
 
-## 13. 常见错误与排查
+## 15. 常见错误与排查
 
-### 13.1 解构不存在的嵌套对象
+### 15.1 解构不存在的嵌套对象
 
 ```js
 const application = {};
@@ -834,7 +857,7 @@ const {
 
 原因是代码尝试从 `undefined` 中继续解构 `name`。可以给中间层默认对象，或使用 `application.applicant?.name`。
 
-### 13.2 误以为默认值会替换 `null`
+### 15.2 误以为默认值会替换 `null`
 
 ```js
 const { reviewer = "未指定" } = {
@@ -846,23 +869,23 @@ console.log(reviewer); // null
 
 需要同时处理 `null` 时，可以在解构后使用 `reviewer ?? "未指定"`。
 
-### 13.3 对象展开顺序写反
+### 15.3 对象展开顺序写反
 
 更新值写在展开前面时，后展开的旧属性会覆盖新值。通过控制台输出完整对象，检查同名属性的最终值。
 
-### 13.4 把浅克隆当成深克隆
+### 15.4 把浅克隆当成深克隆
 
 修改副本的嵌套对象时原数据也变化，应检查嵌套层是否仍共享引用。根据需求逐层展开或使用 `structuredClone()`。
 
-### 13.5 用 `||` 覆盖合法假值
+### 15.5 用 `||` 覆盖合法假值
 
 如果 `0`、空字符串或 `false` 是有效业务数据，应改用 `??` 或 `??=`。
 
-### 13.6 在可选链左侧使用未声明变量
+### 15.6 在可选链左侧使用未声明变量
 
 可选链只处理值为 `null` 或 `undefined`，不能处理变量根本没有声明。
 
-### 13.7 忘记使用 `new` 调用类
+### 15.7 忘记使用 `new` 调用类
 
 下面是错误示例：
 
@@ -872,9 +895,9 @@ const application = LeaveApplication({}); // TypeError
 
 类需要写成 `new LeaveApplication({...})`。
 
-## 14. 本章综合练习
+## 16. 本章综合练习
 
-### 14.1 初始数据
+### 16.1 初始数据
 
 ```js
 const applications = [
@@ -902,7 +925,7 @@ const applications = [
 ];
 ```
 
-### 14.2 任务要求
+### 16.2 任务要求
 
 1. 从第一条申请中解构出 `id`、申请人姓名、请假类型和状态。
 2. 把申请人姓名改名为变量 `applicantName`。
@@ -917,7 +940,7 @@ const applications = [
 11. 编写一个最小 `LeaveApplication` 类，包含构造函数、`approve()` 和 `getSummary()`。
 12. 故意去掉 `new` 调用类，观察错误后修正。
 
-### 14.3 验证标准
+### 16.3 验证标准
 
 - 解构得到的变量和值与原对象对应。
 - 能说明对象解构按属性名、数组解构按位置。

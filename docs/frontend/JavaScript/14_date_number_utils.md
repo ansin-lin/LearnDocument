@@ -1,4 +1,4 @@
-# 第 15 章 日期、数字与常用工具函数
+# 第 14 章 日期、数字与常用工具函数
 
 业务程序经常需要处理“日期”“时间点”“天数”“编号”和“显示文字”。这些值看起来只是字符串或数字，但如果忽略时区、无效输入和编号规则，就容易产生难以发现的错误。
 
@@ -37,7 +37,8 @@ function getLeaveTypeLabel(type) {
     afternoon: "午後休",
   };
 
-  return labels[type] ?? "不明";
+  const label = labels[type];
+  return label === undefined || label === null ? "不明" : label;
 }
 
 console.log(getLeaveTypeLabel("paid")); // 有給休暇
@@ -154,6 +155,30 @@ HTML 的 `<input type="date">` 在有值时通常提供 `YYYY-MM-DD` 字符串�
 
 ### 3.2 把日期文本转换为 UTC 时间戳
 
+下面先用 `Number.isInteger(value)` 检查年月日是否都是整数：参数可以是任意值，是数字且为整数时返回true，否则返回false，例如 `Number.isInteger(12)` 为true、`Number.isInteger(12.5)` 为false。
+
+先观察合法日期的转换过程。下面是独立实验，不代替后面的完整校验函数：
+
+```js
+const dateText = "2026-09-01";
+const parts = dateText.split("-");
+console.log(parts); // ["2026", "09", "01"]
+const year = Number(parts[0]);
+const month = Number(parts[1]);
+const day = Number(parts[2]);
+console.log(year, month, day); // 2026 9 1
+const timestamp = Date.UTC(year, month - 1, day);
+const date = new Date(timestamp);
+console.log(date.toISOString()); // 2026-09-01T00:00:00.000Z
+console.log(date.getUTCMonth() + 1); // 9
+```
+
+`Date.UTC(年, 月下标, 日)` 按 UTC 计算时间戳，月份下标从 0 开始，因此输入月份 9 要传入 8。这里传入数字年月日，结果是毫秒数；再用 `new Date(timestamp)` 读取其 UTC 年月日。
+
+把日期改为 `"2026-02-30"` 再观察：Date 会自动调整到三月，而不是直接拒绝。所以完整函数必须增加四道检查：输入类型 → 文本结构 → 是否整数 → 转换后的年月日是否与原输入一致。每道检查失败都返回 `null`，不继续计算。
+
+下面将这些步骤合并为可复用函数：
+
 ```js
 function parseDateTextToUtc(dateText) {
   if (typeof dateText !== "string") {
@@ -204,6 +229,8 @@ console.log(parseDateTextToUtc("2026-02-30")); // null
 `parseDateTextToUtc(dateText)` 接收严格的 `YYYY-MM-DD` 字符串，合法时返回该 UTC 日期的毫秒时间戳，不合法时返回 `null`。
 
 不能只依赖 `Date.UTC()` 判断日期是否合法，因为 JavaScript 可能自动把 2 月 30 日调整到 3 月。示例重新比较年月日，避免接受被自动调整的日期。
+
+先运行完整函数的两个调用，分别确认合法日期得到数字、2 月 30 日得到 `null`。下一节代码接在该函数后面：日数计算依赖这个校验结果，不能只复制后面的计算函数。
 
 ### 3.3 计算包含首尾日期的自然日数
 
@@ -358,7 +385,7 @@ console.log(Math.max(3, 1, 8)); // 8
 | `Math.ceil(value)` | 一个值 | 数字 | 必填 | 向正无穷方向取整 |
 | `Math.max(...values)` | 一个或多个值 | 数字 | 可变参数 | 最大值；无参数时为 `-Infinity` |
 
-取整规则必须来自业务规格。例如分页总页数通常向上取整，可以使用 `Math.ceil(total / pageSize)`。本项目生成当日递增编号时使用 `Math.max()` 查找已有最大序号。
+取整规则必须来自业务规格。例如分页总页数通常向上取整，可以使用 `Math.ceil(total / pageSize)`。两个或多个确定的数字可以直接交给Math.max；下节对长度不固定的序号数组使用循环逐项比较。
 
 ## 7. 生成练习项目的申请编号
 
@@ -384,8 +411,12 @@ function createApplicationId(applications, now = new Date()) {
     .map((application) => Number(application.id.slice(prefix.length)))
     .filter((number) => Number.isInteger(number));
 
-  const maxSequence =
-    sequenceNumbers.length === 0 ? 0 : Math.max(...sequenceNumbers);
+  let maxSequence = 0;
+  for (const sequence of sequenceNumbers) {
+    if (sequence > maxSequence) {
+      maxSequence = sequence;
+    }
+  }
   const nextSequence = String(maxSequence + 1).padStart(3, "0");
 
   return `${prefix}${nextSequence}`;
@@ -403,7 +434,7 @@ console.log(createApplicationId(applications, now));
 
 `formatBasicDate(date)` 把本地日期转换为八位日期文字。`createApplicationId(applications, now)` 接收已有申请数组和当前时间；`now` 可选，默认使用当前时间，返回下一个编号。
 
-这个实现只适用于单浏览器练习：生成后必须立即把新申请加入数组并保存。如果两个用户或两个请求同时生成编号，仍可能重复。正式项目应由后端或数据库在并发控制下生成业务编号。
+这个实现只适用于单浏览器练习：本章实验生成后立即把新申请加入当前内存数组，再生成下一条编号。如果两个用户或两个请求同时生成编号，仍可能重复。正式项目应由后端或数据库在并发控制下生成业务编号。
 
 ## 8. 映射业务代码和显示文字
 
@@ -431,7 +462,8 @@ const APPLICATION_STATUS_LABELS = {
 
 ```js
 function getLabel(labels, value, fallback = "不明") {
-  return labels[value] ?? fallback;
+  const label = labels[value];
+  return label === undefined || label === null ? fallback : label;
 }
 
 console.log(getLabel(LEAVE_TYPE_LABELS, "paid"));
@@ -528,9 +560,9 @@ leaveForm.addEventListener("submit", (event) => {
 
 `Intl.DateTimeFormat.format()` 返回显示字符串。原始日期数据应另外保留，不要用格式化结果继续计算。
 
-### 10.5 前端生成编号后没有立即保存
+### 10.5 生成编号后没有更新内存数组
 
-从已有数组计算“最大值加一”后，如果没有立即加入数组并保存，下一次计算仍可能得到相同编号。
+从已有数组计算“最大值加一”后，如果没有立即把新记录加入这个数组，下一次计算仍可能得到相同编号。本章只更新内存数组，刷新页面后重新开始；持久保存见 JSON 与浏览器存储章节。
 
 ### 10.6 把前端计算当作最终业务结果
 
@@ -563,7 +595,7 @@ const applications = [
 5. 使用 `Intl.DateTimeFormat` 按日本时区显示 `submittedAt`。
 6. 完成 `createApplicationId(applications, now)`，生成 `REQ-YYYYMMDD-NNN`。
 7. 使用映射对象转换请假类型和申请状态。
-8. 把工具函数接入确认页；DOM 查询和页面显示仍放在页面初始化代码中。
+8. 使用本节初始数组和固定日期，在独立测试页调用工具函数并显示结果；DOM 查询和页面显示仍放在页面初始化代码中，不要求跨页读取或持久保存。
 
 ### 11.3 边界测试
 

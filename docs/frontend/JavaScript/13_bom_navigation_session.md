@@ -1,4 +1,4 @@
-# 第 14 章 BOM、页面跳转与浏览器信息
+# 第 13 章 BOM、页面跳转与浏览器信息
 
 本章学习 JavaScript 如何读取浏览器地址、控制页面跳转、操作历史记录、使用定时器，以及在多个页面之间传递必要信息。完成本章后，你应当能够：
 
@@ -8,7 +8,7 @@
 - 使用 `history` 完成基本的前进与后退操作。
 - 正确处理原生弹窗的返回值。
 - 创建并清理一次性定时器和重复定时器。
-- 根据数据用途选择 URL 参数或 `sessionStorage`。
+- 使用 URL 参数在页面之间传递记录编号。
 
 本章示例应通过本地 Web 服务器运行，并在浏览器开发者工具的 Console、Network 和 Application 面板中验证。
 
@@ -56,21 +56,15 @@ console.log(window.navigator);
 
 ```js
 window.alert("申请成功");
-window.setTimeout(() => {
-  console.log("延迟执行");
-}, 1000);
 ```
 
 通常也会写成：
 
 ```js
 alert("申请成功");
-setTimeout(() => {
-  console.log("延迟执行");
-}, 1000);
 ```
 
-两种写法调用的是相同的浏览器功能。保留 `window.` 可以强调该能力来自浏览器；省略后代码更简洁。
+两个代码块分别运行，都会显示内容为“申请成功”的对话框。它们调用的是第一章已经使用过的 `alert()`。保留 `window.` 可以强调该能力来自浏览器；省略后代码更简洁。
 
 ### 2.2 浏览器 API 不能在所有环境中使用
 
@@ -295,219 +289,9 @@ location.href = `confirm.html?${params.toString()}`;
 - 前端不能根据 `?role=admin` 判断用户权限。
 - 后端收到编号等参数后，仍然必须检查身份和数据访问权限。
 
-## 5. 使用 `history` 操作历史记录
+## 5. 页面之间传递数据
 
-### 5.1 后退、前进和跳转指定步数
-
-```js
-history.back();
-history.forward();
-history.go(-2);
-```
-
-| 方法 | 参数 | 可接受的值 | 默认值或必填性 | 作用与返回值 |
-| --- | --- | --- | --- | --- |
-| `back()` | 无 | 无 | 无参数 | 后退一条记录，返回 `undefined` |
-| `forward()` | 无 | 无 | 无参数 | 前进一条记录，返回 `undefined` |
-| `go(delta)` | 跳转步数 | 整数 | 必填 | 负数后退、正数前进、`0` 重新加载；返回 `undefined` |
-
-如果没有对应的历史记录，页面可能不会发生变化。历史记录属于用户当前标签页，代码不能读取用户访问过的完整地址清单。
-
-### 5.2 返回按钮的选择
-
-```js
-const backButton = document.querySelector("#backButton");
-
-backButton.addEventListener("click", () => {
-  history.back();
-});
-```
-
-这个示例要求 HTML 中存在：
-
-```html
-<button id="backButton" type="button">返回</button>
-```
-
-如果业务规格要求固定返回申请页，应直接链接或跳转到 `apply.html`；如果要求回到用户刚才访问的页面，才适合使用 `history.back()`。
-
-### 5.3 单页应用相关接口：了解
-
-现代前端路由常使用：
-
-- `history.pushState()`：增加一条历史记录，但不自动重新加载页面。
-- `history.replaceState()`：替换当前历史记录，但不自动重新加载页面。
-- `popstate` 事件：用户前进或后退时通知 JavaScript。
-
-```js
-history.pushState({ page: "detail" }, "", "?id=APP-001");
-
-window.addEventListener("popstate", (event) => {
-  console.log(event.state);
-});
-```
-
-`pushState(state, unused, url)` 的 `state` 可以保存与该历史记录相关的数据，第二个参数保留但通常传空字符串，`url` 是同源的新地址。它不会自动请求新页面，也不会自动更新 DOM。
-
-Vue Router 和 React Router 会封装类似能力。当前阶段要求能看懂用途，不要求自己实现路由器。
-
-## 6. 浏览器原生弹窗
-
-### 6.1 `alert()` 显示提示
-
-```js
-alert("保存成功");
-```
-
-`alert(message)` 显示一段提示文字。`message` 可以是字符串或可转换为字符串的值，是必填内容；方法返回 `undefined`。
-
-### 6.2 `confirm()` 让用户确认
-
-```js
-const confirmed = confirm("确定要删除这条申请吗？");
-
-if (confirmed) {
-  console.log("执行删除");
-}
-```
-
-`confirm(message)` 接收提示文字：点击“确定”返回 `true`，点击“取消”返回 `false`。
-
-### 6.3 `prompt()` 获取简单文本
-
-```js
-const employeeName = prompt("请输入姓名", "田中太郎");
-
-if (employeeName === null) {
-  console.log("用户取消了输入");
-} else {
-  console.log(employeeName);
-}
-```
-
-| 参数 | 可接受的值 | 默认值或必填性 | 作用 |
-| --- | --- | --- | --- |
-| `message` | 字符串或可转换为字符串的值 | 可选，默认无提示文字 | 显示给用户的问题 |
-| `defaultValue` | 字符串或可转换为字符串的值 | 可选，默认输入框为空 | 输入框初始值 |
-
-`prompt()` 点击确定时返回输入字符串，点击取消时返回 `null`。空字符串和 `null` 的含义不同，判断时不能混为一谈。
-
-### 6.4 原生弹窗的使用边界
-
-这些弹窗会阻塞当前页面的 JavaScript 执行和用户交互，并且样式难以定制：
-
-- 教学实验和简单确认可以使用。
-- 表单错误应优先显示在对应字段附近。
-- 正式业务提示和对话框通常使用 DOM 元素或 UI 组件实现。
-- 删除等重要操作不能只依赖前端确认，后端仍需检查权限和请求是否合法。
-
-## 7. 定时器及清理
-
-### 7.1 `setTimeout()` 延迟执行一次
-
-```js
-const timerId = setTimeout(() => {
-  console.log("1.5 秒后执行一次");
-}, 1500);
-
-console.log(timerId);
-```
-
-| 参数 | 可接受的值 | 默认值或必填性 | 作用 |
-| --- | --- | --- | --- |
-| `handler` | 函数 | 必填 | 到时间后执行的函数 |
-| `delay` | 毫秒数 | 可选，省略时按 `0` 处理 | 至少等待多长时间后安排执行 |
-| 后续参数 | 任意值 | 可选 | 作为参数传给 `handler`；主线通常不用 |
-
-`setTimeout()` 返回定时器 ID，可以用于取消任务。`1500` 毫秒等于 `1.5` 秒。
-
-延迟时间不是精确执行时刻。浏览器会在等待时间到达且当前同步代码执行完毕后，才有机会执行回调。
-
-### 7.2 使用 `clearTimeout()` 取消任务
-
-```js
-const timerId = setTimeout(() => {
-  location.href = "index.html";
-}, 1500);
-
-const cancelButton = document.querySelector("#cancelButton");
-
-cancelButton.addEventListener("click", () => {
-  clearTimeout(timerId);
-});
-```
-
-HTML 中需要存在：
-
-```html
-<button id="cancelButton" type="button">取消自动跳转</button>
-```
-
-`clearTimeout(timerId)` 接收 `setTimeout()` 返回的 ID，取消尚未执行的定时任务，返回 `undefined`。如果回调已经执行，取消不会撤销已经发生的结果。
-
-### 7.3 `setInterval()` 按间隔重复执行
-
-```js
-let remainingSeconds = 3;
-
-const intervalId = setInterval(() => {
-  console.log(`剩余 ${remainingSeconds} 秒`);
-  remainingSeconds -= 1;
-
-  if (remainingSeconds < 0) {
-    clearInterval(intervalId);
-  }
-}, 1000);
-```
-
-`setInterval(handler, delay)` 的参数含义与 `setTimeout()` 相同，但会重复安排回调。它返回定时器 ID；`clearInterval(intervalId)` 停止后续执行并返回 `undefined`。
-
-### 7.4 为什么必须清理定时器
-
-没有清理的重复定时器会继续执行，可能造成重复请求、重复修改页面或资源浪费。以下情况应考虑清理：
-
-- 用户取消了操作。
-- 倒计时已经结束。
-- 对应页面区域已经不再使用。
-- Vue 或 React 组件被卸载。
-
-新人主线重点掌握 `setTimeout()`、`clearTimeout()`、`setInterval()` 和 `clearInterval()` 的成对使用。
-
-## 8. 浏览器信息：会读取即可
-
-### 8.1 页面语言
-
-```js
-console.log(navigator.language);
-```
-
-`navigator.language` 返回浏览器偏好的主要语言，例如 `ja`、`ja-JP` 或 `zh-CN`。它只能作为显示语言的参考，不能代表用户国籍或所在地区。
-
-### 8.2 联网状态
-
-```js
-console.log(navigator.onLine);
-```
-
-`navigator.onLine` 返回布尔值，表示浏览器当前是否认为存在网络连接。但返回 `true` 不代表目标服务器一定可访问，真正的请求仍然可能失败。
-
-可以监听状态变化：
-
-```js
-window.addEventListener("online", () => {
-  console.log("浏览器报告网络已恢复");
-});
-
-window.addEventListener("offline", () => {
-  console.log("浏览器报告网络已断开");
-});
-```
-
-不要使用 `navigator.userAgent` 编写脆弱的浏览器判断。需要某项能力时，更适合直接检测对应 API 是否存在。
-
-## 9. 页面之间传递数据
-
-### 9.1 使用 URL 参数传递标识
+### 5.1 使用 URL 参数传递标识
 
 列表页跳转详情页时，可以传递申请编号：
 
@@ -533,48 +317,229 @@ if (applicationId === null || applicationId === "") {
 
 URL 适合保存“要查看哪一条数据”，刷新或分享地址后仍能保留这个定位信息。
 
-### 9.2 使用 `sessionStorage` 传递临时对象
+### 5.2 URL 参数传递的边界
 
-申请页跳转确认页前保存草稿：
+URL 参数适合记录编号、页码和筛选条件，不用于携带密码或完整的申请内容。这里先传递编号，并在目标页面打印检查结果，不要求读取浏览器存储。
+
+临时保存完整表单草稿的方法见[JSON 与浏览器本地存储](18_json_browser_storage.md)。当前实验只验证 URL 中的标识是否正确。
+
+### 页面跳转的验证顺序
+
+为 5.1 的两个脚本分别准备来源页和目标页，每个页面只加载自己的脚本。在同一个本地服务器下打开来源页，确认跳转后地址栏带有编号、目标页能输出编号。删除 URL 中的 `id` 后重新访问，应显示“缺少申请编号”。
+
+
+
+页面切换和定时任务是两类独立功能。下面的定时器实验在单独页面运行，不要叠加到刚才的跳转脚本中。
+
+## 6. 定时器及清理
+
+### 6.1 `setTimeout()` 延迟执行一次
 
 ```js
-const draftApplication = {
-  leaveType: "有給休暇",
-  startDate: "2026-09-01",
-};
+const timerId = setTimeout(() => {
+  console.log("1.5 秒后执行一次");
+}, 1500);
 
-sessionStorage.setItem(
-  "paidLeave.draftApplication",
-  JSON.stringify(draftApplication),
-);
-
-location.href = "confirm.html";
+console.log(timerId);
 ```
 
-确认页读取草稿：
+| 参数 | 可接受的值 | 默认值或必填性 | 作用 |
+| --- | --- | --- | --- |
+| `handler` | 函数 | 必填 | 到时间后执行的函数 |
+| `delay` | 毫秒数 | 可选，省略时按 `0` 处理 | 至少等待多长时间后安排执行 |
+| 后续参数 | 任意值 | 可选 | 作为参数传给 `handler`；主线通常不用 |
+
+`setTimeout()` 返回定时器 ID，可以用于取消任务。`1500` 毫秒等于 `1.5` 秒。
+
+延迟时间不是精确执行时刻。浏览器会在等待时间到达且当前同步代码执行完毕后，才有机会执行回调。
+
+### 6.2 使用 `clearTimeout()` 取消任务
 
 ```js
-const savedText = sessionStorage.getItem("paidLeave.draftApplication");
+const timerId = setTimeout(() => {
+  location.href = "index.html";
+}, 1500);
 
-if (savedText === null) {
-  location.replace("apply.html");
-} else {
-  const draftApplication = JSON.parse(savedText);
-  console.log(draftApplication);
+const cancelButton = document.querySelector("#cancelButton");
+
+cancelButton.addEventListener("click", () => {
+  clearTimeout(timerId);
+});
+```
+
+HTML 中需要存在：
+
+```html
+<button id="cancelButton" type="button">取消自动跳转</button>
+```
+
+`clearTimeout(timerId)` 接收 `setTimeout()` 返回的 ID，取消尚未执行的定时任务，返回 `undefined`。如果回调已经执行，取消不会撤销已经发生的结果。
+
+### 6.3 `setInterval()` 按间隔重复执行
+
+```js
+let remainingSeconds = 3;
+
+const intervalId = setInterval(() => {
+  console.log(`剩余 ${remainingSeconds} 秒`);
+  remainingSeconds -= 1;
+
+  if (remainingSeconds < 0) {
+    clearInterval(intervalId);
+  }
+}, 1000);
+```
+
+`setInterval(handler, delay)` 的参数含义与 `setTimeout()` 相同，但会重复安排回调。它返回定时器 ID；`clearInterval(intervalId)` 停止后续执行并返回 `undefined`。
+
+### 6.4 为什么必须清理定时器
+
+没有清理的重复定时器会继续执行，可能造成重复请求、重复修改页面或资源浪费。以下情况应考虑清理：
+
+- 用户取消了操作。
+- 倒计时已经结束。
+- 对应页面区域已经不再使用。
+- Vue 或 React 组件被卸载。
+
+新人主线重点掌握 `setTimeout()`、`clearTimeout()`、`setInterval()` 和 `clearInterval()` 的成对使用。
+
+## 7. 使用 `history` 操作历史记录
+
+### 7.1 后退、前进和跳转指定步数
+
+```js
+history.back();
+history.forward();
+history.go(-2);
+```
+
+| 方法 | 参数 | 可接受的值 | 默认值或必填性 | 作用与返回值 |
+| --- | --- | --- | --- | --- |
+| `back()` | 无 | 无 | 无参数 | 后退一条记录，返回 `undefined` |
+| `forward()` | 无 | 无 | 无参数 | 前进一条记录，返回 `undefined` |
+| `go(delta)` | 跳转步数 | 整数 | 必填 | 负数后退、正数前进、`0` 重新加载；返回 `undefined` |
+
+如果没有对应的历史记录，页面可能不会发生变化。历史记录属于用户当前标签页，代码不能读取用户访问过的完整地址清单。
+
+### 7.2 返回按钮的选择
+
+```js
+const backButton = document.querySelector("#backButton");
+
+backButton.addEventListener("click", () => {
+  history.back();
+});
+```
+
+这个示例要求 HTML 中存在：
+
+```html
+<button id="backButton" type="button">返回</button>
+```
+
+如果业务规格要求固定返回申请页，应直接链接或跳转到 `apply.html`；如果要求回到用户刚才访问的页面，才适合使用 `history.back()`。
+
+### 7.3 单页应用相关接口：了解
+
+现代前端路由常使用：
+
+- `history.pushState()`：增加一条历史记录，但不自动重新加载页面。
+- `history.replaceState()`：替换当前历史记录，但不自动重新加载页面。
+- `popstate` 事件：用户前进或后退时通知 JavaScript。
+
+```js
+history.pushState({ page: "detail" }, "", "?id=APP-001");
+
+window.addEventListener("popstate", (event) => {
+  console.log(event.state);
+});
+```
+
+`pushState(state, unused, url)` 的 `state` 可以保存与该历史记录相关的数据，第二个参数保留但通常传空字符串，`url` 是同源的新地址。它不会自动请求新页面，也不会自动更新 DOM。
+
+Vue Router 和 React Router 会封装类似能力。当前阶段要求能看懂用途，不要求自己实现路由器。
+
+## 8. 浏览器原生弹窗
+
+### 8.1 `alert()` 显示提示
+
+```js
+alert("保存成功");
+```
+
+`alert(message)` 显示一段提示文字。`message` 可以是字符串或可转换为字符串的值，是必填内容；方法返回 `undefined`。
+
+### 8.2 `confirm()` 让用户确认
+
+```js
+const confirmed = confirm("确定要删除这条申请吗？");
+
+if (confirmed) {
+  console.log("执行删除");
 }
 ```
 
-这里是在页面跳转场景中应用上一章的 Web Storage 知识。JSON 转换、异常处理和 `sessionStorage` 生命周期请回顾[第 13 章 JSON 与浏览器本地存储](13_json_browser_storage.md)。
+`confirm(message)` 接收提示文字：点击“确定”返回 `true`，点击“取消”返回 `false`。
 
-### 9.3 如何选择
+### 8.3 `prompt()` 获取简单文本
 
-| 数据需求 | 推荐方式 | 示例 |
-| --- | --- | --- |
-| 地址应可刷新、收藏或分享 | URL 参数 | 申请编号、页码、筛选条件 |
-| 只在当前多页面流程临时使用 | `sessionStorage` | 尚未提交的表单草稿 |
-| 需要后端长期可靠保存 | 发送到后端 | 正式申请记录、用户权限 |
+```js
+const employeeName = prompt("请输入姓名", "田中太郎");
 
-不要把完整对象转换后塞进 URL，也不要把 `sessionStorage` 当成正式数据库。
+if (employeeName === null) {
+  console.log("用户取消了输入");
+} else {
+  console.log(employeeName);
+}
+```
+
+| 参数 | 可接受的值 | 默认值或必填性 | 作用 |
+| --- | --- | --- | --- |
+| `message` | 字符串或可转换为字符串的值 | 可选，默认无提示文字 | 显示给用户的问题 |
+| `defaultValue` | 字符串或可转换为字符串的值 | 可选，默认输入框为空 | 输入框初始值 |
+
+`prompt()` 点击确定时返回输入字符串，点击取消时返回 `null`。空字符串和 `null` 的含义不同，判断时不能混为一谈。
+
+### 8.4 原生弹窗的使用边界
+
+这些弹窗会阻塞当前页面的 JavaScript 执行和用户交互，并且样式难以定制：
+
+- 教学实验和简单确认可以使用。
+- 表单错误应优先显示在对应字段附近。
+- 正式业务提示和对话框通常使用 DOM 元素或 UI 组件实现。
+- 删除等重要操作不能只依赖前端确认，后端仍需检查权限和请求是否合法。
+
+## 9. 浏览器信息：会读取即可
+
+### 9.1 页面语言
+
+```js
+console.log(navigator.language);
+```
+
+`navigator.language` 返回浏览器偏好的主要语言，例如 `ja`、`ja-JP` 或 `zh-CN`。它只能作为显示语言的参考，不能代表用户国籍或所在地区。
+
+### 9.2 联网状态
+
+```js
+console.log(navigator.onLine);
+```
+
+`navigator.onLine` 返回布尔值，表示浏览器当前是否认为存在网络连接。但返回 `true` 不代表目标服务器一定可访问，真正的请求仍然可能失败。
+
+可以监听状态变化：
+
+```js
+window.addEventListener("online", () => {
+  console.log("浏览器报告网络已恢复");
+});
+
+window.addEventListener("offline", () => {
+  console.log("浏览器报告网络已断开");
+});
+```
+
+不要使用 `navigator.userAgent` 编写脆弱的浏览器判断。需要某项能力时，更适合直接检测对应 API 是否存在。
 
 ## 10. 常见错误与排查
 

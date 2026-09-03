@@ -1,4 +1,4 @@
-# 第 17 章 错误处理与浏览器调试
+# 第 16 章 错误处理与浏览器调试
 
 代码出现问题时，最重要的能力不是猜测，而是读取证据、定位原因、完成最小修正并重新验证。本章建立一套可以重复使用的错误处理和调试方法，为后续 Promise、接口请求、Vue 和 React 的排错打基础。
 
@@ -9,7 +9,7 @@
 - 使用 `Error`、`throw` 和 `try...catch...finally` 处理异常。
 - 使用合适的 Console 方法观察运行状态。
 - 使用 Sources 面板的断点、单步执行、Scope、Watch 和 Call Stack。
-- 排查 DOM、JSON、本地存储和多页面共用脚本的常见问题。
+- 排查 DOM、数据类型、函数调用和页面脚本的常见问题。
 - 按“复现—定位—验证—修正—回归”的顺序完成排错。
 
 ## 1. 先区分错误、异常和业务校验
@@ -55,7 +55,7 @@ function validateReason(reason) {
 
 `trim()` 返回删除首尾空白后的新字符串。`validateReason(reason)` 在校验失败时返回提示文字，通过时返回空字符串。
 
-不要把所有普通业务分支都写成异常。异常更适合表示当前操作无法按照正常流程继续的情况，例如存储内容损坏、必要数据结构错误或请求失败。
+不要把所有普通业务分支都写成异常。异常更适合表示当前操作无法按照正常流程继续的情况，例如函数收到了不符合约定的数据结构，导致当前操作无法继续。
 
 ## 2. 阅读浏览器错误信息
 
@@ -85,6 +85,24 @@ Uncaught TypeError: Cannot read properties of null (reading 'id')
 ### 2.2 优先处理第一条有效错误
 
 前面的错误可能导致后续代码连续失败。控制台出现多条红色错误时，通常先处理最早发生、最接近自己代码的第一条错误，再刷新页面重新观察。
+
+### 2.3 完成一次定位、修复和复测
+
+在独立练习页面加载的 `js/app.js` 中运行下面的故障代码，勿与其他实验合并：
+
+```js
+const requestedDays = 2;
+const remainingDays = 5;
+console.log(requestedDay <= remainingDays);
+```
+
+1. 刷新页面，在 Console 找到第一条错误：`requestedDay is not defined`。
+2. 点击错误的文件与行号，查看第三行。不要急着修改比较运算符，因为错误指出的是变量名。
+3. 对比第一行的声明：名称是 `requestedDays`，第三行少了末尾的 `s`。
+4. 改为 `console.log(requestedDays <= remainingDays);`，保存并刷新，应输出 `true`。
+5. 把申请天数改为 6，再刷新，应输出 `false`。这一步验证的是判断功能，而不仅是错误是否消失。
+
+由此形成一个排查习惯：先读错误指向的证据，再修改最小范围，最后用成功和失败两种输入复测。
 
 ## 3. JavaScript 常见错误类型
 
@@ -204,139 +222,142 @@ function getApplication(application) {
 
 ## 6. 使用 `try...catch...finally`
 
+下面各小节为独立控制台实验，每次用当前示例替换整个实验脚本。示例不读取浏览器存储，也不发送请求。
+
 ### 6.1 捕获可能发生的异常
 
+调用方要求取得申请状态，但提供的数据可能为空。函数遇到无法处理的数据时主动抛错，调用方负责捕获：
+
 ```js
-function parseApplications(jsonText) {
+function readStatus(application) {
+  if (application === null || application === undefined) {
+    throw new Error("申请数据不存在");
+  }
+  return application.status;
+}
+
+function showStatus(application) {
   try {
-    return JSON.parse(jsonText);
+    console.log(readStatus(application));
+    console.log("状态读取完成");
   } catch (error) {
-    console.error("JSON 解析失败", error);
-    return null;
+    console.error("状态读取失败：", error.message);
   }
 }
 
-console.log(parseApplications('[{"id":"REQ-001"}]'));
-console.log(parseApplications("not-json"));
+showStatus({ status: "pending" });
+showStatus(null);
+console.log("本次实验结束");
 ```
 
-执行顺序：
+第一次调用输出 `pending` 和“状态读取完成”。第二次调用在 `readStatus()` 中抛错，控制流程转到调用方的 `catch`，不再输出“状态读取完成”；错误处理后仍会输出“本次实验结束”。
 
-1. 先执行 `try` 中的代码。
+1. `try` 包住可能失败的操作，包括它调用的函数。
 2. 没有异常时跳过 `catch`。
-3. 出现异常时，`try` 中剩余代码停止，控制流程进入 `catch`。
-4. `catch (error)` 中的变量接收被抛出的错误。
+3. 出现异常时，跳过 `try` 中尚未执行的代码。
+4. `catch (error)` 的参数接收异常对象。
+5. `console.error()` 输出错误日志，不会自动修正数据。
 
-`JSON.parse(text)` 接收 JSON 字符串，成功时返回对应 JavaScript 值，文本不合法时抛出 `SyntaxError`。
+本例约定参数是申请对象、`null` 或 `undefined`，不负责识别所有任意输入。对普通用户漏填字段，仍优先用第十一章的校验提示处理，不必一律抛异常。
 
 ### 6.2 `finally` 负责收尾
 
-```js
-function saveApplication(jsonText) {
-  console.log("开始保存");
+独立实验：
 
+```js
+function inspectApplication(application) {
+  console.log("开始检查");
   try {
-    const application = JSON.parse(jsonText);
-    console.log(application);
+    if (application === null) {
+      throw new Error("没有可检查的申请");
+    }
+    console.log(application.id);
   } catch (error) {
-    console.error("保存失败", error);
+    console.error("检查失败：", error.message);
   } finally {
-    console.log("结束保存处理");
+    console.log("结束检查");
   }
 }
+
+inspectApplication({ id: "REQ-001" });
+inspectApplication(null);
 ```
 
-`finally` 中的代码无论成功还是失败都会执行，适合恢复按钮、关闭加载状态或释放资源。不要在 `finally` 中写会掩盖原结果的 `return`。
+两次调用都会输出“结束检查”。`finally` 用于成功、失败都需要执行的收尾，例如恢复操作按钮。它不是只在失败时执行，也不会让发生异常后被跳过的 `try` 代码重新执行。不要在 `finally` 中写会掩盖原结果的 `return`。
 
 ### 6.3 不要写空的 `catch`
 
+下面是错误处理方式不恰当的独立对照实验：
+
 ```js
 try {
-  JSON.parse("not-json");
+  throw new Error("必要数据缺失");
 } catch (error) {
   // 什么都不做
 }
+console.log("后续处理");
 ```
 
-空 `catch` 会让故障表面上消失，却没有留下原因或用户提示。至少应记录必要的错误信息，并按照业务要求返回安全结果、显示错误或继续向上抛出。
+只看到“后续处理”，却看不到失败原因。问题不是已经修复，而是被隐藏了。将空注释替换为 `console.error(error.message)` 再运行，观察差异；实际处理还应决定是否终止当前操作或显示提示。
 
 ### 6.4 只包住真正可能失败的范围
 
+独立实验：
+
 ```js
-const savedText = '[{"id":"REQ-001"}]';
-let applications;
+function requireArray(value) {
+  if (!Array.isArray(value)) {
+    throw new Error("申请列表必须是数组");
+  }
+  return value;
+}
+
+const input = { id: "REQ-001" };
+let applications = null;
 
 try {
-  applications = JSON.parse(savedText);
+  applications = requireArray(input);
 } catch (error) {
-  console.error("申请数据无法解析", error);
+  console.error(error.message);
+}
+
+if (applications !== null) {
+  console.log("记录数：", applications.length);
 }
 ```
 
-过大的 `try` 会让学员难以判断具体哪一步失败。应先缩小可能抛出异常的代码范围，再处理错误。
+`Array.isArray(value)` 判断参数是否为数组，返回布尔值。本例只把可能抛错的数据检查放在 `try` 中；失败后保留 `null`，不继续按正常数组处理。
 
-## 7. 正确处理本地存储和 JSON
+把 `input` 改为 `[{ id: "REQ-001" }]`，应输出记录数 1；改为空数组，应输出 0。空数组是正常数据，不应仅因为长度为 0 就抛错。
 
-### 7.1 key 不存在不等于 JSON 损坏
+## 7. 区分无数据与数据错误
 
-```js
-const savedText = localStorage.getItem("paidLeaveApplications");
-
-if (savedText === null) {
-  console.log("还没有保存申请数据");
-}
-```
-
-`getItem(key)` 在 key 不存在时返回 `null`。这是正常的“无数据”状态，不是异常。
-
-需要特别注意：
+### 7.1 空数组不等于错误类型
 
 ```js
-console.log(JSON.parse(null)); // null
-```
-
-`JSON.parse(null)` 会先把参数转换为字符串 `"null"`，结果是 JavaScript 的 `null`，不会因此直接抛出异常。但后续如果把它当数组使用，仍会发生 `TypeError`。
-
-### 7.2 JSON 合法不代表数据结构正确
-
-```js
-function loadApplications() {
-  const savedText = localStorage.getItem("paidLeaveApplications");
-
-  if (savedText === null) {
-    return [];
+function countApplications(value) {
+  if (!Array.isArray(value)) {
+    throw new Error("申请列表必须是数组");
   }
+  return value.length;
+}
 
-  const parsedData = JSON.parse(savedText);
+console.log(countApplications([])); // 0
 
-  if (!Array.isArray(parsedData)) {
-    throw new Error("申请数据必须是数组");
-  }
-
-  return parsedData;
+try {
+  console.log(countApplications(null));
+} catch (error) {
+  console.error(error.message);
 }
 ```
 
-`Array.isArray(value)` 判断传入值是否为数组，返回布尔值。数据检查至少分为三层：
+`[]` 明确表示列表中没有记录；`null` 不是数组，不能直接读取它的 `length`。是否接受 `null` 应由函数约定决定，本例不接受。
 
-1. 存储中是否有值。
-2. 文本是不是合法 JSON。
-3. 解析结果是不是业务期望的结构。
+### 7.2 捕获后不要伪装成功
 
-### 7.3 读取失败时不要静默覆盖原数据
+如果函数约定返回 `null` 表示失败，调用方就应检查它，停止当前处理，而不是无条件继续显示“处理成功”。如果返回空数组表示正常无记录，就不要把错误也悄悄改成空数组。
 
-```js
-function safeLoadApplications() {
-  try {
-    return loadApplications();
-  } catch (error) {
-    console.error("申请数据读取失败", error);
-    return null;
-  }
-}
-```
-
-返回 `null` 表示读取失败，页面应显示错误并停止写回。不能发现数据损坏后立即用空数组覆盖，否则会破坏原始数据，使问题难以恢复和调查。
+这种区别同样适用于后续的数据读取：无数据是正常状态，数据不符合约定则需要保留错误原因。当前先用变量和数组验证，不要求数据持久保存。
 
 ## 8. 使用 Console 获取证据
 
@@ -494,7 +515,7 @@ if (applyForm !== null) {
 - `approved` 申请仍然不能取消。
 - 取消后记录保留，只改变状态。
 - 其他用户的申请没有受到影响。
-- 刷新页面后结果仍然存在。
+- 在同一次页面运行中，列表显示与内存数组一致；刷新后重新加载本章初始数据。
 
 ## 12. 常见错误处理误区
 
@@ -504,15 +525,15 @@ if (applyForm !== null) {
 
 ### 12.2 捕获后继续使用无效数据
 
-解析失败后不能继续把 `null` 当数组渲染。应停止当前流程，显示错误或返回到安全页面。
+数据检查失败后不能继续把 `null` 当数组渲染。应停止当前流程，显示错误或返回到安全页面。
 
 ### 12.3 用默认值静默掩盖损坏
 
-“没有保存过数据”可以使用空数组；“已保存内容损坏”应显示错误并保留调查证据，二者不能都静默变成空数组。
+空数组表示正常无记录；函数收到错误类型时应报告原因。不能把所有错误输入都静默改成空数组，让调用者误以为处理正常完成。
 
 ### 12.4 只修正控制台错误，不验证业务结果
 
-控制台没有红色错误不代表功能正确。还要检查页面显示、存储状态、数据所属用户和刷新后的结果。
+控制台没有红色错误不代表功能正确。还要检查页面显示、内存数组、数据所属用户以及重复操作后的结果。
 
 ## 13. 本章综合排错任务
 
@@ -531,25 +552,25 @@ debug-practice/
 
 ### 13.2 已知故障现象
 
-练习初始代码包含以下问题：
+以本章各节的小示例为基础，分别制作并复现以下独立故障，不要求拼接成一份大型脚本：
 
 1. HTML 中的脚本路径错误，Network 面板出现 404。
 2. JavaScript 的按钮选择器与 HTML `id` 不一致。
 3. 事件处理函数使用了拼写错误的变量名。
 4. 表单提交后页面刷新，输入结果消失。
-5. 本地存储 key 不存在时，代码把 `null` 当数组使用。
-6. 存储内容不是合法 JSON 时，没有错误提示。
-7. JSON 可以解析，但结果是对象而不是申请数组。
+5. 把 `null` 当成数组读取 `length`。
+6. 函数主动抛错后，调用方没有处理错误。
+7. 函数收到普通对象而不是数组，却继续按列表处理。
 
 ### 13.3 任务要求
 
 1. 按标准排错流程逐个复现问题，不直接重写全部代码。
 2. 为每个问题记录现象、错误类型、文件和行号。
 3. 至少使用一次行断点、Step over、Scope 和 Call Stack。
-4. 使用 `try...catch` 处理 JSON 解析错误。
+4. 使用 `try...catch` 处理函数主动抛出的错误。
 5. 使用 `Array.isArray()` 验证申请数据结构。
-6. 区分“首次使用没有数据”和“已有数据损坏”。
-7. 修正后重新验证提交、刷新、列表显示和损坏数据场景。
+6. 区分空数组与不符合约定的数据类型。
+7. 修正后重新验证提交、列表显示、空数组、错误类型以及重复操作。
 
 ### 13.4 提交证据
 
@@ -566,7 +587,7 @@ debug-practice/
 
 - 七个问题均能稳定复现、说明原因并完成修正。
 - 能区分 `SyntaxError`、`ReferenceError`、`TypeError` 和主动抛出的 `Error`。
-- JSON 损坏时保留原数据，不静默覆盖。
+- 数据检查失败时报告原因，不伪装成正常空列表。
 - 页面显示适合用户理解的错误提示，控制台保留开发者需要的信息。
-- 修正后的正常流程可以提交、显示并在刷新后恢复申请数据。
+- 正常流程能在当前页面中提交并显示内存数据；刷新后重新使用初始数据，不要求恢复上一次输入。
 - 控制台没有未处理错误，也没有敏感数据日志。

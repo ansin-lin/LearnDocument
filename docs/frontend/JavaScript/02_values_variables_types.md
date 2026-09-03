@@ -26,9 +26,9 @@ let remainingPaidLeaveDays = 12;
 
 变量名应能表达数据的含义。推荐使用小驼峰命名法：第一个单词首字母小写，后续单词首字母大写，例如 `employeeName`、`remainingDays`。
 
-## 2. 变量的三种声明方式
+## 2. 声明、赋值与重新赋值
 
-JavaScript 可以使用 `const`、`let` 和 `var` 声明变量。
+先区分两个动作：声明是建立变量名称，赋值是让变量保存一个值。`const` 和 `let` 可以在一行中同时完成这两个动作。
 
 ### 2.1 `const`：声明后不再重新赋值
 
@@ -63,105 +63,9 @@ let selectedApplication;
 selectedApplication = "AP-0001";
 ```
 
-在赋值之前，变量的值是 `undefined`。
+在赋值之前，变量的值是 `undefined`，意思是“已有变量，但还没有赋给它具体的值”。可以在赋值语句前后各添加一次 `console.log(selectedApplication)`，分别观察 `undefined` 和 `AP-0001`。
 
-### 2.3 `var`：旧代码中常见的声明方式
-
-```js
-var employeeName = "山田 太郎";
-```
-
-`var` 是 ES6 以前常用的写法。它允许重新赋值，也允许在同一作用域中重复声明：
-
-```js
-var status = "申請中";
-var status = "承認済み";
-console.log(status); // 承認済み
-```
-
-重复声明不一定立即报错，容易意外覆盖已有变量。因此，新代码不推荐使用 `var`，但阅读旧项目时必须能够看懂。
-
-### 2.4 三种声明方式的区别
-
-| 声明方式 | 声明时必须赋值 | 可以重新赋值 | 同一作用域可重复声明 | 作用域 | 声明前访问 | 使用建议 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `const` | 是 | 否 | 否 | 块级作用域 | 报错 | 默认优先使用 |
-| `let` | 否 | 是 | 否 | 块级作用域 | 报错 | 值需要变化时使用 |
-| `var` | 否 | 是 | 是 | 函数作用域 | 得到 `undefined` | 只用于阅读和维护旧代码 |
-
-简单记忆：先选 `const`，确实需要重新赋值时选 `let`，新代码通常不选 `var`。
-
-## 3. 作用域
-
-作用域表示变量可以在哪些位置被访问。
-
-### 3.1 块级作用域
-
-一对花括号 `{}` 可以形成一个代码块。`const` 和 `let` 具有块级作用域，只能在声明它们的代码块内部访问。
-
-```js
-{
-  const message = "登录成功";
-  let loginCount = 1;
-
-  console.log(message);    // 登录成功
-  console.log(loginCount); // 1
-}
-
-console.log(message); // ReferenceError
-```
-
-代码块外不能访问 `message`，因为它是在代码块内部使用 `const` 声明的。
-
-### 3.2 `var` 没有块级作用域
-
-`var` 不受普通代码块限制：
-
-```js
-{
-  var oldMessage = "旧写法";
-}
-
-console.log(oldMessage); // 旧写法
-```
-
-这会让变量作用范围比预想的更大，也更容易发生变量名冲突。
-
-`var` 具有函数作用域：如果它声明在函数内部，就只能在该函数内部访问。函数作用域会在第六章继续讲解。
-
-## 4. 变量提升
-
-JavaScript 执行代码前，会先处理当前作用域中的变量声明。这个现象称为变量提升（hoisting）。
-
-### 4.1 `var` 的提升
-
-```js
-console.log(userName); // undefined
-var userName = "山田 太郎";
-```
-
-上面的代码不会在第一行立即报告“变量不存在”，因为 `var userName` 的声明会被提升。可以暂时把它理解为：
-
-```js
-var userName;
-console.log(userName); // undefined
-userName = "山田 太郎";
-```
-
-只有声明被提升，赋值仍然留在原来的位置。因此，在赋值之前访问变量得到 `undefined`，这可能隐藏代码顺序问题。
-
-### 4.2 `let` 和 `const` 的提升表现
-
-`let` 和 `const` 的声明也会在执行前被处理，但从代码块开始到声明语句执行之前，变量处于“暂时性死区”（Temporal Dead Zone，TDZ），不能访问。
-
-```js
-console.log(employeeName); // ReferenceError
-const employeeName = "山田 太郎";
-```
-
-不要为了使用变量提升而把变量写在声明之前。无论使用哪种声明方式，都应先声明，再使用。
-
-## 5. JavaScript 的数据类型
+## 3. JavaScript 的数据类型
 
 数据类型表示一个值是什么种类，以及可以对它执行什么操作。JavaScript 的数据类型分为原始类型和引用类型。
 
@@ -178,7 +82,7 @@ const employeeName = "山田 太郎";
 
 本课程主线重点掌握 `string`、`number`、`boolean`、`undefined`、`null` 和 `object`。`bigint` 和 `symbol` 现阶段能识别即可，后续现代对象章节会再次介绍 `symbol`。
 
-### 5.1 字符串 `string`
+### 3.1 字符串 `string`
 
 字符串用于表示文本，可以使用单引号、双引号或反引号。
 
@@ -190,7 +94,7 @@ const message = `${employeeName}さん、ログインしました`;
 
 反引号定义的是模板字符串。`${}` 可以把变量或计算结果放进字符串中。
 
-### 5.2 数字 `number`
+### 3.2 数字 `number`
 
 JavaScript 中的整数和小数都属于 `number` 类型。
 
@@ -212,7 +116,7 @@ console.log(Number.isNaN(result)); // true
 
 `NaN` 本身仍属于 `number` 类型。检查一个值是否为 `NaN` 时，推荐使用 `Number.isNaN()`。
 
-### 5.3 布尔值 `boolean`
+### 3.3 布尔值 `boolean`
 
 布尔值只有 `true` 和 `false`，常用于表示登录状态、校验结果和开关状态。
 
@@ -221,7 +125,7 @@ const isLoggedIn = true;
 const hasError = false;
 ```
 
-### 5.4 `undefined` 和 `null`
+### 3.4 `undefined` 和 `null`
 
 | 值 | 含义 | 常见场景 |
 | --- | --- | --- |
@@ -237,7 +141,7 @@ const currentUser = null;
 
 如果程序需要主动表达“现在没有这个值”，通常使用 `null` 会更明确。
 
-### 5.5 对象 `object`
+### 3.5 对象 `object`
 
 对象可以把多项相关数据放在一起。数组、普通对象和日期对象都属于引用类型。
 
@@ -252,7 +156,7 @@ const applicationStatuses = ["申請中", "承認済み"];
 
 本章先识别对象和数组的类型，后续章节再详细学习它们的操作方法。
 
-## 6. 使用 `typeof` 检查类型
+## 4. 使用 `typeof` 检查类型
 
 `typeof` 运算符会返回表示数据类型的字符串。
 
@@ -280,11 +184,11 @@ console.log(typeof [1, 2]); // object
 console.log(Array.isArray([1, 2])); // true
 ```
 
-## 7. 数据类型转换
+## 5. 数据类型转换
 
 网页输入框中取得的内容通常是字符串。进行计算、显示或条件判断前，经常需要把数据转换成合适的类型。
 
-### 7.1 转换为字符串：`String()`
+### 5.1 转换为字符串：`String()`
 
 ```js
 console.log(String(12));        // "12"
@@ -295,7 +199,7 @@ console.log(String(undefined)); // "undefined"
 
 `String(value)` 会返回对应的字符串，不会修改原变量。
 
-### 7.2 转换为数字：`Number()`
+### 5.2 转换为数字：`Number()`
 
 ```js
 console.log(Number("12"));    // 12
@@ -327,7 +231,7 @@ console.log(parseFloat("0.5日"));  // 0.5
 
 `parseInt(value, 10)` 中的 `10` 表示按十进制解析。表单值必须是完整数字时，优先使用 `Number()`；明确需要读取字符串开头的数字时，再使用 `parseInt()` 或 `parseFloat()`。
 
-### 7.3 转换为布尔值：`Boolean()`
+### 5.3 转换为布尔值：`Boolean()`
 
 ```js
 console.log(Boolean(1));         // true
@@ -350,7 +254,7 @@ console.log(Boolean(NaN));       // false
 
 这些值称为假值（falsy）。其他常见值通常会转换为 `true`，称为真值（truthy）。特别注意，字符串 `"false"` 和字符串 `"0"` 都不是空字符串，因此会转换为 `true`。
 
-### 7.4 隐式类型转换
+### 5.4 隐式类型转换
 
 JavaScript 在某些运算中会自动转换数据类型，这称为隐式类型转换。
 
@@ -369,7 +273,105 @@ console.log(nextDays); // 13
 
 实际项目中，不要依赖难以看懂的隐式转换。先使用 `Number()`、`String()` 或 `Boolean()` 明确转换，再进行后续操作。
 
-## 8. 本章练习
+## 6. 三种声明方式的选择与旧代码
+
+### 6.1 `var`：旧代码中常见的声明方式
+
+```js
+var employeeName = "山田 太郎";
+```
+
+`var` 是 ES6 以前常用的写法。它允许重新赋值，也允许在同一作用域中重复声明：
+
+```js
+var status = "申請中";
+var status = "承認済み";
+console.log(status); // 承認済み
+```
+
+重复声明不一定立即报错，容易意外覆盖已有变量。因此，新代码不推荐使用 `var`，但阅读旧项目时必须能够看懂。
+
+### 6.2 三种声明方式的区别
+
+| 声明方式 | 声明时必须赋值 | 可以重新赋值 | 同一作用域可重复声明 | 作用域 | 声明前访问 | 使用建议 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `const` | 是 | 否 | 否 | 块级作用域 | 报错 | 默认优先使用 |
+| `let` | 否 | 是 | 否 | 块级作用域 | 报错 | 值需要变化时使用 |
+| `var` | 否 | 是 | 是 | 函数作用域 | 得到 `undefined` | 只用于阅读和维护旧代码 |
+
+简单记忆：先选 `const`，确实需要重新赋值时选 `let`，新代码通常不选 `var`。
+
+## 7. 作用域
+
+作用域表示变量可以在哪些位置被访问。
+
+### 7.1 块级作用域
+
+一对花括号 `{}` 可以形成一个代码块。`const` 和 `let` 具有块级作用域，只能在声明它们的代码块内部访问。
+
+```js
+{
+  const message = "登录成功";
+  let loginCount = 1;
+
+  console.log(message);    // 登录成功
+  console.log(loginCount); // 1
+}
+
+console.log(message); // ReferenceError
+```
+
+代码块外不能访问 `message`，因为它是在代码块内部使用 `const` 声明的。
+
+### 7.2 `var` 没有块级作用域
+
+`var` 不受普通代码块限制：
+
+```js
+{
+  var oldMessage = "旧写法";
+}
+
+console.log(oldMessage); // 旧写法
+```
+
+这会让变量作用范围比预想的更大，也更容易发生变量名冲突。
+
+`var` 具有函数作用域：如果它声明在函数内部，就只能在该函数内部访问。函数作用域会在第六章继续讲解。
+
+## 8. 变量提升
+
+JavaScript 执行代码前，会先处理当前作用域中的变量声明。这个现象称为变量提升（hoisting）。
+
+### 8.1 `var` 的提升
+
+```js
+console.log(userName); // undefined
+var userName = "山田 太郎";
+```
+
+上面的代码不会在第一行立即报告“变量不存在”，因为 `var userName` 的声明会被提升。可以暂时把它理解为：
+
+```js
+var userName;
+console.log(userName); // undefined
+userName = "山田 太郎";
+```
+
+只有声明被提升，赋值仍然留在原来的位置。因此，在赋值之前访问变量得到 `undefined`，这可能隐藏代码顺序问题。
+
+### 8.2 `let` 和 `const` 的提升表现
+
+`let` 和 `const` 的声明也会在执行前被处理，但从代码块开始到声明语句执行之前，变量处于“暂时性死区”（Temporal Dead Zone，TDZ），不能访问。
+
+```js
+console.log(employeeName); // ReferenceError
+const employeeName = "山田 太郎";
+```
+
+不要为了使用变量提升而把变量写在声明之前。无论使用哪种声明方式，都应先声明，再使用。
+
+## 9. 本章练习
 
 ### 练习 1：声明变量并输出
 

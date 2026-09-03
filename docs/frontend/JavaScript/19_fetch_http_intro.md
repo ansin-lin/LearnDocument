@@ -207,114 +207,13 @@ response.json() 读取并解析响应体
 
 每条测试数据包含 `userId`、`id`、`title` 和 `body`。这些字段由测试接口规定；真实项目应根据接口设计书确认字段名称和类型。
 
-### 3.4 `options` 配置对象
-
-`fetch()` 的第二个参数是可选的 `options` 对象，也常写作 `init`。只发送普通 GET 请求时可以省略：
-
-```js
-const response = await fetch(url);
-```
-
-需要指定请求方法、请求头、请求体、认证信息或取消信号时再传入：
-
-```js
-const response = await fetch("/api/applications", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  },
-  body: JSON.stringify({
-    type: "休假申请",
-    startDate: "2026-09-10",
-  }),
-  credentials: "same-origin",
-});
-```
-
-这个对象不是后端收到的业务数据。它是浏览器发送请求时使用的配置。
-
-常见属性如下：
-
-| 属性 | 可接受的值 | 默认值或必填性 | 作用 |
-| --- | --- | --- | --- |
-| `method` | `GET`、`POST`、`PUT`、`PATCH`、`DELETE` 等方法字符串 | 可选，默认 `GET` | 指定 HTTP 请求方法 |
-| `headers` | 普通键值对象、`Headers` 对象或键值对数组 | 可选，默认没有自定义请求头 | 设置 Content-Type、Accept 等请求头 |
-| `body` | 字符串、`FormData`、`URLSearchParams`、Blob 等 | 可选，默认没有请求体 | 设置发送给后端的请求内容；GET 和 HEAD 不能设置 |
-| `signal` | `AbortSignal` 对象 | 可选 | 接收取消通知，用于主动取消或实现超时 |
-| `credentials` | `omit`、`same-origin`、`include` | 可选，默认 `same-origin` | 控制是否发送和接收 Cookie 等凭据 |
-| `mode` | `cors`、`same-origin`、`no-cors` | 可选，普通跨来源请求通常使用默认的 `cors` | 控制请求的跨来源模式 |
-| `cache` | `default`、`no-store`、`reload`、`no-cache`、`force-cache`、`only-if-cached` | 可选，默认 `default` | 控制请求怎样使用浏览器 HTTP 缓存 |
-| `redirect` | `follow`、`error`、`manual` | 可选，默认 `follow` | 控制遇到重定向响应时怎样处理 |
-
-#### 3.4.1 `method`、`headers` 和 `body`
-
-这三个属性通常配合使用：
-
-```js
-const response = await fetch("/api/applications", {
-  method: "PATCH",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    status: "approved",
-  }),
-});
-```
-
-- `method` 决定本次请求要执行的操作。
-- `Content-Type` 告诉后端当前请求体的格式。
-- `body` 放置真正提交的数据。
-- 发送 JSON 时，需要先使用 `JSON.stringify()` 转成字符串。
-- 使用 `FormData` 上传表单或文件时，通常不要手动设置 `Content-Type`，浏览器会自动添加包含 boundary 的正确请求头。
-
-查询参数不属于 `options`。GET 的检索条件仍然写在 URL 中，第 5 节会说明安全的构造方式。
-
-#### 3.4.2 `credentials`
-
-`credentials` 控制浏览器是否在请求中携带 Cookie 等凭据：
-
-| 值 | 含义 |
-| --- | --- |
-| `omit` | 不发送凭据，也忽略响应中用于设置凭据的信息 |
-| `same-origin` | 只在同源请求中使用凭据，默认值 |
-| `include` | 同源和跨来源请求都尝试使用凭据 |
-
-跨来源请求使用 `include` 时，后端还必须返回允许指定来源和凭据的 CORS 响应头，Cookie 本身也会受到 SameSite 等规则限制。仅修改前端选项不能绕过服务器限制。
-
-#### 3.4.3 `signal`
-
-```js
-const controller = new AbortController();
-
-const response = await fetch("/api/applications", {
-  signal: controller.signal,
-});
-```
-
-`signal` 本身不会自动取消请求。其他代码调用 `controller.abort()` 后，信号才会通知 `fetch()` 停止请求。第 8 节会用它实现超时。
-
-#### 3.4.4 `mode`、`cache` 和 `redirect`
-
-这三个属性在有明确项目需求时再设置：
-
-- 普通跨来源接口请求通常保持 `mode: "cors"`。
-- `mode: "same-origin"` 会阻止向其他来源发送请求。
-- 不要使用 `mode: "no-cors"` 解决 CORS 错误；得到的通常是不允许读取状态和响应体的 opaque 响应。
-- `cache: "no-store"` 表示不使用也不保存 HTTP 缓存，适合明确要求每次获取最新结果的场景。
-- `cache: "no-cache"` 并不等于完全不用缓存，而是要求先向服务器验证缓存是否仍然有效。
-- `redirect: "follow"` 会自动跟随重定向，也是默认行为。
-
-大多数业务请求只需要 `method`、`headers`、`body` 和必要的 `signal`。不要为了显得配置完整而机械填写所有属性。
-
 ## 4. fetch 为什么必须检查响应状态
 
 ### 4.1 404 和 500 不一定进入 `catch`
 
 `fetch()` 在网络无法连接、请求被取消等情况下会失败。但服务器正常返回 `404` 或 `500` 时，`fetch()` 通常仍会成功得到 Response。
 
-因此，不能只写：
+下面是async函数内部的错误处理不完整片段，不要单独运行；不能只写：
 
 ```js
 const response = await fetch(
@@ -360,130 +259,9 @@ async function initializePage() {
 initializePage();
 ```
 
-## 5. 使用查询参数发送检索条件
+到这里能区分三种失败：无法连接时请求失败；收到 404 等响应时由 `response.ok` 检查发现；响应不是合法 JSON 时由 `response.json()` 解析发现。上面的短实验只观察请求与解析，页面使用还要补上等待上限和状态恢复，下面继续完成。
 
-查询参数放在 URL 的 `?` 后面：
-
-```text
-/api/applications?status=pending&employeeNumber=EMP-00001
-```
-
-不要手动拼接未经处理的用户输入。可以使用 `URLSearchParams`：
-
-```js
-async function searchApplications(status, employeeNumber) {
-  const params = new URLSearchParams({
-    status,
-    employeeNumber,
-  });
-
-  const response = await fetch(`/api/applications?${params.toString()}`);
-
-  if (!response.ok) {
-    throw new Error(`申请检索失败：HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
-```
-
-`new URLSearchParams(init)` 创建查询参数对象。本例传入普通对象，属性名成为参数名，属性值成为参数值。
-
-`params.toString()` 返回经过 URL 编码的查询字符串，例如：
-
-```text
-status=pending&employeeNumber=EMP-00001
-```
-
-参数名和取值必须与后端接口规格一致。
-
-## 6. 使用 POST 发送 JSON
-
-下面是向后端新增申请的请求函数。它属于接口代码片段，需要由后端提供 `/api/applications` 接口才能实际运行。
-
-```js
-async function createApplication(application) {
-  const response = await fetch("/api/applications", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(application),
-  });
-
-  if (!response.ok) {
-    throw new Error(`申请提交失败：HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
-```
-
-第 3.4 节已经说明 `options` 的常见属性。这里使用其中三个：`method` 指定 POST，`headers` 声明请求体格式，`body` 保存 JSON 字符串。
-
-`Content-Type: application/json` 告诉后端请求体使用 JSON 格式。`JSON.stringify(application)` 把 JavaScript 对象转换成 JSON 字符串。
-
-调用示例：
-
-```js
-const newApplication = {
-  employeeNumber: "EMP-00001",
-  type: "休假申请",
-  startDate: "2026-09-10",
-};
-
-createApplication(newApplication)
-  .then((createdApplication) => {
-    console.log("创建成功", createdApplication);
-  })
-  .catch((error) => {
-    console.error("创建失败", error);
-  });
-```
-
-不要把密码、令牌或内部地址直接写死在前端源码中。浏览器中的代码和请求内容都可能被用户查看。
-
-## 7. PUT、PATCH 和 DELETE 的基本结构
-
-### 7.1 PATCH：修改部分字段
-
-```js
-async function updateApplicationStatus(id, status) {
-  const response = await fetch(`/api/applications/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ status }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`状态更新失败：HTTP ${response.status}`);
-  }
-
-  return response.json();
-}
-```
-
-### 7.2 DELETE：删除数据
-
-```js
-async function deleteApplication(id) {
-  const response = await fetch(`/api/applications/${id}`, {
-    method: "DELETE",
-  });
-
-  if (!response.ok) {
-    throw new Error(`申请删除失败：HTTP ${response.status}`);
-  }
-}
-```
-
-删除接口可能返回 `204 No Content`。这种响应没有 JSON 响应体，因此成功后直接结束，不要调用 `response.json()`。
-
-`PUT` 的调用结构与 PATCH 接近，但通常发送资源的完整新状态。具体选择必须以接口设计书为准。
-
-## 8. 请求超时和取消
+## 5. 请求超时和取消
 
 `fetch()` 没有一个直接填写毫秒数的 `timeout` 属性。可以使用 `AbortController` 提供取消信号。
 
@@ -526,7 +304,7 @@ async function loadApplicationsWithTimeout() {
 
 项目是否设置五秒超时，应根据接口性能要求和业务规格决定，不能把示例数值机械用于所有请求。
 
-## 9. 页面中的完整请求状态
+## 6. 页面中的完整请求状态
 
 下面的完整 HTML 直接请求公开测试 URL。保存为 `fetch-demo.html`，使用浏览器打开后点击按钮。示例依赖网络连接和公开测试服务。
 
@@ -552,15 +330,22 @@ async function loadApplicationsWithTimeout() {
       async function loadPosts() {
         const requestUrl =
           "https://jsonplaceholder.typicode.com/posts?_limit=3";
-        const response = await fetch(requestUrl);
+        const controller = new AbortController();
+        const timerId = setTimeout(() => controller.abort(), 5000);
 
-        if (!response.ok) {
-          throw new Error(
-            `文章列表读取失败：HTTP ${response.status}`,
-          );
+        try {
+          const response = await fetch(requestUrl, {
+            signal: controller.signal,
+          });
+          if (!response.ok) {
+            throw new Error(
+              `文章列表读取失败：HTTP ${response.status}`,
+            );
+          }
+          return await response.json();
+        } finally {
+          clearTimeout(timerId);
         }
-
-        return response.json();
       }
 
       function renderPosts(posts) {
@@ -615,11 +400,240 @@ async function loadApplicationsWithTimeout() {
 | 成功 | 使用 `/posts?_limit=3` | 显示三条文章标题 |
 | 空数据 | 把 URL 临时改为 `/posts?_limit=0` | 显示“没有文章数据” |
 | HTTP 失败 | 把路径临时改为 `/unknown-path` | 显示失败提示，控制台保留状态信息 |
+| 请求超时 | 在 Network 限速或临时缩短等待上限后请求 | 显示失败，取消等待并恢复按钮 |
 | 请求结束 | 成功或失败 | 按钮恢复可用 |
 
 测试完成后，把 URL 恢复为第 3 节使用的完整地址。
 
-## 10. CORS 是什么
+先验证本节完整页面：请求期间显示加载状态，成功显示数据，失败显示错误，并且处理结束后恢复按钮。下面的 `/api/applications` 示例用于阅读请求结构，需要配套后端，不替换已经能运行的公开接口实验；应用到页面时仍要保留刚才的超时、状态检查和失败处理。
+
+## 7. 使用查询参数发送检索条件
+
+查询参数放在 URL 的 `?` 后面：
+
+```text
+/api/applications?status=pending&employeeNumber=EMP-00001
+```
+
+不要手动拼接未经处理的用户输入。可以使用 `URLSearchParams`：
+
+```js
+async function searchApplications(status, employeeNumber) {
+  const params = new URLSearchParams({
+    status,
+    employeeNumber,
+  });
+
+  const response = await fetch(`/api/applications?${params.toString()}`);
+
+  if (!response.ok) {
+    throw new Error(`申请检索失败：HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+```
+
+`new URLSearchParams(init)` 创建查询参数对象。本例传入普通对象，属性名成为参数名，属性值成为参数值。
+
+`params.toString()` 返回经过 URL 编码的查询字符串，例如：
+
+```text
+status=pending&employeeNumber=EMP-00001
+```
+
+参数名和取值必须与后端接口规格一致。
+
+## 8. 使用 POST 发送 JSON
+
+下面是向后端新增申请的请求函数。它属于接口代码片段，需要由后端提供 `/api/applications` 接口才能实际运行。
+
+```js
+async function createApplication(application) {
+  const response = await fetch("/api/applications", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(application),
+  });
+
+  if (!response.ok) {
+    throw new Error(`申请提交失败：HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+```
+
+这里开始使用 `fetch(url, options)` 的第二个参数；`options` 是控制发送方式的对象，不是直接交给后端的数据。其中：`method` 指定 POST，`headers` 声明请求体格式，`body` 保存 JSON 字符串。
+
+`Content-Type: application/json` 告诉后端请求体使用 JSON 格式。`JSON.stringify(application)` 把 JavaScript 对象转换成 JSON 字符串。
+
+调用示例：
+
+```js
+const newApplication = {
+  employeeNumber: "EMP-00001",
+  type: "休假申请",
+  startDate: "2026-09-10",
+};
+
+createApplication(newApplication)
+  .then((createdApplication) => {
+    console.log("创建成功", createdApplication);
+  })
+  .catch((error) => {
+    console.error("创建失败", error);
+  });
+```
+
+不要把密码、令牌或内部地址直接写死在前端源码中。浏览器中的代码和请求内容都可能被用户查看。
+
+## 9. 按需求选择 options 配置
+
+本节的短代码均为 `async` 函数内部的配置片段，用来对比选项，不是完整页面脚本。将选项用于第 6 节的完整页面时，保留函数外壳、超时及失败处理；不要把带await的片段直接粘贴到普通app.js的顶层。涉及 `/api/applications` 的代码还需要对应后端接口。
+
+`fetch()` 的第二个参数是可选的 `options` 对象，也常写作 `init`。只发送普通 GET 请求时可以省略：
+
+```js
+const response = await fetch(url);
+```
+
+需要指定请求方法、请求头、请求体、认证信息或取消信号时再传入：
+
+```js
+const response = await fetch("/api/applications", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+  body: JSON.stringify({
+    type: "休假申请",
+    startDate: "2026-09-10",
+  }),
+  credentials: "same-origin",
+});
+```
+
+这个对象不是后端收到的业务数据。它是浏览器发送请求时使用的配置。
+
+常见属性如下：
+
+| 属性 | 可接受的值 | 默认值或必填性 | 作用 |
+| --- | --- | --- | --- |
+| `method` | `GET`、`POST`、`PUT`、`PATCH`、`DELETE` 等方法字符串 | 可选，默认 `GET` | 指定 HTTP 请求方法 |
+| `headers` | 普通键值对象、`Headers` 对象或键值对数组 | 可选，默认没有自定义请求头 | 设置 Content-Type、Accept 等请求头 |
+| `body` | 字符串、`FormData`、`URLSearchParams`、Blob 等 | 可选，默认没有请求体 | 设置发送给后端的请求内容；GET 和 HEAD 不能设置 |
+| `signal` | `AbortSignal` 对象 | 可选 | 接收取消通知，用于主动取消或实现超时 |
+| `credentials` | `omit`、`same-origin`、`include` | 可选，默认 `same-origin` | 控制是否发送和接收 Cookie 等凭据 |
+| `mode` | `cors`、`same-origin`、`no-cors` | 可选，普通跨来源请求通常使用默认的 `cors` | 控制请求的跨来源模式 |
+| `cache` | `default`、`no-store`、`reload`、`no-cache`、`force-cache`、`only-if-cached` | 可选，默认 `default` | 控制请求怎样使用浏览器 HTTP 缓存 |
+| `redirect` | `follow`、`error`、`manual` | 可选，默认 `follow` | 控制遇到重定向响应时怎样处理 |
+
+### 9.1 `method`、`headers` 和 `body`
+
+这三个属性通常配合使用：
+
+```js
+const response = await fetch("/api/applications", {
+  method: "PATCH",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    status: "approved",
+  }),
+});
+```
+
+- `method` 决定本次请求要执行的操作。
+- `Content-Type` 告诉后端当前请求体的格式。
+- `body` 放置真正提交的数据。
+- 发送 JSON 时，需要先使用 `JSON.stringify()` 转成字符串。
+- 使用 `FormData` 上传表单或文件时，通常不要手动设置 `Content-Type`，浏览器会自动添加包含 boundary 的正确请求头。
+
+查询参数不属于 `options`。GET 的检索条件仍然写在 URL 中，见第 7 节的 `URLSearchParams` 示例。
+
+### 9.2 `credentials`
+
+`credentials` 控制浏览器是否在请求中携带 Cookie 等凭据：
+
+| 值 | 含义 |
+| --- | --- |
+| `omit` | 不发送凭据，也忽略响应中用于设置凭据的信息 |
+| `same-origin` | 只在同源请求中使用凭据，默认值 |
+| `include` | 同源和跨来源请求都尝试使用凭据 |
+
+跨来源请求使用 `include` 时，后端还必须返回允许指定来源和凭据的 CORS 响应头，Cookie 本身也会受到 SameSite 等规则限制。仅修改前端选项不能绕过服务器限制。
+
+### 9.3 `signal`
+
+```js
+const controller = new AbortController();
+
+const response = await fetch("/api/applications", {
+  signal: controller.signal,
+});
+```
+
+`signal` 本身不会自动取消请求。其他代码调用 `controller.abort()` 后，信号才会通知 `fetch()` 停止请求。第 5 节已经用它实现超时。
+
+### 9.4 `mode`、`cache` 和 `redirect`
+
+这三个属性在有明确项目需求时再设置：
+
+- 普通跨来源接口请求通常保持 `mode: "cors"`。
+- `mode: "same-origin"` 会阻止向其他来源发送请求。
+- 不要使用 `mode: "no-cors"` 解决 CORS 错误；得到的通常是不允许读取状态和响应体的 opaque 响应。
+- `cache: "no-store"` 表示不使用也不保存 HTTP 缓存，适合明确要求每次获取最新结果的场景。
+- `cache: "no-cache"` 并不等于完全不用缓存，而是要求先向服务器验证缓存是否仍然有效。
+- `redirect: "follow"` 会自动跟随重定向，也是默认行为。
+
+大多数业务请求只需要 `method`、`headers`、`body` 和必要的 `signal`。不要为了显得配置完整而机械填写所有属性。
+
+## 10. PUT、PATCH 和 DELETE 的基本结构
+
+### 10.1 PATCH：修改部分字段
+
+```js
+async function updateApplicationStatus(id, status) {
+  const response = await fetch(`/api/applications/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`状态更新失败：HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+```
+
+### 10.2 DELETE：删除数据
+
+```js
+async function deleteApplication(id) {
+  const response = await fetch(`/api/applications/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error(`申请删除失败：HTTP ${response.status}`);
+  }
+}
+```
+
+删除接口可能返回 `204 No Content`。这种响应没有 JSON 响应体，因此成功后直接结束，不要调用 `response.json()`。
+
+`PUT` 的调用结构与 PATCH 接近，但通常发送资源的完整新状态。具体选择必须以接口设计书为准。
+
+## 11. CORS 是什么
 
 浏览器会限制网页随意读取其他来源的响应。协议、主机或端口任意一项不同，通常就属于不同来源：
 
@@ -639,7 +653,7 @@ CORS 是服务器通过响应头告诉浏览器“哪些来源可以读取响应
 
 CORS 是浏览器的读取限制，不等于后端权限控制。即使页面隐藏按钮或请求被浏览器拦截，后端仍必须进行认证、授权和数据校验。
 
-## 11. 使用 Network 面板排查请求
+## 12. 使用 Network 面板排查请求
 
 打开浏览器开发者工具的 Network 面板，重新执行请求，重点查看：
 
@@ -666,15 +680,15 @@ CORS 是浏览器的读取限制，不等于后端权限控制。即使页面隐
 
 不要看到页面没数据显示，就直接判断是“后端问题”。Network 面板可以帮助区分请求没有发出、接口返回错误、JSON 解析失败和 DOM 渲染失败。
 
-## 12. 常见错误
+## 13. 常见错误
 
-### 12.1 忘记检查 `response.ok`
+### 13.1 忘记检查 `response.ok`
 
 症状：服务器返回 404 或 500，但代码仍继续解析或渲染。
 
 修正：在读取响应体前检查 `response.ok`，不成功时抛出包含状态码的错误。
 
-### 12.2 忘记等待 `response.json()`
+### 13.2 忘记等待 `response.json()`
 
 ```js
 const data = response.json();
@@ -687,11 +701,11 @@ console.log(data); // Promise，不是最终数据
 const data = await response.json();
 ```
 
-### 12.3 GET 请求错误地设置 `body`
+### 13.3 GET 请求错误地设置 `body`
 
 GET 查询条件通常放在 URL 查询参数中。使用 `URLSearchParams`，并遵守后端接口规格。
 
-### 12.4 POST 直接发送普通对象
+### 13.4 POST 直接发送普通对象
 
 ```js
 body: application // 错误：普通对象不能直接作为 JSON 请求体
@@ -703,15 +717,15 @@ body: application // 错误：普通对象不能直接作为 JSON 请求体
 body: JSON.stringify(application)
 ```
 
-### 12.5 对 204 响应调用 `json()`
+### 13.5 对 204 响应调用 `json()`
 
 204 没有响应体，继续解析 JSON 可能报错。根据状态码和接口规格决定是否读取响应体。
 
-## 13. Axios 基础使用
+## 14. Axios 基础使用
 
 Axios 是基于 Promise 的 HTTP 客户端。它不是 JavaScript 内置功能，需要先安装或由页面加载。零基础阶段只要求会发送常见请求、读取响应数据并处理失败；实例、拦截器和认证封装应在具体框架或项目课程中继续学习。
 
-### 13.1 在本章练习页面中引入
+### 14.1 在本章练习页面中引入
 
 本章还没有进入构建工具，练习页面先使用CDN脚本。把Axios放在自己的`app.js`之前加载：
 
@@ -722,19 +736,9 @@ Axios 是基于 Promise 的 HTTP 客户端。它不是 JavaScript 内置功能�
 
 第一个`<script>`加载Axios，并提供全局变量`axios`；第二个加载自己的页面脚本。这个示例需要网络连接。
 
-使用npm和构建工具的项目改为：
+本章统一采用上述CDN引入方式。构建项目中的依赖安装与模块导入见[第22章](22_modules_script_organization.md)，不要混用两种环境的代码。
 
-```bash
-npm install axios
-```
-
-```js
-import axios from "axios";
-```
-
-`import`属于第22章的模块知识。学完模块并进入Vue、React等构建项目后再使用npm写法；不能把包名`axios`直接当作普通浏览器相对路径。
-
-### 13.2 发送 GET 请求
+### 14.2 发送 GET 请求
 
 ```js
 async function loadApplications() {
@@ -757,7 +761,7 @@ async function loadApplications() {
 - `response.data` 是响应正文；
 - Axios会把超出默认成功范围的HTTP状态作为失败交给`catch`。
 
-### 13.3 发送 POST 请求
+### 14.3 发送 POST 请求
 
 ```js
 async function createApplication(application) {
@@ -773,23 +777,38 @@ async function createApplication(application) {
 
 `axios.post(url, data?, config?)` 的第二个参数是请求数据，第三个参数是配置对象。传入普通对象时，Axios通常会按JSON请求处理。
 
-### 13.4 识别 Axios 错误
+### 14.4 识别 Axios 错误
 
 ```js
-try {
-  await axios.get("/api/applications", { timeout: 5000 });
-} catch (error) {
-  if (axios.isAxiosError(error)) {
-    console.error(error.response?.status, error.message);
-  } else {
-    console.error("未知错误", error);
+async function inspectAxiosError() {
+  try {
+    const response = await axios.get(
+      "https://jsonplaceholder.typicode.com/unknown-path",
+      { timeout: 5000 }
+    );
+    console.log(response.data);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response !== undefined) {
+        console.error("HTTP状态：", error.response.status);
+      } else {
+        console.error("未收到服务器响应");
+      }
+      console.error(error.message);
+    } else {
+      console.error("未知错误", error);
+    }
   }
 }
+
+inspectAxiosError();
 ```
+
+这段代码在已加载Axios的普通app.js中运行，不使用顶层await。测试URL用于观察404响应；网络不可达或超时时应显示未收到响应，不保证每次都得到404。
 
 `axios.isAxiosError(error)` 判断捕获值是否是Axios错误。`error.response` 表示服务器返回了响应；没有响应时还可能是网络、超时或取消问题。页面仍应分别处理加载、成功、空数据和失败状态。
 
-### 13.5 fetch 与 Axios 如何选择
+### 14.5 fetch 与 Axios 如何选择
 
 | 场景 | 建议 |
 | --- | --- |
@@ -800,9 +819,9 @@ try {
 
 不要在同一功能中无理由混用两套请求方式。
 
-## 14. 本章练习
+## 15. 本章练习
 
-### 14.1 初始文件
+### 15.1 初始文件
 
 新建：
 
@@ -820,7 +839,7 @@ https://jsonplaceholder.typicode.com/todos?_limit=5
 
 每条数据包含 `userId`、`id`、`title` 和 `completed`。
 
-### 14.2 任务要求
+### 15.2 任务要求
 
 1. 在 HTML 中准备“读取任务”按钮、状态区域和列表。
 2. 使用 `fetch()` 请求上面的完整 URL。
@@ -834,7 +853,7 @@ https://jsonplaceholder.typicode.com/todos?_limit=5
 10. 把 `_limit` 改为 `0`，确认页面能够显示空数据状态。
 11. 写出一个 POST 请求代码片段，用于提交新的任务对象；不要求公开测试服务永久保存数据。
 
-### 14.3 完成标准
+### 15.3 完成标准
 
 - 能解释 `fetch()` 与 `response.json()` 为什么都需要等待。
 - 能说明为什么 404 不一定自动进入 `catch`。

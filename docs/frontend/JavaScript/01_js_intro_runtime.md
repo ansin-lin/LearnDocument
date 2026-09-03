@@ -173,15 +173,19 @@ paid-leave-system/
 
 `defer` 只适用于通过 `src` 加载的外部脚本。本课程现阶段不展开其他脚本加载方式。
 
-## 4. 控制台输出
+## 4. 完成一次外部脚本运行
 
-在 `app.js` 中写：
+新建独立目录 `js-intro-practice`，创建 `index.html` 和 `js/app.js`。把第 2.2 节完整 HTML 保存到 `index.html`，删除其中的内部脚本，在 `head` 内加入 `<script src="js/app.js" defer></script>`。不要同时保留内部、外部两份实验脚本。
+
+在 `js/app.js` 中写：
 
 ```js
 console.log("JavaScript が読み込まれました");
 ```
 
-打开浏览器开发者工具的 Console 面板，可以看到输出。
+保存两个文件，用浏览器打开 `index.html`，按 F12 打开开发者工具并选择 Console。应看到一行“JavaScript が読み込まれました”。页面正文不会因为 `console.log()` 自动增加文字。
+
+把消息改为“脚本修改成功”，保存后刷新页面，应看到新的消息。如果没有输出，先确认已保存，再在 Network 中检查 `js/app.js` 是否加载成功；不要把脚本路径错误误认为 JavaScript 语法错误。
 
 `console.log()` 常用于：
 
@@ -193,7 +197,7 @@ console.log("JavaScript が読み込まれました");
 
 ## 5. 看懂常见错误
 
-示例：
+在上一节脚本末尾临时追加下面的错误示例，保存并刷新。观察后删除这一行，再刷新确认恢复正常：
 
 ```js
 console.log(userName);
@@ -218,19 +222,16 @@ ReferenceError: userName is not defined
 
 ## 6. 本章练习
 
-练习使用 `docs/frontend/training/paid-leave-system/` 中的现有项目文件。本章只修改下面两个文件：
+本章使用独立练习目录，不修改综合项目中尚未完成的页面脚本。
 
-- `login.html`
-- `js/app.js`
+1. 新建 `js-intro-practice` 文件夹，在其中创建 `index.html` 和 `js/app.js`。
+2. 将第 2.2 节的完整 HTML 复制到 `index.html`，删除内部的 `<script>...</script>`，在 `head` 中添加 `<script src="js/app.js" defer></script>`。
+3. 在 `js/app.js` 中写入 `console.log("JS loaded");`。
+4. 在浏览器中打开 `index.html`，打开 Console，确认显示 `JS loaded`。
+5. 分别说明三种引入方式的位置，并指出推荐的方式。
+6. 在 `app.js` 末尾临时添加 `console.log(userName);`，观察未声明变量的错误；删除该行后刷新，恢复正常。
 
-开始前先确认两个文件已经存在，不新建同名文件。
-
-1. 打开 `js/app.js`，在文件末尾临时添加 `console.log("JS loaded");`。
-2. 打开 `login.html`，确认 `head` 中通过外部引入方式加载 `js/app.js`，并添加 `defer`。
-3. 在浏览器中打开 `login.html`，打开开发者工具的 Console 面板。
-4. 确认 Console 显示 `JS loaded`，证明外部脚本已经成功加载。
-5. 分别说明行内、内部和外部引入的代码写在哪里，并指出项目中推荐的方式。
-6. 在 `app.js` 末尾故意输出一个不存在的变量，观察 `ReferenceError` 后删除该行，恢复可正常运行的状态。
+目录中的文件由你在本次练习中新建。如果已有同名实验目录，另取名称，不覆盖原文件。
 
 ## 本章检查点
 

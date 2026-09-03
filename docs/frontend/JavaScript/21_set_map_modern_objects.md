@@ -33,7 +33,16 @@
 4. 希望使用对象本身作为键；
 5. 希望在读写对象属性时执行校验或记录日志。
 
-这些问题分别适合使用 `Set`、`Map`、`Symbol`、`Proxy` 和 `Reflect` 解决。
+不要把这些问题与技术名称逐项机械对应，应先看数据或操作需求：
+
+| 需求 | 合适的能力 | 原因 |
+| --- | --- | --- |
+| 日期去重、判断编号是否处理 | Set | 保存一组不重复的值并检查是否存在 |
+| 状态代码映射、使用对象作为键 | Map | 保存键与值的对应关系 |
+| 创建不会与其他键冲突的标识 | Symbol | 创建唯一值，可作为对象属性键 |
+| 在对象读写时插入校验或日志 | Proxy | 拦截操作；需要继续正常读写时可配合 Reflect |
+
+Set 和 Map 用来组织数据；Symbol、Proxy、Reflect 用来表达或控制对象操作，不是数组和对象的普遍替代品。
 
 ---
 
@@ -470,6 +479,12 @@ console.log(applicationCountMap.get({ id: 1, name: "山田太郎" }));
 
 ---
 
+### Set 与 Map 的阶段检查
+
+先完成本章练习 1、2：重复加入同一天只保留一项；修改已有状态键的显示文字不增加 Map 的数量。再说明为什么 `set.has(value)` 只回答是否存在，而 `map.get(key)` 能取得对应的值。
+
+下面的弱引用集合、Symbol 和代理用于理解工具及框架代码。完成这些扩展时，应能说明它们解决的问题，不要求把它们全部加入自己的页面项目。
+
 ## 第三部分：弱引用集合
 
 > 到这里已经完成本章必须掌握的`Set`和`Map`。第三至第五部分用于阅读框架或既有代码，可以在完成核心练习后再学习。
@@ -611,6 +626,8 @@ const proxy = new Proxy(target, handler);
 | `handler` | 保存拦截方法的对象 |
 | `proxy` | 外部实际使用的代理对象 |
 
+下面先认识代理中要用到的 `Reflect.get(target, property, receiver)`：它按语言内置的属性读取规则取得 `target` 的 `property` 属性，并返回属性值。`receiver` 是代理调用拦截方法时自动传入的接收对象，本例原样交给 `Reflect.get()`，不需要自己创建。`Reflect` 是内置对象，不需要使用 `new` 创建实例。
+
 例如，读取申请记录中不存在的属性时给出提示：
 
 ```js
@@ -648,6 +665,8 @@ console.log(applicationProxy.status);
 初学阶段重点理解 `get` 和 `set`。
 
 #### 13.2 使用 set 校验赋值
+
+下面的 `Reflect.set(target, property, value, receiver)` 按普通赋值规则设置属性，返回是否成功的布尔值；receiver的含义与上面的读取示例对应。拦截器在验证通过后，返回这个赋值结果。
 
 ```js
 const allowedStatuses = new Set([
@@ -744,7 +763,7 @@ const applicationProxy = new Proxy(application, {
 });
 ```
 
-这里的 `receiver` 表示本次操作实际作用到的接收对象。使用 Reflect 并传递 `receiver`，能够更完整地保留 getter、setter 和继承等语言行为。
+这里的 `receiver` 是代理自动传入的接收对象。两个拦截方法都先接收本次操作的参数，再原样交给对应的 Reflect 方法：读取时返回取得的值，设置时返回是否成功的布尔值。这样可以在添加日志、校验等处理后，继续按语言内置规则完成原本的读写操作。
 
 ---
 

@@ -17,13 +17,13 @@
 
 ```js
 const accountId = "  YAMADA.TARO  ";
-const normalizedAccountId = accountId.trim().toLowerCase();
+const normalizedAccountId = accountId.trim();
 
 console.log(accountId);           // "  YAMADA.TARO  "
-console.log(normalizedAccountId); // "yamada.taro"
+console.log(normalizedAccountId); // "YAMADA.TARO"
 ```
 
-`trim()` 去除字符串开头和结尾的空白，`toLowerCase()` 把英文字母转换成小写。这里连续调用两个方法，得到整理后的账号字符串。
+`trim()` 不接收参数，返回去掉首尾空白后的新字符串。对比两次输出：原变量仍有空格，新变量没有空格。它没有修改原来的字符串。大小写转换和组合调用分别见本章后续小节。
 
 需要保存处理结果时，应把返回值赋给新变量，或者重新赋值给使用 `let` 声明的变量。
 

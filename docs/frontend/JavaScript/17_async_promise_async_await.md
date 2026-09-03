@@ -1,4 +1,4 @@
-# 第 18 章 异步处理、Promise 与 async/await
+# 第 17 章 异步处理、Promise 与 async/await
 
 网页经常需要等待：等待定时器结束、等待服务器返回数据、等待用户完成操作。如果 JavaScript 在等待期间什么都不能做，页面就会卡住。异步处理让程序能够先继续执行其他代码，等结果准备好后再处理它。
 
@@ -17,12 +17,12 @@
 
 ## 本章学习路线
 
-本章保留在一个文件中，按三个阶段学习：
+本章使用同一组模拟用户和申请数据，逐步观察结果怎样交给后续处理：
 
 | 阶段 | 对应小节 | 重点 |
 | --- | --- | --- |
 | 理解异步结果 | 第1～3节 | 执行顺序、回调、Promise状态 |
-| 使用Promise | 第4～6节 | `then()`、`catch()`、`finally()`和Promise链 |
+| 创建与使用 Promise | 第4～6节 | 最小可运行任务、成功与失败处理、Promise 链 |
 | 使用async/await | 第7～12节 | 异常处理、并行等待、页面状态和排错 |
 
 第一次学习不要同时混写Promise链和`async/await`。先分别完成两个阶段的示例，再比较两种写法。
@@ -228,84 +228,11 @@ Promise 从 `pending` 变为 `fulfilled` 或 `rejected` 后，状态就确定了
 | 无论成功或失败都要执行的收尾 | `finally()` |
 | 多个有依赖关系的任务 | Promise 链，或后面的 `async/await` |
 
-接下来先站在调用方的角度使用已有 Promise，再学习怎样创建 Promise。
+先创建一个能观察到完成结果的小任务，认识结果从哪里来；再把它封装成函数，集中练习调用方怎样处理成功与失败。
 
-## 4. 先学会使用已有的 Promise
+## 4. Promise 是怎样创建和完成的
 
-下面先假设项目中已经有一个 `loadApplications()` 函数。调用它会立即返回 Promise，约半秒后得到申请数组或错误。
-
-### 4.1 `then()` 处理成功结果
-
-```js
-loadApplications("EMP-00001").then((applications) => {
-  console.log(applications);
-});
-```
-
-`then(onFulfilled)` 为 Promise 登记成功处理函数：
-
-| 参数 | 可接受的值 | 默认值或必填性 | 作用 |
-| --- | --- | --- | --- |
-| `onFulfilled` | 函数 | 可选 | Promise 成功后接收成功值 |
-
-`then()` 不会让当前代码停下来等待。它会立即返回一个新的 Promise，并在原 Promise 成功后调用传入的函数。示例中的 `applications` 会收到成功值。
-
-### 4.2 `catch()` 处理失败
-
-```js
-loadApplications("UNKNOWN")
-  .then((applications) => {
-    console.log(applications);
-  })
-  .catch((error) => {
-    console.error("读取申请失败", error.message);
-  });
-```
-
-`catch(onRejected)` 为 Promise 登记失败处理函数：
-
-| 参数 | 可接受的值 | 默认值或必填性 | 作用 |
-| --- | --- | --- | --- |
-| `onRejected` | 函数 | 可选 | 接收 Promise 的失败原因 |
-
-原 Promise 失败，或者前面的 `then()` 中抛出错误时，流程会跳到能够处理该错误的 `catch()`。`catch()` 也会返回一个新的 Promise。
-
-### 4.3 `finally()` 执行共同收尾
-
-```js
-console.log("显示加载中");
-
-loadApplications("EMP-00001")
-  .then((applications) => {
-    console.log("读取成功", applications);
-  })
-  .catch((error) => {
-    console.error("读取失败", error.message);
-  })
-  .finally(() => {
-    console.log("关闭加载中");
-  });
-```
-
-`finally(onFinally)` 登记共同收尾函数。无论前面的 Promise 成功还是失败都会执行，适合关闭加载提示、恢复按钮等操作。
-
-`finally()` 的回调不接收业务成功值或失败原因，因为它不负责判断结果。它同样返回一个新的 Promise。
-
-### 4.4 调用方只负责使用结果
-
-```text
-调用函数取得 Promise
-        ↓
-then() 处理成功值
-catch() 处理失败原因
-finally() 执行共同收尾
-```
-
-调用方不直接调用 `resolve()` 或 `reject()`。它们属于创建 Promise 的函数，下一节再打开 `loadApplications()` 的内部观察。
-
-## 5. Promise 是怎样创建和完成的
-
-### 5.1 使用 `new Promise()` 创建 Promise
+### 4.1 使用 `new Promise()` 创建 Promise
 
 ```js
 const task = new Promise((resolve, reject) => {
@@ -323,12 +250,12 @@ console.log(task);
 
 JavaScript 会把两个函数交给 `executor`：
 
-- `resolve(value)`：让 Promise 变为 `fulfilled`，并保存成功值。
+- `resolve(value)`：交付结果；本章传入普通数组或对象时，Promise 以该值成功。若传入另一个 Promise，会跟随它的最终结果，而不是立即成功。
 - `reject(reason)`：让 Promise 变为 `rejected`，并保存失败原因。
 
 `executor` 在创建 Promise 时立即执行，不是任务完成后才执行。真正需要等待的是其中的定时器、网络请求等操作。当前示例没有调用 `resolve()` 或 `reject()`，因此 `task` 会一直保持 `pending`。
 
-### 5.2 用 `resolve()` 交付成功值
+### 4.2 用 `resolve()` 交付成功值
 
 ```js
 const task = new Promise((resolve) => {
@@ -344,7 +271,11 @@ task.then((applications) => {
 
 半秒后，`resolve(applications)` 把数组保存为 Promise 的成功值，`then()` 中的参数收到这个数组。`resolve()` 不是普通 `return`，它的作用是确定 Promise 状态并交付结果。
 
-### 5.3 用 `reject()` 交付失败原因
+这里的 `task.then(处理函数)` 登记成功后的动作：参数是函数，成功值会成为该函数的实参，方法本身立即返回另一个 Promise。运行上例约半秒后，应输出两项申请数组；不是调用 `then()` 就立刻有数组。
+
+执行顺序是：创建 task → 启动定时器 → 登记成功回调 → 当前脚本结束 → 定时器调用 resolve → 成功回调收到数组。
+
+### 4.3 用 `reject()` 交付失败原因
 
 ```js
 const task = new Promise((resolve, reject) => {
@@ -360,9 +291,11 @@ task.catch((error) => {
 
 `reject(reason)` 让 Promise 进入失败状态。失败原因理论上可以是任意值，但项目中应优先传入 `Error` 对象，以保留错误名称、消息和调用信息。
 
-### 5.4 封装稳定的模拟业务函数
+`task.catch(处理函数)` 登记失败后的动作，接收失败原因并返回另一个 Promise。本例约半秒后输出错误消息。与成功示例分别运行，不要把两段 `const task` 放在同一作用域。
 
-本章后续统一使用下面两个函数：
+### 4.4 封装稳定的模拟业务函数
+
+把第 2 节的回调实验从 `js/app.js` 中移除，用下面两个函数替换。它们不再接收成功、失败回调，而是返回 Promise。本节先保存函数定义，下一节在同一文件末尾追加调用：
 
 ```js
 function loadCurrentUser() {
@@ -407,6 +340,79 @@ function loadApplications(employeeNumber) {
 ```
 
 实际项目中更常见的是使用 `fetch()` 等已经返回 Promise 的接口。能够看懂并编写简单的 Promise 包装即可，不要为了使用 Promise 而重复包装一个本来就返回 Promise 的函数。
+
+## 5. 使用 Promise 处理成功、失败与收尾
+
+保留第 4.4 节的 `loadCurrentUser()` 和 `loadApplications()` 两个函数。下面每次只追加一个调用示例，替换上一次的调用；不要重新加入第 2 节的回调版本。调用 `loadApplications()` 会立即返回 Promise，约半秒后得到申请数组或错误。
+
+### 5.1 `then()` 处理成功结果
+
+```js
+loadApplications("EMP-00001").then((applications) => {
+  console.log(applications);
+});
+```
+
+`then(onFulfilled)` 为 Promise 登记成功处理函数：
+
+| 参数 | 可接受的值 | 默认值或必填性 | 作用 |
+| --- | --- | --- | --- |
+| `onFulfilled` | 函数 | 可选 | Promise 成功后接收成功值 |
+
+`then()` 不会让当前代码停下来等待。它会立即返回一个新的 Promise，并在原 Promise 成功后调用传入的函数。示例中的 `applications` 会收到成功值。
+
+### 5.2 `catch()` 处理失败
+
+```js
+loadApplications("UNKNOWN")
+  .then((applications) => {
+    console.log(applications);
+  })
+  .catch((error) => {
+    console.error("读取申请失败", error.message);
+  });
+```
+
+`catch(onRejected)` 为 Promise 登记失败处理函数：
+
+| 参数 | 可接受的值 | 默认值或必填性 | 作用 |
+| --- | --- | --- | --- |
+| `onRejected` | 函数 | 可选 | 接收 Promise 的失败原因 |
+
+原 Promise 失败，或者前面的 `then()` 中抛出错误时，流程会跳到能够处理该错误的 `catch()`。`catch()` 也会返回一个新的 Promise。
+
+### 5.3 `finally()` 执行共同收尾
+
+```js
+console.log("显示加载中");
+
+loadApplications("EMP-00001")
+  .then((applications) => {
+    console.log("读取成功", applications);
+  })
+  .catch((error) => {
+    console.error("读取失败", error.message);
+  })
+  .finally(() => {
+    console.log("关闭加载中");
+  });
+```
+
+`finally(onFinally)` 登记共同收尾函数。无论前面的 Promise 成功还是失败都会执行，适合关闭加载提示、恢复按钮等操作。
+
+`finally()` 的回调不接收业务成功值或失败原因，因为它不负责判断结果。它同样返回一个新的 Promise。
+
+### 5.4 调用方只负责使用结果
+
+```text
+调用函数取得 Promise
+        ↓
+then() 处理成功值
+catch() 处理失败原因
+finally() 执行共同收尾
+```
+
+调用方不直接调用 `resolve()` 或 `reject()`。它们属于上一节创建 Promise 的函数。调用方登记收到结果后要做的事；下一节把这些后续处理连接起来。
 
 ## 6. 使用 Promise 链连接连续任务
 
@@ -461,11 +467,22 @@ loadCurrentUser()
   });
 ```
 
-第一段回调没有返回值，新 Promise 会以 `undefined` 成功，下一段不会等待 `loadApplications()`。修正方法是写成：
+第一段回调没有返回值，新 Promise 会以 `undefined` 成功，下一段不会等待 `loadApplications()`。修正时替换整个调用链，保留前面的两个函数定义：
 
 ```js
-return loadApplications(user.employeeNumber);
+loadCurrentUser()
+  .then((user) => {
+    return loadApplications(user.employeeNumber);
+  })
+  .then((applications) => {
+    console.log(applications);
+  })
+  .catch((error) => {
+    console.error(error.message);
+  });
 ```
+
+关键变化是第一个回调增加 `return`，让下一步等待申请列表，而不是收到 `undefined`。
 
 ## 7. 使用 `async` 和 `await` 简化 Promise
 
@@ -649,10 +666,12 @@ async function loadIndependentData() {
   const applicationsPromise = loadApplications("EMP-00001");
   const departmentsPromise = loadDepartments();
 
-  const [applications, departments] = await Promise.all([
+  const results = await Promise.all([
     applicationsPromise,
     departmentsPromise,
   ]);
+  const applications = results[0];
+  const departments = results[1];
 
   console.log(applications);
   console.log(departments);

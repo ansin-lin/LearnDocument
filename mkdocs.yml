@@ -347,12 +347,12 @@ nav:
     - 10. 事件监听、事件传播与表单操作: frontend/JavaScript/10_events_forms.md
     - 11. 表单校验与错误提示: frontend/JavaScript/11_form_validation_errors.md
     - 12. 对象与数据结构: frontend/JavaScript/12_objects_data_structure.md
-    - 13. JSON 与浏览器本地存储: frontend/JavaScript/13_json_browser_storage.md
-    - 14. BOM、页面跳转与浏览器信息: frontend/JavaScript/14_bom_navigation_session.md
-    - 15. 日期、数字与常用工具函数: frontend/JavaScript/15_date_number_utils.md
-    - 16. 正则表达式与格式校验: frontend/JavaScript/16_regex_validation.md
-    - 17. 错误阅读与浏览器调试: frontend/JavaScript/17_error_debugging.md
-    - 18. 异步处理、Promise 与 async/await: frontend/JavaScript/18_async_promise_async_await.md
+    - 13. BOM、页面跳转与浏览器信息: frontend/JavaScript/13_bom_navigation_session.md
+    - 14. 日期、数字与常用工具函数: frontend/JavaScript/14_date_number_utils.md
+    - 15. 正则表达式与格式校验: frontend/JavaScript/15_regex_validation.md
+    - 16. 错误阅读与浏览器调试: frontend/JavaScript/16_error_debugging.md
+    - 17. 异步处理、Promise 与 async/await: frontend/JavaScript/17_async_promise_async_await.md
+    - 18. JSON 与浏览器本地存储: frontend/JavaScript/18_json_browser_storage.md
     - 19. HTTP 请求、fetch 与 Axios 基础: frontend/JavaScript/19_fetch_http_intro.md
     - 20. ES6+ 常用进阶语法: frontend/JavaScript/20_destructuring_spread_modern_syntax.md
     - 21. Set、Map 与元编程基础: frontend/JavaScript/21_set_map_modern_objects.md
