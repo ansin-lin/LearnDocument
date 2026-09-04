@@ -7,7 +7,7 @@
 - 使用对象字面量创建和组织业务数据。
 - 读取、新增、修改和删除对象属性。
 - 区分点语法和方括号语法的使用场景。
-- 定义对象方法，并理解方法中的 `this`。
+- 定义对象方法，并能根据调用方式判断普通函数中的 `this`。
 - 处理嵌套对象和对象数组。
 - 遍历对象，并判断属性是否属于对象自身。
 - 说明对象赋值、修改和比较时的引用特点。
@@ -16,8 +16,8 @@
 ## 掌握要求
 
 - **必须掌握**：对象字面量、属性操作、对象方法、嵌套对象、对象数组、常用遍历方式和引用特点。
-- **需要掌握**：计算属性名、属性存在性判断、`this`、浅复制和`structuredClone()`的适用边界。
-- **会使用、能看懂**：构造函数、实例、`prototype`、原型链查找、自有属性与继承属性。
+- **需要掌握**：计算属性名、属性存在性判断、对象方法中的 `this`、浅复制和`structuredClone()`的适用边界。
+- **会使用、能看懂**：方法被单独取出时的 `this`、`call()`、`apply()`、`bind()`、构造函数、实例、`prototype`、原型链查找、自有属性与继承属性。
 - **后续学习**：对象解构、完整展开语法、`Map`、`Set`、`Proxy` 和 `Reflect`。
 
 ## 示例运行约定
@@ -891,9 +891,25 @@ console.log(calculator.double(3)); // 6
 
 两种写法在这个实验中完成相同任务。接下来让方法读取它所属对象的字段，就需要认识 `this`。
 
-### 7.2 理解方法中的 `this`
+### 7.2 先记住判断原则：看调用方式
 
-`this` 是函数执行时取得的一个值，不是固定的对象名称。用 `application.showStatus()` 这样的方式调用普通方法时，`this` 指向点号左侧的 `application`。因此方法中可以通过 `this.status` 读取当前调用对象的状态：
+`this` 是函数执行时取得的一个值，用于表示“本次调用时正在操作的对象”。它不是固定的对象名称，也不能只看函数写在哪里来判断。
+
+判断普通函数中的 `this` 时，先看函数怎样被调用：
+
+| 调用方式 | 示例 | 普通函数中的 `this` |
+| --- | --- | --- |
+| 对象方法调用 | `application.showStatus()` | 点号左侧的 `application` |
+| 单独调用 | `showStatus()` | 严格模式下是 `undefined`；非严格的浏览器普通脚本中通常是 `window` |
+| 指定对象后调用 | `showStatus.call(application)` | `call()` 指定的 `application` |
+| 构造调用 | `new Application()` | `new` 创建的新对象 |
+| 箭头函数 | `() => {}` | 不创建自己的 `this`，使用外层作用域的 `this` |
+
+新人最常用的是“对象方法调用”。看到 `对象.方法()` 时，普通方法内的 `this` 通常就是点号左侧的对象。
+
+### 7.3 作为对象方法调用
+
+用 `application.showStatus()` 调用普通方法时，`this` 指向点号左侧的 `application`。因此方法可以通过 `this.status` 读取当前调用对象的状态：
 
 ```js
 const application = {
@@ -907,7 +923,9 @@ const application = {
 application.showStatus(); // REQ-001: pending
 ```
 
-`this` 不是在定义函数时永久绑定到某个对象。下面是独立实验：同一个函数放到两个对象上，由谁调用，就读取谁的姓名。
+`this.id` 和 `this.status` 分别读取“本次调用者”的两个属性。这样的方法不必把对象名称 `application` 写死，能够复用于其他具有相同字段的对象。
+
+`this` 不是在定义函数时永久绑定到某个对象。下面是独立实验：同一个函数放到两个对象上，由谁以方法形式调用，就读取谁的姓名。
 
 ```js
 function showName() {
@@ -935,11 +953,75 @@ console.log(application.changeStatus("approved")); // approved
 console.log(application.status);                   // approved
 ```
 
-这里通过属性赋值添加方法，参数 `nextStatus` 接收新状态。`this.status` 修改原对象，`return` 把修改后的值交给调用者。
+这里通过属性赋值添加方法，参数 `nextStatus` 接收新状态。`this.status` 修改本次调用该方法的对象，`return` 把修改后的值交给调用者。
 
-#### 7.2.1 不要用箭头函数定义需要自身 `this` 的方法
+### 7.4 方法被单独取出后，调用者会丢失
 
-箭头函数没有自己的 `this`。下面的 `this` 不会自动变成 `user`：
+下面的 `showStatus` 变量只保存函数本身，不再保留前面的 `application.`：
+
+```js
+"use strict";
+
+const application = {
+  status: "pending",
+  showStatus() {
+    console.log(this.status);
+  }
+};
+
+const showStatus = application.showStatus;
+showStatus();
+// TypeError: Cannot read properties of undefined
+```
+
+`"use strict"` 开启严格模式。严格模式下直接写 `showStatus()` 调用普通函数时，`this` 是 `undefined`，所以不能继续读取 `this.status`。
+
+即使函数最初写在 `application` 对象中，把它取出后单独调用，也不会自动记住原对象。常见修正方式有两种：
+
+```js
+application.showStatus(); // 保留“对象.方法()”调用
+
+const boundShowStatus = application.showStatus.bind(application);
+boundShowStatus(); // 使用 bind() 固定调用对象
+```
+
+`bind(object)` 返回一个新函数，并把新函数运行时的 `this` 固定为指定对象。它不会立即执行原函数。
+
+### 7.5 使用 `call()`、`apply()` 和 `bind()` 指定 `this`
+
+这三个函数方法都能明确指定普通函数中的 `this`，区别在于是否立即调用以及怎样传入参数。
+
+```js
+function showApplication(prefix, suffix) {
+  console.log(`${prefix}${this.id}${suffix}`);
+}
+
+const application = { id: "REQ-001" };
+
+showApplication.call(application, "申请：", "（确认中）");
+showApplication.apply(application, ["申请：", "（确认中）"]);
+
+const boundShowApplication = showApplication.bind(
+  application,
+  "申请：",
+  "（确认中）"
+);
+boundShowApplication();
+```
+
+三行都会输出 `申请：REQ-001（确认中）`。
+
+| 方法 | 是否立即执行 | 参数写法 | 返回值 |
+| --- | --- | --- | --- |
+| `call(thisArg, arg1, arg2)` | 是 | 参数逐个传入 | 原函数的返回值 |
+| `apply(thisArg, argsArray)` | 是 | 参数放在数组中 | 原函数的返回值 |
+| `bind(thisArg, arg1, arg2)` | 否 | 可先传入部分或全部参数 | 固定了 `this` 的新函数 |
+
+第一个参数 `thisArg` 是希望函数内部 `this` 指向的对象。`call()` 和 `apply()` 适合“现在就用指定对象执行”，`bind()` 适合“把函数交给其他代码，稍后再执行”。业务代码不需要为了使用 `this` 而刻意调用它们，但应能看懂既有代码。
+
+### 7.6 箭头函数没有自己的 `this`
+
+不要使用箭头函数定义依赖对象自身 `this` 的方法。下面虽然写在 `user` 对象中，但箭头函数不会因为 `user.showName()` 这种调用方式而得到 `user`：
 
 ```js
 const user = {
@@ -950,7 +1032,7 @@ const user = {
 };
 ```
 
-需要读取当前对象时，使用普通方法简写：
+在本章的普通浏览器脚本中，这个箭头函数使用外层脚本的 `this`，而不是 `user`，所以结果不会是“山田 太郎”。需要读取当前对象时，改用普通方法简写：
 
 ```js
 const user = {
@@ -959,7 +1041,57 @@ const user = {
     console.log(this.name);
   }
 };
+
+user.showName(); // 山田 太郎
 ```
+
+箭头函数适合放在普通方法内部作为回调，因为它会沿用外层普通方法的 `this`：
+
+```js
+const application = {
+  id: "REQ-001",
+  reviewers: ["佐藤", "鈴木"],
+  showReviewers() {
+    this.reviewers.forEach((reviewer) => {
+      console.log(`${this.id}: ${reviewer}`);
+    });
+  }
+};
+
+application.showReviewers();
+// REQ-001: 佐藤
+// REQ-001: 鈴木
+```
+
+`showReviewers()` 是普通方法，所以其中的 `this` 是 `application`。内部箭头函数不创建新 `this`，继续使用外层方法的 `this`。`forEach()` 已在第七章讲解，本例只观察 `this` 的传递。
+
+### 7.7 构造函数调用与事件监听中的 `this`
+
+使用 `new Application()` 调用构造函数时，构造函数中的 `this` 指向本次创建的新对象。完整创建过程和示例见下一节。
+
+在 DOM 事件监听中，普通监听函数里的 `this` 通常与 `event.currentTarget` 相同，指向注册监听器的元素；箭头函数仍然没有自己的 `this`。为了让代码含义更明确，事件处理中优先读取 `event.currentTarget`。事件对象与传播过程见[第十章](10_events_forms.md)。
+
+```js
+const saveButton = document.querySelector("#saveButton");
+
+saveButton.addEventListener("click", function (event) {
+  console.log(this === event.currentTarget); // true
+});
+```
+
+这个片段要求 HTML 中存在 `<button id="saveButton" type="button">保存</button>`。这里使用普通函数只是为了观察 `this`；业务代码使用 `event.currentTarget` 更容易表达“触发当前监听器的元素”。
+
+### 7.8 判断 `this` 的顺序
+
+遇到 `this` 时按下面顺序检查：
+
+1. 是箭头函数吗？如果是，去外层作用域寻找 `this`。
+2. 是通过 `new` 调用吗？如果是，`this` 是新对象。
+3. 使用了 `call()`、`apply()` 或 `bind()` 吗？如果是，查看指定的对象。
+4. 是 `对象.方法()` 吗？如果是，`this` 是点号左侧对象。
+5. 只是 `函数()` 吗？严格模式下 `this` 是 `undefined`，不要依赖非严格模式下的隐式全局对象。
+
+关键不是背住某个函数“属于谁”，而是找到本次调用时采用了哪一种形式。
 
 ## 8. 构造函数、实例与原型
 
@@ -1071,6 +1203,8 @@ console.log(
 | 特殊属性名访问时报错 | 对包含连字符的属性使用了点语法 | 改为 `object["content-type"]` |
 | 调用方法没有结果 | 只写了 `user.showName` | 写成 `user.showName()` |
 | 方法中的 `this` 不是当前对象 | 使用箭头函数定义了依赖自身 `this` 的方法 | 使用普通方法简写 |
+| 取出方法后调用时报错 | `const fn = object.method` 丢失了方法调用者 | 保留 `object.method()` 调用，或使用 `bind()` |
+| `call()`、`apply()` 执行过早 | 它们会立即调用函数 | 需要稍后执行时使用 `bind()` 返回新函数 |
 | 修改副本时原对象也变化 | 直接赋值只复制了对象引用 | 根据嵌套层级选择浅复制或 `structuredClone()` |
 | 两个内容相同的对象比较为 `false` | `===` 比较对象引用 | 按需要比较业务字段 |
 | `for...in` 输出继承属性 | 没有限制为自有属性 | 配合 `Object.hasOwn()` |
@@ -1109,6 +1243,14 @@ LOAN-20260820-001 测试用笔记本电脑 borrowed
 ```
 
 分别输出 `equipmentLoan.getSummary` 和 `equipmentLoan.getSummary()`，观察两者区别。
+
+然后继续完成：
+
+1. 把 `getSummary` 赋给变量 `showSummary`，在严格模式下单独调用并观察错误。
+2. 使用 `bind(equipmentLoan)` 创建 `boundShowSummary`，确认稍后调用时能够正常返回摘要。
+3. 编写普通函数 `showField(fieldName)`，通过 `this[fieldName]` 读取字段，再分别使用 `call()` 和 `apply()` 让它读取 `equipmentLoan` 的 `id`。
+
+练习重点是根据调用形式解释 `this`，不是在每个业务函数中强制使用 `call()`、`apply()` 或 `bind()`。
 
 ### 10.3 遍历对象
 
@@ -1154,7 +1296,7 @@ const priorityLabels = {
 - 能使用对象字面量组织业务数据。
 - 能正确选择点语法或方括号语法。
 - 能新增、修改和删除属性，并说明 `const` 对象仍可修改属性的原因。
-- 能定义和调用对象方法，说明普通方法中的 `this`。
+- 能定义和调用对象方法，并根据方法调用、单独调用、显式指定、构造调用和箭头函数说明 `this`。
 - 能读取嵌套对象，并遍历对象数组。
 - 能使用常见方式处理对象的键和值。
 - 能区分 `in` 与 `Object.hasOwn()`。

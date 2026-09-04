@@ -10,7 +10,9 @@
 - 使用 `options` 对象配置请求方法、请求头、请求体、凭据和取消信号。
 - 正确检查 `response.ok`，处理 HTTP 错误。
 - 使用查询参数发送检索条件。
-- 使用 POST 发送 JSON 数据。
+- 使用 POST 发送 JSON、URL 编码表单和 `FormData`。
+- 使用 `fetch()` 或 Axios 上传单个文件和多个文件。
+- 说明普通文件上传与大文件分片上传的区别。
 - 了解 PUT、PATCH 和 DELETE 的基本用途。
 - 使用 `AbortController` 取消超时请求。
 - 在页面中处理加载中、成功、空数据和失败状态。
@@ -444,7 +446,18 @@ status=pending&employeeNumber=EMP-00001
 
 参数名和取值必须与后端接口规格一致。
 
-## 8. 使用 POST 发送 JSON
+## 8. 发送数据与普通文件
+
+请求体采用什么格式，不由前端随意决定，必须和后端接口规格中的 `Content-Type`、字段名和数据结构一致。
+
+| 发送内容 | 常见请求体格式 | 常见 `Content-Type` |
+| --- | --- | --- |
+| 结构化业务数据 | JSON 字符串 | `application/json` |
+| 只有简单文本字段的传统表单 | URL 编码文字 | `application/x-www-form-urlencoded` |
+| 文本字段和文件 | `FormData` | `multipart/form-data; boundary=...` |
+| 分片文件的单个二进制块 | `Blob` | 常见为 `application/octet-stream`，以接口规格为准 |
+
+### 8.1 使用 POST 发送 JSON
 
 下面是向后端新增申请的请求函数。它属于接口代码片段，需要由后端提供 `/api/applications` 接口才能实际运行。
 
@@ -490,7 +503,383 @@ createApplication(newApplication)
 
 不要把密码、令牌或内部地址直接写死在前端源码中。浏览器中的代码和请求内容都可能被用户查看。
 
-## 9. 按需求选择 options 配置
+### 8.2 发送 URL 编码的表单数据
+
+部分登录接口或传统表单接口要求 `application/x-www-form-urlencoded`。可以使用 `URLSearchParams` 生成请求体：
+
+```js
+async function sendLoginForm(accountId, password) {
+  const body = new URLSearchParams();
+  body.set("accountId", accountId);
+  body.set("password", password);
+
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    throw new Error(`登录请求失败：HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+```
+
+`URLSearchParams.set(name, value)` 设置一个字段。发送时，请求体类似下面经过编码的文字：
+
+```text
+accountId=yamada.taro&password=example
+```
+
+字段值会执行 URL 编码，不要自己拼接用户输入。这个示例只说明请求格式；正式登录必须使用 HTTPS，并按后端认证规格处理。不要在日志中打印密码。
+
+### 8.3 使用 `FormData` 发送文本和文件
+
+当接口同时接收说明文字和附件时，使用 `FormData`。下面是可直接复制的页面结构，但 `/api/applications/attachments` 必须由配套后端提供。
+
+```html
+<form id="attachmentForm">
+  <label>
+    申请编号
+    <input name="applicationId" value="REQ-001" required>
+  </label>
+  <label>
+    附件
+    <input id="attachment" name="attachment" type="file" required>
+  </label>
+  <button id="uploadButton" type="submit">上传</button>
+</form>
+<p id="uploadStatus" aria-live="polite"></p>
+<script src="upload.js" defer></script>
+```
+
+把下面代码保存为同目录的 `upload.js`：
+
+```js
+const attachmentForm = document.querySelector("#attachmentForm");
+const attachmentInput = document.querySelector("#attachment");
+const uploadButton = document.querySelector("#uploadButton");
+const uploadStatus = document.querySelector("#uploadStatus");
+
+attachmentForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const file = attachmentInput.files[0];
+
+  if (file === undefined) {
+    uploadStatus.textContent = "请选择文件";
+    return;
+  }
+
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    uploadStatus.textContent = "文件不能超过 5 MB";
+    return;
+  }
+
+  const formData = new FormData(attachmentForm);
+  uploadButton.disabled = true;
+  uploadStatus.textContent = "上传中……";
+
+  try {
+    const response = await fetch("/api/applications/attachments", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`文件上传失败：HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log(result);
+    uploadStatus.textContent = "上传完成";
+  } catch (error) {
+    console.error(error);
+    uploadStatus.textContent = "上传失败，请稍后重试";
+  } finally {
+    uploadButton.disabled = false;
+  }
+});
+```
+
+`attachmentInput.files` 是 `FileList`，保存用户本次选择的文件；`files[0]` 是第一个 `File`。`File` 对象常用属性如下：
+
+| 属性 | 示例 | 作用 |
+| --- | --- | --- |
+| `name` | `receipt.pdf` | 原始文件名 |
+| `size` | `245760` | 文件大小，单位为字节 |
+| `type` | `application/pdf` | 浏览器报告的 MIME 类型，可能为空且不能作为安全保证 |
+| `lastModified` | 毫秒时间戳 | 文件最后修改时间 |
+
+`new FormData(form)` 收集表单中具有 `name` 的有效字段，文件字段会作为 `File` 加入。也可以手工创建：
+
+```js
+const formData = new FormData();
+formData.append("applicationId", "REQ-001");
+formData.append("attachment", file);
+```
+
+`append(name, value)` 追加字段。`name` 必须与后端接口字段名一致；`value` 可以是字符串、`File` 或 `Blob`，普通数字会转成字符串。
+
+`File` 表示用户通过文件控件选择的文件，除了二进制内容，还带有文件名、大小等信息。`Blob` 表示一段不可变的二进制数据，不一定对应用户磁盘上的完整文件；`File` 可以看作带文件信息的 `Blob`。普通上传直接使用 `File`，分片时 `slice()` 会得到 `Blob`。
+
+使用 `FormData` 时，**不要手工设置 `Content-Type`**。浏览器会生成类似下面的请求头，并自动加入用于分隔各字段的 `boundary`：
+
+```text
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary...
+```
+
+如果只手工写 `multipart/form-data`，缺少匹配的 boundary，后端可能无法拆分字段和文件。
+
+前端的文件大小、扩展名和 `file.type` 检查只用于尽早提示用户。后端仍必须重新校验权限、大小、实际内容和文件名，并按照项目安全要求存储和扫描文件。
+
+### 8.4 上传多个文件
+
+HTML 文件控件添加 `multiple` 后可以选择多个文件：
+
+```html
+<input id="attachments" name="attachments" type="file" multiple>
+```
+
+读取并逐个追加：
+
+```js
+const attachmentsInput = document.querySelector("#attachments");
+const formData = new FormData();
+
+for (const file of attachmentsInput.files) {
+  formData.append("attachments", file);
+}
+
+const response = await fetch("/api/applications/attachments", {
+  method: "POST",
+  body: formData,
+});
+
+if (!response.ok) {
+  throw new Error(`多个文件上传失败：HTTP ${response.status}`);
+}
+```
+
+这里多次使用同一个字段名 `attachments`。有的后端要求 `attachments[]` 或不同字段名，必须以接口设计书为准。前端还应检查文件数量和每个文件大小，后端则必须再次检查整个请求的总大小。
+
+### 8.5 上传进度不是上传结果
+
+原生 `fetch()` 很适合直接上传 `FormData`，但常规写法没有简单的上传进度回调。只把状态文字改成“上传中”不能得到真实百分比。
+
+既有项目使用 Axios 时，可以通过它的 `onUploadProgress` 读取已发送字节数，具体示例见 15.4 节。底层 `XMLHttpRequest.upload` 也能报告进度，但不作为本课程主线再引入一套完整请求写法。
+
+无论进度是否到达 100%，都要继续等待服务器响应。100% 通常只说明请求内容已经发送，不代表后端已完成校验、保存、病毒扫描和业务登记。
+
+## 9. 大文件上传
+
+### 9.1 普通上传为什么不一定适合大文件
+
+把一个大文件放进 `FormData` 并不代表浏览器一定先把整个文件复制进 JavaScript 内存，但它仍然是一次完整 HTTP 请求。网络在 95% 时中断，通常要从头重新上传。请求还可能超过浏览器、反向代理、Web 服务器、应用服务器或对象存储设置的大小与超时限制。
+
+“大文件”没有统一的 MB 数值。项目应根据接口限制、代理配置、移动网络、超时和存储方案决定。选择方案前先确认接口规格：
+
+| 条件 | 常见方案 |
+| --- | --- |
+| 文件较小、失败后重传成本低 | 单次 `multipart/form-data` 上传 |
+| 文件较大、需要断点续传或失败重试 | 分片上传 |
+| 文件最终保存到云对象存储 | 后端签发受限上传地址，浏览器直接上传到对象存储 |
+
+### 9.2 分片上传需要前后端共同设计
+
+前端不能单方面把文件切开后发送到普通文件接口。后端必须提供配套协议，常见流程如下：
+
+```text
+1. 初始化上传：发送文件名、大小、类型
+2. 后端返回 uploadId 和允许的分片大小
+3. 前端使用 file.slice() 切出各分片
+4. 逐片上传，并记录成功的分片编号
+5. 失败分片按有限次数重试
+6. 全部分片成功后，请求后端合并或完成上传
+7. 用户取消时，中止请求并通知后端清理临时分片
+```
+
+`uploadId` 用于区分一次上传任务，分片编号用于确定顺序。后端还应验证分片归属、数量、大小和完整性，不能只按前端提供的文件名直接合并。
+
+### 9.3 使用 `slice()` 生成分片
+
+下面只观察切片结果，不发送网络请求：
+
+```js
+const PART_SIZE = 5 * 1024 * 1024;
+
+function createFileParts(file) {
+  const parts = [];
+
+  for (let start = 0; start < file.size; start += PART_SIZE) {
+    const end = Math.min(start + PART_SIZE, file.size);
+    parts.push(file.slice(start, end));
+  }
+
+  return parts;
+}
+```
+
+`file.slice(start, end)` 返回一个表示原文件部分内容的 `Blob`，范围包含 `start`，不包含 `end`，单位都是字节。它不会修改原文件。
+
+例如文件大小为 12 MB、分片大小为 5 MB 时，得到三片：5 MB、5 MB、2 MB。
+
+### 9.4 分片上传的前端代码骨架
+
+下面假定后端已经约定三个接口，属于需要配套后端才能运行的接口代码：
+
+| 步骤 | 示例接口 | 请求和响应 |
+| --- | --- | --- |
+| 初始化 | `POST /api/uploads` | 发送文件信息，返回 `uploadId` |
+| 上传一片 | `PUT /api/uploads/{uploadId}/parts/{partNumber}` | 请求体是一个 `Blob` |
+| 完成 | `POST /api/uploads/{uploadId}/complete` | 发送总分片数，后端校验并合并，返回上传结果 JSON |
+
+```js
+const PART_SIZE = 5 * 1024 * 1024;
+
+async function uploadLargeFile(file, signal, onProgress) {
+  const initializeResponse = await fetch("/api/uploads", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fileName: file.name,
+      fileSize: file.size,
+      contentType: file.type,
+    }),
+    signal,
+  });
+
+  if (!initializeResponse.ok) {
+    throw new Error(`上传初始化失败：HTTP ${initializeResponse.status}`);
+  }
+
+  const initializeResult = await initializeResponse.json();
+  const uploadId = initializeResult.uploadId;
+
+  if (typeof uploadId !== "string" || uploadId === "") {
+    throw new Error("上传初始化响应中缺少 uploadId");
+  }
+
+  const partCount = Math.ceil(file.size / PART_SIZE);
+  let uploadedBytes = 0;
+
+  for (let partIndex = 0; partIndex < partCount; partIndex += 1) {
+    const start = partIndex * PART_SIZE;
+    const end = Math.min(start + PART_SIZE, file.size);
+    const part = file.slice(start, end);
+    const partNumber = partIndex + 1;
+
+    const partResponse = await fetch(
+      `/api/uploads/${encodeURIComponent(uploadId)}/parts/${partNumber}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/octet-stream",
+        },
+        body: part,
+        signal,
+      },
+    );
+
+    if (!partResponse.ok) {
+      throw new Error(
+        `第 ${partNumber} 片上传失败：HTTP ${partResponse.status}`,
+      );
+    }
+
+    uploadedBytes += part.size;
+    onProgress(uploadedBytes, file.size);
+  }
+
+  const completeResponse = await fetch(
+    `/api/uploads/${encodeURIComponent(uploadId)}/complete`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ partCount }),
+      signal,
+    },
+  );
+
+  if (!completeResponse.ok) {
+    throw new Error(`完成上传失败：HTTP ${completeResponse.status}`);
+  }
+
+  return completeResponse.json();
+}
+```
+
+`uploadLargeFile(file, signal, onProgress)` 接收文件、取消信号和进度回调，按顺序上传每一片。当前进度在每个分片成功后更新，不表示单个分片内部的实时进度。
+
+`encodeURIComponent(value)` 把值编码成能够安全放进 URL 路径片段的文字。例如空格会变成 `%20`。即使 `uploadId` 通常由后端生成，也不应未经编码直接拼进 URL。它只处理 URL 编码，不负责检查访问权限。
+
+调用示例：
+
+```js
+const largeFileInput = document.querySelector("#largeFile");
+const controller = new AbortController();
+const selectedFile = largeFileInput.files[0];
+
+if (selectedFile === undefined) {
+  console.log("请选择大文件");
+} else {
+  uploadLargeFile(
+    selectedFile,
+    controller.signal,
+    (uploadedBytes, totalBytes) => {
+      const percent = Math.round((uploadedBytes / totalBytes) * 100);
+      console.log(`大文件上传进度：${percent}%`);
+    },
+  ).catch((error) => {
+    if (error.name === "AbortError") {
+      console.log("用户取消了上传");
+      return;
+    }
+
+    console.error("大文件上传失败", error);
+  });
+}
+```
+
+这个调用示例要求 HTML 中存在 `<input id="largeFile" type="file">`。`Math.round(value)` 把数字四舍五入到最接近的整数，因此页面可以显示整数百分比。调用 `controller.abort()` 可以停止当前和后续共用该信号的请求，但已经上传到服务器的分片不会自动删除；清理方式必须由后端接口规定。
+
+这个基础版本采用顺序上传，便于理解和控制服务器压力。正式项目通常还要补充：
+
+- 查询已经成功的分片，实现续传；
+- 对网络错误和可重试状态码进行有限次数重试；
+- 使用校验值确认文件完整性；
+- 限制并发数，而不是一次发出所有分片；
+- 上传任务过期和临时文件清理；
+- 取消、失败和完成接口的幂等性。
+
+这些能力必须与后端和存储服务一起设计，不能只复制前端循环。
+
+空文件、单文件最大大小、允许类型和单次上传有效期同样应写入接口规格。前端可以提前提示，后端必须作最终判定。
+
+### 9.5 使用对象存储直传：了解
+
+大文件最终保存在 Amazon S3 等对象存储时，常见方式不是让文件内容全部经过业务服务器：
+
+```text
+浏览器向业务后端申请受限上传地址
+→ 后端检查用户权限并返回短期有效地址
+→ 浏览器把文件或分片直接上传到对象存储
+→ 浏览器通知后端上传完成
+→ 后端验证对象并登记业务记录
+```
+
+上传地址必须限制有效期、对象位置、大小和允许的操作。前端不能保存云服务永久密钥。具体签名方式和分片协议属于后端、云服务与项目基础设施的共同设计。
+
+## 10. 按需求选择 options 配置
 
 本节的短代码均为 `async` 函数内部的配置片段，用来对比选项，不是完整页面脚本。将选项用于第 6 节的完整页面时，保留函数外壳、超时及失败处理；不要把带await的片段直接粘贴到普通app.js的顶层。涉及 `/api/applications` 的代码还需要对应后端接口。
 
@@ -532,7 +921,7 @@ const response = await fetch("/api/applications", {
 | `cache` | `default`、`no-store`、`reload`、`no-cache`、`force-cache`、`only-if-cached` | 可选，默认 `default` | 控制请求怎样使用浏览器 HTTP 缓存 |
 | `redirect` | `follow`、`error`、`manual` | 可选，默认 `follow` | 控制遇到重定向响应时怎样处理 |
 
-### 9.1 `method`、`headers` 和 `body`
+### 10.1 `method`、`headers` 和 `body`
 
 这三个属性通常配合使用：
 
@@ -556,7 +945,7 @@ const response = await fetch("/api/applications", {
 
 查询参数不属于 `options`。GET 的检索条件仍然写在 URL 中，见第 7 节的 `URLSearchParams` 示例。
 
-### 9.2 `credentials`
+### 10.2 `credentials`
 
 `credentials` 控制浏览器是否在请求中携带 Cookie 等凭据：
 
@@ -568,7 +957,7 @@ const response = await fetch("/api/applications", {
 
 跨来源请求使用 `include` 时，后端还必须返回允许指定来源和凭据的 CORS 响应头，Cookie 本身也会受到 SameSite 等规则限制。仅修改前端选项不能绕过服务器限制。
 
-### 9.3 `signal`
+### 10.3 `signal`
 
 ```js
 const controller = new AbortController();
@@ -580,7 +969,7 @@ const response = await fetch("/api/applications", {
 
 `signal` 本身不会自动取消请求。其他代码调用 `controller.abort()` 后，信号才会通知 `fetch()` 停止请求。第 5 节已经用它实现超时。
 
-### 9.4 `mode`、`cache` 和 `redirect`
+### 10.4 `mode`、`cache` 和 `redirect`
 
 这三个属性在有明确项目需求时再设置：
 
@@ -593,9 +982,9 @@ const response = await fetch("/api/applications", {
 
 大多数业务请求只需要 `method`、`headers`、`body` 和必要的 `signal`。不要为了显得配置完整而机械填写所有属性。
 
-## 10. PUT、PATCH 和 DELETE 的基本结构
+## 11. PUT、PATCH 和 DELETE 的基本结构
 
-### 10.1 PATCH：修改部分字段
+### 11.1 PATCH：修改部分字段
 
 ```js
 async function updateApplicationStatus(id, status) {
@@ -615,7 +1004,7 @@ async function updateApplicationStatus(id, status) {
 }
 ```
 
-### 10.2 DELETE：删除数据
+### 11.2 DELETE：删除数据
 
 ```js
 async function deleteApplication(id) {
@@ -633,7 +1022,7 @@ async function deleteApplication(id) {
 
 `PUT` 的调用结构与 PATCH 接近，但通常发送资源的完整新状态。具体选择必须以接口设计书为准。
 
-## 11. CORS 是什么
+## 12. CORS 是什么
 
 浏览器会限制网页随意读取其他来源的响应。协议、主机或端口任意一项不同，通常就属于不同来源：
 
@@ -653,7 +1042,7 @@ CORS 是服务器通过响应头告诉浏览器“哪些来源可以读取响应
 
 CORS 是浏览器的读取限制，不等于后端权限控制。即使页面隐藏按钮或请求被浏览器拦截，后端仍必须进行认证、授权和数据校验。
 
-## 12. 使用 Network 面板排查请求
+## 13. 使用 Network 面板排查请求
 
 打开浏览器开发者工具的 Network 面板，重新执行请求，重点查看：
 
@@ -663,7 +1052,7 @@ CORS 是浏览器的读取限制，不等于后端权限控制。即使页面隐
 | Request Method | 是否使用接口要求的 GET、POST 等方法 |
 | Status Code | 是成功、前端请求错误还是后端错误 |
 | Request Headers | Content-Type、认证信息是否符合规格 |
-| Request Payload | 发送的 JSON 字段和值是否正确 |
+| Request Payload | JSON、表单字段、文件字段和分片编号是否符合规格 |
 | Response | 后端实际返回了什么 |
 | Timing | 请求是否长时间等待 |
 
@@ -680,15 +1069,15 @@ CORS 是浏览器的读取限制，不等于后端权限控制。即使页面隐
 
 不要看到页面没数据显示，就直接判断是“后端问题”。Network 面板可以帮助区分请求没有发出、接口返回错误、JSON 解析失败和 DOM 渲染失败。
 
-## 13. 常见错误
+## 14. 常见错误
 
-### 13.1 忘记检查 `response.ok`
+### 14.1 忘记检查 `response.ok`
 
 症状：服务器返回 404 或 500，但代码仍继续解析或渲染。
 
 修正：在读取响应体前检查 `response.ok`，不成功时抛出包含状态码的错误。
 
-### 13.2 忘记等待 `response.json()`
+### 14.2 忘记等待 `response.json()`
 
 ```js
 const data = response.json();
@@ -701,11 +1090,11 @@ console.log(data); // Promise，不是最终数据
 const data = await response.json();
 ```
 
-### 13.3 GET 请求错误地设置 `body`
+### 14.3 GET 请求错误地设置 `body`
 
 GET 查询条件通常放在 URL 查询参数中。使用 `URLSearchParams`，并遵守后端接口规格。
 
-### 13.4 POST 直接发送普通对象
+### 14.4 POST 直接发送普通对象
 
 ```js
 body: application // 错误：普通对象不能直接作为 JSON 请求体
@@ -717,15 +1106,33 @@ body: application // 错误：普通对象不能直接作为 JSON 请求体
 body: JSON.stringify(application)
 ```
 
-### 13.5 对 204 响应调用 `json()`
+### 14.5 对 204 响应调用 `json()`
 
 204 没有响应体，继续解析 JSON 可能报错。根据状态码和接口规格决定是否读取响应体。
 
-## 14. Axios 基础使用
+### 14.6 上传 `FormData` 时手工设置 `Content-Type`
+
+症状：Network 中能看到请求，但后端报告缺少文件或无法解析 multipart 数据。
+
+原因：手工写了 `Content-Type: multipart/form-data`，却没有浏览器生成的正确 boundary。
+
+修正：把 `FormData` 直接放入 `body`，删除手工设置的 `Content-Type`，让浏览器自动生成请求头。
+
+### 14.7 只在前端校验文件
+
+前端的 `accept`、扩展名、`file.type` 和文件大小检查都可以被绕过，也可能与文件实际内容不一致。它们用于改善操作体验，不能代替后端的权限、大小、类型、内容和恶意文件检查。
+
+### 14.8 把普通上传直接当成大文件方案
+
+症状：文件接近完成时失败，重试又从零开始；或服务器返回 `413 Payload Too Large`、超时等错误。
+
+修正：先确认各层限制。确实需要大文件、续传或分片重试时，与后端共同设计初始化、分片、完成、取消和清理接口，不只在前端增大超时时间。
+
+## 15. Axios 基础使用
 
 Axios 是基于 Promise 的 HTTP 客户端。它不是 JavaScript 内置功能，需要先安装或由页面加载。零基础阶段只要求会发送常见请求、读取响应数据并处理失败；实例、拦截器和认证封装应在具体框架或项目课程中继续学习。
 
-### 14.1 在本章练习页面中引入
+### 15.1 在本章练习页面中引入
 
 本章还没有进入构建工具，练习页面先使用CDN脚本。把Axios放在自己的`app.js`之前加载：
 
@@ -738,7 +1145,7 @@ Axios 是基于 Promise 的 HTTP 客户端。它不是 JavaScript 内置功能�
 
 本章统一采用上述CDN引入方式。构建项目中的依赖安装与模块导入见[第22章](22_modules_script_organization.md)，不要混用两种环境的代码。
 
-### 14.2 发送 GET 请求
+### 15.2 发送 GET 请求
 
 ```js
 async function loadApplications() {
@@ -761,7 +1168,7 @@ async function loadApplications() {
 - `response.data` 是响应正文；
 - Axios会把超出默认成功范围的HTTP状态作为失败交给`catch`。
 
-### 14.3 发送 POST 请求
+### 15.3 发送 POST 请求
 
 ```js
 async function createApplication(application) {
@@ -777,7 +1184,49 @@ async function createApplication(application) {
 
 `axios.post(url, data?, config?)` 的第二个参数是请求数据，第三个参数是配置对象。传入普通对象时，Axios通常会按JSON请求处理。
 
-### 14.4 识别 Axios 错误
+### 15.4 上传文件并显示进度
+
+Axios 的浏览器请求配置提供 `onUploadProgress`，适合既有 Axios 项目需要显示普通文件上传进度的情况：
+
+```js
+async function uploadAttachment(file, applicationId, signal) {
+  const formData = new FormData();
+  formData.append("applicationId", applicationId);
+  formData.append("attachment", file);
+
+  const response = await axios.post(
+    "/api/applications/attachments",
+    formData,
+    {
+      signal,
+      timeout: 30000,
+      onUploadProgress(progressEvent) {
+        if (progressEvent.total === undefined) {
+          console.log(`已发送 ${progressEvent.loaded} 字节`);
+          return;
+        }
+
+        const percent = Math.round(
+          (progressEvent.loaded / progressEvent.total) * 100,
+        );
+        console.log(`上传进度：${percent}%`);
+      },
+    },
+  );
+
+  return response.data;
+}
+```
+
+| 配置 | 可接受的值 | 默认值或必填性 | 作用 |
+| --- | --- | --- | --- |
+| `signal` | `AbortSignal` | 可选 | 配合 `AbortController` 取消上传 |
+| `timeout` | 非负毫秒数 | 可选；示例为 30 秒 | 超过等待时间时中止请求 |
+| `onUploadProgress` | 接收进度对象的函数 | 可选 | 上传过程中读取 `loaded` 和可能存在的 `total` |
+
+`loaded` 是已经发送的字节数；只有 `total` 可用时才能可靠计算百分比。不要为 `FormData` 手工设置 `Content-Type`，最终成功仍以服务器响应为准。
+
+### 15.5 识别 Axios 错误
 
 ```js
 async function inspectAxiosError() {
@@ -808,7 +1257,7 @@ inspectAxiosError();
 
 `axios.isAxiosError(error)` 判断捕获值是否是Axios错误。`error.response` 表示服务器返回了响应；没有响应时还可能是网络、超时或取消问题。页面仍应分别处理加载、成功、空数据和失败状态。
 
-### 14.5 fetch 与 Axios 如何选择
+### 15.6 fetch 与 Axios 如何选择
 
 | 场景 | 建议 |
 | --- | --- |
@@ -819,9 +1268,9 @@ inspectAxiosError();
 
 不要在同一功能中无理由混用两套请求方式。
 
-## 15. 本章练习
+## 16. 本章练习
 
-### 15.1 初始文件
+### 16.1 初始文件
 
 新建：
 
@@ -839,7 +1288,7 @@ https://jsonplaceholder.typicode.com/todos?_limit=5
 
 每条数据包含 `userId`、`id`、`title` 和 `completed`。
 
-### 15.2 任务要求
+### 16.2 任务要求
 
 1. 在 HTML 中准备“读取任务”按钮、状态区域和列表。
 2. 使用 `fetch()` 请求上面的完整 URL。
@@ -852,12 +1301,29 @@ https://jsonplaceholder.typicode.com/todos?_limit=5
 9. 把 URL 路径临时改成 `/unknown-path`，记录 404 时页面和 Network 面板的结果，然后恢复。
 10. 把 `_limit` 改为 `0`，确认页面能够显示空数据状态。
 11. 写出一个 POST 请求代码片段，用于提交新的任务对象；不要求公开测试服务永久保存数据。
+12. 新建一个独立附件上传页面，使 HTML 的文件字段与 JavaScript 选择器一一对应；请求地址使用课程中的占位接口，不要求没有后端时伪造成功结果。
+13. 使用 `FormData` 同时加入申请编号和一个文件，确认代码没有手工设置 `Content-Type`。
+14. 加入未选择文件、单文件超过 5 MB 两种前端提示，并说明后端仍需重复校验。
+15. 写出 12 MB 文件按 5 MB 分片时的分片数量和每片大小，再说明完成分片上传至少需要哪些后端接口。
 
-### 15.3 完成标准
+### 16.3 完成标准
 
 - 能解释 `fetch()` 与 `response.json()` 为什么都需要等待。
 - 能说明为什么 404 不一定自动进入 `catch`。
 - 能说明 `options` 中常用属性的作用以及 `credentials` 的三个取值。
 - 能区分查询参数和 JSON 请求体。
+- 能根据接口规格选择 JSON、URL 编码表单或 `FormData`。
+- 能使用 `FileList`、`File` 和 `FormData` 组织普通文件上传请求。
+- 能说明为什么不能手工设置 multipart 的 `Content-Type`。
+- 能说明上传进度、HTTP 成功和后端业务处理完成并不是同一件事。
+- 能说明大文件分片上传需要初始化、分片、完成和清理等后端能力。
 - 页面覆盖加载中、成功、空数据和失败状态。
 - 能根据 Network 信息判断问题发生在请求、响应还是页面处理阶段。
+
+## 17. 参考资料
+
+- [MDN：使用 FormData 对象](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Using_FormData_Objects)
+- [MDN：使用 Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch)
+- [MDN：XMLHttpRequest 上传进度](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/upload)
+- [Axios：请求配置](https://axios-http.com/docs/req_config)
+- [Axios：multipart/form-data](https://axios-http.com/docs/multipart)

@@ -62,35 +62,65 @@ console.log(getLeaveTypeLabel("paid")); // 有給休暇
 
 生日、请假日期通常不需要时分秒；创建时间、更新时间和日志时间通常需要明确时间点。二者不能随意混用。
 
+可以先把日期时间理解成三层：
+
+| 层次 | 示例 | 解决的问题 |
+| --- | --- | --- |
+| 业务日期 | `2026-09-01` | 日历上的哪一天 |
+| 时间点 | 日本时间 `2026-09-01 10:30` | 某件事究竟在什么时候发生 |
+| 显示文字 | `2026年9月1日 10:30` | 按用户习惯怎样显示 |
+
+同一个时间点可以在日本显示为 10:30，在 UTC 显示为 01:30。显示文字不同，但事件没有变成两次。
+
 ### 2.2 `Date` 对象和时间戳
 
-`new Date()` 创建表示当前时间点的 `Date` 对象：
+`Date` 是 JavaScript 用来表示时间点的内置对象。它内部记录的是一个毫秒时间戳；控制台或格式化方法再根据时区把这个时间点显示成人类可读的年月日和时分秒。
+
+下面先用固定时间实验，保证可以核对结果：
+
+```js
+const submittedAt = new Date("2026-09-01T10:30:00+09:00");
+
+console.log(submittedAt.getTime());       // 1788226200000
+console.log(submittedAt.toISOString());  // 2026-09-01T01:30:00.000Z
+```
+
+`getTime()` 返回时间戳，即从 `1970-01-01 00:00:00 UTC` 到目标时间点经过的毫秒数。时间戳只是一个计数值，没有“日本格式”或“中文格式”，适合比较、排序和计算，不适合直接显示给用户。
+
+这里的 `1788226200000` 是 13 位的毫秒时间戳。部分后端系统使用 10 位的秒时间戳，双方必须先约定单位：
+
+```js
+const milliseconds = 1788226200000;
+const seconds = milliseconds / 1000;
+
+console.log(seconds); // 1788226200
+```
+
+JavaScript 的 `Date` 构造参数和 `getTime()` 默认使用毫秒。误把秒传给 `new Date()`，结果会落到 1970 年附近。
+
+`new Date()` 创建当前时间的 `Date` 对象，`Date.now()` 直接取得当前毫秒时间戳：
 
 ```js
 const now = new Date();
-
-console.log(now);
-console.log(now.getTime());
-```
-
-`getTime()` 返回时间戳，即从 1970-01-01 00:00:00 UTC 到当前时间点经过的毫秒数。
-
-`Date.now()` 不创建对象，直接返回当前时间戳：
-
-```js
 const timestamp = Date.now();
-console.log(timestamp);
+
+console.log(now);       // 示例：Fri Sep 04 2026 09:15:30 GMT+0900 ...
+console.log(timestamp); // 示例：1788480930000
 ```
 
-时间戳适合比较先后和计算持续时间，但直接显示给用户没有意义，需要格式化。
+这两行的实际结果取决于运行时刻和电脑时区，不会固定等于注释中的示例值。需要对照固定答案时，应像前一个示例那样使用固定输入。
 
 ### 2.3 创建 `Date` 对象的常见方式
 
 ```js
 const currentTime = new Date();
 const submittedTime = new Date("2026-09-01T10:30:00+09:00");
-const restoredTime = new Date(1788222600000);
+const restoredTime = new Date(1788226200000);
 const localTime = new Date(2026, 8, 1, 10, 30, 0);
+
+console.log(submittedTime.toISOString()); // 2026-09-01T01:30:00.000Z
+console.log(restoredTime.toISOString());  // 2026-09-01T01:30:00.000Z
+console.log(localTime.getMonth());         // 8
 ```
 
 | 写法 | 可接受的值 | 默认值或必填性 | 结果 |
@@ -100,22 +130,55 @@ const localTime = new Date(2026, 8, 1, 10, 30, 0);
 | `new Date(timestamp)` | 毫秒时间戳 | 数字必填 | 时间戳对应的时间 |
 | `new Date(y, m, d, h, min, s)` | 数字 | 年和月必填，其余有默认值 | 使用本地时区创建时间 |
 
-数值构造方式中的月份从 `0` 开始，因此 `8` 表示 9 月。这是常见错误来源。
+`submittedTime` 和 `restoredTime` 来自不同输入，却表示同一个时间点，所以转成 ISO 字符串后完全相同。
+
+数值构造方式中的月份从 `0` 开始，因此 `8` 表示 9 月。这是常见错误来源。`localTime` 使用运行环境的本地时区创建，因此它代表的绝对时间会受电脑时区影响；适合创建“当前电脑所在地的 2026 年 9 月 1 日 10:30”，不适合冒充固定 UTC 时间。
+
+日期字符串尽量使用明确格式：
+
+- 时间点使用带偏移的 ISO 形式，例如 `2026-09-01T10:30:00+09:00`。
+- UTC 时间点使用结尾带 `Z` 的形式，例如 `2026-09-01T01:30:00.000Z`。
+- 纯业务日期保持 `YYYY-MM-DD`，不要随意补时分秒后当作时间点。
+- 避免依赖 `2026/09/01 10:30` 等非标准字符串的自动解析，不同运行环境可能产生不同结果。
 
 ### 2.4 读取本地时间
 
 ```js
 const date = new Date(2026, 8, 1, 10, 30, 0);
 
-console.log(date.getFullYear()); // 年
-console.log(date.getMonth()); // 月，0～11
-console.log(date.getDate()); // 一个月中的日期，1～31
-console.log(date.getHours()); // 小时
+console.log(date.getFullYear()); // 2026
+console.log(date.getMonth());    // 8，表示 9 月
+console.log(date.getDate());     // 1
+console.log(date.getHours());    // 10
+console.log(date.getMinutes());  // 30
+console.log(date.getDay());      // 2，表示星期二
 ```
+
+这些 `get...()` 方法按电脑或浏览器的本地时区读取：
+
+| 方法 | 返回范围 | 当前示例结果 | 含义 |
+| --- | --- | --- | --- |
+| `getFullYear()` | 四位年份 | `2026` | 本地年份 |
+| `getMonth()` | `0`～`11` | `8` | `0` 是 1 月，显示时通常加 1 |
+| `getDate()` | `1`～`31` | `1` | 一个月中的第几日 |
+| `getHours()` | `0`～`23` | `10` | 本地小时 |
+| `getMinutes()` | `0`～`59` | `30` | 分钟 |
+| `getDay()` | `0`～`6` | `2` | 星期日为 `0`，星期六为 `6` |
+
+`getDate()` 是“几号”，`getDay()` 是“星期几”，名称相近但用途不同。
 
 ### 2.5 本地时间与 UTC
 
-同一个时间戳在世界各地代表同一个时间点，但显示出来的年月日和时分可能不同。
+UTC（协调世界时）是全球统一的时间基准。日本标准时间 JST 是 `UTC+09:00`，表示日本时间比 UTC 快 9 小时。例如：
+
+```text
+日本时间：2026-09-01 10:30:00 +09:00
+UTC 时间：2026-09-01 01:30:00 Z
+```
+
+两行表示同一瞬间。`+09:00` 是时区偏移，`Z` 表示偏移为 `+00:00` 的 UTC。UTC 不是某种“日常显示格式”，而是统一表达和交换时间点的基准。
+
+同一个时间戳在世界各地代表同一个时间点，但用本地方法读取出的年月日和时分可能不同。
 
 | 本地时间方法 | UTC 方法 |
 | --- | --- |
@@ -132,9 +195,92 @@ console.log(submittedAt.toISOString());
 // 2026-09-01T01:30:00.000Z
 ```
 
-结尾的 `Z` 表示 UTC。原来的日本时间 10:30 和转换后的 UTC 01:30 表示同一个时间点。
+`toISOString()` 返回符合 ISO 8601 形式的 UTC 字符串，固定使用 `YYYY-MM-DDTHH:mm:ss.sssZ` 结构：
 
-### 2.6 判断无效日期
+```text
+2026-09-01 T 01:30:00.000 Z
+日期         时间（含毫秒） UTC
+```
+
+字母 `T` 分隔日期和时间，`.000` 是毫秒，结尾 `Z` 表示 UTC。原来的日本时间 10:30 和转换后的 UTC 01:30 表示同一个时间点。
+
+可以同时观察同一对象的 UTC 值和指定时区显示值：
+
+```js
+const submittedAt = new Date("2026-09-01T10:30:00+09:00");
+
+const utcFormatter = new Intl.DateTimeFormat("ja-JP", {
+  dateStyle: "medium",
+  timeStyle: "medium",
+  timeZone: "UTC",
+});
+
+const tokyoFormatter = new Intl.DateTimeFormat("ja-JP", {
+  dateStyle: "medium",
+  timeStyle: "medium",
+  timeZone: "Asia/Tokyo",
+});
+
+console.log(utcFormatter.format(submittedAt));
+// 2026/09/01 1:30:00
+
+console.log(tokyoFormatter.format(submittedAt));
+// 2026/09/01 10:30:00
+```
+
+不同浏览器对分隔符和是否补零可能略有差异，但 UTC 与东京相差 9 小时这一含义不会改变。需要完全固定的文字格式时，使用后面介绍的手工格式化函数；需要符合地区习惯时，使用 `Intl.DateTimeFormat`。
+
+### 2.6 项目中通常怎样保存和显示时间
+
+一个常见处理流程是：
+
+```text
+用户操作时间
+    ↓ new Date()
+Date 对象
+    ↓ toISOString()
+UTC 的 ISO 字符串，用于接口传输或保存
+    ↓ new Date(savedText)
+恢复为 Date 对象
+    ↓ Intl.DateTimeFormat
+按用户所在时区显示
+```
+
+下面是完整的转换示例：
+
+```js
+const submittedAt = new Date("2026-09-01T10:30:00+09:00");
+const savedText = submittedAt.toISOString();
+
+console.log(savedText);
+// 2026-09-01T01:30:00.000Z
+
+const restoredDate = new Date(savedText);
+const displayFormatter = new Intl.DateTimeFormat("ja-JP", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Tokyo",
+});
+
+console.log(displayFormatter.format(restoredDate));
+// 2026/09/01 10:30:00
+```
+
+这里分别保留了两种值：
+
+- `savedText` 是稳定的 UTC 时间点，适合与后端约定后传输或保存。
+- 格式化结果是给用户看的文字，可以随语言、地区和时区改变。
+
+不要把格式化后的 `2026/09/01 10:30:00` 再当作可靠输入交给 `new Date()`，也不要用它进行排序。排序和计算保留原始时间点，显示时才格式化。
+
+对于请假日、生日等纯业务日期，不需要执行这套时区转换，继续保存 `YYYY-MM-DD` 即可。是否保存 UTC、带偏移字符串或其他后端类型，应以接口规格为准。
+
+### 2.7 判断无效日期
 
 ```js
 const date = new Date("not-a-date");
@@ -143,7 +289,7 @@ console.log(date); // Invalid Date
 console.log(Number.isNaN(date.getTime())); // true
 ```
 
-即使日期无效，变量中仍然存在一个 `Date` 对象。判断方法是读取 `getTime()`，再使用 `Number.isNaN()` 检查结果。
+第一行在控制台显示 `Invalid Date`，第二行显示 `true`。即使日期无效，变量中仍然存在一个 `Date` 对象。判断方法是读取 `getTime()`，再使用 `Number.isNaN()` 检查结果。
 
 ## 3. 安全处理 `YYYY-MM-DD` 业务日期
 
@@ -222,7 +368,7 @@ function parseDateTextToUtc(dateText) {
   return timestamp;
 }
 
-console.log(parseDateTextToUtc("2026-09-01"));
+console.log(parseDateTextToUtc("2026-09-01")); // 1788220800000
 console.log(parseDateTextToUtc("2026-02-30")); // null
 ```
 
@@ -310,6 +456,7 @@ const formatter = new Intl.DateTimeFormat("ja-JP", {
 
 const submittedAt = new Date("2026-09-01T10:30:00+09:00");
 console.log(formatter.format(submittedAt));
+// 2026/09/01
 ```
 
 | 构造参数 | 可接受的值 | 默认值或必填性 | 作用 |
@@ -330,6 +477,67 @@ console.log(formatter.format(submittedAt));
 `format(date)` 接收有效的 `Date` 或时间戳，返回格式化字符串。格式化结果用于显示，不要再用它进行日期计算或接口传输。
 
 多个位置使用同一格式时，集中创建 `Intl.DateTimeFormat` 对象更容易统一规则。
+
+如果页面需要显示日期和时间，可以增加时分秒选项：
+
+```js
+const dateTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+  timeZone: "Asia/Tokyo",
+});
+
+const submittedAt = new Date("2026-09-01T10:30:00+09:00");
+console.log(dateTimeFormatter.format(submittedAt));
+// 2026/09/01 10:30:00
+```
+
+`hour12: false` 表示使用 24 小时制；设为 `true` 时会使用上午、下午或 AM、PM 等地区化表示。浏览器可能使用不同的空格或分隔符，因此不要拿本地化结果作为固定业务代码或接口值。
+
+### 4.3 `toLocaleDateString()` 和 `toLocaleString()`
+
+`Date` 对象也提供快捷的本地化方法：
+
+```js
+const submittedAt = new Date("2026-09-01T10:30:00+09:00");
+
+console.log(
+  submittedAt.toLocaleDateString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+  }),
+);
+// 2026/9/1
+
+console.log(
+  submittedAt.toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+  }),
+);
+// 2026/9/1 10:30:00
+```
+
+- `toLocaleDateString(locales, options)` 主要显示日期。
+- `toLocaleString(locales, options)` 可以显示日期和时间。
+- 两者都返回显示字符串，不修改原 `Date` 对象。
+
+它们的 `locales` 和 `options` 与 `Intl.DateTimeFormat` 的用途相近。只格式化一两个位置时可以使用快捷方法；多个位置采用相同格式时，复用一个 `Intl.DateTimeFormat` 更容易保持一致。
+
+### 4.4 怎样选择格式化方式
+
+| 需求 | 推荐方式 | 原因 |
+| --- | --- | --- |
+| 固定显示 `YYYY年MM月DD日` | 手工读取年月日并拼接 | 输出结构完全受业务规格控制 |
+| 按日本、中文等地区习惯显示 | `Intl.DateTimeFormat` | 自动处理地区格式和指定时区 |
+| 页面只有一处简单显示 | `toLocaleDateString()` 或 `toLocaleString()` | 写法简洁 |
+| 保存或接口传输时间点 | `toISOString()`，并遵循接口规格 | 得到统一的 UTC 表示，不是面向用户的显示文字 |
+| 保存请假日、生日等纯日期 | `YYYY-MM-DD` 字符串 | 避免无意义的时区转换 |
+
+没有一个格式同时适合保存、计算和所有用户显示。实际项目通常保留稳定的原始值，在页面显示的最后一步再格式化。
 
 ## 5. 数字转换与有效性
 
@@ -548,23 +756,35 @@ leaveForm.addEventListener("submit", (event) => {
 
 `getMonth()` 返回 `0`～`11`，显示月份时需要加 `1`。本章的 `formatBasicDate()` 已经统一处理这个规则。
 
-### 10.2 把业务日期当成带时区时间点
+### 10.2 混淆秒时间戳和毫秒时间戳
+
+JavaScript `Date` 使用毫秒时间戳。接口返回 10 位秒时间戳时，通常需要乘以 `1000` 后再创建日期；接口返回 13 位毫秒时间戳时直接使用。不能只凭位数永久判断，应以接口规格为准。
+
+```js
+const timestampInSeconds = 1788226200;
+const date = new Date(timestampInSeconds * 1000);
+
+console.log(date.toISOString());
+// 2026-09-01T01:30:00.000Z
+```
+
+### 10.3 把业务日期当成带时区时间点
 
 请假日期应保持稳定的 `YYYY-MM-DD` 业务值。提交时间应保存带时区偏移的时间字符串或与后端约定的 UTC 时间。
 
-### 10.3 没有检查无效结果
+### 10.4 没有检查无效结果
 
 日期解析可能得到 `Invalid Date`，数字转换可能得到 `NaN`，工具函数也可能返回 `null`。使用结果前必须按函数约定检查。
 
-### 10.4 使用格式化字符串继续计算
+### 10.5 使用格式化字符串继续计算
 
 `Intl.DateTimeFormat.format()` 返回显示字符串。原始日期数据应另外保留，不要用格式化结果继续计算。
 
-### 10.5 生成编号后没有更新内存数组
+### 10.6 生成编号后没有更新内存数组
 
 从已有数组计算“最大值加一”后，如果没有立即把新记录加入这个数组，下一次计算仍可能得到相同编号。本章只更新内存数组，刷新页面后重新开始；持久保存见 JSON 与浏览器存储章节。
 
-### 10.6 把前端计算当作最终业务结果
+### 10.7 把前端计算当作最终业务结果
 
 用户可以修改前端代码和存储数据。余额、金额、正式编号和权限相关结果必须由后端重新验证或生成。
 
@@ -592,10 +812,11 @@ const applications = [
 2. 完成 `calculateLeaveDays(startDateText, endDateText)`，按照包含首尾的自然日计算。
 3. 半日休假返回 `0.5`，并限制开始日与结束日相同。
 4. 完成 `formatBusinessDate(dateText)`，显示为 `YYYY年MM月DD日`。
-5. 使用 `Intl.DateTimeFormat` 按日本时区显示 `submittedAt`。
-6. 完成 `createApplicationId(applications, now)`，生成 `REQ-YYYYMMDD-NNN`。
-7. 使用映射对象转换请假类型和申请状态。
-8. 使用本节初始数组和固定日期，在独立测试页调用工具函数并显示结果；DOM 查询和页面显示仍放在页面初始化代码中，不要求跨页读取或持久保存。
+5. 把 `submittedAt` 转换为时间戳和 UTC ISO 字符串，并说明两个结果表示的含义。
+6. 使用 `Intl.DateTimeFormat` 按日本时区显示 `submittedAt`，结果应包含年月日和时分秒。
+7. 完成 `createApplicationId(applications, now)`，生成 `REQ-YYYYMMDD-NNN`。
+8. 使用映射对象转换请假类型和申请状态。
+9. 使用本节初始数组和固定日期，在独立测试页调用工具函数并显示结果；DOM 查询和页面显示仍放在页面初始化代码中，不要求跨页读取或持久保存。
 
 ### 11.3 边界测试
 
@@ -612,6 +833,8 @@ const applications = [
 ### 11.4 完成标准
 
 - 日期计算不依赖本地一天固定为 24 小时。
+- 能说明时间戳、UTC、时区偏移和日常显示文字之间的区别。
+- 同一时间点按 UTC 和日本时区显示时，能够解释为何时刻不同但事件相同。
 - 无效日期和反向日期范围有明确处理。
 - 显示字符串与原始业务数据分开保存。
 - 编号符合 `REQ-YYYYMMDD-NNN`，并说明只适用于单浏览器练习。
