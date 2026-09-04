@@ -43,6 +43,68 @@ markdown_extensions:
 - pymdownx.tilde
 nav:
 - 首页: index.md
+- AI:
+  - 课程入口: ai/index.md
+  - 教学路线与阶段验收: ai/learning_path.md
+  - 贯穿项目规格: ai/project_spec.md
+  - 基础主线:
+    - 阶段1：AI基础与使用边界:
+      - 1. AI 基础认识: ai/mainline/01_ai_foundations.md
+      - 2. LLM 工作原理: ai/mainline/02_llm_mechanics.md
+      - 3. LLM 核心概念: ai/mainline/03_llm_core_concepts.md
+      - 4. Prompt 基础: ai/mainline/04_prompt_basics.md
+      - 5. Prompt 实战: ai/mainline/05_prompt_practice.md
+      - 6. Context Engineering: ai/mainline/06_context_engineering.md
+      - 7. AI 使用风险: ai/mainline/07_ai_risks.md
+    - 阶段2：AI辅助软件工程:
+      - 8. AI 辅助需求分析: ai/mainline/08_requirements_analysis.md
+      - 9. AI 辅助 Coding: ai/mainline/09_ai_coding.md
+      - 10. AI Code Review: ai/mainline/10_code_review.md
+      - 11. AI Debug: ai/mainline/11_ai_debug.md
+      - 12. AI + SQL: ai/mainline/12_ai_sql.md
+      - 13. AI 辅助测试: ai/mainline/13_test_design.md
+      - 14. AI 生成测试代码: ai/mainline/14_test_code.md
+      - 15. AI 辅助文档: ai/mainline/15_documentation.md
+      - 16. AI + 日本项目: ai/mainline/16_japanese_projects.md
+    - 阶段3：AI业务应用基础:
+      - 17. AI 开发整体架构: ai/mainline/17_ai_architecture.md
+      - 18. AI 项目环境与配置: ai/mainline/18_project_configuration.md
+      - 19. 在 FastAPI 中接入 AI Service: ai/mainline/19_ai_service_integration.md
+      - 20. LLM API 基础: ai/mainline/20_llm_api.md
+      - 21. Chat 应用开发: ai/mainline/21_chat_application.md
+      - 22. Streaming: ai/mainline/22_streaming.md
+      - 23. Structured Output: ai/mainline/23_structured_output.md
+      - 24. Function / Tool Calling: ai/mainline/24_tool_calling.md
+    - 阶段4：企业知识库RAG:
+      - 25. Embedding: ai/mainline/25_embedding.md
+      - 26. Vector Search: ai/mainline/26_vector_search.md
+      - 27. Vector DB: ai/mainline/27_vector_database.md
+      - 28. RAG 基础: ai/mainline/28_rag_basics.md
+      - 29. 文档处理: ai/mainline/29_document_processing.md
+      - 30. RAG 检索: ai/mainline/30_rag_retrieval.md
+      - 31. RAG 回答生成: ai/mainline/31_rag_generation.md
+      - 32. RAG 准确度改善: ai/mainline/32_rag_improvement.md
+      - 33. RAG 企业实战: ai/mainline/33_enterprise_rag.md
+    - 阶段5：Agent与协议:
+      - 34. Agent 基础: ai/mainline/34_agent_basics.md
+      - 35. Agent Workflow: ai/mainline/35_agent_workflow.md
+      - 36. Agent Tools: ai/mainline/36_agent_tools.md
+      - 37. Memory: ai/mainline/37_memory.md
+      - 38. MCP 基础: ai/mainline/38_mcp.md
+      - 39. Multi-Agent 基础: ai/mainline/39_multi_agent.md
+    - 阶段6：生产化:
+      - 40. AI 应用安全: ai/mainline/40_ai_security.md
+      - 41. AI 成本管理: ai/mainline/41_cost_management.md
+      - 42. AI 应用日志: ai/mainline/42_observability.md
+      - 43. AI 应用评价: ai/mainline/43_evaluation.md
+      - 44. AI 应用部署: ai/mainline/44_deployment.md
+    - 阶段7：综合项目:
+      - 45. AI Chat System: ai/mainline/45_chat_project.md
+      - 46. 企业知识库 RAG: ai/mainline/46_rag_project.md
+      - 47. AI 文档分析系统: ai/mainline/47_document_analysis_project.md
+      - 48. 案件 × 技术者 AI 匹配: ai/mainline/48_matching_project.md
+      - 49. Agent 自动业务处理: ai/mainline/49_agent_project.md
+      - 50. 项目 Review: ai/mainline/50_project_review.md
 - Web 开发基础:
   - 1. 前后端与请求响应基础: web_basics/00_frontend_backend_request_response.md
   - 2. HTTP、REST、Cookie、Session 与 CORS: web_basics/01_http_rest_cookie_cors.md

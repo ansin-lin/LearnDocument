@@ -50,6 +50,13 @@
 - Python 自动化
 - Python 数据分析
 
+### AI 学习路线
+
+- [AI 工具与业务应用开发](ai/index.md)
+- [AI 教学路线与阶段验收](ai/learning_path.md)
+- [ServiceDesk AI 贯穿项目规格](ai/project_spec.md)
+- 从 AI 基础与安全使用，逐步进入需求、设计、编码、测试和改修交付；基础主线已提供 50 章讲义与配套练习。
+
 ## 专题课程
 
 ### AWS
