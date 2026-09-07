@@ -424,6 +424,31 @@ nav:
     - 1. HTML 阶段: frontend/training/01_html_task.md
     - 2. CSS 阶段: frontend/training/02_css_task.md
     - 3. JavaScript 阶段: frontend/training/03_javascript_task.md
+  - Node.js 与 npm 基础:
+    - 学习路线: frontend/NodeJS/index.md
+    - 1. 认识 Node.js 与运行环境: frontend/NodeJS/01_nodejs_runtime_basics.md
+    - 2. npm、package.json 与项目依赖: frontend/NodeJS/02_npm_package_dependencies.md
+    - 3. npm scripts、npx 与团队工作流: frontend/NodeJS/03_npm_scripts_npx_workflow.md
+  - TypeScript 零基础教程:
+    - 学习路线: frontend/TypeScript/index.md
+    - 基础语法:
+      - 1. 认识 TypeScript 与运行代码: frontend/TypeScript/01_intro_setup_compile.md
+      - 2. 类型标注与基本类型: frontend/TypeScript/02_annotations_basic_types.md
+      - 3. 数组与元组: frontend/TypeScript/03_arrays_tuples.md
+      - 4. 对象类型与类型别名: frontend/TypeScript/04_object_types_aliases.md
+      - 5. 联合类型与字面量类型: frontend/TypeScript/05_unions_literals.md
+      - 6. 类型收窄与类型断言: frontend/TypeScript/06_narrowing_assertions.md
+      - 7. 函数类型: frontend/TypeScript/07_function_types.md
+      - 8. 接口与类型组合: frontend/TypeScript/08_interfaces_composition.md
+      - 9. 类的类型语法（会阅读）: frontend/TypeScript/09_classes.md
+    - 常用类型能力:
+      - 10. 泛型: frontend/TypeScript/10_generics.md
+      - 11. 常量与固定值的表达: frontend/TypeScript/11_constants_enum.md
+    - 进入框架前的准备:
+      - 12. 模块与项目配置: frontend/TypeScript/12_modules_config_declarations.md
+      - 13. 组件数据与界面状态建模: frontend/TypeScript/13_business_state_modeling.md
+      - 14. 异步结果与外部数据: frontend/TypeScript/14_async_external_data.md
+    - 附录. 高级类型与低频机制: frontend/TypeScript/appendix_advanced_types.md
   - UI 组件库:
     - Bootstrap:
       - 1. 入门与基础结构: frontend/ui/bootstrap/01_bootstrap_basics.md
