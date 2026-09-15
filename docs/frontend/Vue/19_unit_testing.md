@@ -11,7 +11,7 @@
 - 【必须掌握】独立测试Composable和Pinia Store。
 - 【会使用、能看懂】使用Mock控制API结果，并查看覆盖率。
 
-需要掌握组件、Props与Emits、表单、Composable、Promise、API模块和Pinia。本章统一使用TypeScript。
+需要掌握组件、Props与Emits、表单、Composable、Promise、API模块和Pinia。本章继续使用普通JavaScript。
 
 ## 1. 测试要解决什么问题
 
@@ -37,7 +37,7 @@
 
 测试通常按Arrange、Act、Assert三个阶段思考：
 
-```ts
+```js
 import { expect, it } from 'vitest'
 
 it('两个任务中有一个已完成', () => {
@@ -82,9 +82,9 @@ npm install --save-dev vitest @vue/test-utils jsdom @vitest/coverage-v8
 
 ### 3.2 配置和命令
 
-在项目已有的`vite.config.ts`中增加`test`，不要创建第二份Vite配置：
+在项目已有的`vite.config.js`中增加`test`，不要创建第二份Vite配置：
 
-```ts
+```js
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -115,24 +115,24 @@ export default defineConfig({
 
 ### 3.3 测试文件位置
 
-Vitest识别`*.test.ts`和`*.spec.ts`。本课程把测试放在被测文件旁边：
+Vitest识别`*.test.js`和`*.spec.js`。本课程把测试放在被测文件旁边：
 
 ```text
 src/
 ├─ components/
 │  ├─ TaskItem.vue
-│  └─ TaskItem.spec.ts
+│  └─ TaskItem.spec.js
 ├─ composables/
-│  ├─ useTaskFilter.ts
-│  └─ useTaskFilter.spec.ts
+│  ├─ useTaskFilter.js
+│  └─ useTaskFilter.spec.js
 └─ stores/
-   ├─ tasks.ts
-   └─ tasks.spec.ts
+   ├─ tasks.js
+   └─ tasks.spec.js
 ```
 
 ## 4. 测试分组与常用断言
 
-```ts
+```js
 import { describe, expect, it } from 'vitest'
 
 describe('任务状态判断', () => {
@@ -158,7 +158,7 @@ describe('任务状态判断', () => {
 对象内容通常使用`toEqual()`，不要误用`toBe()`比较两个分别创建的对象。
 
 ```bash
-npm run test:unit:run
+npm run test:unit
 ```
 
 失败时先看用例名称，再比较Expected（预期）和Received（实际）。
@@ -168,10 +168,13 @@ npm run test:unit:run
 `src/components/TaskItem.vue`：
 
 ```vue
-<script setup lang="ts">
-import type { Task } from '@/types/task'
-
-defineProps<{ task: Task }>()
+<script setup>
+defineProps({
+  task: {
+    type: Object,
+    required: true,
+  },
+})
 </script>
 
 <template>
@@ -183,9 +186,9 @@ defineProps<{ task: Task }>()
 </template>
 ```
 
-`src/components/TaskItem.spec.ts`：
+`src/components/TaskItem.spec.js`：
 
-```ts
+```js
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import TaskItem from './TaskItem.vue'
@@ -214,7 +217,7 @@ describe('TaskItem', () => {
 
 ### 5.2 测试条件显示
 
-```ts
+```js
 it('已完成任务显示状态文字', () => {
   const task = { id: 1, title: '规格确认', assignee: '田中', priority: 'normal', status: 'done', dueDate: '2026-09-30' }
   const wrapper = mount(TaskItem, { props: { task } })
@@ -235,13 +238,14 @@ it('未完成任务不显示状态文字', () => {
 给`TaskItem.vue`增加事件：
 
 ```vue
-<script setup lang="ts">
-import type { Task } from '@/types/task'
-
-const props = defineProps<{ task: Task }>()
-const emit = defineEmits<{
-  changeStatus: [id: number, status: Task['status']]
-}>()
+<script setup>
+const props = defineProps({
+  task: {
+    type: Object,
+    required: true,
+  },
+})
+const emit = defineEmits(['changeStatus'])
 
 function completeTask() {
   emit('changeStatus', props.task.id, 'done')
@@ -256,7 +260,7 @@ function completeTask() {
 </template>
 ```
 
-```ts
+```js
 it('点击完成按钮后发送任务编号和状态', async () => {
   const task = { id: 1, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' }
   const wrapper = mount(TaskItem, { props: { task } })
@@ -268,13 +272,13 @@ it('点击完成按钮后发送任务编号和状态', async () => {
 })
 ```
 
-`trigger()`触发DOM事件；`emitted()`读取组件事件记录。每次事件的参数保存为一个数组，所以第一次`complete`事件的参数是`[1]`。不要直接调用内部`completeTask()`，测试目标是用户点击后的公开行为。
+`trigger()`触发DOM事件；`emitted()`读取组件事件记录。每次组件事件的参数会保存为一个数组。这里第一次`changeStatus`事件的参数是`[1, 'done']`：`1`是task id，`'done'`是新状态。不要直接调用内部`completeTask()`，测试目标是用户点击后的公开行为。
 
 ## 7. 测试表单输入与校验
 
 组件测试应按照真实操作顺序填写输入、提交表单，再检查错误或事件：
 
-```ts
+```js
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import TaskForm from './TaskForm.vue'
@@ -285,20 +289,20 @@ describe('TaskForm', () => {
 
     await wrapper.get('form').trigger('submit')
 
-    expect(wrapper.get('[role="alert"]').text()).toContain('任务标题为必填项')
+    expect(wrapper.get('#title-error').text()).toContain('任务标题为必填项')
     expect(wrapper.emitted('submit')).toBeUndefined()
   })
 
-  it('合法输入提交任务标题', async () => {
+  it('合法输入提交后进入保存中', async () => {
     const wrapper = mount(TaskForm)
 
-    await wrapper.get('input[name="title"]').setValue('列表画面实现')
+    await wrapper.get('#task-title').setValue('列表画面实现')
+    await wrapper.get('#priority').setValue('normal')
     await wrapper.get('form').trigger('submit')
 
-    expect(wrapper.emitted('submit')).toHaveLength(1)
-    expect(wrapper.emitted('submit')[0][0]).toMatchObject({
-      title: '列表画面实现',
-    })
+    expect(wrapper.find('#title-error').exists()).toBe(false)
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('button[type="submit"]').text()).toContain('保存中')
   })
 })
 ```
@@ -311,7 +315,7 @@ Vue不会保证在当前一行JavaScript结束前完成DOM更新。`trigger()`�
 
 如果组件还执行普通Promise或Mock API，使用`flushPromises()`等待已经开始的Promise：
 
-```ts
+```js
 import { flushPromises, mount } from '@vue/test-utils'
 
 it('读取完成后显示任务', async () => {
@@ -331,7 +335,7 @@ it('读取完成后显示任务', async () => {
 
 第15章的`useTaskFilter()`只使用响应式API，可以直接调用：
 
-```ts
+```js
 import { ref } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { useTaskFilter } from './useTaskFilter'
@@ -364,7 +368,7 @@ describe('useTaskFilter', () => {
 
 每条Store测试创建新的Pinia，防止状态互相污染：
 
-```ts
+```js
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useTaskStore } from './tasks'
@@ -389,7 +393,7 @@ describe('任务Store', () => {
 
 单元测试不访问真实API。Mock用固定结果替换API模块，让成功和失败都能稳定重现。
 
-```ts
+```js
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { getTasks } from '@/api/tasks'
@@ -399,15 +403,13 @@ vi.mock('@/api/tasks', () => ({
   getTasks: vi.fn(),
 }))
 
-const getTasksMock = vi.mocked(getTasks)
-
 describe('任务Store的异步读取', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
 
   it('API成功时保存任务并恢复加载状态', async () => {
-    getTasksMock.mockResolvedValue([
+    getTasks.mockResolvedValue([
       { id: 1, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
     ])
     const store = useTaskStore()
@@ -420,7 +422,7 @@ describe('任务Store的异步读取', () => {
   })
 
   it('API失败时保存错误并恢复加载状态', async () => {
-    getTasksMock.mockRejectedValue(new Error('服务器暂时不可用'))
+    getTasks.mockRejectedValue(new Error('服务器暂时不可用'))
     const store = useTaskStore()
 
     await expect(store.loadTasks()).rejects.toThrow('服务器暂时不可用')
@@ -444,7 +446,7 @@ describe('任务Store的异步读取', () => {
 
 `mount()`正常渲染子组件，默认优先使用。`shallowMount()`把子组件替换成占位，只在子组件复杂或当前测试明确只关心父组件接口时使用：
 
-```ts
+```js
 import { shallowMount } from '@vue/test-utils'
 
 const wrapper = shallowMount(TaskList, {
@@ -456,7 +458,7 @@ const wrapper = shallowMount(TaskList, {
 
 过度Stub会让测试通过，但真实父子组合仍可能出错。Pinia等插件应通过`global.plugins`提供：
 
-```ts
+```js
 const wrapper = mount(TaskList, {
   global: {
     plugins: [createPinia()],
@@ -468,7 +470,7 @@ const wrapper = mount(TaskList, {
 
 一条测试必须能够单独运行，不能依赖执行顺序：
 
-```ts
+```js
 import { afterEach, beforeEach, vi } from 'vitest'
 
 beforeEach(() => {
@@ -541,7 +543,7 @@ Received: "请输入标题"
 ### 17.2 验证命令
 
 ```bash
-npm run test:unit:run
+npm run test:unit
 npm run test:coverage
 npm run build
 ```

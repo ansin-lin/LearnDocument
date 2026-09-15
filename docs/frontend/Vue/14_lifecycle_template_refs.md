@@ -6,12 +6,12 @@
 
 - 【必须掌握】理解组件挂载、更新和卸载的含义。
 - 【必须掌握】使用`onMounted()`访问挂载后的DOM。
-- 【必须掌握】为Template Ref标注DOM类型，并在元素存在后安全访问。
+- 【必须掌握】使用Template Ref取得DOM元素，并在元素存在后安全访问。
 - 【必须掌握】注册并清理事件监听器、定时器等外部资源。
 - 【会使用、能看懂】通过`nextTick()`等待一次DOM更新完成。
 - 【会读即可】`onUpdated()`以及其他生命周期钩子的执行时机。
 
-需要掌握`ref()`、条件渲染、事件绑定、`watch()`和组件基础。本章示例使用TypeScript，并优先依赖类型推断。
+需要掌握`ref()`、条件渲染、事件绑定、`watch()`和组件基础。本章示例使用JavaScript。
 
 ## 1. 组件为什么有生命周期
 
@@ -41,7 +41,7 @@ onUnmounted（卸载完成）
 `onMounted(callback)`注册一个回调。当组件第一次生成的DOM已经挂载到页面后，Vue调用该回调。
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { onMounted } from 'vue'
 
 console.log('1. 创建组件')
@@ -72,7 +72,7 @@ onMounted(() => {
 `LifecycleDemo.vue`：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import {
   onBeforeMount,
   onBeforeUnmount,
@@ -106,7 +106,7 @@ onUnmounted(() => console.log('7. onUnmounted'))
 父组件控制子组件是否存在：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 import LifecycleDemo from './components/LifecycleDemo.vue'
 
@@ -137,10 +137,10 @@ const visible = ref(true)
 `TaskEditor.vue`：
 
 ```vue
-<script setup lang="ts">
-import { onMounted, useTemplateRef } from 'vue'
+<script setup>
+import { onMounted } from 'vue'
 
-const titleInput = useTemplateRef<HTMLInputElement>('titleInput')
+const titleInput = ref(null)
 
 onMounted(() => {
   titleInput.value?.focus()
@@ -153,9 +153,7 @@ onMounted(() => {
 </template>
 ```
 
-模板中的`ref="titleInput"`建立引用名称；`useTemplateRef('titleInput')`取得对应引用对象。挂载前`titleInput.value`是`null`，挂载后才是`HTMLInputElement`，所以示例使用可选链`?.`安全调用`focus()`。
-
-如果既有项目使用不支持`useTemplateRef()`的Vue版本，可能会看到`const titleInput = ref(null)`的写法。应按项目Vue版本选择一种方式，不要在同一个组件中混用。
+模板中的`ref="titleInput"`与脚本中的`const titleInput = ref(null)`使用相同名称建立引用。挂载前`titleInput.value`是`null`，挂载后才指向真实输入元素，所以示例使用可选链`?.`安全调用`focus()`。第20章再说明怎样为这个引用增加DOM类型。
 
 ### 3.1 模板引用不适合做什么
 
@@ -176,11 +174,11 @@ onMounted(() => {
 Vue会把同一轮中的多次状态修改合并，再更新DOM。下面的输入框只有`editing`为`true`时才存在：
 
 ```vue
-<script setup lang="ts">
-import { ref, useTemplateRef } from 'vue'
+<script setup>
+import { ref } from 'vue'
 
 const editing = ref(false)
-const titleInput = useTemplateRef<HTMLInputElement>('titleInput')
+const titleInput = ref(null)
 
 function openEditor() {
   editing.value = true
@@ -201,11 +199,11 @@ function openEditor() {
 `nextTick()`返回一个Promise，在Vue完成当前这一轮DOM更新后结束等待。
 
 ```vue
-<script setup lang="ts">
-import { nextTick, ref, useTemplateRef } from 'vue'
+<script setup>
+import { nextTick, ref } from 'vue'
 
 const editing = ref(false)
-const titleInput = useTemplateRef<HTMLInputElement>('titleInput')
+const titleInput = ref(null)
 
 async function openEditor() {
   editing.value = true
@@ -237,7 +235,7 @@ async function openEditor() {
 `onUpdated()`在组件因响应式状态变化而完成DOM更新后执行。
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { onUpdated, ref } from 'vue'
 
 const count = ref(0)
@@ -263,7 +261,7 @@ onUpdated(() => {
 ### 7.1 清理事件监听器
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 
 const windowWidth = ref(0)
@@ -291,10 +289,10 @@ onUnmounted(() => {
 
 ### 7.2 清理定时器
 
-```ts
+```js
 import { onMounted, onUnmounted } from 'vue'
 
-let timerId: number | undefined
+let timerId
 
 onMounted(() => {
   timerId = window.setInterval(() => {

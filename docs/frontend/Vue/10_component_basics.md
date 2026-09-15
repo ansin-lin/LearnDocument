@@ -2,9 +2,9 @@
 
 ## 本章目标与前置知识
 
-【必须掌握】按职责而非DOM数量拆分组件，完成局部导入与组合；全局注册达到【会使用、能看懂】。需要掌握SFC、列表和表单。本章示例使用TypeScript，并优先依赖类型推断。
+【必须掌握】按职责而非DOM数量拆分组件，完成局部导入与组合；全局注册达到【会使用、能看懂】。需要掌握SFC、列表和表单。本章示例使用JavaScript。
 
-前7章的示例主要写在`App.vue`中。页面变大后，把所有模板、状态、事件和样式放在一个文件里会难以阅读、修改和测试。本章学习怎样按职责拆成多个组件，再把它们组合成页面。
+前面章节的示例主要写在`App.vue`中。页面变大后，把所有模板、状态、事件和样式放在一个文件里会难以阅读、修改和测试。本章学习怎样按职责拆成多个组件，再把它们组合成页面。
 
 本章只讲组件本身的创建和组织。父子传值放在第11章，组件`v-model`与Attributes放在第12章，Slots与provide/inject放在第13章。
 
@@ -99,7 +99,7 @@ TaskListView.vue
 在`App.vue`中导入：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import PageTitle from './components/PageTitle.vue'
 </script>
 
@@ -179,7 +179,7 @@ PascalCase能明显区分Vue组件与原生HTML元素。文件名、导入名和
 新建`src/components/TaskCounter.vue`：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 
 const count = ref(0)
@@ -200,7 +200,7 @@ function increment() {
 父组件使用两次：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import TaskCounter from './components/TaskCounter.vue'
 </script>
 
@@ -272,7 +272,7 @@ main
 
 ## 12. 导入路径和大小写
 
-```ts
+```js
 import TaskList from './components/TaskList.vue'
 ```
 
@@ -282,7 +282,7 @@ import TaskList from './components/TaskList.vue'
 - `../`表示上一级目录；
 - 项目配置后，`@/`通常表示`src/`。
 
-不要假定所有项目都配置了`@`别名。查看`vite.config.ts`和现有导入方式后保持一致。
+不要假定所有项目都配置了`@`别名。查看`vite.config.js`和现有导入方式后保持一致。
 
 Windows文件系统有时不明显区分大小写，而Linux构建环境通常区分。`TaskList.vue`不能写成`tasklist.vue`，否则本地可能正常、CI或服务器构建失败。
 
@@ -295,7 +295,7 @@ Windows文件系统有时不明显区分大小写，而Linux构建环境通常�
 在使用组件的单文件组件中直接导入：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import PageTitle from './components/PageTitle.vue'
 import TaskCounter from './components/TaskCounter.vue'
 </script>
@@ -332,9 +332,9 @@ import TaskCounter from './components/TaskCounter.vue'
 
 ### 13.2 应用级全局注册
 
-在`src/main.ts`创建应用后、挂载前调用`app.component()`：
+在`src/main.js`创建应用后、挂载前调用`app.component()`：
 
-```ts
+```js
 import { createApp } from 'vue'
 import App from './App.vue'
 import BaseButton from './components/base/BaseButton.vue'
@@ -367,7 +367,7 @@ app.mount('#app')
 | 优点：使用方便 | 后代组件不需要逐个导入即可使用 |
 | 优点：统一公共入口 | 少量基础组件可以在应用入口集中注册 |
 | 优点：适合稳定基础设施 | 项目级按钮、图标等高频组件可以保持统一名称 |
-| 缺点：依赖不直观 | 只看当前文件无法判断组件从哪里提供，需要调查`main.ts`或插件 |
+| 缺点：依赖不直观 | 只看当前文件无法判断组件从哪里提供，需要调查`main.js`或插件 |
 | 缺点：名称容易冲突 | 全局名称被整个应用共享，命名不清楚时可能覆盖或混淆 |
 | 缺点：影响范围较大 | 修改全局组件可能影响大量页面，需要扩大回归范围 |
 | 缺点：可能增加构建内容 | 全局注册但实际未使用的组件不一定容易被排除 |
@@ -383,7 +383,7 @@ app.mount('#app')
 | 任务、员工等具体业务组件 | 局部注册 |
 | 几乎所有页面都会用的稳定基础组件 | 可评估全局注册 |
 | 第三方UI库要求通过插件安装 | 按官方和项目既有方式 |
-| 无法确定组件从哪里注册 | 检查当前文件、`main.ts`和插件文件 |
+| 无法确定组件从哪里注册 | 检查当前文件、`main.js`和插件文件 |
 
 不要为了少写一行`import`就把所有组件全局注册。全局组件的依赖不会直接出现在使用文件顶部，名称冲突和影响范围也更难调查。
 
@@ -400,7 +400,7 @@ app.mount('#app')
 
 ### 13.4 注册与导入不是一回事
 
-`import`把组件模块加载到当前JavaScript文件；注册让Vue模板能够按组件名称使用它。`script setup`中的局部导入同时完成了当前模板所需的注册关系，而`main.ts`中的全局方式需要显式调用`app.component()`。
+`import`把组件模块加载到当前JavaScript文件；注册让Vue模板能够按组件名称使用它。`script setup`中的局部导入同时完成了当前模板所需的注册关系，而`main.js`中的全局方式需要显式调用`app.component()`。
 
 维护既有项目时如果模板中使用了一个没有局部导入的组件，不要立即判断代码错误，应继续检查应用入口、插件安装和自动导入配置。
 
@@ -458,7 +458,7 @@ app.mount('#app')
 
 ### 15.2 导入名称和模板名称不一致
 
-```ts
+```js
 import TaskList from './components/TaskList.vue'
 ```
 

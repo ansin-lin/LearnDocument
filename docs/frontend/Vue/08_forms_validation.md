@@ -19,7 +19,7 @@
 ```
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 const title = ref('')
 </script>
@@ -49,13 +49,13 @@ const title = ref('')
 
 可以把它理解成“用状态设置控件值，控件输入后再更新状态”的组合。不同控件使用的DOM属性和事件并不完全相同，Vue会根据`input`、`checkbox`、`radio`或`select`处理对应规则。
 
-### 1.2 输入框默认得到字符串
+### 1.2 number输入框仍要做业务校验
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 
-const quantity = ref('1')
+const quantity = ref(1)
 </script>
 
 <template>
@@ -64,20 +64,19 @@ const quantity = ref('1')
 </template>
 ```
 
-即使`type="number"`，普通`v-model`取得的仍通常是字符串。需要数字时可使用`.number`，但业务仍要检查空值、范围和转换结果。
+对`type="number"`的输入框，Vue会自动尝试进行数字转换，效果与使用`.number`修饰符相近。但清空输入时仍可能得到空字符串，浏览器允许输入的值也不等于业务上有效，因此仍要检查空值、有限数字和允许范围。
 
 ## 2. 常见控件
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
-import type { Priority, TaskStatus } from './types/task'
 
 const title = ref('')
 const description = ref('')
-const status = ref<TaskStatus>('todo')
-const labels = ref<string[]>([])
-const priority = ref<Priority>('normal')
+const status = ref('todo')
+const labels = ref([])
+const priority = ref('normal')
 </script>
 
 <template>
@@ -128,10 +127,10 @@ HTML属性`value="101"`得到字符串`"101"`；动态绑定`:value="101"`得到
 ### 2.3 多选select完整示例
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 
-const selectedLabels = ref<string[]>([])
+const selectedLabels = ref([])
 </script>
 
 <template>
@@ -183,25 +182,17 @@ const selectedLabels = ref<string[]>([])
 ## 4. WorkHub表单校验
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { reactive, ref } from 'vue'
-import type { Priority } from './types/task'
 
-interface TaskForm {
-  title: string
-  priority: Priority | ''
-}
-
-type FormField = keyof TaskForm
-
-const form = reactive<TaskForm>({ title: '', priority: '' })
-const errors = reactive<Record<FormField, string>>({ title: '', priority: '' })
-const touched = reactive<Record<FormField, boolean>>({ title: false, priority: false })
+const form = reactive({ title: '', priority: '' })
+const errors = reactive({ title: '', priority: '' })
+const touched = reactive({ title: false, priority: false })
 
 const isSaving = ref(false)
 const submitError = ref('')
 
-function validate(): boolean {
+function validateForm() {
   touched.title = true
   touched.priority = true
   errors.title = ''
@@ -211,18 +202,18 @@ function validate(): boolean {
   if (!title) errors.title = '任务标题为必填项。'
   else if (title.length > 50) errors.title = '任务标题不能超过50个字符。'
 
-  if (!['normal', 'high'].includes(form.priority)) {
+  if (!['low', 'normal', 'high'].includes(form.priority)) {
     errors.priority = '请选择优先级。'
   }
 
   return !errors.title && !errors.priority
 }
 
-function clearFieldError(field: FormField): void {
+function clearFieldError(field) {
   errors[field] = ''
 }
 
-function resetForm(): void {
+function resetForm() {
   form.title = ''
   form.priority = ''
   errors.title = ''
@@ -232,13 +223,13 @@ function resetForm(): void {
   touched.priority = false
 }
 
-async function submitForm(): Promise<void> {
-  if (isSaving.value || !validate()) return
+async function submitForm() {
+  if (isSaving.value || !validateForm()) return
 
   isSaving.value = true
   submitError.value = ''
   try {
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 500))
+    await new Promise((resolve) => window.setTimeout(resolve, 500))
     console.log('保存成功', { ...form })
     resetForm()
   } catch (error) {
@@ -270,6 +261,7 @@ async function submitForm(): Promise<void> {
       @change="clearFieldError('priority')"
     >
       <option value="">请选择</option>
+      <option value="low">低</option>
       <option value="normal">普通</option>
       <option value="high">高</option>
     </select>
@@ -286,6 +278,8 @@ async function submitForm(): Promise<void> {
 ```
 
 提交顺序是：阻止重复提交 → 校验 → 进入保存中 → 执行保存 → 成功后重置；失败时显示错误并保留输入。前端校验改善操作体验，后端仍必须重新校验。
+
+本课程把这一阶段的新增请求定义为只提交`title`和`priority`。`id`由后端生成，`assignee`由当前登录用户确定，`status`默认设为`todo`，`dueDate`由后端业务规则计算。第17章的新增API会沿用这份请求契约；实际项目若要求用户输入担当者或期限，应先扩展本表单和接口规格，不能只在请求代码中临时补字段。
 
 `errors`保存各字段错误，`submitError`保存请求整体失败。两类错误不要混用：标题不合法应显示在标题附近，服务器暂时不可用应显示表单级提示。
 

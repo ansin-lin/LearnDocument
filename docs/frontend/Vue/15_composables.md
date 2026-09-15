@@ -2,7 +2,7 @@
 
 组件负责界面结构，但一个组件中的响应式状态和操作也可能越来越多。当一组逻辑具有明确职责、需要在多个组件复用，或适合独立测试时，可以把它提取为Composable（组合式函数）。
 
-Composable通常是名称以`use`开头的TypeScript函数。它可以使用`ref()`、`computed()`、`watch()`和生命周期钩子，负责复用有状态的Vue逻辑，但不负责复用HTML结构。
+Composable通常是名称以`use`开头的JavaScript函数。它可以使用`ref()`、`computed()`、`watch()`和生命周期钩子，负责复用有状态的Vue逻辑，但不负责复用HTML结构。
 
 ## 本章目标与前置知识
 
@@ -10,20 +10,21 @@ Composable通常是名称以`use`开头的TypeScript函数。它可以使用`ref
 - 【必须掌握】设计参数和返回值，在组件中调用Composable。
 - 【必须掌握】理解函数内部状态与模块共享状态的区别。
 - 【会使用、能看懂】在Composable内部管理生命周期和异步状态。
-- 【会读即可】判断逻辑更适合组件、普通TypeScript模块、API模块还是Pinia。
+- 【会读即可】判断逻辑更适合组件、普通JavaScript模块、API模块还是Pinia。
 
-需要掌握`ref()`、`computed()`、`watch()`、生命周期、TypeScript函数和ES模块。本章示例使用TypeScript，并优先依赖类型推断。
+需要掌握`ref()`、`computed()`、`watch()`、生命周期、JavaScript函数和ES模块。本章示例使用JavaScript。
+
+从本章开始，为了让后续项目目录示例更清晰，课程示例假设项目已经配置`@`指向`src`。真实项目中必须先查看`vite.config.js`、`jsconfig.json`或现有代码，确认是否采用这一alias；没有配置时，应改用符合当前文件位置的相对路径。
 
 ## 1. 先观察组件中的问题
 
 任务页面可能同时包含搜索关键字和筛选结果：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { computed, ref } from 'vue'
-import type { Task } from './types/task'
 
-const tasks = ref<Task[]>([
+const tasks = ref([
   { id: 101, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
   { id: 102, title: '页面实现', assignee: '佐藤', priority: 'high', status: 'doing', dueDate: '2026-10-05' },
 ])
@@ -40,7 +41,7 @@ const filteredTasks = computed(() =>
 
 Composable具有以下特点：
 
-- 是普通TypeScript函数，可以接收参数并返回结果；
+- 是普通JavaScript函数，可以接收参数并返回结果；
 - 函数内部使用Vue组合式API管理响应式状态或生命周期；
 - 名称通常以`use`开头，例如`useTaskFilter`；
 - 复用状态和操作，不包含`template`；
@@ -48,23 +49,22 @@ Composable具有以下特点：
 
 普通工具函数只做数据计算时，不需要写成Composable：
 
-```ts
-export function formatTaskTitle(title: string): string {
+```js
+export function formatTaskTitle(title) {
   return title.trim()
 }
 ```
 
-这个函数没有Vue响应式状态，放在普通TypeScript模块中更简单。
+这个函数没有Vue响应式状态，放在普通JavaScript模块中更简单。
 
 ## 3. 提取useTaskFilter
 
-新建`src/composables/useTaskFilter.ts`：
+新建`src/composables/useTaskFilter.js`：
 
-```ts
-import { computed, ref, type Ref } from 'vue'
-import type { Task } from '../types/task'
+```js
+import { computed, ref } from 'vue'
 
-export function useTaskFilter(tasks: Ref<Task[]>) {
+export function useTaskFilter(tasks) {
   const keyword = ref('')
 
   const filteredTasks = computed(() => {
@@ -95,12 +95,11 @@ export function useTaskFilter(tasks: Ref<Task[]>) {
 `TaskListView.vue`：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
-import { useTaskFilter } from './composables/useTaskFilter'
-import type { Task } from './types/task'
+import { useTaskFilter } from '@/composables/useTaskFilter'
 
-const tasks = ref<Task[]>([
+const tasks = ref([
   { id: 101, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
   { id: 102, title: '页面实现', assignee: '佐藤', priority: 'high', status: 'doing', dueDate: '2026-10-05' },
 ])
@@ -123,7 +122,7 @@ const { keyword, filteredTasks } = useTaskFilter(tasks)
 </template>
 ```
 
-输入“页面”后只显示“页面实现”；清空输入后再次显示全部任务。模板会自动解包ref，所以写`keyword`和`filteredTasks`；TypeScript脚本中仍要通过`.value`访问。
+输入“页面”后只显示“页面实现”；清空输入后再次显示全部任务。模板会自动解包ref，所以写`keyword`和`filteredTasks`；JavaScript脚本中仍要通过`.value`访问。
 
 数据关系如下：
 
@@ -149,7 +148,7 @@ Composable的参数和返回值就是它对调用方公开的接口。
 
 返回对象比依赖数组位置更容易阅读：
 
-```ts
+```js
 return { keyword, filteredTasks }
 ```
 
@@ -163,11 +162,10 @@ Composable可以读取调用方传入的`tasks`，但不应该在没有清晰名
 
 状态声明在函数内部时，每次调用都会创建独立状态：
 
-```ts
-import { ref, type Ref } from 'vue'
-import type { Task } from '../types/task'
+```js
+import { ref } from 'vue'
 
-export function useTaskFilter(tasks: Ref<Task[]>) {
+export function useTaskFilter(tasks) {
   const keyword = ref('')
   // 省略筛选逻辑
   return { keyword }
@@ -178,7 +176,7 @@ export function useTaskFilter(tasks: Ref<Task[]>) {
 
 状态声明在函数外部时，所有调用方会取得同一个状态：
 
-```ts
+```js
 const keyword = ref('')
 
 export function useSharedTaskKeyword() {
@@ -190,9 +188,9 @@ export function useSharedTaskKeyword() {
 
 ## 7. 带生命周期的useWindowSize
 
-Composable可以把资源的注册和清理放在一起。新建`src/composables/useWindowSize.ts`：
+Composable可以把资源的注册和清理放在一起。新建`src/composables/useWindowSize.js`：
 
-```ts
+```js
 import { onMounted, onUnmounted, ref } from 'vue'
 
 export function useWindowSize() {
@@ -218,7 +216,7 @@ export function useWindowSize() {
 组件中使用：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { useWindowSize } from './composables/useWindowSize'
 
 const { width } = useWindowSize()
@@ -237,18 +235,17 @@ const { width } = useWindowSize()
 
 请求通常同时具有加载中、成功和失败状态。Composable可以管理这些状态，但具体URL和响应检查仍应放在API模块中。
 
-`src/composables/useTaskLoader.ts`：
+`src/composables/useTaskLoader.js`：
 
-```ts
+```js
 import { ref } from 'vue'
-import type { Task } from '../types/task'
 
-export function useTaskLoader(loadTasks: () => Promise<Task[]>) {
-  const tasks = ref<Task[]>([])
+export function useTaskLoader(loadTasks) {
+  const tasks = ref([])
   const loading = ref(false)
   const errorMessage = ref('')
 
-  async function execute(): Promise<void> {
+  async function execute() {
     loading.value = true
     errorMessage.value = ''
 
@@ -277,12 +274,11 @@ export function useTaskLoader(loadTasks: () => Promise<Task[]>) {
 组件中的最小调用方式：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { onMounted } from 'vue'
-import { useTaskLoader } from './composables/useTaskLoader'
-import type { Task } from './types/task'
+import { useTaskLoader } from '@/composables/useTaskLoader'
 
-async function loadTasks(): Promise<Task[]> {
+async function loadTasks() {
   return [
     { id: 101, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
     { id: 102, title: '页面实现', assignee: '佐藤', priority: 'high', status: 'doing', dueDate: '2026-10-05' },
@@ -311,7 +307,7 @@ onMounted(execute)
 | --- | --- | --- |
 | 可复用HTML外观 | 组件 | 需要复用模板结构 |
 | 可复用响应式状态和逻辑 | Composable | 使用Vue响应式API或生命周期 |
-| 无Vue依赖的格式化、计算 | 普通TypeScript模块 | 输入普通值，返回普通结果 |
+| 无Vue依赖的格式化、计算 | 普通JavaScript模块 | 输入普通值，返回普通结果 |
 | URL、请求发送和响应检查 | API模块 | 负责后端通信契约 |
 | 多页面共享业务状态 | Pinia Store | 多个页面共同读取和修改 |
 
@@ -335,7 +331,7 @@ onMounted(execute)
 4. 使用`useTaskLoader()`分别模拟成功和抛出错误，确认加载、成功和失败界面都能显示。
 5. 把“日期格式化”“任务筛选”“接口请求”“跨页面登录用户”分别归类到普通模块、Composable、API模块或Pinia，并说明理由。
 
-- [ ] 能解释Composable与组件、普通TypeScript函数的区别。
+- [ ] 能解释Composable与组件、普通JavaScript函数的区别。
 - [ ] 能设计清楚的参数和返回值，并在组件中调用。
 - [ ] 能说明函数内状态和模块共享状态的差异。
 - [ ] 能保证返回的ref没有被提前解包。

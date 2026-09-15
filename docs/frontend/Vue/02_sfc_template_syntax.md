@@ -40,8 +40,8 @@ App.vue
 **单文件组件（Single-File Component，简称SFC）**是以`.vue`结尾的组件文件。它把一个组件相关的JavaScript、HTML模板和CSS样式放在同一个文件中。
 
 ```vue
-<script setup lang="ts">
-// TypeScript逻辑
+<script setup>
+// JavaScript逻辑
 </script>
 
 <template>
@@ -61,22 +61,22 @@ App.vue
 
 ### 3.1 script：组件逻辑
 
-本课程统一使用`<script setup lang="ts">`：
+本课程统一使用`<script setup>`：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const taskTitle = 'Vue教程整理'
 const assignee = '田中'
 const status = 'todo'
 </script>
 ```
 
-`<script setup lang="ts">`内部编写TypeScript。已经学过的JavaScript语法仍可直接使用，并能获得静态类型检查。
+`<script setup>`内部使用已经学习过的JavaScript和ES6语法。
 
 其中的顶层变量、函数和导入内容可以直接在同一文件的`<template>`中使用，不需要再手工组成对象或写`return`。
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const dueDate = '2026-09-30'
 const displayDate = dueDate.replaceAll('-', '/')
 </script>
@@ -119,14 +119,14 @@ const displayDate = dueDate.replaceAll('-', '/')
 
 `scoped`不是Shadow DOM，也不是安全边界。父组件布局、继承属性以及后续学习的子组件根元素仍可能受到相关样式影响。
 
-没有`scoped`的样式属于全局样式。页面重置、颜色变量等真正需要全局生效的内容通常放在`src/assets`中的公共CSS，再由`main.ts`导入；组件局部外观写在对应组件中。
+没有`scoped`的样式属于全局样式。页面重置、颜色变量等真正需要全局生效的内容通常放在`src/assets`中的公共CSS，再由`main.js`导入；组件局部外观写在对应组件中。
 
 ## 4. 完整读取一个单文件组件
 
 将`src/App.vue`替换为下面的完整文件：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const taskTitle = 'Vue教程整理'
 const assignee = '田中'
 const status = 'todo'
@@ -230,7 +230,7 @@ Vue会计算双花括号中的表达式，并把结果作为文本显示。变�
 ### 6.2 布尔属性
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const saving = true
 </script>
 

@@ -29,11 +29,9 @@ tasks（原始状态）
 `App.vue`：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { computed, ref } from 'vue'
-import type { Task, TaskStatus } from './types/task'
 
-type StatusFilter = 'all' | TaskStatus
 
 const price = ref(1200)
 const quantity = ref(2)
@@ -50,7 +48,7 @@ const total = computed(() => price.value * quantity.value)
 
 ### 2.1 computed返回的仍然是ref
 
-```ts
+```js
 console.log(total.value) // 2400
 quantity.value = 3
 console.log(total.value) // 3600
@@ -83,12 +81,12 @@ Vue记录依赖
 ## 3. WorkHub统计与筛选
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { computed, ref } from 'vue'
 
 const keyword = ref('')
-const status = ref<StatusFilter>('all')
-const tasks = ref<Task[]>([
+const status = ref('all')
+const tasks = ref([
   { id: 101, title: 'API仕様確認', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
   { id: 102, title: '一覧画面実装', assignee: '佐藤', priority: 'high', status: 'done', dueDate: '2026-10-05' },
 ])
@@ -108,12 +106,12 @@ const filteredTasks = computed(() => {
   })
 })
 
-function updateKeyword(event: Event): void {
-  keyword.value = (event.currentTarget as HTMLInputElement).value
+function updateKeyword(event) {
+  keyword.value = event.currentTarget.value
 }
 
-function updateStatus(event: Event): void {
-  const value = (event.currentTarget as HTMLSelectElement).value
+function updateStatus(event) {
+  const value = event.currentTarget.value
   if (value === 'all' || value === 'todo' || value === 'doing' || value === 'done') {
     status.value = value
   }
@@ -152,11 +150,11 @@ function updateStatus(event: Event): void {
 
 ### 3.2 一个常见错误：手动保存统计值
 
-```ts
-const tasks = ref<Task[]>([])
+```js
+const tasks = ref([])
 const remainingCount = ref(0)
 
-function addTask(task: Task): void {
+function addTask(task) {
   tasks.value.push(task)
   // 如果忘记remainingCount.value++，两个状态立即不一致
 }
@@ -168,7 +166,7 @@ function addTask(task: Task): void {
 
 `sort()`会修改原数组。派生排序结果时先复制：
 
-```ts
+```js
 const sortedTasks = computed(() =>
   [...tasks.value].sort((a, b) => a.id - b.id),
 )
@@ -178,7 +176,7 @@ const sortedTasks = computed(() =>
 
 如果还要按关键字筛选，可让排序计算属性依赖`filteredTasks.value`：
 
-```ts
+```js
 const sortedTasks = computed(() =>
   [...filteredTasks.value].sort((a, b) => a.id - b.id),
 )
@@ -200,7 +198,7 @@ const sortedTasks = computed(() =>
 
 项目中偶尔会看到同时提供`get`和`set`的计算属性：
 
-```ts
+```js
 const fullName = computed({
   get: () => `${firstName.value} ${lastName.value}`,
   set: value => {

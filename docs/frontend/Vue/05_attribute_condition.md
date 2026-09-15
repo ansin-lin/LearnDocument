@@ -21,7 +21,7 @@
 ### 1.2 使用v-bind
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const detailUrl = '/tasks/101'
 const linkLabel = '查看规格确认任务'
 </script>
@@ -47,10 +47,10 @@ const linkLabel = '查看规格确认任务'
 
 ## 2. 属性表达式可以写什么
 
-属性绑定的值可以是单个TypeScript/JavaScript表达式：
+属性绑定的值可以是单个JavaScript表达式：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const taskId = 101
 const status = 'todo'
 const assignee = '田中'
@@ -72,7 +72,7 @@ const assignee = '田中'
 `disabled`、`checked`、`required`、`readonly`和`multiple`属于常见布尔属性。它们关注属性是否存在，而不是字符串内容：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const saving = true
 const canEdit = false
 </script>
@@ -90,7 +90,7 @@ ARIA属性不是HTML布尔属性。例如`aria-expanded`通常需要字符串`'t
 ## 4. null和undefined怎样处理
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const description = null
 const testId = undefined
 </script>
@@ -107,7 +107,7 @@ const testId = undefined
 ## 5. 同时绑定多个属性
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const buttonAttributes = {
   id: 'save-button',
   disabled: false,
@@ -131,7 +131,7 @@ CSS已经负责定义外观，Vue只需要根据值决定使用哪些类。这�
 ### 6.1 对象写法
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const status = 'todo'
 const priority = 'high'
 </script>
@@ -163,7 +163,7 @@ const priority = 'high'
 ### 6.2 数组写法
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const sizeClass = 'badge--large'
 const priorityClass = 'badge--high'
 </script>
@@ -192,7 +192,7 @@ const priorityClass = 'badge--high'
 ### 7.1 对象写法
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const progress = 60
 const barColor = '#2563eb'
 </script>
@@ -216,7 +216,7 @@ const barColor = '#2563eb'
 ### 7.2 数组写法和多值
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const baseStyle = { padding: '8px', color: '#111827' }
 const emphasisStyle = { fontWeight: '700' }
 </script>
@@ -242,7 +242,7 @@ const emphasisStyle = { fontWeight: '700' }
 ## 9. v-if、v-else-if和v-else
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const status = 'loading'
 </script>
 
@@ -261,7 +261,7 @@ const status = 'loading'
 ## 10. 使用template组合多个元素
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const canEdit = true
 </script>
 
@@ -314,7 +314,7 @@ const canEdit = true
 
 页面常有`idle`、`loading`、`success`和`error`。如果使用多个布尔变量，可能出现“正在读取”和“读取失败”同时为真的矛盾状态：
 
-```ts
+```js
 import { ref } from 'vue'
 
 const status = ref('idle')
@@ -365,16 +365,20 @@ const status = ref('idle')
 ## 16. 本章完整示例
 
 ```vue
-<script setup lang="ts">
-const task = {
+<script setup>
+import { ref } from 'vue'
+
+const task = ref({
   id: 101,
   title: '规格确认',
+  assignee: '田中',
   priority: 'high',
   status: 'todo',
-}
-const status = 'success'
-const canEdit = true
-const progress = 60
+  dueDate: '2026-09-30',
+})
+const status = ref('success')
+const canEdit = ref(true)
+const progress = ref(60)
 </script>
 
 <template>

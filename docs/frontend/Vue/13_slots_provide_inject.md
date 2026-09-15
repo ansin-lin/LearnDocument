@@ -9,7 +9,7 @@
 - 【会使用、能看懂】使用 provide/inject 在当前组件树共享依赖。
 - 【会读即可】识别 useSlots() 和 Symbol 注入键。
 
-需要掌握组件、Props、Emits和TypeScript基础。
+需要掌握组件、Props、Emits和JavaScript基础。
 
 ## 1. 什么是插槽
 
@@ -107,12 +107,13 @@ Props适合传数据，插槽适合让父组件提供一段模板内容。子组
 
 ```vue
 <!-- TaskTable.vue -->
-<script setup lang="ts">
-import type { Task } from './types/task'
-
-const props = defineProps<{
-  tasks: Task[]
-}>()
+<script setup>
+const props = defineProps({
+  tasks: {
+    type: Array,
+    required: true,
+  },
+})
 </script>
 
 <template>
@@ -146,21 +147,19 @@ const props = defineProps<{
 父组件接收这个值，并决定当前页面显示哪些操作：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 import TaskTable from './components/TaskTable.vue'
-import type { Task } from './types/task'
-
-const tasks = ref<Task[]>([
+const tasks = ref([
   { id: 101, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
   { id: 102, title: '页面实现', assignee: '佐藤', priority: 'high', status: 'done', dueDate: '2026-10-05' },
 ])
 
-function editTask(id: number) {
+function editTask(id) {
   console.log('编辑任务：', id)
 }
 
-function removeTask(id: number) {
+function removeTask(id) {
   tasks.value = tasks.value.filter((task) => task.id !== id)
 }
 </script>
@@ -194,7 +193,7 @@ function removeTask(id: number) {
 ## 6. 会读即可：useSlots
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { useSlots } from 'vue'
 
 const slots = useSlots()
@@ -227,24 +226,17 @@ TaskPage
 `TaskPage.vue`：
 
 ```vue
-<script setup lang="ts">
-import { provide, readonly, ref, type Ref } from 'vue'
+<script setup>
+import { provide, readonly, ref } from 'vue'
 import TaskLayout from './TaskLayout.vue'
 
-type DisplayMode = 'list' | 'card'
+const displayMode = ref('list')
 
-interface TaskDisplayContext {
-  displayMode: Readonly<Ref<DisplayMode>>
-  changeDisplayMode: (mode: DisplayMode) => void
-}
-
-const displayMode = ref<DisplayMode>('list')
-
-function changeDisplayMode(mode: DisplayMode): void {
+function changeDisplayMode(mode) {
   displayMode.value = mode
 }
 
-provide<TaskDisplayContext>('taskDisplay', {
+provide('taskDisplay', {
   displayMode: readonly(displayMode),
   changeDisplayMode,
 })
@@ -261,7 +253,7 @@ provide<TaskDisplayContext>('taskDisplay', {
 
 ```vue
 <!-- TaskLayout.vue -->
-<script setup lang="ts">
+<script setup>
 import TaskToolbar from './TaskToolbar.vue'
 </script>
 
@@ -278,17 +270,10 @@ import TaskToolbar from './TaskToolbar.vue'
 `TaskToolbar.vue`：
 
 ```vue
-<script setup lang="ts">
-import { inject, type Ref } from 'vue'
+<script setup>
+import { inject } from 'vue'
 
-type DisplayMode = 'list' | 'card'
-
-interface TaskDisplayContext {
-  displayMode: Readonly<Ref<DisplayMode>>
-  changeDisplayMode: (mode: DisplayMode) => void
-}
-
-const taskDisplay = inject<TaskDisplayContext>('taskDisplay')
+const taskDisplay = inject('taskDisplay')
 </script>
 
 <template>
@@ -307,7 +292,7 @@ const taskDisplay = inject<TaskDisplayContext>('taskDisplay')
 
 缺少提供者时仍能正常工作的内容，可以设置默认值：
 
-```ts
+```js
 const displayMode = inject('displayMode', 'list')
 ```
 
@@ -317,8 +302,8 @@ const displayMode = inject('displayMode', 'list')
 
 字符串键可能重名。较大的项目会在公共模块导出Symbol：
 
-```ts
-// src/keys/taskDisplay.ts
+```js
+// src/keys/taskDisplay.js
 export const taskDisplayKey = Symbol('taskDisplay')
 ```
 

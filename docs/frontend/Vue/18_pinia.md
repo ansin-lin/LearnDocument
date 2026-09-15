@@ -10,7 +10,7 @@ Pinia是Vue的状态管理库。它允许多个组件或页面共享同一份响
 - 【必须掌握】在组件中使用Store，并通过`storeToRefs()`保持解构后的响应性。
 - 【会使用、能看懂】在action中调用API、处理加载和错误，并重置Store。
 
-需要掌握`ref()`、`computed()`、组件状态归属和第17章API模块。本章使用TypeScript，并复用统一的`Task`类型。
+需要掌握`ref()`、`computed()`、组件状态归属和第17章API模块。本章继续使用普通JavaScript。
 
 ## 1. 为什么需要Pinia
 
@@ -69,9 +69,9 @@ Pinia中的三个核心概念是：
 npm install pinia
 ```
 
-修改`src/main.ts`：
+修改`src/main.js`：
 
-```ts
+```js
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
@@ -91,15 +91,14 @@ app.mount('#app')
 
 先只建立一项state和一个action，不要一次加入请求、getter和全部业务操作。
 
-新建`src/stores/tasks.ts`：
+新建`src/stores/tasks.js`：
 
-```ts
+```js
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { Task, TaskStatus } from '@/types/task'
 
 export const useTaskStore = defineStore('tasks', () => {
-  const tasks = ref<Task[]>([
+  const tasks = ref([
     {
       id: 101,
       title: '规格确认',
@@ -110,7 +109,7 @@ export const useTaskStore = defineStore('tasks', () => {
     },
   ])
 
-  function addTask(title: string): void {
+  function addTask(title) {
     tasks.value.push({
       id: Date.now(),
       title,
@@ -142,7 +141,7 @@ export const useTaskStore = defineStore('tasks', () => {
 `TaskListView.vue`：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { useTaskStore } from '@/stores/tasks'
 
 const taskStore = useTaskStore()
@@ -172,8 +171,8 @@ const taskStore = useTaskStore()
 
 Setup Store中的`ref()`是state：
 
-```ts
-const tasks = ref<Task[]>([])
+```js
+const tasks = ref([])
 const loading = ref(false)
 const errorMessage = ref('')
 ```
@@ -186,8 +185,8 @@ state应保存业务的原始事实，例如任务数组和请求状态。能够
 
 Store中的函数是action。action可以接收参数、修改state、调用其他action，也可以执行异步请求。
 
-```ts
-function changeTaskStatus(id: number, status: TaskStatus): boolean {
+```js
+function changeTaskStatus(id, status) {
   const task = tasks.value.find((item) => item.id === id)
   if (!task) return false
 
@@ -204,11 +203,10 @@ function changeTaskStatus(id: number, status: TaskStatus): boolean {
 
 Setup Store中的`computed()`是getter：
 
-```ts
+```js
 import { computed, ref } from 'vue'
-import type { Task } from '@/types/task'
 
-const tasks = ref<Task[]>([])
+const tasks = ref([])
 
 const completedCount = computed(() =>
   tasks.value.filter((task) => task.status === 'done').length,
@@ -219,7 +217,7 @@ const completedCount = computed(() =>
 
 把getter加入Store返回值后，组件可以像读取state一样读取它：
 
-```ts
+```js
 return {
   tasks,
   completedCount,
@@ -232,14 +230,14 @@ return {
 
 不解构时可以直接写：
 
-```ts
+```js
 const taskStore = useTaskStore()
 console.log(taskStore.tasks)
 ```
 
 如果希望单独取得state和getter，应使用`storeToRefs()`：
 
-```ts
+```js
 import { storeToRefs } from 'pinia'
 import { useTaskStore } from '@/stores/tasks'
 
@@ -256,21 +254,21 @@ const { addTask, changeTaskStatus } = taskStore
 
 API模块负责URL、请求方法、HTTP状态和响应数据检查；Store action负责调用API，并维护需要跨页面共享的加载和错误状态。
 
-在`src/stores/tasks.ts`中增加：
+在`src/stores/tasks.js`中增加：
 
-```ts
+```js
 import { getTasks } from '@/api/tasks'
 
 const loading = ref(false)
 const errorMessage = ref('')
 
-async function loadTasks(): Promise<void> {
+async function loadTasks() {
   loading.value = true
   errorMessage.value = ''
 
   try {
     tasks.value = await getTasks()
-  } catch (error: unknown) {
+  } catch (error) {
     errorMessage.value = error instanceof Error
       ? error.message
       : '任务读取失败'
@@ -289,7 +287,7 @@ async function loadTasks(): Promise<void> {
 
 列表页读取`taskStore.tasks`，详情页根据路由编号从同一个数组查找：
 
-```ts
+```js
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTaskStore } from '@/stores/tasks'
@@ -328,7 +326,7 @@ const currentTask = computed(() =>
 
 Setup Store需要自己提供重置action：
 
-```ts
+```js
 function reset() {
   tasks.value = []
   loading.value = false
@@ -340,7 +338,77 @@ function reset() {
 
 Pinia默认只保存在内存，刷新页面后状态会消失。需要持久化时必须设计过期时间、用户切换、敏感数据和恢复规则，不能随意把整个Store写入`localStorage`。真正的业务数据仍应由后端保存。
 
-## 14. 调试与命名
+## 14. 完整Task Store示例
+
+学习完各部分后，把Store整理成一个可以直接运行的版本。注意：Setup Store中的state、getter和action只有写在`return`中，组件才能访问。
+
+```js
+import { computed, ref } from 'vue'
+import { defineStore } from 'pinia'
+import { getTasks } from '@/api/tasks'
+
+export const useTaskStore = defineStore('tasks', () => {
+  const tasks = ref([])
+  const loading = ref(false)
+  const errorMessage = ref('')
+
+  const completedCount = computed(() =>
+    tasks.value.filter((task) => task.status === 'done').length,
+  )
+
+  function addTask(title) {
+    tasks.value.push({
+      id: Date.now(),
+      title,
+      assignee: '未分配',
+      priority: 'normal',
+      status: 'todo',
+      dueDate: '',
+    })
+  }
+
+  function changeTaskStatus(id, status) {
+    const task = tasks.value.find((item) => item.id === id)
+    if (!task) return false
+    task.status = status
+    return true
+  }
+
+  async function loadTasks() {
+    loading.value = true
+    errorMessage.value = ''
+    try {
+      tasks.value = await getTasks()
+    } catch (error) {
+      errorMessage.value = error instanceof Error
+        ? error.message
+        : '任务读取失败'
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function reset() {
+    tasks.value = []
+    loading.value = false
+    errorMessage.value = ''
+  }
+
+  return {
+    tasks,
+    loading,
+    errorMessage,
+    completedCount,
+    addTask,
+    changeTaskStatus,
+    loadTasks,
+    reset,
+  }
+})
+```
+
+## 15. 调试与命名
 
 使用Vue DevTools检查Store的state、getter和action执行记录。action使用`loadTasks`、`changeTaskStatus`等业务名称，不使用含义模糊的`setData`。
 
@@ -352,7 +420,7 @@ Pinia默认只保存在内存，刷新页面后状态会消失。需要持久化
 4. getter是否根据新state重新计算；
 5. 页面是否读取了同一个Store实例。
 
-## 15. 常见错误
+## 16. 常见错误
 
 - 所有输入框、弹窗和hover状态都放进Store。
 - 列表页和详情页分别维护一份任务数组。
@@ -362,7 +430,7 @@ Pinia默认只保存在内存，刷新页面后状态会消失。需要持久化
 - 误以为Pinia会自动保存到数据库或`localStorage`。
 - Setup Store漏掉返回值，导致组件无法访问对应state或action。
 
-## 16. WorkHub练习与检查点
+## 17. WorkHub练习与检查点
 
 1. 安装并注册Pinia，创建只有任务数组和`addTask()`的最小Store。
 2. 从两个组件读取同一个Store，确认一个组件添加任务后另一个组件同步显示。

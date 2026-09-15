@@ -8,7 +8,7 @@ Vue 是用于构建用户界面的 JavaScript 框架。它在 HTML、CSS 和 Jav
 
 - 【必须掌握】说明浏览器、Vue、Vite、Node.js和npm分别负责什么。
 - 【必须掌握】使用`create-vue`创建并启动最小Vue项目。
-- 【必须掌握】沿着`index.html → main.ts → App.vue`找到页面入口。
+- 【必须掌握】沿着`index.html → main.js → App.vue`找到页面入口。
 - 【必须掌握】执行开发、构建和本地预览命令，并判断结果是否成功。
 - 【会使用、能看懂】认识ESLint和热更新在正式项目中的作用。
 
@@ -139,7 +139,7 @@ Vue 的两个核心特点是：
 - Vue 3；
 - Composition API；
 - `.vue`单文件组件；
-- `<script setup lang="ts">`和TypeScript；
+- `<script setup>`和JavaScript；
 - Vite 开发与构建；
 - npm 管理依赖。
 
@@ -198,7 +198,7 @@ npm create vue@latest
 
 ```text
 Project name: vue-task-app
-Add TypeScript: Yes
+Add TypeScript: No
 Add JSX Support: No
 Add Vue Router: No
 Add Pinia: No
@@ -229,25 +229,23 @@ vue-task-app/
 │  ├─ assets/
 │  ├─ components/
 │  ├─ App.vue
-│  └─ main.ts
+│  └─ main.js
 ├─ index.html
 ├─ package.json
 ├─ package-lock.json
-├─ tsconfig.json
-└─ vite.config.ts
+└─ vite.config.js
 ```
 
 - `index.html`是浏览器最先读取的HTML入口，其中包含Vue应用的挂载位置。
-- `main.ts`是TypeScript入口，创建并挂载Vue应用。
+- `main.js`是JavaScript入口，创建并挂载Vue应用。
 - `App.vue`是根组件，相当于整个组件树的起点。
 - `components`保存页面中使用的子组件。
 - `assets`保存需要经过Vite处理的CSS、图片等资源。
 - `public`保存不经过源码导入、按原文件名直接提供的静态资源。
 - `package.json`记录直接依赖和脚本，锁定文件记录实际安装版本。
-- `tsconfig.json`规定TypeScript检查范围、编译选项和路径解析方式，也帮助编辑器提供类型提示。
-- `vite.config.ts`保存Vite配置，不是Vue组件配置。
+- `vite.config.js`保存Vite配置，不是Vue组件配置。
 
-脚手架版本可能调整欢迎页组件和文件名称，但`index.html → main.ts → App.vue`这条启动关系不会因为欢迎页外观变化而改变。
+脚手架版本可能调整欢迎页组件和文件名称，但`index.html → main.js → App.vue`这条启动关系不会因为欢迎页外观变化而改变。
 
 ## 6. 初始项目是怎样显示出来的
 
@@ -265,23 +263,23 @@ vue-task-app/
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/main.js"></script>
   </body>
 </html>
 ```
 
 - `<div id="app"></div>`是Vue应用要接管的位置，初始时内部是空的。
-- `<script type="module" src="/src/main.ts">`让浏览器从`main.ts`开始执行项目代码。
-- `type="module"`表示使用ES Module，因此可以在TypeScript源码中使用`import`，再由Vite转换为浏览器可执行代码。
+- `<script type="module" src="/src/main.js">`让浏览器从`main.js`开始执行项目代码。
+- `type="module"`表示使用ES Module，因此可以在JavaScript源码中使用`import`和`export`。
 - 页面标题、`lang`等内容应在正式项目中按项目语言和画面规格修改。
 
 不要把业务页面直接全部写入这个`index.html`。Vue页面结构主要写在`.vue`组件中。
 
-### 6.2 main.ts的初始内容
+### 6.2 main.js的初始内容
 
-脚手架生成的`src/main.ts`通常类似下面这样：
+脚手架生成的`src/main.js`通常类似下面这样：
 
-```ts
+```js
 import './assets/main.css'
 
 import { createApp } from 'vue'
@@ -292,31 +290,31 @@ createApp(App).mount('#app')
 
 逐行理解：
 
-```ts
+```js
 import './assets/main.css'
 ```
 
 导入项目公共CSS。它没有接收返回值，只是让Vite把这份样式加入页面。组件自己的局部样式后续写在对应`.vue`文件中。
 
-```ts
+```js
 import { createApp } from 'vue'
 ```
 
 从Vue包中导入`createApp()`。这个函数用于创建一个Vue应用实例。
 
-```ts
+```js
 import App from './App.vue'
 ```
 
-导入根组件`App.vue`。`./`表示从当前`main.ts`所在目录开始查找。
+导入根组件`App.vue`。`./`表示从当前`main.js`所在目录开始查找。
 
-```ts
+```js
 createApp(App).mount('#app')
 ```
 
 这行可以拆成两步理解：
 
-```ts
+```js
 const app = createApp(App)
 app.mount('#app')
 ```
@@ -331,7 +329,7 @@ app.mount('#app')
 不同版本的`create-vue`可能生成不同欢迎页。常见的初始`App.vue`会导入演示组件：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import HelloWorld from './components/HelloWorld.vue'
 import TheWelcome from './components/TheWelcome.vue'
 </script>
@@ -354,7 +352,7 @@ import TheWelcome from './components/TheWelcome.vue'
 
 这段代码的职责是：
 
-- `<script setup lang="ts">`导入当前模板要使用的`HelloWorld`和`TheWelcome`组件。
+- `<script setup>`导入当前模板要使用的`HelloWorld`和`TheWelcome`组件。
 - `<template>`描述根组件的页面结构。
 - `<img>`显示`src/assets/logo.svg`中的Vue标志。
 - `<HelloWorld>`和`<TheWelcome>`是脚手架提供的演示子组件，不是HTML原生标签。
@@ -369,7 +367,7 @@ import TheWelcome from './components/TheWelcome.vue'
 
 处理初始文件时遵循以下顺序：
 
-1. 先确认某个文件是否仍被`App.vue`、`main.ts`或其他文件导入。
+1. 先确认某个文件是否仍被`App.vue`、`main.js`或其他文件导入。
 2. 从使用方删除对应导入和组件标签。
 3. 保存并确认页面、终端和Console没有错误。
 4. 再删除已经没有引用的演示文件。
@@ -381,9 +379,9 @@ import TheWelcome from './components/TheWelcome.vue'
 ```text
 浏览器读取index.html
         ↓
-加载src/main.ts和公共CSS
+加载src/main.js和公共CSS
         ↓
-main.ts导入App.vue
+main.js导入App.vue
         ↓
 createApp(App)创建Vue应用
         ↓
@@ -401,7 +399,7 @@ npm run build
 npm run preview
 ```
 
-`build`成功后生成`dist`，`preview`会显示另一个本地访问地址，用于预览这次构建结果。预览结束后按`Ctrl+C`停止。Router、Pinia和测试工具会在真正使用它们的章节分别安装；项目从本章开始使用TypeScript，前期优先依赖类型推断。
+`build`成功后生成`dist`，`preview`会显示另一个本地访问地址，用于预览这次构建结果。预览结束后按`Ctrl+C`停止。Router、Pinia和测试工具会在真正使用它们的章节分别安装；前19章统一使用JavaScript，第20章再为已经掌握的Vue写法增加TypeScript约束。
 
 不要直接双击`index.html`，也不要把`dist`手工改成源码。开发时修改`src`，由 Vite 处理模块和单文件组件。
 
@@ -413,7 +411,7 @@ npm run preview
 vue-task-app/
 ├─ src/
 │  ├─ App.vue
-│  └─ main.ts
+│  └─ main.js
 ├─ index.html
 ├─ package.json
 └─ package-lock.json
@@ -433,7 +431,7 @@ vue-task-app/
 
 ### 9.3 页面空白或终端提示找不到模块
 
-检查`App.vue`或`main.ts`是否仍然导入了已删除的文件，再检查`mount('#app')`与`index.html`中的`id="app"`是否一致。浏览器Console和开发服务器终端都要查看。
+检查`App.vue`或`main.js`是否仍然导入了已删除的文件，再检查`mount('#app')`与`index.html`中的`id="app"`是否一致。浏览器Console和开发服务器终端都要查看。
 
 ### 9.4 修改文件后页面没有变化
 
@@ -453,7 +451,7 @@ vue-task-app/
 ## 11. 本章练习
 
 1. 创建项目并保存终端选择结果。
-2. 找到`index.html`、`main.ts`、`App.vue`和`package.json`，说明各自职责。
+2. 找到`index.html`、`main.js`、`App.vue`和`package.json`，说明各自职责。
 3. 启动开发服务器，记录访问地址。
 4. 分别执行`dev`、`build`和`preview`，记录各自产生的可观察结果；如果启用了ESLint，再执行`npm run lint`。
 5. 用自己的话说明Vue、Vite、Node.js和npm分别负责什么。
@@ -467,7 +465,7 @@ vue-task-app/
 
 - [ ] 能解释浏览器、Vue、Vite、Node.js和npm各自的职责。
 - [ ] 能独立创建项目并在正确目录安装依赖。
-- [ ] 能说明`index.html → main.ts → App.vue`的启动顺序。
+- [ ] 能说明`index.html → main.js → App.vue`的启动顺序。
 - [ ] 能说明`createApp(App)`与`mount('#app')`分别做什么。
 - [ ] 能执行开发、Lint、构建和预览命令，并根据终端输出判断是否成功。
 - [ ] 能通过终端、浏览器Console和导入关系排查最基本的空白页问题。

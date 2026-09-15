@@ -24,7 +24,7 @@
 Vue使用`v-on`绑定事件，`v-on:click`通常简写为`@click`：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 function showMessage() {
   window.alert('确认了任务内容')
 }
@@ -35,7 +35,7 @@ function showMessage() {
 </template>
 ```
 
-`@click="showMessage"`表示点击时调用`showMessage()`。函数本身仍是普通TypeScript函数，Vue负责把它连接到按钮。函数名应表达动作，如`openDetail`、`submitTask`，不要使用含义不明的`doIt`。
+`@click="showMessage"`表示点击时调用`showMessage()`。函数本身仍是普通JavaScript函数，Vue负责把它连接到按钮。函数名应表达动作，如`openDetail`、`submitTask`，不要使用含义不明的`doIt`。
 
 ## 2. 内联处理与函数处理
 
@@ -48,7 +48,7 @@ function showMessage() {
 包含判断、多步处理、复用或需要测试时，使用命名函数：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 function confirmTask() {
   console.log('开始确认')
   window.alert('任务已确认')
@@ -65,8 +65,8 @@ function confirmTask() {
 ## 3. 传递业务参数
 
 ```vue
-<script setup lang="ts">
-function showTask(id: number, title: string): void {
+<script setup>
+function showTask(id, title) {
   console.log('任务编号：', id)
   console.log('任务名称：', title)
 }
@@ -84,9 +84,9 @@ function showTask(id: number, title: string): void {
 没有显式传参时，处理函数可以接收浏览器事件对象：
 
 ```vue
-<script setup lang="ts">
-function handleInput(event: Event): void {
-  const input = event.currentTarget as HTMLInputElement
+<script setup>
+function handleInput(event) {
+  const input = event.currentTarget
   console.log('当前输入：', input.value)
 }
 </script>
@@ -110,7 +110,7 @@ function handleInput(event: Event): void {
 HTML表单默认提交后会跳转或刷新页面。单页应用通常先阻止默认行为：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 function submitTask() {
   console.log('执行表单校验和保存')
 }
@@ -197,7 +197,7 @@ Vue允许在内联表达式中调用多个函数：
 ## 11. 事件修改ref后更新页面
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 
 const count = ref(0)

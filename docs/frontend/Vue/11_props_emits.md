@@ -2,7 +2,7 @@
 
 ## 本章目标与前置知识
 
-【必须掌握】使用`defineProps()`和`defineEmits()`建立单向数据流，并能判断状态应该保存在父组件还是子组件。需要掌握第10章的父子组件关系。本章示例使用TypeScript，但类型服务于组件契约，不改变单向数据流。
+【必须掌握】使用`defineProps()`和`defineEmits()`建立单向数据流，并能判断状态应该保存在父组件还是子组件。需要掌握第10章的父子组件关系。本章使用JavaScript运行时声明，重点理解组件职责和数据方向。
 
 第10章已经把页面拆成多个组件，但各组件只能使用自己的局部数据。本章学习父子组件最重要的通信方式：父组件通过Props把数据传给子组件，子组件通过自定义事件把用户操作通知父组件。
 
@@ -19,12 +19,11 @@
 
 ```vue
 <!-- App.vue -->
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 import TaskItem from './components/TaskItem.vue'
-import type { Task } from './types/task'
 
-const task = ref<Task>({
+const task = ref({
   id: 101,
   title: '规格确认',
   assignee: '田中',
@@ -43,17 +42,17 @@ const task = ref<Task>({
 
 ## 2. 使用defineProps声明输入
 
-### 2.1 最基础写法：只声明Prop名称
+### 2.1 声明第一个Prop
 
 先只解决一个问题：让子组件声明自己需要接收一个名为`title`的数据。
 
 `src/components/TaskItem.vue`：
 
 ```vue
-<script setup lang="ts">
-const props = defineProps<{
-  title: string
-}>()
+<script setup>
+const props = defineProps({
+  title: { type: String, required: true },
+})
 </script>
 
 <template>
@@ -61,34 +60,34 @@ const props = defineProps<{
 </template>
 ```
 
-`defineProps<{ title: string }>()`表示当前组件必须接收字符串`title`。尖括号中是Props的TypeScript类型契约。
+`defineProps()`声明组件允许接收的Prop。这里的`type: String`表示运行时期望字符串，`required: true`表示父组件必须传入。
 
 `defineProps()`会返回Props对象，所以：
 
-```ts
-const props = defineProps<{ title: string }>()
+```js
+const props = defineProps({
+  title: { type: String, required: true },
+})
 ```
 
 可以拆成下面两点理解：
 
-1. `{ title: string }`声明允许接收的名称和类型。
+1. 对象的键声明允许接收的Prop名称，`type`和`required`说明运行时要求。
 2. `props.title`读取父组件实际传入的值。
 
-`defineProps()`是`script setup`编译宏，不需要从`vue`导入。模板也可以直接写`{{ title }}`，但本课程TypeScript主线优先写`props.title`，让数据来自父组件这一点更明显。
+`defineProps()`是`script setup`编译宏，不需要从`vue`导入。模板也可以直接写`{{ title }}`，但本课程优先写`props.title`，让数据来自父组件这一点更明显。
 
-没有`?`的`title`是必填Prop；写成`title?: string`才是可选。类型语法服务于输入契约，单向数据流本身没有改变。
+`required: true`表示必填；没有设置时表示可以省略。单向数据流不会因声明方式改变。
 
 ### 2.2 可选Prop与默认值
 
-可选Prop可以使用`withDefaults()`提供默认值：
+可选Prop可以在运行时声明中使用`default`提供默认值：
 
 ```vue
-<script setup lang="ts">
-const props = withDefaults(defineProps<{
-  title: string
-  readonly?: boolean
-}>(), {
-  readonly: false,
+<script setup>
+const props = defineProps({
+  title: { type: String, required: true },
+  readonly: { type: Boolean, default: false },
 })
 </script>
 
@@ -105,7 +104,7 @@ const props = withDefaults(defineProps<{
 
 可以把两种写法对比为：
 
-```ts
+```js
 // 基础写法：只声明名称
 const props = defineProps(['title'])
 
@@ -128,7 +127,7 @@ const props = defineProps({
 ## 3. 父组件传递Props
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import TaskItem from './components/TaskItem.vue'
 
 const taskTitle = '规格确认'
@@ -162,7 +161,7 @@ const taskTitle = '规格确认'
 JavaScript中使用camelCase，模板属性通常使用kebab-case：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 const props = defineProps({
   taskId: Number,
   displayName: String,
@@ -178,9 +177,9 @@ const props = defineProps({
 
 在单文件组件模板中camelCase通常也能工作，但团队项目应选择一种一致写法。组件标签使用PascalCase，模板Prop属性使用kebab-case是常见组合。
 
-## 5. 会读即可：运行时Props声明
+## 5. 常用运行时Props类型
 
-```ts
+```js
 const props = defineProps({
   title: String,
   taskId: Number,
@@ -195,9 +194,9 @@ const props = defineProps({
 
 业务组件不应接收大量互相无关的Prop。如果组件需要十几个控制开关，应检查职责是否过大或数据结构是否需要整理。
 
-## 6. 会读即可：运行时required和default
+## 6. required和default
 
-```ts
+```js
 const props = defineProps({
   title: {
     type: String,
@@ -220,7 +219,7 @@ const props = defineProps({
 
 数组和对象默认值应通过函数创建，避免多个组件实例共享同一个对象：
 
-```ts
+```js
 const props = defineProps({
   tags: {
     type: Array,
@@ -233,9 +232,9 @@ const props = defineProps({
 })
 ```
 
-## 7. 会读即可：运行时validator
+## 7. 会使用、能看懂：validator
 
-```ts
+```js
 const props = defineProps({
   priority: {
     type: String,
@@ -260,12 +259,11 @@ const props = defineProps({
 
 ```vue
 <!-- TaskItem.vue -->
-<script setup lang="ts">
-import type { Task } from '@/types/task'
+<script setup>
 
-const props = defineProps<{
-  task: Task
-}>()
+const props = defineProps({
+  task: { type: Object, required: true },
+})
 </script>
 
 <template>
@@ -276,13 +274,13 @@ const props = defineProps<{
 </template>
 ```
 
-`Task`统一约束对象的全部字段。它提供开发期静态检查，但接口数据仍需第17章的运行时校验。
+父组件继续传入字段完整的WorkHub任务对象。`type: Object`只能做基础运行时检查，接口数据仍需第17章的字段校验。
 
 ## 9. Props是只读输入
 
 下面的写法错误：
 
-```ts
+```js
 props.title = '新标题'
 ```
 
@@ -290,7 +288,7 @@ Props由父组件提供，子组件不能给Prop重新赋值。否则数据来�
 
 对象Prop还要注意嵌套修改：
 
-```ts
+```js
 // 技术上可能修改到父级对象，但业务组件不应这样做
 props.task.status = 'done'
 ```
@@ -302,13 +300,12 @@ Vue只能直接阻止给Prop本身赋值，难以完全阻止对象内部修改�
 子组件可以基于Prop创建计算属性：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue'
-import type { TaskStatus } from '@/types/task'
 
-const props = defineProps<{
-  status: TaskStatus
-}>()
+const props = defineProps({
+  status: { type: String, required: true },
+})
 
 const statusLabel = computed(() =>
   props.status === 'done' ? '完成' : '未完成',
@@ -338,15 +335,13 @@ const statusLabel = computed(() =>
 `TaskItem.vue`：
 
 ```vue
-<script setup lang="ts">
-import type { Task, TaskStatus } from '@/types/task'
+<script setup>
 
-const props = defineProps<{ task: Task }>()
+const props = defineProps({
+  task: { type: Object, required: true },
+})
 
-const emit = defineEmits<{
-  remove: [id: number]
-  changeStatus: [id: number, status: TaskStatus]
-}>()
+const emit = defineEmits(['remove', 'changeStatus'])
 
 function requestComplete() {
   emit('changeStatus', props.task.id, 'done')
@@ -366,7 +361,7 @@ function requestRemove() {
 </template>
 ```
 
-`defineEmits()`也是编译宏，不需要导入。类型契约同时限制事件名称、参数顺序和参数类型。它返回`emit`函数：
+`defineEmits()`也是编译宏，不需要导入。数组声明组件会发出的事件名称。它返回`emit`函数：
 
 ```text
 emit(事件名称, 参数1, 参数2, ...)
@@ -384,38 +379,37 @@ emit(事件名称, 参数1, 参数2, ...)
 - `remove`
 - `select`
 - `complete`
-- `status-change`
+- `change-status`
 
 避免使用`click`作为业务组件事件名，因为父组件无法判断点击代表什么。基础按钮封装可以保留`click`语义，任务组件则使用业务事件。
 
 模板监听器推荐使用kebab-case：
 
 ```vue
-<TaskItem @status-change="changeTaskStatus" />
+<TaskItem @change-status="changeTaskStatus" />
 ```
 
-声明和发出事件时保持项目约定一致，避免一处`statusChange`、一处`status-change`导致难以调查。
+脚本中声明和发出事件统一使用`changeStatus`，父组件模板使用对应的kebab-case监听器`@change-status`。不要在不同组件中任意交换单词顺序。
 
 ## 14. 父组件接收事件
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 import TaskItem from './components/TaskItem.vue'
-import type { Task, TaskStatus } from '@/types/task'
 
-const tasks = ref<Task[]>([
+const tasks = ref([
   { id: 101, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
   { id: 102, title: '页面实现', assignee: '佐藤', priority: 'high', status: 'todo', dueDate: '2026-10-05' },
 ])
 
-function changeTaskStatus(id: number, status: TaskStatus) {
+function changeTaskStatus(id, status) {
   const task = tasks.value.find((item) => item.id === id)
   if (!task) return
   task.status = status
 }
 
-function removeTask(id: number) {
+function removeTask(id) {
   tasks.value = tasks.value.filter((item) => item.id !== id)
 }
 </script>
@@ -439,7 +433,7 @@ function removeTask(id: number) {
 
 子组件发送：
 
-```ts
+```js
 emit('remove', props.task.id)
 ```
 
@@ -455,32 +449,29 @@ Vue会把事件参数交给`removeTask(id)`。如果父级还要补充自己的�
 <TaskItem @remove="recordAndRemove('task-list', $event)" />
 ```
 
-参数越来越多时，使用一个结构清楚的对象比依赖参数顺序更容易扩展：
+事件参数应保持稳定的名称、顺序和含义。本章的状态变更事件统一发送任务编号和新状态：
 
-```ts
-emit('status-change', {
-  id: props.task.id,
-  status: 'done',
-})
+```js
+emit('changeStatus', props.task.id, 'done')
 ```
 
-事件对象字段应有稳定规格，不要临时在不同子组件发送不同结构。
+不要在不同子组件中把同一事件临时改成另一种参数结构。
 
 ## 16. 为事件参数增加运行时校验
 
-```ts
+```js
 const emit = defineEmits({
   remove: (id) => Number.isInteger(id) && id > 0,
-  'status-change': (payload) => {
-    return Number.isInteger(payload.id)
-      && ['todo', 'doing', 'done'].includes(payload.status)
+  changeStatus: (id, status) => {
+    return Number.isInteger(id)
+      && ['todo', 'doing', 'done'].includes(status)
   },
 })
 ```
 
 对象形式可以在开发阶段检查事件参数，返回`true`表示有效。它帮助发现组件内部发错参数，但不能代替父级业务判断或服务端校验。
 
-本章开头的类型式`defineEmits`会为事件名称和参数提供更完整的静态检查。
+前面的数组形式适合先理解事件通信；对象形式可以进一步增加运行时参数检查。
 
 ## 17. 组件事件不会自动冒泡
 
@@ -493,12 +484,10 @@ TaskList --不会自动继续--> TaskListView
 
 如果页面组件也需要知道，`TaskList`要明确再次发送事件：
 
-```ts
-const emit = defineEmits<{
-  remove: [id: number]
-}>()
+```js
+const emit = defineEmits(['remove'])
 
-function handleRemove(id: number): void {
+function handleRemove(id) {
   emit('remove', id)
 }
 ```
@@ -558,31 +547,25 @@ TaskListView（拥有tasks）
 `src/components/TaskItem.vue`：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue'
-import type { Task, TaskStatus } from '../types/task'
 
-const props = withDefaults(defineProps<{
-  task: Task
-  readonly?: boolean
-}>(), {
-  readonly: false,
+const props = defineProps({
+  task: { type: Object, required: true },
+  readonly: { type: Boolean, default: false },
 })
 
-const emit = defineEmits<{
-  changeStatus: [id: number, status: TaskStatus]
-  remove: [id: number]
-}>()
+const emit = defineEmits(['changeStatus', 'remove'])
 
 const statusLabel = computed(() =>
   props.task.status === 'done' ? '完成' : '未完成',
 )
 
-function requestComplete(): void {
+function requestComplete() {
   emit('changeStatus', props.task.id, 'done')
 }
 
-function requestRemove(): void {
+function requestRemove() {
   emit('remove', props.task.id)
 }
 </script>
@@ -621,28 +604,27 @@ function requestRemove(): void {
 ## 23. 完整父组件示例
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { computed, ref } from 'vue'
 import TaskItem from './components/TaskItem.vue'
-import type { Task, TaskStatus } from './types/task'
 
-const tasks = ref<Task[]>([
+const tasks = ref([
   { id: 101, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
   { id: 102, title: '页面实现', assignee: '佐藤', priority: 'high', status: 'done', dueDate: '2026-10-05' },
 ])
-const processingId = ref<number | null>(null)
+const processingId = ref(null)
 
 const remainingCount = computed(() =>
   tasks.value.filter((task) => task.status !== 'done').length,
 )
 
-function changeTaskStatus(id: number, status: TaskStatus): void {
+function changeTaskStatus(id, status) {
   const task = tasks.value.find((item) => item.id === id)
   if (!task) return
   task.status = status
 }
 
-function removeTask(id: number): void {
+function removeTask(id) {
   tasks.value = tasks.value.filter((item) => item.id !== id)
 }
 </script>

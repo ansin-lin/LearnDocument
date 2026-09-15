@@ -8,29 +8,13 @@
 
 本章重点掌握`ref()`。`reactive()`需要会使用和阅读，但主线项目优先采用规则更统一的`ref()`。
 
-从本章开始建立WorkHub统一业务类型。新建`src/types/task.ts`：
-
-```ts
-export type TaskStatus = 'todo' | 'doing' | 'done'
-export type Priority = 'low' | 'normal' | 'high'
-
-export interface Task {
-  id: number
-  title: string
-  assignee: string
-  priority: Priority
-  status: TaskStatus
-  dueDate: string
-}
-```
-
-后续WorkHub示例统一使用`Task`，不再用`completed: boolean`表示同一业务状态。前期模板可以只显示其中一两个字段，但对象结构保持一致。
+从本章开始，WorkHub示例统一使用同一套任务字段：`id`、`title`、`assignee`、`priority`、`status`和`dueDate`。`priority`使用`low`、`normal`、`high`，`status`使用`todo`、`doing`、`done`。本阶段使用普通JavaScript对象，不重新使用`completed: boolean`表示同一业务状态。
 
 ## 1. 什么是响应式
 
 先看普通JavaScript变量：
 
-```ts
+```js
 let taskCount = 1
 taskCount = 2
 ```
@@ -56,7 +40,7 @@ Vue不会重新创建整个网页，而是更新受影响的部分。开发者�
 ### 2.1 创建ref
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 
 const taskCount = ref(1)
@@ -76,7 +60,7 @@ const taskCount = ref(1)
 
 ### 2.2 在JavaScript中读写value
 
-```ts
+```js
 import { ref } from 'vue'
 
 const taskCount = ref(1)
@@ -111,7 +95,7 @@ console.log(taskCount.value) // 2
 先在脚本中修改ref，观察模板读取的是修改后的状态：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 
 const statusMessage = ref('等待处理')
@@ -134,16 +118,15 @@ completeTask()
 
 `ref()`不仅能保存数字，也能保存JavaScript中的各种值：
 
-```ts
+```js
 import { ref } from 'vue'
-import type { Task, TaskStatus } from '@/types/task'
 
 const title = ref('规格确认')
 const taskCount = ref(3)
-const status = ref<TaskStatus>('todo')
-const selectedId = ref<number | null>(null)
-const tasks = ref<Task[]>([])
-const currentTask = ref<Task | null>(null)
+const status = ref('todo')
+const selectedId = ref(null)
+const tasks = ref([])
+const currentTask = ref(null)
 ```
 
 | 初始值 | 当前含义 |
@@ -155,17 +138,16 @@ const currentTask = ref<Task | null>(null)
 | `[]` | 初始为空的列表 |
 | `{}`或具体对象 | 一组有关联的数据 |
 
-初始值应该表达真实业务状态。尚未取得详情时，`null`通常比虚构一个字段全为空的对象更清楚。本章在需要表达空数组元素或可空状态时补充必要类型。
+初始值应该表达真实业务状态。尚未取得详情时，`null`通常比虚构一个字段全为空的对象更清楚。JavaScript阶段先理解这些初始状态；第20章再说明空数组和可空对象为什么需要显式类型。
 
 ## 5. ref保存对象时怎样修改
 
 ### 5.1 修改对象属性
 
-```ts
+```js
 import { ref } from 'vue'
-import type { Task } from '@/types/task'
 
-const task = ref<Task>({
+const task = ref({
   id: 101,
   title: '规格确认',
   assignee: '田中',
@@ -189,7 +171,7 @@ task.value.title = '规格再确认'
 
 ### 5.2 整体替换对象
 
-```ts
+```js
 task.value = {
   id: 102,
   title: '测试结果确认',
@@ -204,18 +186,17 @@ ref既可以修改内部字段，也可以整体替换为新对象。这对“�
 
 不要漏掉`.value`：
 
-```ts
+```js
 // 错误：task是const变量，不能这样替换
 task = { id: 102, title: '测试', assignee: '佐藤', priority: 'normal', status: 'todo', dueDate: '' }
 ```
 
 ## 6. ref保存数组时怎样修改
 
-```ts
+```js
 import { ref } from 'vue'
-import type { Task } from '@/types/task'
 
-const tasks = ref<Task[]>([
+const tasks = ref([
   { id: 101, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
 ])
 
@@ -227,7 +208,7 @@ tasks.value.splice(0, 1)
 
 也可以用一个新数组整体替换：
 
-```ts
+```js
 tasks.value = tasks.value.filter((task) => task.id !== 101)
 ```
 
@@ -239,7 +220,7 @@ tasks.value = tasks.value.filter((task) => task.id !== 101)
 
 ### 7.1 reactive返回代理对象
 
-```ts
+```js
 import { reactive } from 'vue'
 
 const form = reactive({
@@ -258,7 +239,7 @@ form.assignee = '田中'
 
 ### 7.2 嵌套属性也是响应式的
 
-```ts
+```js
 const taskState = reactive({
   selectedTask: {
     id: 101,
@@ -275,7 +256,7 @@ taskState.messages.push('修改完成')
 
 ## 8. reactive不能随意整体替换
 
-```ts
+```js
 import { reactive } from 'vue'
 
 const form = reactive({ title: '', priority: 'normal' })
@@ -286,14 +267,14 @@ const form = reactive({ title: '', priority: 'normal' })
 
 而且这里的`form`通常用`const`声明，本身也不能重新赋值。需要重置字段时可以逐项修改：
 
-```ts
+```js
 form.title = ''
 form.priority = 'normal'
 ```
 
 也可以把同名字段复制进去：
 
-```ts
+```js
 Object.assign(form, {
   title: '',
   priority: 'normal',
@@ -320,7 +301,7 @@ Object.assign(form, {
 
 ## 10. 解构为什么可能失去响应性
 
-```ts
+```js
 import { reactive } from 'vue'
 
 const form = reactive({
@@ -338,7 +319,7 @@ console.log(title) // 仍然是“规格确认”
 
 模板中直接使用`form.title`最清楚。确实需要保持联系时可以使用`toRefs()`：
 
-```ts
+```js
 import { reactive, toRefs } from 'vue'
 
 const form = reactive({ title: '', priority: 'normal' })
@@ -353,7 +334,7 @@ title.value = '规格确认'
 
 Vue提供一些调查用方法：
 
-```ts
+```js
 import { isReactive, isRef, reactive, ref, toRaw } from 'vue'
 
 const count = ref(0)
@@ -393,12 +374,11 @@ console.log(toRaw(form))        // 查看原始对象
 下面的完整示例只在脚本初始化时修改状态，重点观察`.value`与模板自动解包：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { reactive, ref } from 'vue'
-import type { Task } from './types/task'
 
 const status = ref('准备中')
-const tasks = ref<Task[]>([
+const tasks = ref([
   { id: 101, title: '规格确认', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
 ])
 const form = reactive({

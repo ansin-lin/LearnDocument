@@ -23,7 +23,7 @@
 ## 2. 观察ref
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref, watch } from 'vue'
 
 const keyword = ref('')
@@ -50,7 +50,7 @@ watch(keyword, (newValue, oldValue) => {
 
 ## 3. 观察对象属性要使用getter
 
-```ts
+```js
 import { reactive, watch } from 'vue'
 
 const condition = reactive({ keyword: '', status: 'all' })
@@ -69,7 +69,7 @@ watch(
 
 ### 3.1 同时观察多个来源
 
-```ts
+```js
 const keyword = ref('')
 const status = ref('all')
 
@@ -87,7 +87,7 @@ watch(
 
 ### 3.2 watch返回停止函数
 
-```ts
+```js
 const stopWatching = watch(keyword, value => {
   console.log(value)
 })
@@ -101,7 +101,7 @@ function stop() {
 
 ## 4. immediate与执行时机
 
-```ts
+```js
 watch(
   keyword,
   newKeyword => {
@@ -115,7 +115,7 @@ watch(
 
 首次立即执行时没有“上一次变化”，因此旧值通常是`undefined`。回调如果使用旧值，要先处理这种情况：
 
-```ts
+```js
 watch(keyword, (newValue, oldValue) => {
   if (oldValue === undefined) {
     console.log('首次读取：', newValue)
@@ -144,7 +144,7 @@ flush: 'post'的watch回调
 下面的完整示例在回调中读取更新后的预览文字，因此使用`post`：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref, watch } from 'vue'
 
 const keyword = ref('')
@@ -167,7 +167,7 @@ watch(keyword, () => {
 
 用户连续输入时，应取消上一次尚未执行的延迟任务：
 
-```ts
+```js
 watch(keyword, (newKeyword, _oldKeyword, onCleanup) => {
   const timerId = window.setTimeout(() => {
     console.log('查询：', newKeyword)
@@ -191,7 +191,7 @@ watch(keyword, (newKeyword, _oldKeyword, onCleanup) => {
 
 `deep: true`用于跟踪对象内部的深层变化，但会扩大观察范围：
 
-```ts
+```js
 const form = reactive({ title: '', assignee: { id: 101, name: '田中' } })
 
 watch(
@@ -205,7 +205,7 @@ watch(
 
 `watchEffect()`会立即执行函数，并自动收集同步执行期间读取的响应式依赖：
 
-```ts
+```js
 watchEffect(() => {
   console.log(`当前查询：${keyword.value} / ${status.value}`)
 })
@@ -215,7 +215,7 @@ watchEffect(() => {
 
 ## 7. WorkHub示例
 
-```ts
+```js
 const keyword = ref(localStorage.getItem('workhub.keyword') ?? '')
 
 watch(keyword, newKeyword => {
@@ -237,7 +237,7 @@ watch(keyword, newKeyword => {
 
 ### 7.2 循环更新为什么危险
 
-```ts
+```js
 watch(firstName, value => {
   fullName.value = `${value} ${lastName.value}`
 })

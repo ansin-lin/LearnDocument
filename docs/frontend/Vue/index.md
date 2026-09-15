@@ -1,10 +1,10 @@
-# Vue 3 + TypeScript 新人教程
+# Vue 3 新人教程
 
-本课程面向已经完成HTML、CSS、JavaScript、ES6、DOM/Event、Promise、Axios、HTTP和TypeScript基础的学员。主线从第1章开始统一使用Vue 3、Composition API、`<script setup lang="ts">`和Vite，不重复系统教授前置课程。
+本课程面向已经完成HTML、CSS、JavaScript、ES6、DOM/Event、Promise、Axios和HTTP基础的学员。第1～19章统一使用Vue 3、Composition API、`<script setup>`、JavaScript和Vite；第20章再集中说明怎样为已掌握的Vue写法增加TypeScript约束。
 
 ## 1. 最终成果
 
-学员将逐步完成WorkHub任务管理前端，并在综合项目中连接Router、Axios API层、Pinia、表单校验和自动化测试。最终应能阅读、修改和实现普通Vue 3 + TypeScript前后端分离项目，并留下可供Review的自测与交付证据。
+学员将逐步完成WorkHub任务管理前端，并在综合项目中连接Router、Axios API层、Pinia、表单校验和自动化测试。完成Vue基础主线后，再渐进理解Vue + TypeScript项目，并留下可供Review的自测与交付证据。
 
 ## 2. 课程路线
 
@@ -35,7 +35,7 @@
 17. [Vue项目中的API层与异步状态管理](17_http_api.md)
 18. [Pinia状态管理](18_pinia.md)
 19. [Vue单元测试与组件测试](19_unit_testing.md)
-20. [构建、质量与项目交付](20_build_quality_delivery.md)
+20. [Vue项目中的TypeScript写法与项目质量](20_build_quality_delivery.md)
 
 ### 综合实践
 
@@ -54,7 +54,7 @@ Render Function、JSX、复杂动画、响应式底层实现等低频高级内�
 
 ## 4. 贯穿项目约定
 
-WorkHub主线统一使用`src/types/task.ts`中的`Task`、`TaskStatus`和`Priority`。组件、Composable、Router、API模块与Pinia各自承担明确职责，不在组件中散落请求配置，也不把所有状态都放进Store。
+WorkHub在前19章统一使用固定的Task字段契约；第20章再把它提取为公共TypeScript类型。组件、Composable、Router、API模块与Pinia各自承担明确职责，不在组件中散落请求配置，也不把所有状态都放进Store。
 
 每章都应形成可观察结果，并保留实际项目需要的空数据、加载、失败、调查、Review和回归测试意识。
 

@@ -12,7 +12,7 @@ Vue Router是Vue的官方路由。它把浏览器URL与Vue页面组件对应起�
 - 【会使用、能看懂】嵌套路由、路由组件传参、`onBeforeRouteLeave()`和`onBeforeRouteUpdate()`。
 - 【会读即可】识别`beforeResolve()`、复杂`beforeEnter`组合、Options API组件内守卫、旧式`next()`和完整守卫顺序。
 
-需要掌握组件、Props、`watch()`和异步函数。本章统一使用TypeScript。
+需要掌握组件、Props、`watch()`和异步函数。本章继续使用普通JavaScript。
 
 ## 1. 为什么需要路由
 
@@ -85,9 +85,9 @@ npm install vue-router
 
 ### 3.2 创建路由表
 
-新建`src/router/index.ts`：
+新建`src/router/index.js`：
 
-```ts
+```js
 import { createRouter, createWebHistory } from 'vue-router'
 import TaskListView from '../views/TaskListView.vue'
 import AboutView from '../views/AboutView.vue'
@@ -115,9 +115,9 @@ export const router = createRouter({
 
 ### 3.3 注册Router
 
-修改`src/main.ts`：
+修改`src/main.js`：
 
-```ts
+```js
 import { createApp } from 'vue'
 import App from './App.vue'
 import { router } from './router'
@@ -154,7 +154,7 @@ createApp(App)
 
 直接写路径可以工作，但大型项目中路径会出现在许多文件。给路由记录设置唯一名称：
 
-```ts
+```js
 const routes = [
   {
     path: '/tasks',
@@ -183,7 +183,7 @@ const routes = [
 
 任务详情路径中的编号每次不同，可以使用动态参数：
 
-```ts
+```js
 {
   path: '/tasks/:id',
   name: 'task-detail',
@@ -210,7 +210,7 @@ const routes = [
 `TaskDetailView.vue`读取URL中的编号：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -237,12 +237,12 @@ const taskId = computed(() => {
 
 链接跳转使用`RouterLink`；保存成功、登录成功等由程序决定的跳转使用`useRouter()`：
 
-```ts
+```js
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
-async function openTask(id: number): Promise<void> {
+async function openTask(id) {
   await router.push({
     name: 'task-detail',
     params: { id },
@@ -268,7 +268,7 @@ query位于URL的`?`后面，适合搜索、排序和分页：
 /tasks?keyword=vue&status=doing&page=2
 ```
 
-```ts
+```js
 const keyword = String(route.query.keyword ?? '')
 const status = String(route.query.status ?? 'all')
 const page = Number(route.query.page ?? 1)
@@ -291,7 +291,7 @@ query同样来自URL，应提供默认值并校验允许范围。
 
 从`/tasks/1`直接进入`/tasks/2`时，两条URL使用同一个详情组件，Vue Router可能复用组件实例，因此`onMounted()`不会再次执行。
 
-```ts
+```js
 import { watch } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -310,7 +310,7 @@ watch(
 
 设置页面包含共同布局和多个子页面时，可以使用`children`：
 
-```ts
+```js
 {
   path: '/settings',
   component: SettingsView,
@@ -345,7 +345,7 @@ watch(
 
 重定向会把访问者导航到另一个地址：
 
-```ts
+```js
 { path: '/', redirect: { name: 'tasks' } }
 ```
 
@@ -355,7 +355,7 @@ watch(
 
 别名让另一个路径显示同一个路由内容，但保留用户访问的URL：
 
-```ts
+```js
 { path: '/tasks', alias: '/work', name: 'tasks', component: TaskListView }
 ```
 
@@ -363,7 +363,7 @@ watch(
 
 ### 11.3 404页面
 
-```ts
+```js
 {
   path: '/:pathMatch(.*)*',
   name: 'not-found',
@@ -377,7 +377,7 @@ watch(
 
 页面直接调用`useRoute()`会依赖Router。配置`props: true`后，动态参数会作为同名Prop传给页面组件：
 
-```ts
+```js
 {
   path: '/tasks/:id',
   name: 'task-detail',
@@ -387,8 +387,13 @@ watch(
 ```
 
 ```vue
-<script setup lang="ts">
-defineProps<{ id: string }>()
+<script setup>
+defineProps({
+  id: {
+    type: String,
+    required: true
+  }
+})
 </script>
 ```
 
@@ -406,7 +411,7 @@ defineProps<{ id: string }>()
 
 基础流程能够运行后，可以把页面组件改为动态导入：
 
-```ts
+```js
 {
   path: '/tasks',
   name: 'tasks',
@@ -452,7 +457,7 @@ defineProps<{ id: string }>()
 
 守卫可以使用`async`和`await`。异步守卫完成之前，本次导航会保持等待状态。因此，异步操作也必须覆盖允许、取消或重定向等结果，不能让代码长期没有结束。
 
-```ts
+```js
 router.beforeEach(async (to, from) => {
   const signedIn = await checkSignedIn()
 
@@ -468,7 +473,7 @@ router.beforeEach(async (to, from) => {
 
 路由记录可以通过`meta`保存登录要求、页面标题等附加信息。`meta`不是守卫，它只是守卫可以读取的数据。
 
-```ts
+```js
 {
   path: '/tasks/:id',
   name: 'task-detail',
@@ -482,7 +487,7 @@ router.beforeEach(async (to, from) => {
 
 守卫要导航到登录页，路由表中必须先存在对应记录：
 
-```ts
+```js
 {
   path: '/login',
   name: 'login',
@@ -496,7 +501,7 @@ router.beforeEach(async (to, from) => {
 
 全局前置守卫在导航确认前执行：
 
-```ts
+```js
 router.beforeEach((to) => {
   const signedIn = sessionStorage.getItem('signedIn') === 'true'
 
@@ -522,7 +527,7 @@ router.beforeEach((to) => {
 
 `beforeResolve()`也会在每次导航时执行，但时间比`beforeEach()`晚：异步路由组件和组件内守卫已经处理完成，导航尚未最终确认。
 
-```ts
+```js
 router.beforeResolve((to) => {
   if (to.meta.requiresFinalConfirm) {
     const accepted = window.confirm('确认进入此操作页面吗？')
@@ -540,7 +545,7 @@ router.beforeResolve((to) => {
 
 `afterEach()`在导航结束后运行，因此不能取消导航，也不能重定向。它适合更新页面标题、记录日志和发送访问统计。
 
-```ts
+```js
 router.afterEach((to, from, failure) => {
   if (!failure) {
     document.title = to.meta.title ?? 'WorkHub'
@@ -554,7 +559,7 @@ router.afterEach((to, from, failure) => {
 
 只与某条路由有关的进入条件，可以直接写在该路由记录中：
 
-```ts
+```js
 {
   path: '/tasks/new',
   name: 'task-create',
@@ -578,7 +583,7 @@ router.afterEach((to, from, failure) => {
 动态路由参数改变时，Vue Router可能复用同一个组件。`onBeforeRouteUpdate()`在复用组件的路由更新前执行，可以读取即将进入的`to`，也可以取消本次变化。
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { onBeforeRouteUpdate } from 'vue-router'
 
 onBeforeRouteUpdate((to) => {
@@ -599,7 +604,7 @@ onBeforeRouteUpdate((to) => {
 编辑页面中最常见的问题是：用户修改了表单，却在保存前离开。组件离开守卫可以先进行确认。
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 
@@ -620,7 +625,7 @@ onBeforeRouteLeave(() => {
 
 既有Vue项目中还可能看到以下写法：
 
-```ts
+```js
 export default {
   beforeRouteEnter(to, from, next) {
     next((componentInstance) => {
@@ -640,13 +645,13 @@ export default {
 - `beforeRouteUpdate`：组件被复用且路由变化时执行；组合式API项目使用`onBeforeRouteUpdate()`。
 - `beforeRouteLeave`：离开组件前执行；组合式API项目使用`onBeforeRouteLeave()`。
 
-本课程新代码继续使用`<script setup lang="ts">`。`beforeRouteEnter`及其中通过`next()`取得组件实例的写法，达到能读懂既有代码即可。
+本课程新代码继续使用`<script setup>`。`beforeRouteEnter`及其中通过`next()`取得组件实例的写法，达到能读懂既有代码即可。
 
 ### 15.10 旧式`next()`参数
 
 导航守卫仍兼容第三个`next`参数：`next()`表示继续，`next(false)`表示取消，`next('/login')`表示重定向。但是，同一次守卫执行中必须保证`next`只调用一次，否则容易出现导航错误。
 
-```ts
+```js
 router.beforeEach((to, from, next) => {
   if (to.name === 'login') {
     next()

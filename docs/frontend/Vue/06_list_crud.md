@@ -17,11 +17,10 @@
 ## 2. 最小示例
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
-import type { Task } from './types/task'
 
-const tasks = ref<Task[]>([
+const tasks = ref([
   { id: 101, title: 'API仕様確認', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
   { id: 102, title: '一覧画面実装', assignee: '佐藤', priority: 'high', status: 'doing', dueDate: '2026-10-05' },
 ])
@@ -75,13 +74,12 @@ const tasks = ref<Task[]>([
 ## 4. WorkHub列表CRUD
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
-import type { Task } from './types/task'
 
 let nextId = 103
 const newTitle = ref('')
-const tasks = ref<Task[]>([
+const tasks = ref([
   { id: 101, title: 'API仕様確認', assignee: '田中', priority: 'normal', status: 'todo', dueDate: '2026-09-30' },
   { id: 102, title: '一覧画面実装', assignee: '佐藤', priority: 'high', status: 'done', dueDate: '2026-10-05' },
 ])
@@ -101,22 +99,22 @@ function addTask() {
   newTitle.value = ''
 }
 
-function updateNewTitle(event: Event): void {
-  const input = event.currentTarget as HTMLInputElement
+function updateNewTitle(event) {
+  const input = event.currentTarget
   newTitle.value = input.value
 }
 
-function toggleTask(id: number): void {
+function toggleTask(id) {
   const task = tasks.value.find(item => item.id === id)
   if (task) task.status = task.status === 'done' ? 'todo' : 'done'
 }
 
-function renameTask(id: number, title: string): void {
+function renameTask(id, title) {
   const task = tasks.value.find(item => item.id === id)
   if (task && title.trim()) task.title = title.trim()
 }
 
-function removeTask(id: number): void {
+function removeTask(id) {
   tasks.value = tasks.value.filter(item => item.id !== id)
 }
 </script>
@@ -150,7 +148,7 @@ function removeTask(id: number): void {
 - 修改任务对象属性会触发界面更新。
 - `filter()`返回不包含指定任务的新数组，再整体赋给`tasks.value`。
 
-这里使用第4章学过的`:value`和`@input`保持输入状态同步，没有提前使用第8章的`v-model`。第8章会把这两部分简化为`v-model`。
+这里使用第5章学习的`:value`和第4章学习的`@input`，手动完成输入值同步。第8章再使用`v-model`简化。
 
 ### 4.1 四种修改方式分别改变什么
 
@@ -167,8 +165,8 @@ function removeTask(id: number): void {
 
 修改过程不要省略“查找失败”的分支：
 
-```ts
-function renameTask(id: number, nextTitle: string): boolean {
+```js
+function renameTask(id, nextTitle) {
   const task = tasks.value.find(item => item.id === id)
 
   if (!task) {
@@ -190,10 +188,10 @@ function renameTask(id: number, nextTitle: string): boolean {
 
 删除属于不可轻易恢复的操作。是否弹出确认框、是否允许撤销，由画面规格决定。异步删除时应记录正在处理的ID，避免同一行重复执行：
 
-```ts
-const deletingId = ref<number | null>(null)
+```js
+const deletingId = ref(null)
 
-async function removeTask(id: number): Promise<void> {
+async function removeTask(id) {
   if (deletingId.value !== null) return
 
   deletingId.value = id

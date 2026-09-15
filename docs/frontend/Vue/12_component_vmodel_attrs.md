@@ -4,7 +4,7 @@
 
 ## 本章目标与前置知识
 
-完成后应能实现一个支持v-model的输入组件，控制Attributes落点，并明确多根组件中的属性落点。需要掌握第11章Props、Emits和单向数据流。本章示例使用TypeScript。
+完成后应能实现一个支持v-model的输入组件，控制Attributes落点，并明确多根组件中的属性落点。需要掌握第11章Props、Emits和单向数据流。本章示例使用JavaScript。
 
 第11章已经能够通过Props向下传值、通过组件事件向上通知。本章学习两种组件封装能力：用组件`v-model`简化输入值通信，用Attributes保留原生HTML能力。Slots与provide/inject在第13章学习。
 
@@ -34,15 +34,15 @@
 组件`v-model`本质上是特定名称的Prop和事件组合。`SearchInput.vue`可以先用第11章知识实现：
 
 ```vue
-<script setup lang="ts">
-const props = defineProps<{ modelValue: string }>()
+<script setup>
+const props = defineProps({
+  modelValue: { type: String, required: true },
+})
 
-const emit = defineEmits<{
-  'update:modelValue': [value: string]
-}>()
+const emit = defineEmits(['update:modelValue'])
 
-function handleInput(event: Event): void {
-  const input = event.currentTarget as HTMLInputElement
+function handleInput(event) {
+  const input = event.currentTarget
   emit('update:modelValue', input.value)
 }
 </script>
@@ -82,8 +82,8 @@ Vue会把它理解为近似下面的写法：
 较新的Vue 3项目可以使用`defineModel()`：
 
 ```vue
-<script setup lang="ts">
-const model = defineModel<string>({ required: true })
+<script setup>
+const model = defineModel({ required: true })
 </script>
 
 <template>
@@ -115,9 +115,9 @@ const model = defineModel<string>({ required: true })
 子组件：
 
 ```vue
-<script setup lang="ts">
-const startDate = defineModel<string>('startDate', { required: true })
-const endDate = defineModel<string>('endDate', { required: true })
+<script setup>
+const startDate = defineModel('startDate', { required: true })
+const endDate = defineModel('endDate', { required: true })
 </script>
 
 <template>
@@ -175,9 +175,11 @@ const endDate = defineModel<string>('endDate', { required: true })
 
 假设子组件声明：
 
-```ts
-defineProps<{ label: string }>()
-defineEmits<{ click: [] }>()
+```js
+defineProps({
+  label: { type: String, required: true },
+})
+defineEmits(['click'])
 ```
 
 那么：
@@ -204,8 +206,10 @@ defineEmits<{ click: [] }>()
 `BaseButton.vue`只有一个根元素：
 
 ```vue
-<script setup lang="ts">
-defineProps<{ label: string }>()
+<script setup>
+defineProps({
+  label: { type: String, required: true },
+})
 </script>
 
 <template>
@@ -266,7 +270,7 @@ defineProps<{ label: string }>()
 <BaseButton label="保存" @click="saveTask" />
 ```
 
-如果组件需要把`click`作为自己的公开组件事件处理，应在`defineEmits<{ click: [] }>()`中声明并主动`emit('click')`。是否属于原生透传还是组件事件，取决于组件契约，不能只看父组件都写成`@click`。
+如果组件需要把`click`作为自己的公开组件事件处理，应在`defineEmits(['click'])`中声明并主动`emit('click')`。是否属于原生透传还是组件事件，取决于组件契约，不能只看父组件都写成`@click`。
 
 ## 9. 自动透传为什么有时会传错位置
 
@@ -296,7 +300,7 @@ defineProps<{ label: string }>()
 ### 10.1 单根包装组件
 
 ```vue
-<script setup lang="ts">
+<script setup>
 defineOptions({ inheritAttrs: false })
 </script>
 
@@ -330,7 +334,7 @@ Vue 3允许多个根元素：
 组件有两个根元素时，Vue无法判断Attributes应给`label`还是`input`，因此不会自动选择，并可能给出警告。解决方式仍是明确指定：
 
 ```vue
-<script setup lang="ts">
+<script setup>
 defineOptions({ inheritAttrs: false })
 </script>
 
@@ -356,7 +360,7 @@ defineOptions({ inheritAttrs: false })
 ### 10.4 扩展阅读：在脚本中读取Attributes
 
 ```vue
-<script setup lang="ts">
+<script setup>
 import { useAttrs } from 'vue'
 
 const attrs = useAttrs()
@@ -402,7 +406,7 @@ console.log(attrs['aria-label'])
 ## 12. WorkHub练习与检查点
 
 1. 用 modelValue 和 update:modelValue 实现一个文本输入组件。
-2. 改用 defineModel<string>()，确认父组件使用方式不变。
+2. 改用`defineModel()`，确认父组件使用方式不变。
 3. 让 label、aria-describedby、class 和事件正确透传到内部 input。
 4. 制造多根组件透传警告，使用 inheritAttrs 和 attrs 修正。
 
