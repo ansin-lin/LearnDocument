@@ -1,4 +1,4 @@
-# 第2节：Bootstrap 常用组件与交互 JS 功能
+# 第2章 Bootstrap表单与常用交互组件
 
 > 🎯 教学目标：  
 >
@@ -109,7 +109,7 @@ Bootstrap 提供一系列输入组件，支持自动样式与表单验证。
 📘 **示例：**
 
 ```html
-<form class="was-validated">
+<form id="taskForm" novalidate>
   <div class="mb-3">
     <label for="username" class="form-label">用户名</label>
     <input type="text" class="form-control" id="username" required>
@@ -119,7 +119,22 @@ Bootstrap 提供一系列输入组件，支持自动样式与表单验证。
 </form>
 ```
 
-💡 `was-validated` 会在提交后显示验证提示。
+`was-validated`不是Bootstrap自动添加的状态。提交时先使用浏览器约束校验，再由JavaScript添加该class：
+
+```js
+const form = document.getElementById('taskForm')
+
+form.addEventListener('submit', (event) => {
+  event.preventDefault()
+  event.stopPropagation()
+  form.classList.add('was-validated')
+
+  if (!form.checkValidity()) return
+  console.log('校验通过，继续发送请求')
+})
+```
+
+`checkValidity()`返回表单是否满足`required`等HTML约束。Bootstrap负责显示样式，真正的业务校验和后端校验仍要实现。
 
 ---
 
@@ -130,15 +145,15 @@ Bootstrap 提供一系列输入组件，支持自动样式与表单验证。
 📘 **示例：**
 
 ```html
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+<nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
   <div class="container-fluid">
     <a class="navbar-brand" href="#">MySite</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="打开或关闭导航">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link active" href="#">首页</a></li>
+        <li class="nav-item"><a class="nav-link active" aria-current="page" href="#">首页</a></li>
         <li class="nav-item"><a class="nav-link" href="#">功能</a></li>
         <li class="nav-item"><a class="nav-link" href="#">联系</a></li>
       </ul>
@@ -167,12 +182,12 @@ Bootstrap 提供一系列输入组件，支持自动样式与表单验证。
 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#myModal">打开弹窗</button>
 
 <!-- 模态框结构 -->
-<div class="modal fade" id="myModal" tabindex="-1">
+<div class="modal fade" id="myModal" tabindex="-1" aria-labelledby="myModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">提示</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title" id="myModalLabel">提示</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
       </div>
       <div class="modal-body">
         这是一个模态框内容区域。
@@ -217,11 +232,11 @@ Bootstrap 提供一系列输入组件，支持自动样式与表单验证。
 <button class="btn btn-success" id="showToast">显示提示</button>
 
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
-  <div id="liveToast" class="toast" role="alert">
+  <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
     <div class="toast-header">
       <strong class="me-auto text-primary">系统消息</strong>
       <small>刚刚</small>
-      <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="关闭"></button>
     </div>
     <div class="toast-body">
       操作已成功完成！
@@ -243,6 +258,8 @@ Bootstrap 提供一系列输入组件，支持自动样式与表单验证。
 
 💡 **提示框 (Toast)** 是轻量级通知组件，可以手动或自动显示。
 
+这段脚本依赖`bootstrap.bundle.min.js`，必须先像完整示例一样加载Bundle；否则`bootstrap`对象不存在。
+
 ---
 
 ## 七、实战示例：带登录模态框的导航页
@@ -258,15 +275,15 @@ Bootstrap 提供一系列输入组件，支持自动样式与表单验证。
   </head>
   <body>
     <!-- 导航栏 -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg bg-dark" data-bs-theme="dark">
       <div class="container-fluid">
         <a class="navbar-brand" href="#">DemoSite</a>
-        <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#menu">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="打开或关闭导航">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="menu">
           <ul class="navbar-nav ms-auto">
-            <li class="nav-item"><a class="nav-link active" href="#">首页</a></li>
+            <li class="nav-item"><a class="nav-link active" aria-current="page" href="#">首页</a></li>
             <li class="nav-item"><a class="nav-link" href="#">功能</a></li>
             <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#loginModal">登录</a></li>
           </ul>
@@ -275,22 +292,22 @@ Bootstrap 提供一系列输入组件，支持自动样式与表单验证。
     </nav>
 
     <!-- 登录模态框 -->
-    <div class="modal fade" id="loginModal" tabindex="-1">
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">用户登录</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <h5 class="modal-title" id="loginModalLabel">用户登录</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
           </div>
           <div class="modal-body">
             <form>
               <div class="mb-3">
-                <label class="form-label">用户名</label>
-                <input type="text" class="form-control" required>
+                <label class="form-label" for="loginName">用户名</label>
+                <input id="loginName" name="loginName" type="text" class="form-control" required>
               </div>
               <div class="mb-3">
-                <label class="form-label">密码</label>
-                <input type="password" class="form-control" required>
+                <label class="form-label" for="loginPassword">密码</label>
+                <input id="loginPassword" name="loginPassword" type="password" class="form-control" required>
               </div>
               <button type="submit" class="btn btn-primary w-100">登录</button>
             </form>
@@ -317,6 +334,14 @@ Bootstrap 提供一系列输入组件，支持自动样式与表单验证。
 | 折叠 | Collapse | 可展开/隐藏区域 |
 | 提示 | Toast | 提示框或通知 |
 
-✅ **一句话总结：**
-> Bootstrap 提供了丰富的 UI 组件，结合 `data-bs-*` 属性即可轻松实现交互效果，  
-> 无需额外 JS 库，就能完成专业的网页动态体验。
+交互组件依赖Bootstrap Bundle。组件标记、可访问属性、业务处理与失败状态仍由开发者负责。
+
+## 九、练习与验收
+
+1. 为WorkHub增加标题必填的新建任务表单。
+2. 增加响应式Navbar，当前页面使用`aria-current="page"`。
+3. 删除按钮打开确认Modal；取消不删除，确认后才修改列表。
+4. 保存成功显示Toast，保存失败显示可理解的错误。
+5. 使用鼠标和键盘分别验证Navbar、表单和Modal。
+
+确认页面已经加载`bootstrap.bundle.min.js`，并检查Console和不同宽度。

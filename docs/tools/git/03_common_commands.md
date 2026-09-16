@@ -10,10 +10,10 @@
 
 对应的基础命令是：
 
-```powershell
+```cmd
 git status
 git diff
-git add <file>
+git add FILE_PATH
 git diff --staged
 git commit -m "说明本次变更"
 git log --oneline
@@ -25,22 +25,22 @@ git log --oneline
 
 新项目可以初始化本地仓库：
 
-```powershell
-New-Item -ItemType Directory git-daily-lab
-Set-Location git-daily-lab
+```cmd
+mkdir git-daily-lab
+cd git-daily-lab
 git init -b main
 ```
 
 已有远程项目通常使用克隆，不要先在同一目录执行 `git init`：
 
-```powershell
-git clone <repository-url>
-Set-Location <repository-directory>
+```cmd
+git clone REPOSITORY_URL
+cd REPOSITORY_DIRECTORY
 ```
 
 ## 3.3 查看状态和差异
 
-```powershell
+```cmd
 git status
 git status --short
 git diff
@@ -58,20 +58,22 @@ git diff HEAD
 
 优先指定文件或目录：
 
-```powershell
+```cmd
 git add README.md
 git add src
 ```
 
 确认当前目录只有本次任务的修改后，才使用：
 
-```powershell
+```cmd
 git add .
 ```
 
-一个文件包含多个不相关修改时，可以逐块选择：
+### 进阶：按修改块暂存
 
-```powershell
+第一次学习先熟练使用 `git add FILE_PATH` 和 `git add DIRECTORY_PATH`。只有一个文件混有多个不相关修改、且不能先在编辑器中整理时，再使用 `git add -p` 逐块选择：
+
+```cmd
 git add -p README.md
 ```
 
@@ -95,7 +97,7 @@ Stage this hunk [y,n,q,a,d,s,e,?]?
 
 提交应尽量小而完整：完成一个可说明、可验证的变更，不混入格式化、依赖升级和其他任务。
 
-```powershell
+```cmd
 git commit -m "docs: explain staged changes"
 ```
 
@@ -116,7 +118,7 @@ chore: update development tools
 
 ## 3.6 查看历史
 
-```powershell
+```cmd
 git log --oneline --graph --decorate --all
 git show HEAD
 git show --stat HEAD
@@ -124,6 +126,15 @@ git log -- README.md
 ```
 
 `HEAD` 表示当前提交。`git show HEAD` 同时显示提交信息和差异，适合提交后自查。
+
+维护既有项目时，还会沿着文件历史调查“什么时候改过、为什么这样写、是否关联某个 Ticket”：
+
+```cmd
+git log -- path\to\File.java
+git show COMMIT_ID
+```
+
+第一条按文件路径缩小提交历史，第二条查看某次提交的说明和具体差异。这里先会查即可；结合 `blame`、Ticket 和影响范围的完整调查流程见[第 06 章](06_teamwork_and_conflicts.md)。
 
 ## 3.7 使用 .gitignore
 
@@ -147,7 +158,7 @@ node_modules/
 
 `.gitignore` 不能保护已经提交的秘密，也不会自动取消跟踪已有文件。文件已经被跟踪时，可以仅从暂存区索引移除、保留本地文件：
 
-```powershell
+```cmd
 git rm --cached .env
 git status
 git commit -m "chore: stop tracking local environment file"
@@ -155,7 +166,7 @@ git commit -m "chore: stop tracking local environment file"
 
 目录需要使用受限路径：
 
-```powershell
+```cmd
 git rm -r --cached -- path\to\generated
 ```
 
@@ -163,14 +174,14 @@ git rm -r --cached -- path\to\generated
 
 ## 3.8 完整实验：完成一次可审查提交
 
-**环境与初始状态：** Windows PowerShell；在新的 `git-daily-lab` 目录执行。如果已在 3.2 创建该目录，从身份配置开始。
+**环境与初始状态：** Windows CMD；在新的 `git-daily-lab` 目录执行。如果已在 3.2 创建该目录，从身份配置开始。
 
-```powershell
+```cmd
 git config user.name "Git Learner"
 git config user.email "learner@example.com"
-Set-Content README.md "# Git Daily Lab"
-Set-Content notes.log "temporary log"
-Set-Content .gitignore "*.log"
+echo # Git Daily Lab>README.md
+echo temporary log>notes.log
+echo *.log>.gitignore
 git status --short
 git diff
 git add README.md .gitignore
@@ -190,7 +201,7 @@ git status
 
 - `nothing to commit`：没有新差异，或修改尚未保存到磁盘；先执行 `git status`。
 - 提交了不需要的文件：如果尚未推送，参考[第 07 章](07_undo_and_reset.md)；不要立即使用 `reset --hard`。
-- `.gitignore` 不生效：先用 `git ls-files <file>` 检查文件是否已经被跟踪。
+- `.gitignore` 不生效：先用 `git ls-files FILE_PATH` 检查文件是否已经被跟踪。
 - 提交作者错误：先检查本地和全局配置，修改之后只影响新提交。
 
 ```text
@@ -203,7 +214,7 @@ nothing to commit, working tree clean
 error: pathspec 'missing.txt' did not match any file(s) known to git
 ```
 
-这表示路径拼写错误，或文件不在当前目录。使用 `Get-ChildItem` 和 `git status --short` 确认真实路径。
+这表示路径拼写错误，或文件不在当前目录。使用 `dir` 和 `git status --short` 确认真实路径。
 
 ## 3.10 本章总结
 
@@ -216,7 +227,7 @@ error: pathspec 'missing.txt' did not match any file(s) known to git
 
 1. 修改两个文件，但只把其中一个提交。
 2. 暂存文件后再次修改，解释 `git status --short` 的两列。
-3. 创建一个 `.log` 文件，使用 `git check-ignore -v <file>` 找出匹配规则。
+3. 创建一个 `.log` 文件，使用 `git check-ignore -v FILE_PATH` 找出匹配规则。
 
 ### 自检提示
 

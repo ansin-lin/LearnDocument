@@ -1,164 +1,143 @@
-# Vuetify 基础结构
+# 第1章 Vuetify 3安装、插件注册与应用结构
 
-> 本文档教你从零开始了解 **Vuetify** 的核心结构和必备组件，包含安装、基本层级结构、必要组件、应用框架示例等。
+Vuetify是面向Vue的UI组件库，提供按钮、表单、数据表格、反馈组件、布局和主题系统。本课程统一使用Vue 3、Vite、Composition API和Vuetify 3。开始前应已经能创建并运行Vue项目，理解组件、Props、事件、插槽和`v-model`。
 
----
+## 1. Vuetify承担什么任务
 
-## 📘 一、Vuetify 的基础概念
+Vuetify把常见界面结构封装成Vue组件，并通过Props、事件、插槽和`v-model`使用。它能统一外观和常见交互，但不能代替：
 
-**Vuetify** 是一个基于 **Vue.js** 的界面 UI 框架，提供了完整的 **Material Design** 风格组件和响应式布局系统。
+- 业务数据和状态设计；
+- 表单与后端校验；
+- Router和API层；
+- 权限控制；
+- 键盘操作、焦点和错误状态检查。
 
-> 目标：通过 Vuetify，很快搭建出符合现代设计风格的网页和后台界面。
+## 2. 在现有Vue项目中安装
 
----
-
-## ⚙️ 二、安装与环境搭建
-
-### 1. 创建 Vue 3 项目
-
-```bash
-npm create vue@latest my-vuetify-app
-cd my-vuetify-app
-npm install
-```
-
-### 2. 安装 Vuetify
+在包含`package.json`的项目目录执行：
 
 ```bash
 npm install vuetify @mdi/font
 ```
 
-### 3. main.js 中引入
+`vuetify`提供组件库，`@mdi/font`提供本课程示例使用的Material Design Icons。依赖的具体版本以项目`package.json`和团队规则为准，不在同一项目混用Vuetify 2与Vuetify 3写法。
 
-```javascript
-import { createApp } from 'vue'
-import App from './App.vue'
+## 3. 建立Vuetify插件
+
+新建`src/plugins/vuetify.js`：
+
+```js
 import 'vuetify/styles'
+import '@mdi/font/css/materialdesignicons.css'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
-import '@mdi/font/css/materialdesignicons.css'
 
-const vuetify = createVuetify({ components, directives })
-createApp(App).use(vuetify).mount('#app')
+export const vuetify = createVuetify({
+  components,
+  directives,
+})
 ```
 
----
+`createVuetify(options)`创建插件实例。这里显式注册全部组件和指令，便于新人理解；采用自动导入插件的既有项目应遵守原配置，不重复注册。
 
-## 🧱 三、Vuetify 的基本层级结构
+修改`src/main.js`：
 
-在一个标准的 Vuetify 应用中，基本层级结构如下：
+```js
+import { createApp } from 'vue'
+import App from './App.vue'
+import { vuetify } from './plugins/vuetify'
 
-```vue
-<v-app>
-  <v-app-bar>...</v-app-bar>      
-  <v-navigation-drawer>...</v-navigation-drawer>
-  <v-main>
-    <v-container>...</v-container>
-  </v-main>
-  <v-footer>...</v-footer>
-</v-app>
+createApp(App)
+  .use(vuetify)
+  .mount('#app')
 ```
 
-### 🔍 基本解释
+`app.use(vuetify)`必须在`mount()`之前调用。运行：
 
-| 组件名 | 是否必须 | 作用 |
-|---------|-----------|------|
-| `<v-app>` | ✅ 必须 | 应用的根容器 |
-| `<v-main>` | ✅ 推荐 | 主内容容器 |
-| `<v-container>` | ✅ 推荐 | 提供左右留白、响应式布局基础 |
-| `<v-row>` / `<v-col>` | ⚙️ 布局辅助 | 构建网格系统 |
-| `<v-app-bar>` | 可选 | 顶部导航栏 |
-| `<v-navigation-drawer>` | 可选 | 左侧菜单栏 |
-| `<v-footer>` | 可选 | 页脚 |
+```bash
+npm run dev
+```
 
----
+如果出现组件无法解析，依次检查依赖是否安装、插件路径是否正确、样式是否导入以及`use(vuetify)`是否存在。
 
-## 🧩 四、最小可运行结构
+## 4. 最小可运行组件
+
+用以下内容替换`src/App.vue`：
 
 ```vue
 <template>
   <v-app>
     <v-main>
       <v-container>
-        <v-btn color="primary">你好 Vuetify</v-btn>
+        <h1 class="text-h4 mb-4">WorkHub任务管理</h1>
+        <v-btn color="primary" prepend-icon="mdi-plus">
+          新增任务
+        </v-btn>
       </v-container>
     </v-main>
   </v-app>
 </template>
 ```
 
-> 💡 解释：
->
-> - `<v-app>`：Vuetify 的根容器，提供主题、CSS 重置和上下文。
-> - `<v-main>`：定义主内容区域。
-> - `<v-container>`：提供标准化的页面边距与布局间距。
+页面显示标题和带图标按钮，说明组件、基础样式与图标都已加载。
 
----
+## 5. 应用结构
 
-## 🧭 五、标准页面结构示例
+```text
+v-app
+├─ v-app-bar
+├─ v-navigation-drawer
+└─ v-main
+   └─ v-container
+      └─ 页面内容
+```
+
+| 组件 | 作用 | 是否必须 |
+| --- | --- | --- |
+| `v-app` | 提供应用级主题、默认值和布局上下文 | 应用根组件使用 |
+| `v-main` | 放置主要内容并配合应用布局 | 常规页面推荐 |
+| `v-container` | 控制内容宽度和间距 | 按页面需要 |
+| `v-app-bar` | 顶部操作和导航区域 | 可选 |
+| `v-navigation-drawer` | 侧边导航区域 | 可选 |
+| `v-footer` | 页脚区域 | 可选 |
+
+## 6. WorkHub应用骨架
 
 ```vue
 <template>
   <v-app>
-    <v-app-bar color="primary" dark app>
-      <v-app-bar-title>我的应用</v-app-bar-title>
+    <v-app-bar color="primary">
+      <v-app-bar-title>WorkHub</v-app-bar-title>
     </v-app-bar>
 
-    <v-navigation-drawer app permanent>
-      <v-list>
-        <v-list-item title="首页" prepend-icon="mdi-home" />
+    <v-navigation-drawer permanent>
+      <v-list nav>
+        <v-list-item
+          title="任务一览"
+          prepend-icon="mdi-format-list-checks"
+        />
         <v-list-item title="设置" prepend-icon="mdi-cog" />
       </v-list>
     </v-navigation-drawer>
 
     <v-main>
-      <v-container class="py-4">
-        <v-card>
-          <v-card-title>欢迎使用 Vuetify</v-card-title>
-          <v-card-text>这里是主要内容区域。</v-card-text>
-        </v-card>
+      <v-container class="py-6">
+        <h1 class="text-h4">任务一览</h1>
       </v-container>
     </v-main>
-
-    <v-footer app>
-      <span class="mx-auto">© 2025 My App</span>
-    </v-footer>
   </v-app>
 </template>
 ```
 
----
+`v-app-bar`和`v-navigation-drawer`参与Vuetify布局，`v-main`会为它们保留内容区域。是否永久显示Drawer应根据后续响应式规格调整。
 
-## 🎨 六、推荐的基础组件总结
+## 7. 练习与验收
 
-| 分类 | 必需组件 | 说明 |
-|------|-----------|------|
-| 根层级 | `v-app` | 所有页面必须包裹在它内 |
-| 主内容层 | `v-main` | 承载主要内容区域 |
-| 布局层 | `v-container`, `v-row`, `v-col` | 实现响应式布局 |
-| 框架层 | `v-app-bar`, `v-navigation-drawer`, `v-footer` | 可选，构成完整应用骨架 |
+1. 在现有Vue JavaScript项目安装并注册Vuetify 3。
+2. 建立WorkHub应用栏、侧边导航和主内容。
+3. 增加一个带`mdi-plus`图标的新增按钮。
+4. 删除`use(vuetify)`观察错误，再恢复并记录原因。
+5. 执行`npm run build`，确认生产构建成功。
 
----
-
-## 🧠 七、最佳实践与提示
-
-1. 所有页面的最外层必须有 `<v-app>`。
-2. 主内容建议使用 `<v-main>` + `<v-container>`。
-3. 使用 `<v-row>` + `<v-col>` 实现响应式栅格布局。
-4. 在 `createVuetify()` 中配置主题（light/dark）。
-5. 常见结构：导航栏 + 菜单 + 主内容 + 页脚。
-
----
-
-## 🧾 八、总结
-
-> 在 Vuetify 应用中：
->
-> - **`<v-app>` 是唯一必须的顶级组件**；
-> - **`<v-main>` + `<v-container>`** 构成主内容结构；
-> - **`<v-row>` + `<v-col>`** 用于栅格布局；
-> - **`<v-app-bar>`、`<v-navigation-drawer>`、`<v-footer>`** 构成完整框架。
-
-✅ **一句话总结：**
-> Vuetify 应用的根结构必须有 `<v-app>`，推荐配合 `<v-main>` 与 `<v-container>` 使用。
+验收时确认页面可打开、图标可见、Console无错误，并能说明`plugins/vuetify.js`和`main.js`各自职责。

@@ -1,222 +1,87 @@
-# 定时任务管理（crontab）
+# 05 用户级定时任务
 
-> 本章目标：  
->
-> - 理解什么是定时任务、为什么要用定时任务  
-> - 掌握 crontab 的基本语法与时间规则  
-> - 能编写和管理常见的定时任务  
-> - 避免生产环境中常见的 crontab 错误
+cron 常用于定时执行批处理。本章只维护当前普通用户的练习任务，不管理 cron 服务，也不修改其他用户或系统级任务。
 
----
-
-## 1. 什么是定时任务？
-
-在 Linux 中，**定时任务**指的是：
-
-> 在指定的时间点，自动执行某个命令或脚本
-
-常见用途：
-
-- 定时备份
-- 定时清理日志
-- 定时统计数据
-- 定时执行脚本
-
----
-
-## 2. crontab 是什么？
-
-`crontab` 是 Linux 中最常用的 **定时任务工具**。
-
-- 由系统服务 `cron` 负责执行
-- 每个用户都有自己的 crontab
-- 后台自动运行，无需人工干预
-
----
-
-## 3. crontab 的基本用法
-
-### 3.1 编辑定时任务
+## 5.1 先备份，再编辑
 
 ```bash
+mkdir -p "$HOME/learndoc-linux-lab/output"
+crontab -l > "$HOME/learndoc-linux-lab/output/crontab.backup" 2>/dev/null || true
 crontab -e
 ```
 
-👉 打开当前用户的定时任务配置文件
+`crontab -l` 在没有既有任务时可能返回非 0；这里的 `|| true` 只用于允许“当前无任务”继续。不要使用 `crontab -r` 删除全部任务。
 
----
+恢复已有备份前必须先阅读内容：
 
-### 3.2 查看定时任务
+```bash
+cat "$HOME/learndoc-linux-lab/output/crontab.backup"
+crontab "$HOME/learndoc-linux-lab/output/crontab.backup"
+```
+
+第二条会替换当前用户的全部 crontab，只在确认备份正确且确需恢复时执行。
+
+## 5.2 时间格式
+
+```text
+分钟 小时 日 月 星期 命令
+```
+
+```text
+*/5 * * * *  每 5 分钟
+0 2 * * *    每天 02:00
+0 9 * * 1    每周一 09:00
+```
+
+日期、星期同时受限时的组合行为容易误解，复杂生产计划应按项目手顺确认，不凭记忆配置。
+
+## 5.3 创建安全练习脚本
+
+先完成 Shell 基础后再执行本节。创建 `~/learndoc-linux-lab/cron_demo.sh`：
+
+```bash
+cat > "$HOME/learndoc-linux-lab/cron_demo.sh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s cron demo\n' "$(date '+%Y-%m-%dT%H:%M:%S')" \
+  >> "$HOME/learndoc-linux-lab/output/cron-demo.log"
+EOF
+chmod u+x "$HOME/learndoc-linux-lab/cron_demo.sh"
+```
+
+先手动验证：
+
+```bash
+"$HOME/learndoc-linux-lab/cron_demo.sh"
+tail -n 1 "$HOME/learndoc-linux-lab/output/cron-demo.log"
+```
+
+手动运行成功后，才在 `crontab -e` 中添加：
+
+```text
+*/5 * * * * /usr/bin/env bash "$HOME/learndoc-linux-lab/cron_demo.sh" >> "$HOME/learndoc-linux-lab/output/cron-run.log" 2>&1
+```
+
+cron 通常会设置 `HOME`，但它的 `PATH` 等执行环境比交互式终端更少。实际项目应按作业手顺确认执行用户、解释器、环境变量和绝对路径；排错时不能只以“手动执行成功”为依据。
+
+## 5.4 验证与排错
 
 ```bash
 crontab -l
+tail -n 20 "$HOME/learndoc-linux-lab/output/cron-run.log"
+tail -n 20 "$HOME/learndoc-linux-lab/output/cron-demo.log"
 ```
 
----
+常见原因：绝对路径错误、脚本手动执行就失败、环境变量不同、输出未重定向、服务器时区与预期不同。先验证脚本，再调查调度。
 
-### 3.3 删除所有定时任务
+## 5.5 清理练习任务
 
-```bash
-crontab -r
-```
+使用 `crontab -e` 只删除本章添加的一行，然后运行 `crontab -l` 确认其他任务仍保留。不要用删除全部任务的命令代替编辑。
 
-⚠️ 删除后不可恢复，谨慎使用
+## 5.6 本章任务
 
----
+1. 备份当前用户 crontab。
+2. 手动运行练习脚本并确认日志。
+3. 添加练习任务，保存 `crontab -l` 作为证据。
+4. 删除练习行并确认其他任务未变化。
 
-## 4. crontab 时间格式（重点）
-
-```text
-* * * * *
-分 时 日 月 周
-```
-
-| 位置 | 含义 | 范围 |
-| --- | --- | --- |
-| 第 1 位 | 分钟 | 0–59 |
-| 第 2 位 | 小时 | 0–23 |
-| 第 3 位 | 日期 | 1–31 |
-| 第 4 位 | 月份 | 1–12 |
-| 第 5 位 | 星期 | 0–7（0 和 7 都表示周日） |
-
----
-
-## 5. 常见时间写法示例
-
-### 每分钟执行
-
-```bash
-* * * * * command
-```
-
-### 每天 2 点执行
-
-```bash
-0 2 * * * command
-```
-
-### 每周一 9 点执行
-
-```bash
-0 9 * * 1 command
-```
-
-### 每 5 分钟执行一次
-
-```bash
-*/5 * * * * command
-```
-
----
-
-## 6. crontab 执行脚本（实战）
-
-### 6.1 示例：定时执行 Shell 脚本
-
-```bash
-0 1 * * * /home/user/backup.sh
-```
-
-📌 教学重点：
-
-- 使用 **绝对路径**
-- 脚本必须有执行权限
-
----
-
-### 6.2 给脚本加执行权限
-
-```bash
-chmod +x backup.sh
-```
-
----
-
-## 7. crontab 的执行环境（重要）
-
-crontab 的环境与登录终端不同：
-
-- 没有完整 PATH
-- 不会加载 `.bashrc`
-
-📌 推荐写法：
-
-```bash
-/bin/bash /home/user/script.sh
-```
-
----
-
-## 8. 日志与排错
-
-### 8.1 查看 cron 日志
-
-```bash
-grep CRON /var/log/syslog
-```
-
-或：
-
-```bash
-grep cron /var/log/messages
-```
-
----
-
-### 8.2 常见不执行原因
-
-- 路径写错
-- 脚本没权限
-- 环境变量缺失
-- cron 服务未运行
-
----
-
-## 9. cron 服务管理
-
-```bash
-systemctl status cron
-systemctl start cron
-systemctl enable cron
-```
-
----
-
-## 10. 常见错误（一定要提醒）
-
-- 使用相对路径
-- 忘记脚本执行权限
-- 直接写 `source`
-- 不重定向输出导致邮件刷屏
-
----
-
-## 11. 教学小结
-
-你现在应该能够：
-
-- 理解 crontab 的作用
-- 编写基本定时任务
-- 管理和排错 crontab
-- 在生产环境安全使用 cron
-
----
-
-## 12. 教学练习
-
-### 练习 1
-
-编写一个每分钟执行的 echo 任务。
-
-### 练习 2
-
-定时每天执行一个 Shell 脚本。
-
-### 练习 3
-
-查看并确认 cron 服务状态。
-
----
-
-👉 下一章：
-**07_log_management.md —— 日志系统与分析（教学完整版）**
+[上一章：进程、退出状态与资源确认](04_process_system.md) · [下一章：日志查看与调查](06_log_management.md)

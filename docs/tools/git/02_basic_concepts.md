@@ -34,6 +34,31 @@ flowchart LR
 
 `git add` 不是“上传”，`git commit` 也不是“推送”。提交只进入本地仓库，执行 `git push` 后才会发送到远程仓库。
 
+### 本地分支、远程跟踪分支与服务器分支
+
+克隆团队仓库后，开发者电脑上还会同时出现本地分支和远程跟踪分支。它们与 GitHub/GitLab 服务器上的分支是三个不同对象：
+
+```mermaid
+flowchart TB
+    subgraph PC["开发者电脑"]
+        L["本地分支<br/>main<br/>feature/APP-123"]
+        RT["远程跟踪分支<br/>origin/main<br/>origin/feature/APP-123"]
+    end
+    subgraph SERVER["GitHub / GitLab 服务器"]
+        R["服务器分支<br/>main<br/>feature/APP-123"]
+    end
+
+    L -->|"git push"| R
+    R -->|"git fetch 更新本地记录"| RT
+    RT -.->|"merge / rebase / pull 的整合阶段"| L
+```
+
+- `main`：本地分支，当前开发者可以在其上创建提交。
+- `origin/main`：保存在本地仓库中的远程跟踪分支，记录最近一次 fetch 后所见的远程 `main`。
+- 服务器上的 `main`：团队共享仓库中的真实远程分支。
+
+因此，`origin/main` 不等于服务器上的 `main`。其他人 push 后，服务器分支已经变化，但在本机再次执行 `git fetch origin` 以前，`origin/main` 仍可能停留在旧位置。第 05 章会用提交图演示同步过程。
+
 ## 2.3 文件状态
 
 Git 首先区分文件是否被跟踪：
@@ -79,6 +104,8 @@ gitGraph
 
 上图中，`main` 指向 B，`feature` 指向 C。切换分支时，Git 会调整工作区，使其匹配目标分支指向的提交。
 
+切换分支不是进入另一个项目目录，而是改变 `HEAD` 所指向的分支，并让当前工作区尽可能匹配该分支的内容。
+
 ## 2.5 如何指定一个版本
 
 Git 命令经常需要指定某个提交，这类参数统称 revision（版本引用）。
@@ -88,19 +115,19 @@ Git 命令经常需要指定某个提交，这类参数统称 revision（版本�
 | `HEAD` | 当前检出的提交 |
 | `HEAD~1` | 当前提交沿第一父提交向前一代，常写作“上一个提交” |
 | `HEAD~3` | 沿第一父提交连续向前三代 |
-| `<commit-id>` | 用提交 ID 指定版本，例如 `a1b2c3d` |
+| `COMMIT_ID` | 用提交 ID 指定版本，例如 `a1b2c3d` |
 | `main` | 用分支名指定该分支当前指向的提交 |
 | `v1.0.0` | 用标签名指定标签指向的提交 |
 
 例如查看上一个提交：
 
-```powershell
+```cmd
 git show HEAD~1
 ```
 
 命令中的独立 `--` 常用于分隔“版本或选项”和“文件路径”。例如：
 
-```powershell
+```cmd
 git diff HEAD~1 -- README.md
 ```
 
@@ -108,19 +135,19 @@ git diff HEAD~1 -- README.md
 
 ## 2.6 实验：观察文件状态
 
-**环境与范围：** Windows PowerShell；在新建的 `git-basic-lab` 目录中执行。删除该练习目录即可清理，不要在已有项目中运行。
+**环境与范围：** Windows CMD；在新建的 `git-basic-lab` 目录中执行。删除该练习目录即可清理，不要在已有项目中运行。
 
 先确认已安装 Git：
 
-```powershell
+```cmd
 git --version
 ```
 
 如果提示找不到命令，请先完成[第 01 章](01_install_and_config.md)。然后创建独立练习仓库，并只为该仓库设置练习身份：
 
-```powershell
-New-Item -ItemType Directory git-basic-lab
-Set-Location git-basic-lab
+```cmd
+mkdir git-basic-lab
+cd git-basic-lab
 git init -b main
 git config user.name "Git Learner"
 git config user.email "learner@example.com"
@@ -129,8 +156,8 @@ git status
 
 创建文件并观察状态变化：
 
-```powershell
-Set-Content -Path hello.txt -Value "hello"
+```cmd
+echo hello>hello.txt
 git status --short
 git add hello.txt
 git status --short
@@ -149,10 +176,10 @@ A  hello.txt
 
 再次修改文件，并在暂存后继续修改：
 
-```powershell
-Add-Content -Path hello.txt -Value "staged line"
+```cmd
+echo staged line>>hello.txt
 git add hello.txt
-Add-Content -Path hello.txt -Value "working tree line"
+echo working tree line>>hello.txt
 git status
 git diff
 git diff --staged
@@ -162,7 +189,7 @@ git diff --staged
 
 ## 2.7 常见错误
 
-- 在错误目录执行 `git init`：先用 `Get-Location` 确认位置；误初始化且尚未产生有价值提交时，再谨慎删除该目录下的 `.git`。
+- 在错误目录执行 `git init`：先用不带参数的 `cd` 确认当前位置；误初始化且尚未产生有价值提交时，再通过文件资源管理器谨慎删除该目录下的 `.git`。
 - 把提交理解成上传：使用 `git remote -v` 检查是否配置远程，使用 `git push` 才会发送提交。
 - 直接删除 `.git`：这会删除本地提交、分支和配置，不应作为普通撤销方法。
 
@@ -170,7 +197,7 @@ git diff --staged
 fatal: not a git repository (or any of the parent directories): .git
 ```
 
-这表示当前目录及其父目录中没有 Git 仓库。先用 `Get-Location` 和 `Get-ChildItem -Force` 检查位置，不要在不确定的目录再次执行 `git init`。
+这表示当前目录及其父目录中没有 Git 仓库。先用 `cd` 和 `dir /a` 检查位置，不要在不确定的目录再次执行 `git init`。
 
 ## 2.8 本章总结
 

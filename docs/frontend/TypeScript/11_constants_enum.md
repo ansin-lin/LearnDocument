@@ -67,7 +67,23 @@ console.log(directions[0]); // asc
 
 普通表单对象、计数数组等数据需要修改，不应添加`as const`后再用断言绕过只读检查。单个`const`字符串已经能正确推断时，也不必重复添加。
 
-## 3. 从常量对象取得允许的值类型
+## 3. 表达固定值类型
+
+### 3.1 【必须掌握】直接使用字面量联合
+
+只需要限制变量允许哪些值时，最容易理解的写法是字面量联合：
+
+```ts
+type Status = "pending" | "approved" | "rejected";
+
+const currentStatus: Status = "pending";
+console.log(currentStatus); // pending
+// const wrongStatus: Status = "unknown"; // 错误：不是允许的值
+```
+
+它直接写出全部允许值，是新人定义状态类型时的首选。
+
+### 3.2 【项目代码阅读】从常量对象取得允许的值类型
 
 ```ts
 const STATUS = {
@@ -78,7 +94,7 @@ const STATUS = {
 
 type Status = typeof STATUS[keyof typeof STATUS];
 
-const currentStatus: Status = "pending";
+const currentStatus: Status = STATUS.PENDING;
 console.log(currentStatus); // pending
 // const wrongStatus: Status = "unknown"; // 错误：不是允许的值
 ```
@@ -91,11 +107,7 @@ console.log(currentStatus); // pending
 
 这种写法在框架项目的选项、配置和状态代码中比较常见。初学阶段先会照现有模式使用，不要求设计更复杂的类型运算。
 
-如果运行时不需要常量对象，直接使用字面量联合更简单：
-
-```ts
-type Status = "pending" | "approved" | "rejected";
-```
+这里组合了`typeof`、`keyof`和索引访问类型，属于项目代码阅读内容。如果运行时不需要`STATUS.PENDING`这样的常量对象，就使用 3.1 节的直接联合，不必套用这段类型运算。
 
 ## 4. enum 枚举（会使用、能阅读）
 
@@ -170,8 +182,8 @@ console.log(Object.isFrozen(config)); // false
 ## 8. 练习
 
 1. 创建普通字符串数组和带`as const`的字符串数组，比较编辑器推断类型，并分别尝试`push()`。
-2. 使用`as const`定义申请状态常量对象，再派生允许的状态值类型。
-3. 使用字面量联合重新表达同一组状态，说明什么时候不需要常量对象。
+2. 使用字面量联合定义申请状态类型，并分别测试正确值和错误值。
+3. 【选做】使用`as const`定义同一组状态常量，并阅读由常量对象派生值类型的写法。
 4. 声明一个字符串`enum`，创建变量并通过枚举成员赋值。
 5. 声明一个数字枚举并输出成员值，说明为什么业务状态更适合使用明确值。
 
@@ -179,7 +191,8 @@ console.log(Object.isFrozen(config)); // false
 
 - 能说明普通`const`为什么不等于对象属性只读。
 - 能说明`as const`对对象和数组推断结果的影响。
-- 能从常量对象取得值类型，并能阅读`typeof`、`keyof`和索引访问组合。
+- 能用字面量联合表达固定状态。
+- 看到常量对象派生类型时，能识别`typeof`、`keyof`和索引访问的作用。
 - 能区分字面量联合、`as const`对象和`enum`。
 - 能声明并使用简单字符串枚举，能读懂数字枚举。
 - 能说明`as const`和`enum`都不能代替外部数据校验。

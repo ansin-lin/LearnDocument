@@ -16,15 +16,16 @@
 - [HTML 零基础教程](frontend/HTML/index.md)
 - [CSS 零基础教程](frontend/CSS/index.md)
 - [JavaScript 零基础教程](frontend/JavaScript/index.md)
+- [Node.js 与 npm 基础](frontend/NodeJS/index.md)
 - [前端递进练习：HTML 阶段](frontend/training/01_html_task.md)
 - [前端递进练习：CSS 阶段](frontend/training/02_css_task.md)
 - [前端递进练习：JavaScript 阶段](frontend/training/03_javascript_task.md)
 - ES6 与现代 JavaScript
-- TypeScript
+- [TypeScript 零基础教程](frontend/TypeScript/index.md)
 - Axios
 - Fetch
-- Vue 体系
-- React 体系
+- [Vue 3 零基础教程](frontend/Vue/index.md)
+- [React + TypeScript 新人教程](frontend/React/index.md)
 - 项目常用库包
 
 ### 后端主线
@@ -33,10 +34,16 @@
 - [Spring Boot 教程](backend/springboot/index.md)
 - Spring 体系其他依赖
 
+### 前后端贯穿练习
+
+- [新主线：Company WorkHub 任务管理递进练习](training_projects/workhub_task_practice/index.md)
+- 现有“有給休暇”三阶段练习继续保留；新主线用于后续教学安排。
+- 可先学前端，也可先学 MyBatis / Spring Boot，最终按统一业务规格联调。
+
 ### 工具主线
 
-- [Linux 教程](tools/linux/01_linux_intro.md)
-- [Shell 教程](tools/shell/01_shell_basic.md)
+- [Linux 教程](tools/linux/index.md)
+- [Shell 教程](tools/shell/index.md)
 - [Git 教程](tools/git/index.md)
 - [PL/SQL 教程](database/plsql/01_environment.md)
 

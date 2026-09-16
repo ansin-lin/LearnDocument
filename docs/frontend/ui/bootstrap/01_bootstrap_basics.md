@@ -1,4 +1,4 @@
-# 第1节：Bootstrap 入门与基础结构
+# 第1章 Bootstrap 5.3入门、引入与栅格
 
 > 🎯 教学目标：  
 >
@@ -12,8 +12,7 @@
 
 ## 一、Bootstrap 简介
 
-**Bootstrap** 是全球最流行的前端 UI 框架之一，基于 **HTML、CSS、JavaScript** 构建，  
-可以帮助开发者快速实现响应式、美观的页面。
+**Bootstrap** 是常用的前端CSS框架，提供栅格、工具类、组件样式和部分JavaScript交互，可以帮助开发者快速建立视觉一致的响应式页面。它不能替代HTML语义、业务规则或后端校验。
 
 📌 **主要特点：**
 
@@ -22,14 +21,13 @@
 - 统一的视觉主题与交互逻辑  
 - 可通过 Sass 定制主题变量  
 
-📘 当前推荐版本： **Bootstrap 5.x**  
-（Bootstrap 5 移除了 jQuery 依赖，全面支持现代浏览器与 ES6）
+本课程统一使用 **Bootstrap 5.3**。Bootstrap 5不依赖jQuery；交互组件使用Bootstrap JavaScript Bundle，其中已经包含Popper。
 
 ---
 
 ## 二、项目引入方式
 
-### 1️⃣ CDN 方式（最常用）
+### 1️⃣ CDN方式（独立练习）
 
 在 HTML 的 `<head>` 与 `<body>` 中添加以下代码即可：
 
@@ -56,9 +54,9 @@
 
 ---
 
-### 2️⃣ 本地引入方式
+### 2️⃣ 下载编译后的文件
 
-1. 访问官网 [https://getbootstrap.com](https://getbootstrap.com) 下载源码  
+1. 访问官网 [https://getbootstrap.com](https://getbootstrap.com) 下载编译后的发行文件
 2. 将 `bootstrap.min.css` 与 `bootstrap.bundle.min.js` 放入项目目录  
 3. 在 HTML 中使用相对路径引入：
 
@@ -126,9 +124,9 @@ container → row → col
 
 ---
 
-## 四、响应式断点与自适应布局
+## 四、移动优先与响应式断点
 
-Bootstrap 提供 5 种断点：
+Bootstrap 5.3提供6种默认断点。无前缀规则作用于所有宽度；带前缀规则从对应最小宽度开始生效。
 
 | 尺寸 | 类前缀 | 适配设备 | 宽度范围 |
 |------|----------|-----------|-----------|
@@ -137,6 +135,7 @@ Bootstrap 提供 5 种断点：
 | Medium | md | 平板 | ≥768px |
 | Large | lg | 桌面 | ≥992px |
 | Extra large | xl | 大屏 | ≥1200px |
+| Extra extra large | xxl | 超大屏 | ≥1400px |
 
 📘 **示例：响应式列布局**
 
@@ -150,7 +149,7 @@ Bootstrap 提供 5 种断点：
 </div>
 ```
 
-💡 不同设备下会自动换行、调整列宽。
+`col-12`在所有宽度占满一行，`col-md-6`从768px开始占6列，`col-lg-4`从992px开始占4列。缩放浏览器到断点两侧，确认列宽和换行发生变化。
 
 ---
 
@@ -236,6 +235,12 @@ Bootstrap 提供 5 种断点：
 | 排版 | `.text-*`, `.fw-*`, `.p-*`, `.m-*` | 控制文字与间距 |
 | Flex 布局 | `.d-flex`, `.justify-content-*` | 快速对齐布局 |
 
-✅ **一句话总结：**  
-> Bootstrap 的 Container + Row + Col 是布局核心，搭配响应式断点与排版类，  
-> 可以快速搭建整洁、美观的现代网页结构。
+Bootstrap栅格的核心层级是`container → row → col`。使用响应式类时，要能说明它从哪个最小宽度开始生效。
+
+## 八、练习与验收
+
+1. 新建独立HTML文件并通过CDN引入Bootstrap 5.3。
+2. 使用`container → row → col`建立三个WorkHub任务卡片。
+3. 手机宽度显示一列，`md`显示两列，`lg`显示三列。
+4. 把其中一个任务标题改成长文本，确认内容不会溢出卡片。
+5. 使用键盘访问操作按钮，并确认Console无错误。

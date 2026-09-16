@@ -1,6 +1,6 @@
 # Git 教程
 
-Git 是用于记录文件变更、协同开发和追踪发布版本的分布式版本控制系统。本教程面向第一次接触 Git 的学习者，示例默认在 **Windows PowerShell** 中执行。
+Git 是用于记录文件变更、协同开发和追踪发布版本的分布式版本控制系统。本教程面向第一次接触 Git 的学习者，示例默认在 **Windows CMD** 中执行。
 
 ## 学习目标
 
@@ -15,7 +15,7 @@ Git 是用于记录文件变更、协同开发和追踪发布版本的分布式�
 
 ## 开始前准备
 
-- 能够在 PowerShell 中切换目录和编辑文本文件
+- 能够打开 CMD，并使用 `cd`、`dir` 等基础命令
 - 准备一个练习目录，不要在重要项目中试验 `reset --hard`、rebase 或强制推送
 - 需要练习远程协作时，再准备 GitHub 或 GitLab 账号
 
@@ -53,16 +53,54 @@ Git 是用于记录文件变更、协同开发和追踪发布版本的分布式�
 9. [常用高级操作](09_advanced_operations.md)
 10. [Git 命令速查表](cheatsheet.md)
 
-前七章属于日常开发必须掌握的内容。标签与发布需要结合项目流程使用；高级操作应先在个人练习仓库中验证。
+章节仍按从基础到团队协作的顺序学习，但不同内容不要求一次达到相同熟练度：
+
+### Level 1：新人必须掌握
+
+- 工作区、暂存区、提交、分支和 `HEAD`
+- `status`、`diff`、`add`、`commit` 和 `.gitignore`
+- `clone`、`fetch`、`pull`、`push`、`origin` 和 `origin/main`
+- `branch`、`switch`、merge 和常见 conflict
+- PR/MR 与 Review 的基本流程
+
+### Level 2：日本项目必须理解
+
+- Ticket → Branch、Source / Target Branch
+- Review 指摘、指摘対応、再 Review
+- CI、Protected Branch 与 Merge Gate
+- Branch Strategy、影响范围和既有项目参画
+- 使用 Git 历史调查既有代码
+
+### Level 3：工作后逐步掌握
+
+- stash、amend、reset、revert、cherry-pick
+- rebase、reflog、`force-with-lease` 和 tag
+
+### Level 4：项目需要时
+
+- submodule、Git LFS、fork 与名为 `upstream` 的远程仓库、interactive rebase、signed commit
+
+Level 4 只表示识别这些名称，不代表本教程逐项展开。遇到采用这些能力的项目时，再按照项目手顺和对应专题学习；不要为了练习主动把它们引入普通项目。
+
+## 完成主线后的关键自检
+
+学完第 06 章后，应能不依赖命令速查回答：
+
+1. `git push` 把哪个本地分支的提交发送到哪个服务器分支？
+2. `origin/main` 保存在哪里，它与服务器上的 `main` 为什么可能不同？
+3. PR/MR 的 source branch 和 target branch 分别是什么？
+4. PR 合并后，为什么自己电脑上的目标分支还需要 fetch/pull？
+
+如果无法画出“本地分支 → 服务器功能分支 → PR/MR → 服务器目标分支 → 本地更新”，请回看[远程仓库与同步](05_remote_repo.md)和[团队协作与代码评审](06_teamwork_and_conflicts.md)，并在练习仓库中用 `git branch -vv` 与提交图核对实际状态。
 
 ## 命令示例约定
 
-- `<file>`、`<commit>`、`<repository-url>` 是占位符，执行时需要替换，不要保留尖括号。
+- `FILE_PATH`、`COMMIT_ID`、`REPOSITORY_URL` 等全大写名称是占位符，执行时必须替换为实际值。CMD 会把 `<` 和 `>` 解释为重定向符号，因此命令示例不使用尖括号占位符。
 - `main` 表示示例默认分支；真实项目可能使用其他名称，以仓库设置为准。
 - 命令执行前先确认当前目录：
 
-```powershell
-Get-Location
+```cmd
+cd
 git status
 ```
 
@@ -73,7 +111,7 @@ git status
 练习仓库统一使用 `git-*-lab` 名称。完成练习后：
 
 1. 用 `git status` 确认是否还有需要保留的内容。
-2. 执行 `Set-Location ..` 离开练习目录。
+2. 执行 `cd ..` 离开练习目录。
 3. 通过文件资源管理器删除对应练习目录。
 
 不要在不熟悉路径和递归删除行为时复制删除命令。删除练习目录会同时删除其中的本地 Git 历史。

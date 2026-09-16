@@ -4,7 +4,14 @@
 
 ## 1. 开始前需要什么
 
-需要掌握 JavaScript 的变量、数组、对象、函数、DOM、事件、Promise 和 ES 模块。不熟悉 Node.js、npm 和 package.json 时，先完成 [Node.js 与 npm 入门](../NodeJS/index.md)。
+本课程不会重新讲解 JavaScript。开始前应已经掌握：
+
+- `let`、`const`、基本数据类型、条件判断和循环。
+- 函数、箭头函数、数组、对象、解构、剩余参数和展开语法。
+- 类、`try...catch`、ES 模块、`Promise`、`async/await` 和 `fetch`。
+- Node.js、npm 与 `package.json` 的基本作用。不熟悉时，先完成 [Node.js 与 npm 入门](../NodeJS/index.md)。
+
+DOM 与事件不是 TypeScript 语法的前置条件，但应已在 JavaScript 课程中学过，后续会在 React 或 Vue 中继续使用。
 
 TypeScript 不是另一套浏览器运行语言：开发时检查类型，编译后仍由 JavaScript 执行。接口返回的数据不会因为写了类型就自动变安全。
 
@@ -23,8 +30,8 @@ TypeScript 不是另一套浏览器运行语言：开发时检查类型，编译
 3. [数组与元组](03_arrays_tuples.md)
 4. [对象类型与类型别名](04_object_types_aliases.md)
 5. [联合类型与字面量类型](05_unions_literals.md)
-6. [类型收窄与类型断言](06_narrowing_assertions.md)
-7. [函数类型](07_function_types.md)
+6. [函数类型](06_function_types.md)
+7. [类型收窄与类型断言](07_narrowing_assertions.md)
 8. [接口与类型组合](08_interfaces_composition.md)
 9. [类的类型语法（会阅读）](09_classes.md)
 
@@ -56,7 +63,7 @@ TypeScript 不是另一套浏览器运行语言：开发时检查类型，编译
 ## 5. 掌握要求
 
 - 必须掌握：标注与推断、基本类型、数组与对象、联合与收窄、函数、接口、泛型基础、模块、状态建模和外部数据校验。
-- 会使用并能阅读：元组、类与访问控制、枚举和严格检查配置。
+- 会使用并能阅读：元组、类与访问控制、枚举、泛型约束和严格检查配置。
 - 按需选学：自定义映射与条件类型、infer、模板字面量类型、namespace、Mixin、装饰器。
 
 每章练习应实际修改代码、检查报错或运行结果。框架组件和页面成果由后续 React/Vue 课程验收。

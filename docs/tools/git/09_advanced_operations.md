@@ -1,12 +1,21 @@
 # 09 常用高级操作
 
-本章介绍 stash、cherry-pick、rebase 和 submodule。它们能解决特定问题，但也更容易造成冲突或历史混乱。操作前先保持状态可确认，并优先在个人练习仓库验证。
+本章不是新人入场前需要全部熟练操作的内容。它们能解决特定问题，但也更容易造成冲突或历史混乱。操作前先保持状态可确认，并优先在个人练习仓库验证。
+
+| 学习等级 | 内容 |
+|---|---|
+| 较常用 | stash |
+| 项目需要时掌握 | cherry-pick、reflog、普通 rebase |
+| 进阶 | interactive rebase（交互式 rebase） |
+| 项目已经采用时再学 | submodule |
+
+普通 Java、React 或 Vue 项目新人不要求主动引入 submodule；只有既有项目已经采用时，才需要按项目手顺掌握 clone、init 和 update。
 
 ## 9.1 stash：临时保存未提交工作
 
 需要临时切换任务，又不适合创建正式提交时，可以使用 stash。示例中的 WIP 是 Work in Progress 的缩写，表示“尚未完成的工作”：
 
-```powershell
+```cmd
 git status
 git stash push -m "WIP: login validation"
 git stash list
@@ -14,7 +23,7 @@ git stash list
 
 默认情况下，stash 保存已跟踪文件的修改，不包含普通未跟踪文件。确实需要同时保存未跟踪文件时：
 
-```powershell
+```cmd
 git stash push -u -m "WIP: include new login file"
 ```
 
@@ -22,21 +31,21 @@ git stash push -u -m "WIP: include new login file"
 
 查看和应用：
 
-```powershell
-git stash show -p 'stash@{0}'
-git stash apply 'stash@{0}'
+```cmd
+git stash show -p "stash@{0}"
+git stash apply "stash@{0}"
 git status
 ```
 
-PowerShell 中应给 `stash@{0}` 加引号，避免花括号被 PowerShell 解析。确认应用结果并完成测试后，再删除对应 stash：
+CMD 中花括号没有特殊含义，但给 `stash@{0}` 加引号可以明确它是一个完整参数，也能与其他终端保持一致。确认应用结果并完成测试后，再删除对应 stash：
 
-```powershell
-git stash drop 'stash@{0}'
+```cmd
+git stash drop "stash@{0}"
 ```
 
 `pop` 相当于尝试应用后删除；发生冲突时仍需要检查 stash 列表，不能假定它已经删除：
 
-```powershell
+```cmd
 git stash pop
 git status
 git stash list
@@ -48,25 +57,25 @@ stash 适合短期切换，不适合代替清晰提交或长期备份。
 
 cherry-pick 会把指定提交的变更应用到当前分支，并创建一个新的提交：
 
-```powershell
+```cmd
 git status
-git cherry-pick <commit-id>
+git cherry-pick COMMIT_ID
 ```
 
 常见场景是把已经确认的修复提交应用到另一个维护分支。它不是“移动原提交”，新提交会有不同 ID。
 
 发生冲突后：
 
-```powershell
+```cmd
 git status
-# 编辑并测试冲突文件
-git add <conflicted-file>
+REM 编辑并测试冲突文件
+git add CONFLICTED_FILE
 git cherry-pick --continue
 ```
 
 取消操作：
 
-```powershell
+```cmd
 git cherry-pick --abort
 ```
 
@@ -76,7 +85,7 @@ git cherry-pick --abort
 
 在尚未共享的个人分支上，可以整理最近几次提交：
 
-```powershell
+```cmd
 git status
 git rebase -i HEAD~3
 ```
@@ -104,13 +113,13 @@ B、C 的旧提交 ID 不再位于当前分支历史中，因此整理前后要�
 
 交互式 rebase 会重写提交 ID。不要擅自整理公共分支，发生问题时使用：
 
-```powershell
+```cmd
 git rebase --abort
 ```
 
 操作完成后检查：
 
-```powershell
+```cmd
 git log --oneline --graph --decorate
 git status
 ```
@@ -119,9 +128,9 @@ git status
 
 reset、rebase 或误删本地分支后，使用：
 
-```powershell
+```cmd
 git reflog --date=local
-git branch rescue/<name> <commit-id>
+git branch rescue/NAME COMMIT_ID
 ```
 
 详细恢复原则参见[第 07 章](07_undo_and_reset.md)。reflog 是本地、会过期的引用日志，不是远程备份，也不能保证恢复未提交文件。
@@ -132,21 +141,21 @@ submodule 让主仓库记录另一个仓库的特定提交。它不是普通目�
 
 只有项目明确采用 submodule 时才使用：
 
-```powershell
-git submodule add <repository-url> libs/shared-lib
+```cmd
+git submodule add REPOSITORY_URL libs/shared-lib
 git status
 git commit -m "build: add shared library submodule"
 ```
 
 克隆包含 submodule 的项目：
 
-```powershell
-git clone --recurse-submodules <repository-url>
+```cmd
+git clone --recurse-submodules REPOSITORY_URL
 ```
 
 已经克隆后初始化：
 
-```powershell
+```cmd
 git submodule update --init --recursive
 ```
 
@@ -156,30 +165,32 @@ git submodule update --init --recursive
 
 ## 9.6 实验：串联 stash、cherry-pick 和 reflog
 
-**环境与范围：** Windows PowerShell；在新的 `git-advanced-lab` 中执行，不连接远程仓库。
+**环境与范围：** Windows CMD；在新的 `git-advanced-lab` 中执行，不连接远程仓库。
 
-```powershell
-New-Item -ItemType Directory git-advanced-lab
-Set-Location git-advanced-lab
+```cmd
+mkdir git-advanced-lab
+cd git-advanced-lab
 git init -b main
 git config user.name "Git Learner"
 git config user.email "learner@example.com"
-Set-Content app.txt "base"
+echo base>app.txt
 git add app.txt
 git commit -m "feat: add base"
 
 git switch -c fix/message
-Set-Content fix.txt "fixed"
+echo fixed>fix.txt
 git add fix.txt
 git commit -m "fix: add message fix"
-$fixCommit = git rev-parse HEAD
+git rev-parse HEAD
+
+REM 复制上一条命令显示的提交 ID，替换下一条命令中的 COMMIT_ID
 
 git switch main
-git cherry-pick $fixCommit
-Add-Content app.txt "unfinished"
+git cherry-pick COMMIT_ID
+echo unfinished>>app.txt
 git stash push -m "WIP: unfinished app change"
 git status
-git stash apply 'stash@{0}'
+git stash apply "stash@{0}"
 git status
 git reflog -5
 ```
@@ -207,7 +218,7 @@ cherry-pick 或 rebase 冲突后如果继续执行其他历史操作，Git 会�
 
 1. 分别 stash 已跟踪修改和未跟踪文件，观察 `-u` 的区别。
 2. 创建两个分支，将一个小提交 cherry-pick 到另一个分支。
-3. 说明为什么 PowerShell 中 `stash@{0}` 要加引号。
+3. 比较 `git stash push` 与 `git stash push -u` 对未跟踪文件的处理差异。
 
 ### 自检提示
 

@@ -8,7 +8,7 @@ exclude_docs: |
   python/_archive/
   python/web/fastapi_topics/
   python/python-course-roadmap.md
-  training_projects/
+  training_projects/employee_management_system/
   frontend/training/paid-leave-system/
 theme:
   name: material
@@ -259,17 +259,25 @@ nav:
     - 9. 常用高级操作: tools/git/09_advanced_operations.md
     - Git 命令速查表: tools/git/cheatsheet.md
   - Linux:
+    - 课程入口: tools/linux/index.md
     - 1. Linux 基础入门: tools/linux/01_linux_intro.md
     - 2. 文件与目录操作: tools/linux/02_file_dir_command.md
-    - 3. 用户与权限管理: tools/linux/03_user_permission.md
-    - 4. 进程与系统管理: tools/linux/04_process_system.md
-    - 5. 定时任务管理: tools/linux/05_crontab_scheduler.md
-    - 6. 日志系统与分析: tools/linux/06_log_management.md
-    - 7. vi 与 vim: tools/linux/07_vi_vim_basic.md
+    - 3. 身份与文件权限: tools/linux/03_user_permission.md
+    - 4. 进程确认与资源观察: tools/linux/04_process_system.md
+    - 5. 用户级定时任务: tools/linux/05_crontab_scheduler.md
+    - 6. 应用日志调查: tools/linux/06_log_management.md
+    - 7. Vim 最小编辑操作: tools/linux/07_vi_vim_basic.md
+    - 8. Web 与批处理障碍调查: tools/linux/08_web_batch_investigation.md
     - Linux 命令速查表: tools/linux/linux_command_cheatsheet.md
   - Shell:
-    - 1. Shell 脚本基础: tools/shell/01_shell_basic.md
-    - 2. 综合练习与总结: tools/shell/02_exercises_summary.md
+    - 课程入口: tools/shell/index.md
+    - 1. 脚本结构与执行方式: tools/shell/01_shell_basic.md
+    - 2. 变量、引用与参数: tools/shell/02_variables_arguments.md
+    - 3. 输入输出、重定向与管道: tools/shell/03_io_pipelines.md
+    - 4. 条件、循环与函数: tools/shell/04_control_functions.md
+    - 5. 错误处理、日志与清理: tools/shell/05_error_logging.md
+    - 6. 日志检查脚本: tools/shell/06_log_checker.md
+    - 7. 日本项目改修与交付: tools/shell/07_project_task.md
 - 数据库:
   - SQL:
     - 0. 数据库与 SQL 入门: database/sql/00_database_introduction.md
@@ -328,6 +336,7 @@ nav:
     - 17. 字符串相关类与枚举: backend/java/17_strings_and_enum.md
     - 18. 常用类: backend/java/18_common_classes.md
     - 19. I/O 与文件处理: backend/java/19_io_file.md
+    - Java 语法与逻辑综合练习: backend/java/training.md
     - 20. Maven 基础: backend/java/20_maven_basics.md
     - 21. JDBC 数据库连接: backend/java/21_jdbc.md
   - MyBatis:
@@ -345,24 +354,46 @@ nav:
     - 12. MyBatis 综合练习: backend/mybatis/12_comprehensive_practice.md
   - Spring Boot:
     - 课程入口: backend/springboot/index.md
-    - 1. Spring Boot 是什么: backend/springboot/mainline/01_springboot_overview.md
-    - 2. 创建项目与第一个接口: backend/springboot/mainline/02_create_project_and_first_api.md
-    - 3. Controller 与请求响应: backend/springboot/mainline/03_controller_request_response.md
-    - 4. 项目分层结构: backend/springboot/mainline/04_project_structure_and_layers.md
-    - 5. DTO、VO 与统一返回: backend/springboot/mainline/05_dto_vo_and_unified_response.md
-    - 6. 参数校验与错误返回: backend/springboot/mainline/06_validation_and_error_response.md
-    - 7. MyBatis 数据库连接: backend/springboot/mainline/07_mybatis_database_connection.md
-    - 8. 员工 CRUD API: backend/springboot/mainline/08_employee_crud_api.md
-    - 9. Service 与事务: backend/springboot/mainline/09_service_transaction.md
-    - 10. 查询与分页: backend/springboot/mainline/10_search_pagination.md
-    - 11. 日志与统一异常: backend/springboot/mainline/11_logging_and_exception_handling.md
-    - 12. 登录与权限基础: backend/springboot/mainline/12_login_session_or_jwt.md
-    - 13. 测试基础: backend/springboot/mainline/13_unit_and_api_testing.md
-    - 14. 多环境配置与打包: backend/springboot/mainline/14_profile_config_and_packaging.md
-    - 15. Linux 部署基础: backend/springboot/mainline/15_linux_deployment_basic.md
-    - 16. 项目整理与验收: backend/springboot/mainline/16_employee_management_project.md
-    - 17. SES 改修练习: backend/springboot/mainline/17_ses_change_practice.md
-    - 18. 常见问题与复习: backend/springboot/mainline/18_common_issues_review.md
+    - 基础主线:
+      - 1. 一个后端系统需要完成什么: backend/springboot/mainline/01_springboot_overview.md
+      - 2. 为什么需要三层架构: backend/springboot/mainline/02_three_layer_architecture.md
+      - 3. 创建并运行第一个Spring Boot工程: backend/springboot/mainline/03_create_project_and_first_api.md
+      - 4. Spring怎样创建并连接各层对象: backend/springboot/mainline/04_spring_objects_dependency_injection.md
+      - 5. 接口规格与数据对象为什么要分开: backend/springboot/mainline/05_api_spec_and_data_objects.md
+      - 6. 把HTTP请求连接到Java方法: backend/springboot/mainline/06_http_request_to_java_method.md
+      - 7. 成功与失败怎样返回: backend/springboot/mainline/07_success_and_failure_response.md
+      - 8. 输入校验与业务规则: backend/springboot/mainline/08_validation_and_business_rules.md
+      - 9. 数据库记录怎样成为接口响应: backend/springboot/mainline/09_database_and_mybatis.md
+      - 10. 完成员工增删改查: backend/springboot/mainline/10_employee_crud.md
+      - 11. 用日志定位接口故障: backend/springboot/mainline/11_logging_and_diagnosis.md
+      - 12. 用自动化测试保护员工CRUD: backend/springboot/mainline/12_automated_testing_and_regression.md
+      - 13. 用事务保证多步写入一致: backend/springboot/mainline/13_transaction_and_consistency.md
+      - 14. 让员工列表支持条件查询与分页: backend/springboot/mainline/14_search_sort_pagination.md
+      - 15. 用Session识别当前登录用户: backend/springboot/mainline/15_session_login.md
+      - 16. 权限与访问范围: backend/springboot/mainline/16_authorization_and_data_scope.md
+      - 17. 多环境配置与打包: backend/springboot/mainline/17_profiles_configuration_packaging.md
+      - 18. 部署与运行检查: backend/springboot/mainline/18_deployment_operations_check.md
+      - 19. 日本项目改修实战: backend/springboot/mainline/19_japanese_project_change_practice.md
+      - 20. 综合验收与交付: backend/springboot/mainline/20_acceptance_and_delivery.md
+    - 附录:
+      - Appendix学习入口: backend/springboot/appendix/index.md
+      - A01. Spring Boot调用外部REST API: backend/springboot/appendix/external_api_restclient.md
+      - A02. 如何阅读一个陌生的Spring项目: backend/springboot/appendix/existing_project_reading.md
+      - A03. 日本既存Spring项目的新旧结构识读: backend/springboot/appendix/A03_legacy_spring_project_reading.md
+      - A04. Lombok与Spring Data JPA识读: backend/springboot/appendix/A04_lombok_jpa_reading.md
+      - A05. Spring项目常见注解速查: backend/springboot/appendix/spring_annotation_reference.md
+      - 常见运行与数据库迁移组件识读: backend/springboot/appendix/operations_components_reading.md
+      - 常见问题与排查索引: backend/springboot/appendix/troubleshooting_review_index.md
+  - 新主线：WorkHub 任务管理:
+    - 学习路线: training_projects/workhub_task_practice/index.md
+    - 0. 统一练习规格: training_projects/workhub_task_practice/00_practice_spec.md
+    - 1. HTML 综合练习: training_projects/workhub_task_practice/01_html_tasks.md
+    - 2. CSS 综合练习: training_projects/workhub_task_practice/02_css_tasks.md
+    - 3. JavaScript 综合练习: training_projects/workhub_task_practice/03_javascript_tasks.md
+    - 4. MyBatis 综合练习: training_projects/workhub_task_practice/04_mybatis_tasks.md
+    - 5. Spring Boot 综合练习: training_projects/workhub_task_practice/05_springboot_tasks.md
+    - 6. 前后端联调: training_projects/workhub_task_practice/06_frontend_backend_integration.md
+    - 7. 阶段验收: training_projects/workhub_task_practice/07_stage_acceptance.md
 - 前端基础、UI 与生态:
   - HTML 零基础教程:
     - 学习路线: frontend/HTML/index.md
@@ -437,8 +468,8 @@ nav:
       - 3. 数组与元组: frontend/TypeScript/03_arrays_tuples.md
       - 4. 对象类型与类型别名: frontend/TypeScript/04_object_types_aliases.md
       - 5. 联合类型与字面量类型: frontend/TypeScript/05_unions_literals.md
-      - 6. 类型收窄与类型断言: frontend/TypeScript/06_narrowing_assertions.md
-      - 7. 函数类型: frontend/TypeScript/07_function_types.md
+      - 6. 函数类型: frontend/TypeScript/06_function_types.md
+      - 7. 类型收窄与类型断言: frontend/TypeScript/07_narrowing_assertions.md
       - 8. 接口与类型组合: frontend/TypeScript/08_interfaces_composition.md
       - 9. 类的类型语法（会阅读）: frontend/TypeScript/09_classes.md
     - 常用类型能力:
@@ -473,20 +504,55 @@ nav:
       - 17. API层与异步状态: frontend/Vue/17_http_api.md
       - 18. Pinia状态管理: frontend/Vue/18_pinia.md
       - 19. Vue单元测试与组件测试: frontend/Vue/19_unit_testing.md
-      - 20. 构建、质量与项目交付: frontend/Vue/20_build_quality_delivery.md
+      - 20. Vue项目中的TypeScript写法与项目质量: frontend/Vue/20_build_quality_delivery.md
     - 综合实践:
       - 21. WorkHub综合项目: frontend/Vue/21_vue_project.md
       - 22. SES改修与影响范围调查: frontend/Vue/22_ses_change_practice.md
     - 附录. 阅读旧Vue项目: frontend/Vue/appendix_options_api.md
+  - React + TypeScript 新人教程:
+    - 学习路线: frontend/React/index.md
+    - 从数据到画面:
+      - 1. React 的定位与创建项目: frontend/React/01_intro_setup.md
+      - 2. JSX 与组件: frontend/React/02_jsx_components.md
+      - 3. Props 与组件拆分: frontend/React/03_props_components.md
+      - 4. 条件渲染与列表: frontend/React/04_conditional_lists.md
+      - 5. 事件与 useState: frontend/React/05_events_state.md
+      - 6. 对象、数组状态与重新渲染: frontend/React/06_state_render.md
+      - 7. 组件通信与状态提升: frontend/React/07_component_communication.md
+      - 8. 业务表单与校验: frontend/React/08_forms_validation.md
+    - 外部系统、请求与页面:
+      - 9. useEffect 与外部系统同步: frontend/React/09_effects.md
+      - 10. REST API 与异步 UI: frontend/React/10_api_async_ui.md
+      - 11. 员工 CRUD 数据流: frontend/React/11_crud.md
+      - 12. React Router 与页面导航: frontend/React/12_router_navigation.md
+      - 13. useRef 与自定义 Hook: frontend/React/13_refs_custom_hooks.md
+      - 14. Context、状态分类与 useReducer: frontend/React/14_context_state_types.md
+      - 15. 认证路由与权限边界: frontend/React/15_auth_routes.md
+    - 状态与工程结构:
+      - 16. Zustand 与 Redux Toolkit: frontend/React/16_state_libraries.md
+      - 17. 项目目录、API Layer 与类型: frontend/React/17_project_structure.md
+      - 18. 错误处理与重复提交: frontend/React/18_error_handling.md
+      - 19. 性能分析与优化: frontend/React/19_performance.md
+      - 20. 常见业务 UI 功能: frontend/React/20_common_features.md
+      - 21. 文件、环境变量与安全: frontend/React/21_files_env_security.md
+      - 22. React 测试: frontend/React/22_testing.md
+      - 23. 调试与项目调查: frontend/React/23_debug_investigation.md
+    - 完整项目与现场实践:
+      - 24. 实战项目规格与起始状态: frontend/React/24_project_spec.md
+      - 25. 实战：登录与员工列表: frontend/React/25_project_login_list.md
+      - 26. 实战：详情、新增、编辑与删除: frontend/React/26_project_crud.md
+      - 27. 验收、既有项目改修与不具合调查: frontend/React/27_delivery_existing_project.md
+    - 附录. 旧项目与进阶能力导读: frontend/React/appendix_legacy_advanced.md
   - UI 组件库:
+    - 学习路线: frontend/ui/index.md
     - Bootstrap:
-      - 1. 入门与基础结构: frontend/ui/bootstrap/01_bootstrap_basics.md
-      - 2. 常用组件与交互: frontend/ui/bootstrap/02_bootstrap_components.md
-      - 3. 布局与主题系统: frontend/ui/bootstrap/03_bootstrap_layout_theme.md
+      - 1. Bootstrap 5.3入门、引入与栅格: frontend/ui/bootstrap/01_bootstrap_basics.md
+      - 2. 表单与常用交互组件: frontend/ui/bootstrap/02_bootstrap_components.md
+      - 3. 工具类、主题与响应式业务页面: frontend/ui/bootstrap/03_bootstrap_layout_theme.md
     - Vuetify:
-      - 1. 基础结构: frontend/ui/vuetify/01_vuetify_app_structure.md
-      - 2. 组件: frontend/ui/vuetify/02_vuetify_components.md
-      - 3. 布局与主题系统: frontend/ui/vuetify/03_vuetify_layout_theme.md
+      - 1. Vuetify 3安装、插件注册与应用结构: frontend/ui/vuetify/01_vuetify_app_structure.md
+      - 2. Vuetify 3常用业务组件: frontend/ui/vuetify/02_vuetify_components.md
+      - 3. Vuetify 3布局、响应式与主题: frontend/ui/vuetify/03_vuetify_layout_theme.md
   - 前端工具、生态与测试:
     - React、Vue 常用库包: frontend/libraries/react-vue-common-libraries-full-tutorial.md
     - Vite、Next.js 与 Nuxt: frontend/libraries/vite-next-nuxt-frontend-framework-tutorial.md

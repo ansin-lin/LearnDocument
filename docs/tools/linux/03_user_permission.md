@@ -1,262 +1,102 @@
-# 用户与权限管理
+# 03 用户、组与文件权限
 
-> 本章目标：  
->
-> - 理解 Linux 多用户设计思想  
-> - 掌握用户、组、权限的基本概念  
-> - 能读懂 rwx 权限并正确设置  
-> - 理解 sudo 的真实作用与生产环境规范
+PG 的重点是读懂权限并定位问题，不是创建系统用户或修改 sudo 策略。本章只操作自己的练习文件。
 
----
-
-## 1. 为什么 Linux 要有用户和权限？
-
-Linux 从设计之初就是 **多用户操作系统**。
-
-核心目的：
-
-- 防止误操作
-- 提高系统安全性
-- 区分职责（开发 / 运维 / 应用）
-
-一句话理解：
-> **不是所有人都应该“能做所有事”**
-
----
-
-## 2. Linux 用户类型
-
-### 2.1 root 用户（超级管理员）
-
-- UID = 0
-- 拥有系统最高权限
-- 可以执行任何操作
-
-> root 权限 ≠ 安全  
-> 滥用 root 是事故源头
-
----
-
-### 2.2 普通用户
-
-- UID >= 1000（通常）
-- 权限受限
-- 日常登录、开发、运维使用
-
----
-
-### 2.3 当前用户查看
+## 3.1 确认身份
 
 ```bash
-whoami  #当前正在执行命令的用户名
-id      #当前用户的完整身份信息（用户名，用户ID（UID），主组ID（GID），所属的所有组）
+whoami
+id
+groups
 ```
 
----
+- UID 是用户 ID，GID 是主组 ID
+- 一个用户有一个主组，也可以属于附加组
+- sudo 按系统策略允许用户以其他身份执行命令，默认目标通常是 root；并非所有用户都有 sudo 权限
 
-## 3. 用户与组（User & Group）
-
-### 3.1 什么是组？
-
-- 一组用户的集合
-- 用于批量授权
-
-示例：
-
-- dev 组
-- ops 组
-
----
-
-### 3.2 用户与组关系
-
-- 一个用户 **至少属于一个组**
-- 可以属于多个组
-
----
-
-### 3.3 常用用户与组命令
+## 3.2 读懂 `ls -l`
 
 ```bash
-useradd user1           #创建用户
-passwd user1            #给用户创建密码
-groupadd dev            #创建组
-usermod -aG dev user1   #将用户追加到组中 -G 指定组 -a 追加
+cd "$HOME/learndoc-linux-lab"
+ls -l -- input/app.conf
 ```
 
----
+示例输出：
 
-## 4. 文件权限详解（重点）
+```text
+-rw-r--r-- 1 learner learner 11 Sep 1 09:00 input/app.conf
+```
 
-### 4.1 权限表示方式
+- 第一个字符 `-` 表示普通文件，`d` 表示目录，`l` 表示符号链接
+- 后九位依次是所有者、所属组、其他用户的权限
+- `r` 读取，`w` 写入，`x` 执行或进入目录
+
+目录的 `x` 表示能否进入和访问其中项目；是否能删除目录内文件主要取决于父目录的写和执行权限。
+
+## 3.3 chmod 只修改自己的练习文件
 
 ```bash
--rwxr-xr--
+cp -- input/app.conf output/permission-demo.conf
+chmod 600 output/permission-demo.conf
+ls -l -- output/permission-demo.conf
 ```
 
-拆解说明：
-
-| 位 | 含义 |
-| --- | --- |
-| 前缀 | 文件类型 |
-| rwx | 所有者 |
-| r-x | 所属组 |
-| r-- | 其他用户 |
-
----
-
-### 4.2 文件类型标识
-
-| 符号 | 类型 |
-| --- | --- |
-| - | 普通文件 |
-| d | 目录 |
-| l | 软链接 |
-
----
-
-## 5. rwx 权限的真实含义
-
-### 5.1 对文件的含义
-
-| 权限 | 含义 |
-| --- | --- |
-| r | 读取内容 |
-| w | 修改内容 |
-| x | 执行文件 |
-
----
-
-### 5.2 对目录的含义（重点）
-
-| 权限 | 含义 |
-| --- | --- |
-| r | 查看目录列表 |
-| w | 创建 / 删除文件 |
-| x | 进入目录 |
-
-📌 教学重点：
-> 目录没有 x 权限，**连 cd 都进不去**
-
----
-
-## 6. chmod：修改权限
-
-### 6.1 数字法（推荐）
+`600` 表示所有者可读写，组和其他用户无权限。脚本需要直接执行时可以只给所有者增加执行权限：
 
 ```bash
-chmod 755 file
+printf '#!/usr/bin/env bash\nprintf "ok\\n"\n' > output/demo.sh
+chmod u+x output/demo.sh
+ls -l -- output/demo.sh
 ```
 
-数值含义：
+不要用 `chmod 777` 解决权限错误；它会把写入和执行能力开放给所有用户。
 
-- r = 4
-- w = 2
-- x = 1
+## 3.4 chown 和 sudo 的项目边界
 
----
+`chown` 改变所有者或所属组，通常需要额外权限。PG 应能读懂已有命令，但不在共享环境自行执行：
 
-### 6.2 数值组合表
+```text
+chown <user>:<group> <path>
+```
 
-| 数值 | 权限 |
-| --- | --- |
-| 7 | rwx |
-| 6 | rw- |
-| 5 | r-x |
-| 4 | r-- |
-
----
-
-### 6.3 符号法
-
-基本语法
+遇到权限问题，先收集：
 
 ```bash
-#chmod [对象][操作][权限] 文件
-chmod u+x file  #用户添加执行权限
-chmod g-w file  #组删除修改权限
-chmod o=r file  #其他人设置为只读权限
+whoami
+id
+ls -ld -- <parent-directory>
+ls -l -- <target-file>
 ```
 
----
+然后报告需要的最小权限、目标路径和业务原因。不要执行递归 `chown -R`、递归 `chmod` 或修改系统用户。
 
-## 7. chown：修改所属关系
+## 3.5 权限错误调查
+
+制造仅影响自己的可恢复练习：
 
 ```bash
-chown user file        #修改用户
-chown user:group file  #修改用户和组
-chown :group file      ##修改组
+printf 'secret\n' > output/read-demo.txt
+chmod 000 output/read-demo.txt
+cat output/read-demo.txt
+printf 'cat_status=%s\n' "$?"
 ```
 
-递归修改：
+预期出现 `Permission denied` 且退出状态非 0。恢复：
 
 ```bash
-chown -R user:group dir
+chmod 600 output/read-demo.txt
+cat output/read-demo.txt
 ```
 
----
+## 3.6 本章任务
 
-## 8. sudo（生产环境重点）
-
-### 8.1 sudo 是什么？
-
-sudo = **Superuser Do**
-
-允许普通用户 **临时以 root 身份执行命令**
-
----
-
-### 8.2 使用方式
+1. 把 `output/permission-demo.conf` 设置为仅自己可读写。
+2. 记录 `whoami`、`id` 和 `ls -l` 输出到 `output/permission-evidence.txt`。
+3. 确认权限字符串以 `-rw-------` 开头。
 
 ```bash
-sudo systemctl restart nginx  #重启nginx服务
+ls -l output/permission-demo.conf | grep '^-rw-------'
+printf 'exit_status=%s\n' "$?"
 ```
 
----
-
-### 8.3 为什么不用 root？
-
-- 操作可审计
-- 降低误操作风险
-- 更安全
-
-📌 生产环境原则：
-> **禁止直接使用 root 登录**
-
----
-
-## 9. 常见错误
-
-- chmod 给目录忘记 x
-- 所有文件 777（危险）
-- 用 root 执行所有操作
-- chown 用错路径
-
----
-
-## 10. 本章小结
-
-你现在应该能够：
-
-- 区分 root 与普通用户
-- 理解用户与组的关系
-- 读懂并设置 rwx 权限
-- 正确使用 sudo
-
----
-
-## 11. 教学练习
-
-### 练习 1
-
-- 创建新用户
-- 设置密码
-- 切换用户
-
-### 练习 2
-
-- 创建目录
-- 设置 755 / 700 权限
-- 测试访问效果
-
----
+[上一章：文件、目录与文本命令](02_file_dir_command.md) · [下一章：进程、退出状态与资源确认](04_process_system.md)

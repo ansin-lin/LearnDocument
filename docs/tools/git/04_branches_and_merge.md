@@ -8,7 +8,7 @@
 
 ## 4.2 查看、创建和切换分支
 
-```powershell
+```cmd
 git branch
 git branch -v
 git switch -c feature/login
@@ -23,11 +23,24 @@ git switch main
 
 命名应遵守团队规则。常见形式包括 `feature/login`、`fix/email-validation`、`docs/setup-guide`，名称应能对应任务或 Issue。
 
+创建并在功能分支提交后，分支关系可能如下：
+
+```mermaid
+flowchart LR
+    A["commit A"] --> B["commit B"]
+    B --> C["commit C"] --> D["commit D"]
+    MAIN["main"] -.-> B
+    FEATURE["feature/APP-123"] -.-> D
+    HEAD["HEAD"] -.-> FEATURE
+```
+
+`main` 仍指向 B，`feature/APP-123` 指向 D，`HEAD` 指向当前检出的功能分支。分支只是移动的 commit 指针，不会复制一整套项目目录。
+
 ## 4.3 merge 的两种常见结果
 
 在 `main` 上合并功能分支：
 
-```powershell
+```cmd
 git switch main
 git merge feature/login
 ```
@@ -50,9 +63,16 @@ Git 能自动合并不同文件或同一文件中互不影响的修改。当两�
 
 这些标记不是最终答案。解决者需要理解双方意图，编辑为正确业务结果，并删除全部标记。
 
+除了双方都修改同一位置的 `both modified`，还可能遇到：
+
+- `modify/delete`：一个分支修改文件，另一个分支删除同一文件。需要根据规格判断保留修改后的文件，还是确认删除。
+- `add/add`：两个分支在同一路径新增不同内容。需要整合为正确文件，或按设计调整路径。
+
+冲突解决不是机械选择 ours（当前一侧）或 theirs（另一侧）。这两个词只表示操作中的相对一侧，不代表哪一侧符合最新规格；最终结果必须通过需求、代码影响和测试确认。
+
 ## 4.5 merge 冲突处理流程
 
-```powershell
+```cmd
 git merge feature/login
 git status
 ```
@@ -60,7 +80,7 @@ git status
 典型冲突信息类似：
 
 ```text
-CONFLICT (content): Merge conflict in <file>
+CONFLICT (content): Merge conflict in FILE_PATH
 Automatic merge failed; fix conflicts and then commit the result.
 ```
 
@@ -74,21 +94,21 @@ Automatic merge failed; fix conflicts and then commit the result.
 4. 运行测试、格式检查或构建。
 5. 暂存解决后的文件并完成合并提交。
 
-```powershell
-git add <conflicted-file>
+```cmd
+git add CONFLICTED_FILE
 git diff --staged
 git commit
 ```
 
 不带 `-m` 的 `git commit` 会打开第 01 章配置的编辑器。保留或修改 Git 生成的合并说明，保存文件并关闭编辑器后才会完成提交。如果编辑器未配置或不熟悉操作，也可以明确填写说明：
 
-```powershell
+```cmd
 git commit -m "merge: resolve login conflict"
 ```
 
 如果发现不应继续合并，可在尚未完成合并提交时返回合并前状态：
 
-```powershell
+```cmd
 git merge --abort
 ```
 
@@ -96,39 +116,39 @@ git merge --abort
 
 ## 4.6 实验：制造并解决冲突
 
-**环境与范围：** Windows PowerShell；在新目录中执行。实验只影响 `git-merge-lab`。
+**环境与范围：** Windows CMD；在新目录中执行。实验只影响 `git-merge-lab`。
 
-```powershell
-New-Item -ItemType Directory git-merge-lab
-Set-Location git-merge-lab
+```cmd
+mkdir git-merge-lab
+cd git-merge-lab
 git init -b main
 git config user.name "Git Learner"
 git config user.email "learner@example.com"
-Set-Content message.txt "message=original"
+echo message=original>message.txt
 git add message.txt
 git commit -m "docs: add original message"
 
 git switch -c feature/message
-Set-Content message.txt "message=feature"
+echo message=feature>message.txt
 git commit -am "feat: change feature message"
 
 git switch main
-Set-Content message.txt "message=main"
+echo message=main>message.txt
 git commit -am "fix: change main message"
 git merge feature/message
 ```
 
 `git merge` 应报告冲突。检查状态和文件：
 
-```powershell
+```cmd
 git status
-Get-Content message.txt
+type message.txt
 ```
 
 把文件修改成双方确认的最终内容，例如：
 
-```powershell
-Set-Content message.txt "message=resolved"
+```cmd
+echo message=resolved>message.txt
 git add message.txt
 git diff --staged
 git commit -m "merge: resolve message conflict"
@@ -140,9 +160,11 @@ git status
 
 ## 4.7 rebase 的作用和边界
 
+新人必须理解：rebase 会改变 commit ID，公共分支不能随意 rebase。新人不要求独立处理已 push 分支的 rebase、交互式 rebase 或 `force-with-lease`；只有项目规则明确要求并有人指导时再操作。
+
 rebase 会把当前分支的提交重新应用到新的基础提交上，使历史更线性：
 
-```powershell
+```cmd
 git switch feature/login
 git rebase main
 ```
@@ -151,16 +173,16 @@ rebase 会创建新的提交对象，因此提交 ID 会改变。适合整理尚
 
 发生冲突时：
 
-```powershell
+```cmd
 git status
-# 编辑冲突文件并完成测试
-git add <conflicted-file>
+REM 编辑冲突文件并完成测试
+git add CONFLICTED_FILE
 git rebase --continue
 ```
 
 放弃整个 rebase：
 
-```powershell
+```cmd
 git rebase --abort
 ```
 
@@ -170,7 +192,7 @@ git rebase --abort
 
 确认功能已经合并后再删除本地分支：
 
-```powershell
+```cmd
 git branch --merged
 git branch -d feature/login
 ```

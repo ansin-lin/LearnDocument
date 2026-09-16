@@ -4,7 +4,7 @@ React 和 Vue 项目都不会把全部代码写在一个文件中。本章只学
 
 ## 1. 为什么要拆分模块
 
-一个 `.ts` 文件就是一个模块。把数据类型、工具函数和页面代码分开放置，可以减少重复，也便于多人协作。
+在本课程后续使用的 React、Vue 和 Vite 项目中，包含`import`或`export`的`.ts`文件会作为模块处理。把数据类型、工具函数和页面代码分开放置，可以减少重复，也便于多人协作。
 
 ```text
 src/
@@ -127,15 +127,54 @@ npm run typecheck
 
 `tsc --noEmit`会按照项目配置检查类型，但不输出 JavaScript。框架项目还可能把类型检查整合进 `build` 命令，因此提交代码前要执行仓库说明中要求的命令。
 
-## 6. 本章不展开的内容
+## 6. 常用工具类型
+
+TypeScript 内置的工具类型可以从已有类型得到一个新类型。项目中最常见的四个是`Partial`、`Pick`、`Omit`和`Record`，不需要背诵它们的内部实现。
+
+```ts
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  description?: string;
+}
+
+type ProductUpdate = Partial<Product>;
+type ProductSummary = Pick<Product, "id" | "name">;
+type ProductInput = Omit<Product, "id">;
+type StockStatus = "inStock" | "soldOut";
+type StatusLabel = Record<StockStatus, string>;
+
+const update: ProductUpdate = { price: 4800 };
+const summary: ProductSummary = { id: 1, name: "キーボード" };
+const input: ProductInput = { name: "マウス", price: 3000 };
+const labels: StatusLabel = {
+  inStock: "在庫あり",
+  soldOut: "在庫切れ",
+};
+
+console.log(update, summary, input, labels.inStock);
+```
+
+| 工具类型 | 作用 | 常见用途 |
+| --- | --- | --- |
+| `Partial<T>` | 把`T`的全部属性变为可选 | 只提交发生变化的字段 |
+| `Pick<T, K>` | 只选择`T`中的指定属性 | 列表摘要、组件所需字段 |
+| `Omit<T, K>` | 排除`T`中的指定属性 | 新建数据时排除后端生成的编号 |
+| `Record<K, V>` | 为一组键规定统一的值类型 | 状态与显示文字的对应表 |
+
+工具类型只改变编译时的类型，不会自动复制、删除或补充运行时对象的属性。
+
+## 7. 本章不展开的内容
 
 `.d.ts`声明文件、`declare`、模块补充和路径别名属于库接入或项目配置专题。初学 React/Vue 时先会使用已有类型即可，遇到没有类型的第三方库时再根据该库官方文档处理，不要用全局`any`隐藏问题。
 
-## 7. 练习
+## 8. 练习
 
 1. 建立`types.ts`，导出一个`User`接口。
 2. 建立`format.ts`，导出一个接收姓名并返回问候语的函数。
 3. 在`main.ts`中用`import type`导入`User`，用普通`import`导入函数。
 4. 执行当前项目的类型检查命令，确认没有错误。
+5. 为`User`分别创建更新用的`Partial<User>`和只保留编号、姓名的`Pick<User, "id" | "name">`。
 
 完成后，应能说明：类型导入为什么使用`import type`，以及`strict`和`noEmit`分别解决什么问题。

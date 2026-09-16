@@ -4,7 +4,7 @@
 
 远程仓库是团队共享的 Git 仓库。`origin` 是克隆时常见的远程名称，只是一个可更改的别名，并不是 Git 关键字。
 
-```powershell
+```cmd
 git remote -v
 git remote get-url origin
 ```
@@ -17,19 +17,35 @@ git remote get-url origin
 
 执行 `git fetch origin` 后，Git 更新 `origin/main` 等远程跟踪分支，但不会自动改动当前工作区。
 
+```mermaid
+flowchart TB
+    subgraph PC["开发者电脑"]
+        L["Local branch<br/>main"]
+        RT["Remote-tracking branch<br/>origin/main"]
+    end
+    subgraph REMOTE["GitHub / GitLab"]
+        R["Remote server branch<br/>main"]
+    end
+    R -->|"fetch"| RT
+    L -->|"push"| R
+    RT -.->|"integrate"| L
+```
+
+三者名称相似，但并不是同一个 branch。`origin/main` 位于本地，是“本机上一次 fetch 后看到的服务器 main 状态”。
+
 ## 5.2 添加远程仓库
 
 本地初始化的仓库可以添加远程地址：
 
-```powershell
-git remote add origin <repository-url>
+```cmd
+git remote add origin REPOSITORY_URL
 git remote -v
 ```
 
 远程地址填写错误时：
 
-```powershell
-git remote set-url origin <new-repository-url>
+```cmd
+git remote set-url origin NEW_REPOSITORY_URL
 ```
 
 提交前不要把访问令牌嵌入 HTTPS 地址。优先使用系统凭据管理器、平台命令行工具（Command Line Interface，CLI）或 SSH。
@@ -38,61 +54,135 @@ git remote set-url origin <new-repository-url>
 
 ### 获取但不合并
 
-```powershell
+假设服务器上的 `main` 已经从 B 前进到 C，而本地尚未获取：
+
+```text
+服务器 main:       A──B──C
+本地 main:         A──B
+本地 origin/main:  A──B
+```
+
+```cmd
 git fetch origin
 git log --oneline --graph --decorate --all
 git diff main..origin/main
 ```
 
-`fetch` 适合先查看远程变化，再决定 merge 或 rebase。
+执行后：
+
+```text
+本地 main:         A──B
+本地 origin/main:  A──B──C
+```
+
+`fetch` 更新 `origin/main`，不会自动移动本地 `main`，也不会自动改变 Working Tree。它适合先查看远程变化，再决定是否以及如何整合。
 
 ### 拉取并整合
 
-```powershell
+```cmd
 git pull --ff-only
 ```
 
 `pull` 会先 fetch，再把当前分支与其上游分支整合。`--ff-only` 只允许快进，可以避免不知情地创建合并提交；如果双方已经分叉，命令会停止，由开发者根据团队规则选择 merge 或 rebase。
 
+继续上面的场景，且本地没有独有提交时：
+
+```text
+pull 前
+main:         A──B
+origin/main:  A──B──C
+
+git pull --ff-only
+
+pull 后
+main:         A──B──C
+origin/main:  A──B──C
+```
+
+可以把 `pull` 理解为 `fetch + integrate`，但整合使用 merge、rebase 还是只允许 fast-forward，取决于命令选项和项目配置。
+
 ### 推送本地提交
 
 首次推送并建立上游关系：
 
-```powershell
+```cmd
 git push -u origin main
 ```
 
 之后在该分支通常可以直接执行：
 
-```powershell
+```cmd
 git push
 ```
 
 `-u` 建立本地分支与远程分支的跟踪关系。使用以下命令检查：
 
-```powershell
+```cmd
 git branch -vv
 ```
 
+首次推送功能分支前后可以这样理解：
+
+```text
+push 前
+本地 feature/APP-123:  A──B──C──D
+服务器：尚无该功能分支
+
+git push -u origin feature/APP-123
+
+push 后
+本地分支:             feature/APP-123 -> D
+本地远程跟踪分支:     origin/feature/APP-123 -> D
+服务器分支:           feature/APP-123 -> D
+```
+
+### Upstream 是关系，不是第四种分支
+
+Remote-tracking branch 是具体的本地引用，例如 `origin/feature/APP-123`；upstream（上游）则是本地分支与默认同步目标之间的关联：
+
+```mermaid
+flowchart TB
+    L["本地分支<br/>feature/APP-123"]
+    RT["本地远程跟踪分支<br/>origin/feature/APP-123"]
+    R["服务器分支<br/>feature/APP-123"]
+    L <-->|"upstream relationship"| RT
+    L -->|"push"| R
+    R -->|"fetch"| RT
+```
+
+`git push -u origin feature/APP-123` 中的 `-u`（`--set-upstream`）在首次推送时建立这项关联。之后 `git push` 和 `git pull` 才能在省略分支名时知道默认目标。`git branch -vv` 用方括号显示每个本地分支的 upstream。
+
+### push 不等于 PR/MR
+
+```text
+git push:
+本地功能分支 -> 服务器功能分支
+
+Pull Request / Merge Request:
+服务器功能分支 -> 请求合入服务器目标分支
+```
+
+push 是 Git 数据同步；PR/MR 是 GitHub/GitLab 等平台上的审查与合并请求。推送成功不会自动等于已经创建 PR，更不等于已经合并。
+
 ## 5.4 克隆和远程分支
 
-```powershell
-git clone <repository-url>
-Set-Location <repository-directory>
+```cmd
+git clone REPOSITORY_URL
+cd REPOSITORY_DIRECTORY
 git remote -v
 git branch --all
 ```
 
 从已有远程分支创建本地跟踪分支：
 
-```powershell
+```cmd
 git fetch origin
 git switch --track origin/feature/login
 ```
 
 如果本地分支名与远程不同，可以明确指定：
 
-```powershell
+```cmd
 git switch -c local-login --track origin/feature/login
 ```
 
@@ -102,12 +192,12 @@ git switch -c local-login --track origin/feature/login
 
 ```text
 ! [rejected] main -> main (non-fast-forward)
-error: failed to push some refs to '<repository-url>'
+error: failed to push some refs to 'REPOSITORY_URL'
 ```
 
 `non-fast-forward` 表示远程分支不能只向前移动到本地位置，通常说明远程存在本地尚未取得的提交。
 
-```powershell
+```cmd
 git fetch origin
 git status
 git log --oneline --graph --decorate --all
@@ -115,11 +205,11 @@ git log --oneline --graph --decorate --all
 
 然后按照团队策略选择：
 
-```powershell
-# 保留合并关系
+```cmd
+REM 保留合并关系
 git merge origin/main
 
-# 或者，仅在允许整理当前分支历史时
+REM 或者，仅在允许整理当前分支历史时
 git rebase origin/main
 ```
 
@@ -129,14 +219,14 @@ git rebase origin/main
 
 删除已经合并的远程功能分支：
 
-```powershell
+```cmd
 git push origin --delete feature/old-name
 git fetch --prune origin
 ```
 
 重命名正在使用的共享分支会影响 Pull Request、CI、文档和其他开发者。普通功能分支需要重命名时，先在本地改名并推送新名称，确认成功后再删除旧远程分支：
 
-```powershell
+```cmd
 git branch -m feature/old-name feature/new-name
 git push -u origin feature/new-name
 git push origin --delete feature/old-name
@@ -148,16 +238,16 @@ git push origin --delete feature/old-name
 
 **环境与前置条件：** 已完成第 02 章认证配置；在 GitHub 或 GitLab 创建一个没有 README、许可证和 `.gitignore` 的空仓库。以下操作会在远程平台创建分支和提交。
 
-```powershell
-New-Item -ItemType Directory git-remote-lab
-Set-Location git-remote-lab
+```cmd
+mkdir git-remote-lab
+cd git-remote-lab
 git init -b main
 git config user.name "Git Learner"
 git config user.email "learner@example.com"
-Set-Content README.md "# Git Remote Lab"
+echo # Git Remote Lab>README.md
 git add README.md
 git commit -m "docs: initialize remote lab"
-git remote add origin <repository-url>
+git remote add origin REPOSITORY_URL
 git remote -v
 git push -u origin main
 git branch -vv
@@ -165,9 +255,9 @@ git branch -vv
 
 在远程网页确认提交后，再创建功能分支：
 
-```powershell
+```cmd
 git switch -c feature/add-note
-Set-Content note.txt "remote practice"
+echo remote practice>note.txt
 git add note.txt
 git commit -m "docs: add remote practice note"
 git push -u origin feature/add-note
@@ -187,7 +277,7 @@ fatal: 'origin' does not appear to be a git repository
 There is no tracking information for the current branch.
 ```
 
-当前本地分支尚未关联上游。首次推送时使用 `git push -u origin <branch>`，或按项目要求建立跟踪关系。
+当前本地分支尚未关联上游。首次推送时使用 `git push -u origin BRANCH_NAME`，或按项目要求建立跟踪关系。
 
 ```text
 Your branch and 'origin/main' have diverged

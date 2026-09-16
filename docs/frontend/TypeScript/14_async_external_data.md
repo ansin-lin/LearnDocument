@@ -126,6 +126,53 @@ if (isUserArray(raw)) {
 
 实际项目的数据结构复杂时，团队也可能使用专门的校验库。本课程先掌握`unknown → 校验 → 收窄`这一原则，具体库在 React/Vue 项目中按选型学习。
 
+### 4.3 完整请求流程：取得、检查、返回
+
+JavaScript 的`fetch()`会返回`Promise<Response>`，但响应正文来自外部，不能因为期望得到用户数组就直接断言。下面把完整流程放在一个函数中：
+
+```ts
+interface User {
+  id: number;
+  name: string;
+}
+
+function isUser(value: unknown): value is User {
+  return typeof value === "object" && value !== null
+    && "id" in value && typeof value.id === "number"
+    && "name" in value && typeof value.name === "string";
+}
+
+function isUserArray(value: unknown): value is User[] {
+  return Array.isArray(value) && value.every(isUser);
+}
+
+async function fetchUsers(url: string): Promise<User[]> {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`用户读取失败: ${response.status}`);
+  }
+
+  const raw: unknown = await response.json();
+
+  if (!isUserArray(raw)) {
+    throw new Error("用户数据格式不正确");
+  }
+
+  return raw;
+}
+```
+
+按执行顺序理解：
+
+1. `fetch(url)`发送请求并取得响应。
+2. `response.ok`确认 HTTP 状态是否表示成功。
+3. `response.json()`把响应正文解析成 JavaScript 值，但先用`unknown`接收。
+4. `isUserArray(raw)`检查外层数组和每一项的字段。
+5. 检查成功后`raw`收窄为`User[]`，函数才能按`Promise<User[]>`返回。
+
+请求地址由调用方传入，例如`fetchUsers("https://example.com/api/users")`。这里的地址只是写法示意；实际练习应替换为项目提供的 API，不要求本章重新搭建服务端。
+
 ## 5. 处理异步错误
 
 ```ts
@@ -151,5 +198,6 @@ runTask();
 2. 编写返回`Promise<Product[]>`的异步函数，并用`await`读取结果。
 3. 将一份数据保存为`unknown`，编写`isProduct()`检查所有字段。
 4. 构造字段错误的数据，确认程序进入校验失败分支。
+5. 参照 4.3 节编写`fetchProducts(url)`，按`unknown → isProductArray() → Product[]`的顺序处理响应。
 
 完成后，应能解释为什么接口响应不能直接写成某个业务类型，以及`Promise<Product[]>`中的`Product[]`代表什么。

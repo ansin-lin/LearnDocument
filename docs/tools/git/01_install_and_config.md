@@ -1,5 +1,14 @@
 # 01 安装与初始配置
 
+第一次学习时，先完成 Git 安装、版本确认以及 `user.name`、`user.email`、`init.defaultBranch` 配置，能够创建本地提交即可。HTTPS/SSH 认证、SSH Key、Credential Manager、Proxy/VPN/SSO、`.gitattributes` 和 CRLF/LF 都是项目中重要的知识，但可以在首次连接远程仓库或进入对应项目时再深入。
+
+| 学习阶段 | 本章重点 |
+|---|---|
+| 第一次学习必须掌握 | 安装 Git、`git --version`、提交身份、默认分支名 |
+| 项目使用时再深入 | 远程认证、企业网络、凭据管理、换行符规则 |
+
+后半部分不是可忽略内容。例如 Windows 开发机连接 Linux Server 的项目，通常必须遵守仓库既有的换行符和认证规则；这里只是不要求在第一次 commit 前掌握全部配置细节。
+
 ## 1.1 安装并验证 Git
 
 从可信来源安装 Git。安装页面和包版本可能变化，以官方说明和所在公司的软件管理规则为准。
@@ -9,20 +18,20 @@
 - Ubuntu/Debian：使用系统包管理器安装 `git`
 - Fedora/RHEL：使用系统包管理器安装 `git`
 
-本教程后续命令默认在 Windows PowerShell 中执行。安装完成后重新打开终端：
+本教程后续命令默认在 Windows 命令提示符（Command Prompt，简称 CMD）中执行。按 `Win + R`，输入 `cmd` 后回车即可打开。安装完成后重新打开 CMD：
 
-```powershell
+```cmd
 git --version
-Get-Command git
+where git
 ```
 
-`git --version` 应输出已安装版本；`Get-Command git` 可以确认实际调用的程序路径。
+`git --version` 应输出已安装版本；`where git` 可以确认实际调用的程序路径。
 
 ## 1.2 配置提交身份
 
 提交身份会记录在新提交中，它不等同于 GitHub 登录凭据。请使用团队认可的姓名和邮箱。
 
-```powershell
+```cmd
 git config --global user.name "Your Name"
 git config --global user.email "you@example.com"
 git config --global init.defaultBranch main
@@ -31,7 +40,7 @@ git config --global --list
 
 `--global` 作用于当前操作系统用户。某个仓库需要使用不同身份时，在该仓库目录执行不带 `--global` 的配置：
 
-```powershell
+```cmd
 git config user.name "Project Name"
 git config user.email "project@example.com"
 git config --local --list
@@ -39,7 +48,7 @@ git config --local --list
 
 配置优先级通常是系统级、全局、仓库本地依次覆盖。查看某项配置来自哪里：
 
-```powershell
+```cmd
 git config --show-origin --get user.email
 ```
 
@@ -47,7 +56,7 @@ git config --show-origin --get user.email
 
 使用 Visual Studio Code 作为 Git 编辑器时：
 
-```powershell
+```cmd
 git config --global core.editor "code --wait"
 ```
 
@@ -84,15 +93,15 @@ git config --global core.editor "code --wait"
 
 先检查是否已有密钥，不要直接覆盖：
 
-```powershell
-Get-ChildItem -Force "$env:USERPROFILE\.ssh"
+```cmd
+dir /a "%USERPROFILE%\.ssh"
 ```
 
-如果 `.ssh` 目录尚不存在，PowerShell 会报告找不到路径；这通常表示本机还没有创建过 SSH 配置，不代表 Git 安装失败。
+如果 `.ssh` 目录尚不存在，CMD 会报告找不到文件；这通常表示本机还没有创建过 SSH 配置，不代表 Git 安装失败。
 
 需要新密钥时执行：
 
-```powershell
+```cmd
 ssh-keygen -t ed25519 -C "you@example.com"
 ```
 
@@ -103,13 +112,13 @@ ssh-keygen -t ed25519 -C "you@example.com"
 
 读取公钥内容：
 
-```powershell
-Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub"
+```cmd
+type "%USERPROFILE%\.ssh\id_ed25519.pub"
 ```
 
 将完整公钥添加到远程平台后测试 GitHub：
 
-```powershell
+```cmd
 ssh -T git@github.com
 ```
 
@@ -117,13 +126,13 @@ ssh -T git@github.com
 
 GitLab 项目应使用 GitLab 提供的主机名，例如：
 
-```powershell
+```cmd
 ssh -T git@gitlab.com
 ```
 
 ## 1.6 帮助与诊断
 
-```powershell
+```cmd
 git help -a
 git help commit
 git commit -h
@@ -139,7 +148,7 @@ git config --list --show-origin
 
 调试时可以临时使用详细输出，但不要把包含内部主机名、用户名或路径的完整日志公开发布：
 
-```powershell
+```cmd
 ssh -vT git@github.com
 ```
 
@@ -147,7 +156,7 @@ ssh -vT git@github.com
 
 依次执行：
 
-```powershell
+```cmd
 git --version
 git config --get user.name
 git config --get user.email
@@ -160,10 +169,10 @@ git config --list --show-origin
 常见错误及处理：
 
 ```text
-git : 无法将“git”项识别为 cmdlet、函数、脚本文件或可运行程序的名称
+'git' 不是内部或外部命令，也不是可运行的程序或批处理文件。
 ```
 
-原因通常是 Git 未安装、安装后终端未重启，或 Git 路径没有加入 `PATH`。重新确认安装来源并打开新的 PowerShell。
+原因通常是 Git 未安装、安装后终端未重启，或 Git 路径没有加入 `PATH`。重新确认安装来源并打开新的 CMD。
 
 ```text
 Permission denied (publickey).

@@ -1,363 +1,259 @@
-# 第二节：组件
+# 第2章 Vuetify 3常用业务组件
 
-> 🎯 教学目标：  
->
-> - 理解 Vuetify 的最小框架结构（必须组件）  
-> - 掌握常用 UI 组件  
-> - 学会在 Vue 3 + Vuetify 中结合 JavaScript（v-model、事件、数据）完成交互页面  
+本章在第1章已经注册Vuetify的项目中，使用按钮、表单、卡片、数据表格、Dialog和Snackbar完成WorkHub任务页面。所有示例都是Vue单文件组件结构，继续使用JavaScript。
 
----
-
-## 一、必须组件（应用框架基础）
-
-### 1️⃣ `<v-app>`
-
-- **功能**：所有 Vuetify 应用的根容器，提供主题、响应式和样式上下文。  
-- **作用**：是 Vuetify 应用的入口，所有组件必须放在其中，否则样式会失效。  
-- **常用属性**：  
-    - `theme`：应用主题（light/dark）  
-    - `id`：定义唯一 ID，用于 CSS 选择器  
-
-📘 **示例：**
+## 1. 按钮与状态
 
 ```vue
-<v-app>
-  <v-main>
-    <v-container>
-      <v-btn color="primary">Hello Vuetify</v-btn>
-    </v-container>
-  </v-main>
-</v-app>
-```
-
----
-
-### 2️⃣ `<v-main>`
-
-- **功能**：定义主内容区，自动避开导航栏或页脚，保持页面布局整齐。  
-- **常用属性**：  
-    - `tag`：自定义 HTML 标签（默认是 `<main>`）  
-    - `class`：应用自定义样式  
-
-📘 **示例：**
-
-```vue
-<v-app>
-  <v-main>
-    <v-container>这里是主内容</v-container>
-  </v-main>
-</v-app>
-```
-
----
-
-### 3️⃣ `<v-container>`
-
-- **功能**：页面的主要布局容器，提供左右边距、上下留白与响应式宽度。  
-- **常用属性**：  
-    - `fluid`：让容器宽度 100%，无边距  
-    - `class="pa-4"`：控制内边距（padding）  
-    - `style`：自定义样式  
-
-📘 **示例：**
-
-```vue
-<v-container fluid>
-  <v-card class="pa-3">自适应宽度容器</v-card>
-</v-container>
-```
-
----
-
-### 4️⃣ `<v-row>` 与 `<v-col>`
-
-- **功能**：基于 12 列栅格系统的布局方式，实现响应式排列。  
-- **常用属性**：
-    - `cols`：每列宽度（1~12）  
-    - `sm / md / lg`：不同屏幕尺寸下的列宽  
-    - `align / justify`：垂直与水平对齐方式  
-
-📘 **示例：**
-
-```vue
-<v-container>
-  <v-row>
-    <v-col cols="12" sm="6">
-      <v-card>左侧内容</v-card>
-    </v-col>
-    <v-col cols="12" sm="6">
-      <v-card>右侧内容</v-card>
-    </v-col>
-  </v-row>
-</v-container>
-```
-
----
-
-## 二、常用组件详解（UI 与交互）
-
-### 1️⃣ `<v-btn>` 按钮
-
-- **功能**：触发用户操作事件。  
-- **常用属性**：  
-    - `color`：按钮颜色（primary / error / success 等）  
-    - `variant`：样式类型（flat / outlined / tonal / text）  
-    - `icon`：设置图标按钮  
-    - `disabled`：禁用状态  
-- **JS 交互**：通过 `@click` 绑定事件。
-
-📘 **示例：**
-
-```vue
-<v-btn color="primary" @click="submitForm">提交</v-btn>
-
 <script setup>
-function submitForm() {
-  alert('已提交！')
+import { ref } from 'vue'
+
+const saving = ref(false)
+
+async function saveTask() {
+  if (saving.value) return
+  saving.value = true
+  try {
+    await new Promise((resolve) => window.setTimeout(resolve, 500))
+  } finally {
+    saving.value = false
+  }
 }
 </script>
-```
 
----
-
-### 2️⃣ `<v-text-field>` 文本输入框
-
-- **功能**：用户输入单行文本的控件。  
-- **常用属性**：  
-    - `v-model`：绑定变量，实现双向数据同步  
-    - `label`：显示输入框标题  
-    - `type`：输入类型（text / password / email）  
-    - `clearable`：显示清除按钮  
-    - `rules`：验证规则数组（如必填、格式）  
-
-📘 **示例：**
-
-```vue
-<v-text-field
-  label="用户名"
-  v-model="username"
-  clearable
-  :rules="[v => !!v || '请输入用户名']"
-/>
-
-<script setup>
-import { ref } from 'vue'
-const username = ref('')
-</script>
-```
-
----
-
-### 3️⃣ `<v-select>` 下拉选择框
-
-- **功能**：用于从多个选项中选择一个。  
-- **常用属性**：  
-    - `v-model`：当前选中值  
-    - `:items`：选项数组  
-    - `label`：标题文字  
-    - `multiple`：允许多选  
-- **JS 交互**：结合数组或字符串变量，响应选择变化。  
-
-📘 **示例：**
-
-```vue
-<v-select
-  label="性别"
-  :items="['男', '女', '其他']"
-  v-model="gender"
-/>
-
-<script setup>
-import { ref } from 'vue'
-const gender = ref('')
-</script>
-```
-
----
-
-### 4️⃣ `<v-card>` 卡片组件
-
-- **功能**：展示信息区块的容器，可包含标题、内容、操作。  
-- **结构**：  
-    - `<v-card-title>`：标题区域  
-    - `<v-card-text>`：内容区域  
-    - `<v-card-actions>`：按钮区域  
-
-📘 **示例：**
-
-```vue
-<v-card elevation="2" class="pa-3">
-  <v-card-title>用户信息</v-card-title>
-  <v-card-text>姓名：{{ user }}<br>邮箱：{{ email }}</v-card-text>
-  <v-card-actions>
-    <v-btn color="primary">编辑</v-btn>
-  </v-card-actions>
-</v-card>
-
-<script setup>
-const user = 'Tom'
-const email = 'tom@mail.com'
-</script>
-```
-
----
-
-### 5️⃣ `<v-data-table>` 数据表格
-
-- **功能**：展示结构化数据列表，支持分页、排序、搜索。  
-- **常用属性**：  
-    - `:headers`：表头配置  
-    - `:items`：数据数组  
-    - `items-per-page`：每页显示行数  
-    - `class="elevation-2"`：添加阴影  
-
-📘 **示例：**
-
-```vue
-<v-data-table 
-    :headers="headers" 
-    :items="users" 
-    class="elevation-2" 
-/>
-
-<script setup>
-const headers = [
-  { title: '姓名', key: 'name' },
-  { title: '邮箱', key: 'email' },
-  { title: '角色', key: 'role' },
-]
-
-const users = [
-  { name: 'Tom', email: 'tom@mail.com', role: '管理员' },
-  { name: 'Jerry', email: 'jerry@mail.com', role: '用户' },
-]
-</script>
-```
-
----
-
-### 6️⃣ `<v-dialog>` 弹出对话框
-
-- **功能**：在当前页面上弹出模态窗口。  
-- **常用属性**：  
-    - `v-model`：控制弹窗开关  
-    - `persistent`：点击背景不关闭  
-    - `max-width`：限制弹窗宽度  
-
-📘 **示例：**
-
-```vue
-<v-btn color="primary" @click="show = true">打开弹窗</v-btn>
-
-<v-dialog v-model="show" persistent max-width="400">
-  <v-card>
-    <v-card-title>提示</v-card-title>
-    <v-card-text>确定要删除该用户吗？</v-card-text>
-    <v-card-actions>
-      <v-btn color="error" @click="confirm">确认</v-btn>
-      <v-btn @click="show = false">取消</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
-
-<script setup>
-import { ref } from 'vue'
-const show = ref(false)
-function confirm() {
-  alert('已删除')
-  show.value = false
-}
-</script>
-```
-
----
-
-### 7️⃣ `<v-snackbar>` 操作提示条
-
-- **功能**：显示操作结果或提醒信息。  
-- **常用属性**：  
-    - `v-model`：控制显示  
-    - `timeout`：自动关闭时间（ms）  
-    - `color`：提示颜色  
-
-📘 **示例：**
-
-```vue
-<v-snackbar v-model="snackbar" color="success" timeout="2000">
-  操作成功！
-</v-snackbar>
-
-<script setup>
-import { ref } from 'vue'
-const snackbar = ref(false)
-</script>
-```
-
----
-
-## 三、综合实战（小型用户管理页面）
-
-```vue
 <template>
-  <v-container>
-    <v-btn color="primary" @click="dialog = true">新增用户</v-btn>
-
-    <v-dialog v-model="dialog" max-width="400">
-      <v-card>
-        <v-card-title>添加用户</v-card-title>
-        <v-card-text>
-          <v-text-field label="姓名" v-model="newUser.name" />
-          <v-text-field label="邮箱" v-model="newUser.email" />
-        </v-card-text>
-        <v-card-actions>
-          <v-btn color="success" @click="addUser">保存</v-btn>
-          <v-btn @click="dialog = false">取消</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <v-data-table :headers="headers" :items="users" class="mt-5" />
-    <v-snackbar v-model="snackbar" color="success" timeout="2000">
-      用户已添加！
-    </v-snackbar>
-  </v-container>
+  <v-btn
+    color="primary"
+    prepend-icon="mdi-content-save"
+    :loading="saving"
+    :disabled="saving"
+    @click="saveTask"
+  >
+    保存
+  </v-btn>
 </template>
+```
 
+`color`使用主题颜色，`loading`显示处理中状态，`disabled`阻止重复操作。请求失败时还必须显示错误，不能只停止loading。
+
+## 2. 表单输入与校验
+
+`rules`接收校验函数数组。规则返回`true`表示通过，返回字符串表示错误信息。
+
+```vue
+<script setup>
+import { ref } from 'vue'
+
+const formRef = ref(null)
+const title = ref('')
+const priority = ref('normal')
+const priorities = [
+  { title: '低', value: 'low' },
+  { title: '普通', value: 'normal' },
+  { title: '高', value: 'high' },
+]
+const titleRules = [
+  (value) => Boolean(value?.trim()) || '请输入任务标题',
+  (value) => (value ?? '').length <= 50 || '任务标题不能超过50个字符',
+]
+
+async function submitForm() {
+  const result = await formRef.value.validate()
+  if (!result.valid) return
+  console.log({ title: title.value.trim(), priority: priority.value })
+}
+</script>
+
+<template>
+  <v-form ref="formRef" @submit.prevent="submitForm">
+    <v-text-field
+      v-model="title"
+      label="任务标题"
+      :rules="titleRules"
+      maxlength="50"
+    />
+    <v-select
+      v-model="priority"
+      label="优先级"
+      :items="priorities"
+    />
+    <v-btn type="submit" color="primary">保存</v-btn>
+  </v-form>
+</template>
+```
+
+`v-form.validate()`执行已注册规则并返回校验结果。组件校验改善操作体验，后端仍要重新校验。
+
+## 3. 卡片与空状态
+
+```vue
+<script setup>
+defineProps({
+  tasks: {
+    type: Array,
+    required: true,
+  },
+})
+</script>
+
+<template>
+  <v-alert v-if="tasks.length === 0" type="info" variant="tonal">
+    没有符合条件的任务
+  </v-alert>
+
+  <template v-else>
+    <v-card v-for="task in tasks" :key="task.id" class="mb-3">
+      <v-card-title>{{ task.title }}</v-card-title>
+      <v-card-text>
+        担当者：{{ task.assignee }}／期限：{{ task.dueDate }}
+      </v-card-text>
+      <v-card-actions>
+        <v-btn variant="text">编辑</v-btn>
+      </v-card-actions>
+    </v-card>
+  </template>
+</template>
+```
+
+空数组是成功读取后没有数据，不应显示成系统错误。
+
+## 4. 数据表格
+
+```vue
+<script setup>
+defineProps({
+  tasks: {
+    type: Array,
+    required: true,
+  },
+  loading: Boolean,
+})
+
+const headers = [
+  { title: '任务名', key: 'title' },
+  { title: '担当者', key: 'assignee' },
+  { title: '优先级', key: 'priority' },
+  { title: '状态', key: 'status' },
+  { title: '期限', key: 'dueDate' },
+]
+</script>
+
+<template>
+  <v-data-table
+    :headers="headers"
+    :items="tasks"
+    :loading="loading"
+    item-value="id"
+  >
+    <template #no-data>
+      没有任务
+    </template>
+  </v-data-table>
+</template>
+```
+
+`headers`规定显示列，`items`接收数据，`item-value="id"`指定稳定标识。具体分页、排序和服务端查询规则应根据API规格实现。
+
+## 5. 删除确认Dialog
+
+```vue
 <script setup>
 import { ref } from 'vue'
 
 const dialog = ref(false)
-const snackbar = ref(false)
-const newUser = ref({ name: '', email: '' })
-const users = ref([{ name: 'Tom', email: 'tom@mail.com' }])
-const headers = [
-  { title: '姓名', key: 'name' },
-  { title: '邮箱', key: 'email' },
-]
+const deleting = ref(false)
 
-function addUser() {
-  if (newUser.value.name && newUser.value.email) {
-    users.value.push({ ...newUser.value })
-    newUser.value = { name: '', email: '' }
+async function confirmDelete() {
+  if (deleting.value) return
+  deleting.value = true
+  try {
+    await new Promise((resolve) => window.setTimeout(resolve, 500))
     dialog.value = false
-    snackbar.value = true
+  } finally {
+    deleting.value = false
   }
 }
 </script>
+
+<template>
+  <v-btn color="error" variant="outlined" @click="dialog = true">
+    删除
+  </v-btn>
+
+  <v-dialog v-model="dialog" max-width="420">
+    <v-card>
+      <v-card-title>删除任务</v-card-title>
+      <v-card-text>确定删除“规格确认”吗？此操作无法撤销。</v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn :disabled="deleting" @click="dialog = false">取消</v-btn>
+        <v-btn
+          color="error"
+          :loading="deleting"
+          :disabled="deleting"
+          @click="confirmDelete"
+        >
+          删除
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</template>
 ```
 
----
+危险操作应说明对象和影响。确认期间禁用重复操作；API失败时保留Dialog并显示错误。
 
-## 四、总结
+## 6. Snackbar反馈
 
-| 分类 | 组件 | 功能说明 |
-|------|------|-----------|
-| 框架结构 | v-app / v-main / v-container | 应用布局骨架 |
-| 输入类 | v-text-field / v-select | 获取用户输入 |
-| 操作类 | v-btn | 触发事件 |
-| 展示类 | v-card / v-data-table | 显示信息或数据 |
-| 交互类 | v-dialog / v-snackbar | 弹窗与提示反馈 |
+```vue
+<script setup>
+import { ref } from 'vue'
 
-✅ **一句话总结：**  
-> Vuetify 的学习顺序应从「框架组件」→「交互组件」→「数据组件」→「反馈组件」，  
-> 再结合 Vue 的 v-model 与事件机制，即可构建完整应用。
+const snackbar = ref(false)
+const message = ref('')
+const messageType = ref('success')
+
+function showResult(text, type = 'success') {
+  message.value = text
+  messageType.value = type
+  snackbar.value = true
+}
+</script>
+
+<template>
+  <v-btn @click="showResult('任务已保存')">显示成功结果</v-btn>
+  <v-btn @click="showResult('保存失败，请重试', 'error')">显示失败结果</v-btn>
+
+  <v-snackbar v-model="snackbar" :color="messageType" timeout="3000">
+    {{ message }}
+    <template #actions>
+      <v-btn variant="text" @click="snackbar = false">关闭</v-btn>
+    </template>
+  </v-snackbar>
+</template>
+```
+
+Snackbar适合短暂操作反馈。必须立即处理的重要错误应保留在页面或表单附近，不能只依赖自动消失的通知。
+
+## 7. 页面状态组合
+
+业务页面至少区分：
+
+| 状态 | 建议显示 |
+| --- | --- |
+| loading | Progress与禁用的重复操作 |
+| success + data | 表格或卡片 |
+| success + empty | 明确的空数据说明 |
+| error | 错误信息和重试按钮 |
+| saving/deleting | 操作中的按钮状态 |
+
+Vuetify负责表现这些状态，状态本身仍由组件、Composable、Pinia或API层按照Vue课程中的职责管理。
+
+## 8. 练习与验收
+
+1. 使用`v-form`实现Task标题与优先级校验。
+2. 用`v-data-table`显示六个统一Task字段。
+3. 增加加载、空数据和失败三种状态。
+4. 使用Dialog确认删除，失败时不关闭Dialog。
+5. 使用Snackbar分别显示成功和失败反馈。
+6. 通过键盘完成输入、提交、取消和关闭操作，并检查Console。

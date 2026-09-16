@@ -1,4 +1,4 @@
-# 第3节：Bootstrap 布局与主题系统（响应式 + 自定义样式）
+# 第3章 Bootstrap工具类、主题与响应式业务页面
 
 > 🎯 教学目标：  
 >
@@ -32,7 +32,7 @@ container → row → col
 
 ## 二、响应式断点（Breakpoints）
 
-Bootstrap 提供五种断点，自动调整布局。
+Bootstrap 5.3提供六种移动优先断点。
 
 | 名称 | 前缀 | 最小宽度 | 设备类型 |
 |------|------|-----------|----------|
@@ -41,6 +41,7 @@ Bootstrap 提供五种断点，自动调整布局。
 | Medium | md | ≥768px | 平板 |
 | Large | lg | ≥992px | 桌面 |
 | Extra large | xl | ≥1200px | 大屏 |
+| Extra extra large | xxl | ≥1400px | 超大屏 |
 
 📘 **示例：响应式三栏布局**
 
@@ -137,13 +138,13 @@ Bootstrap 提供大量工具类，无需写 CSS 即可调整外观。
 |------|------|
 | `d-none` | 隐藏元素 |
 | `d-block` | 块级显示 |
-| `d-md-none` | 在中等屏幕以下隐藏 |
-| `d-lg-block` | 在桌面端显示 |
+| `d-md-none` | 从md开始隐藏 |
+| `d-none d-lg-block` | 小屏隐藏，从lg开始显示 |
 
 📘 示例：
 
 ```html
-<p class="d-none d-md-block">仅在桌面端可见</p>
+<p class="d-none d-md-block">从md宽度开始显示</p>
 ```
 
 ---
@@ -173,31 +174,40 @@ Bootstrap 内置颜色系统，可通过类名快速使用。
 
 ## 六、暗黑模式与自定义样式
 
-Bootstrap 5.3 支持内置暗黑模式，通过 `data-bs-theme` 属性启用。
+Bootstrap 5.3支持颜色模式，通过根元素的`data-bs-theme`属性启用全局主题。
 
 📘 **示例：**
 
 ```html
-<body data-bs-theme="dark">
+<html lang="zh-CN" data-bs-theme="dark">
+<body>
   <div class="container py-5">
     <h3 class="text-light">暗黑模式演示</h3>
     <button class="btn btn-light">浅色按钮</button>
   </div>
 </body>
+</html>
 ```
 
 💡 切换主题可使用 JS 动态修改属性：
 
 ```js
-document.body.setAttribute("data-bs-theme", "dark"); // 启用暗色
-document.body.setAttribute("data-bs-theme", "light"); // 启用亮色
+document.documentElement.setAttribute('data-bs-theme', 'dark')
+document.documentElement.setAttribute('data-bs-theme', 'light')
 ```
 
 ---
 
 ## 七、自定义主题颜色（Sass 变量）
 
-如果项目支持 Sass，可通过修改 Bootstrap 变量实现个性主题。
+如果项目使用npm构建，可安装Bootstrap与Sass：
+
+```bash
+npm install bootstrap
+npm install -D sass
+```
+
+随后在SCSS入口中先覆盖变量，再导入Bootstrap。具体编译命令取决于当前Vite或其他构建配置。
 
 📘 **_custom.scss：**
 
@@ -223,19 +233,19 @@ $info: #17a2b8;
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bootstrap 管理后台</title>
+    <title>WorkHub任务管理</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   </head>
-  <body data-bs-theme="light">
-    <nav class="navbar navbar-expand-lg bg-primary navbar-dark">
+  <body>
+    <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
       <div class="container-fluid">
-        <a class="navbar-brand" href="#">AdminPanel</a>
-        <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav">
+        <a class="navbar-brand" href="#">WorkHub</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="打开或关闭导航">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="nav">
           <ul class="navbar-nav ms-auto">
-            <li class="nav-item"><a class="nav-link active" href="#">仪表盘</a></li>
+            <li class="nav-item"><a class="nav-link active" aria-current="page" href="#">任务一览</a></li>
             <li class="nav-item"><a class="nav-link" href="#">设置</a></li>
             <li class="nav-item">
               <button id="themeToggle" class="btn btn-sm btn-light ms-3">切换主题</button>
@@ -249,35 +259,35 @@ $info: #17a2b8;
       <div class="row">
         <div class="col-md-3 col-lg-2 bg-light border-end p-3">
           <ul class="nav flex-column">
-            <li class="nav-item"><a class="nav-link active" href="#">主页</a></li>
-            <li class="nav-item"><a class="nav-link" href="#">用户管理</a></li>
-            <li class="nav-item"><a class="nav-link" href="#">报表分析</a></li>
+            <li class="nav-item"><a class="nav-link active" aria-current="page" href="#">任务一览</a></li>
+            <li class="nav-item"><a class="nav-link" href="#">新增任务</a></li>
+            <li class="nav-item"><a class="nav-link" href="#">设置</a></li>
           </ul>
         </div>
         <div class="col-md-9 col-lg-10 p-4">
-          <h4>欢迎回来，管理员</h4>
+          <h1 class="h4">任务概况</h1>
           <div class="row g-3 mt-3">
             <div class="col-md-4">
               <div class="card text-bg-success">
                 <div class="card-body">
-                  <h5 class="card-title">今日访问</h5>
-                  <p class="card-text fs-4">2,345 次</p>
+                  <h2 class="card-title h5">待处理</h2>
+                  <p class="card-text fs-4">3 件</p>
                 </div>
               </div>
             </div>
             <div class="col-md-4">
               <div class="card text-bg-info">
                 <div class="card-body">
-                  <h5 class="card-title">新注册用户</h5>
-                  <p class="card-text fs-4">58 人</p>
+                  <h2 class="card-title h5">处理中</h2>
+                  <p class="card-text fs-4">2 件</p>
                 </div>
               </div>
             </div>
             <div class="col-md-4">
               <div class="card text-bg-warning">
                 <div class="card-body">
-                  <h5 class="card-title">系统通知</h5>
-                  <p class="card-text fs-4">3 条</p>
+                  <h2 class="card-title h5">已完成</h2>
+                  <p class="card-text fs-4">8 件</p>
                 </div>
               </div>
             </div>
@@ -289,11 +299,13 @@ $info: #17a2b8;
     <script>
       const toggleBtn = document.getElementById('themeToggle');
       toggleBtn.addEventListener('click', () => {
-        const current = document.body.getAttribute('data-bs-theme');
-        document.body.setAttribute('data-bs-theme', current === 'light' ? 'dark' : 'light');
+        const root = document.documentElement;
+        const current = root.getAttribute('data-bs-theme') || 'light';
+        root.setAttribute('data-bs-theme', current === 'light' ? 'dark' : 'light');
         toggleBtn.textContent = current === 'light' ? '切换亮色' : '切换暗色';
       });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
 ```
@@ -317,7 +329,12 @@ $info: #17a2b8;
 | 暗黑模式 | data-bs-theme | 切换主题模式 |
 | 自定义主题 | Sass 变量 | 个性化品牌色 |
 
-✅ **一句话总结：**  
-> Bootstrap 的布局与主题系统让开发者能以最小代价实现响应式、美观、可定制的页面。  
-> 学会合理运用 Utility 类与主题变量，你就能快速打造专业级 UI。
+掌握这些内容后，应能解释每个响应式类从哪个断点开始生效，并能在不破坏语义和交互的前提下完成主题调整。
 
+## 十、练习与验收
+
+1. 把WorkHub整理为顶部导航、筛选区、统计卡片和任务列表。
+2. 使用`d-none d-lg-block`控制只在桌面显示的辅助说明。
+3. 增加亮色/暗色切换。
+4. 在360px、768px、992px和1400px附近检查布局。
+5. 检查长标题、空列表、错误提示、禁用按钮和键盘焦点。

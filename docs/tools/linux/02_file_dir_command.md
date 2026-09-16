@@ -1,324 +1,156 @@
-# 文件与目录操作
+# 02 文件、目录与文本命令
 
-> 本章目标：  
->
-> - 熟练掌握 Linux 中最常用的文件与目录命令  
-> - 理解每个命令“在做什么”，而不是死记
+本章继续使用 `~/learndoc-linux-lab`，目标是在限定目录内完成文件整理和日志初步调查。
 
----
+## 2.1 路径和目录确认
 
-## 1. 当前路径与环境认知
-
-### 1.1 pwd：查看当前所在目录
+- 绝对路径从 `/` 开始
+- 相对路径以当前目录为基准
+- `.` 表示当前目录，`..` 表示上一级，`~` 表示当前用户主目录
 
 ```bash
+cd "$HOME/learndoc-linux-lab"
 pwd
+ls -ld -- input output
 ```
 
-含义：Print Working Directory  
-作用：确认你现在“站在哪个目录”
+`ls -d` 显示目录本身；`--` 防止以连字符开头的路径被当成选项。
 
-📌 教学提示：  
-在 Linux 中，**所有相对路径都基于当前目录**
-
----
-
-### 1.2 ls：列出目录内容
+## 2.2 查看目录内容
 
 ```bash
 ls
-ls -l
-ls -a
 ls -la
+ls -lh -- input
 ```
 
-常用参数说明：
+| 选项 | 作用 |
+|---|---|
+| `-l` | 显示权限、所有者、大小和时间 |
+| `-a` | 包含隐藏项目 |
+| `-h` | 与 `-l` 配合，以易读单位显示大小 |
 
-| 参数 | 含义 |
-| --- | --- |
-| -l | 显示详细信息 |
-| -a | 显示隐藏文件 |
-| -h | 人类可读大小 |
+## 2.3 创建练习数据
 
-示例：
+在 `input` 中创建应用日志和配置样例：
 
 ```bash
-ls -lh
+cat > input/app.log <<'EOF'
+2026-09-01T09:00:00 INFO  request_id=R001 start
+2026-09-01T09:00:01 ERROR request_id=R001 employee not found
+2026-09-01T09:01:00 INFO  request_id=R002 completed
+2026-09-01T09:02:00 WARN  request_id=R003 slow response
+EOF
+
+printf 'mode=batch\n' > input/app.conf
+ls -lh -- input
 ```
 
----
+`<<'EOF'` 用于按原样写入多行文本，Shell 课程会进一步解释。
 
-## 2. 目录切换（cd）
-
-### 2.1 cd 的基本用法
+## 2.4 创建、复制和移动
 
 ```bash
-cd /path/to/dir
+mkdir -p output/archive
+cp -- input/app.conf output/app.conf.backup
+mv -- output/app.conf.backup output/archive/app.conf.backup
+ls -l -- output/archive
 ```
 
-常见写法：
+- `mkdir -p` 按需要创建多级目录
+- `cp` 复制文件
+- `mv` 移动或重命名；目标已存在时可能覆盖，执行前先 `ls`
+
+## 2.5 查看文本
 
 ```bash
-cd ..
-cd ~
-cd -
+cat input/app.conf
+head -n 2 input/app.log
+tail -n 2 input/app.log
+less input/app.log
 ```
 
-| 写法 | 含义 |
-| --- | --- |
-| `cd ..` | 上一级目录 |
-| `cd ~` | 当前用户家目录 |
-| `cd -` | 切换回上一次目录 |
+- `cat` 适合短文件
+- `head`、`tail` 读取开头或结尾
+- `less` 适合长文件；输入 `/ERROR` 搜索，按 `n` 查下一个，按 `q` 退出
 
-📌 实战技巧：  
-频繁在两个目录切换时，`cd -` 非常高效
-
----
-
-## 3. 创建与删除目录
-
-### 3.1 mkdir：创建目录
+持续观察正在追加的日志：
 
 ```bash
-mkdir test
-mkdir a b c
-mkdir -p a/b/c
+tail -f input/app.log
 ```
 
-`-p`：递归创建（教学重点）
+按 `Ctrl+C` 停止。它会持续占用终端，不是命令卡死。
 
----
-
-### 3.2 rmdir 与 rm
+## 2.6 使用 grep 过滤
 
 ```bash
-rmdir empty_dir
-rm -r dir
-rm -rf dir
+grep -n 'ERROR' input/app.log
+grep -Ei 'ERROR|WARN' input/app.log
+grep -v 'INFO' input/app.log
+grep -c 'ERROR' input/app.log
 ```
 
-⚠️ 教学警告：
-
-- `rm -rf` **不会提示确认**
-- 在生产服务器慎用
-
----
-
-## 4. 文件的创建、复制、移动、删除
-
-### 4.1 touch：创建文件
+没有匹配时 `grep` 通常返回状态 `1`：
 
 ```bash
-touch a.txt
+grep 'FATAL' input/app.log
+printf 'grep_status=%s\n' "$?"
 ```
 
----
+状态 `1` 表示没有匹配；大于 `1` 通常表示路径、权限等实际错误。
 
-### 4.2 cp：复制
+## 2.7 管道、重定向和统计
+
+管道 `|` 把左侧标准输出交给右侧命令：
 
 ```bash
-cp a.txt b.txt
-cp a.txt dir/
-cp -r dir1 dir2
+grep -E 'ERROR|WARN' input/app.log | wc -l
 ```
 
----
-
-### 4.3 mv：移动 / 重命名
+预期输出为 `2`。保存调查结果：
 
 ```bash
-mv a.txt dir/
-mv a.txt b.txt
+grep -En 'ERROR|WARN' input/app.log > output/error_lines.txt
+cat output/error_lines.txt
 ```
 
-📌 mv = move + rename
+`>` 覆盖目标文件，`>>` 追加内容。执行前要确认目标路径。
 
----
+## 2.8 查找文件
 
-### 4.4 rm：删除文件
+只在练习目录中搜索：
 
 ```bash
-rm a.txt
-rm -r dir
+find . -type f -name '*.log' -print
+find output -maxdepth 2 -type f -print
 ```
 
----
+不要对 `/` 或未知共享目录递归搜索，避免大量 I/O、权限错误和无关输出。
 
-## 5. 查看文件内容（重点）
+## 2.9 安全删除
 
-### 5.1 cat
+本课程不把 `rm -rf` 作为日常命令。删除普通练习文件前先确认精确路径：
 
 ```bash
-cat file.txt
+touch output/delete-me.txt
+ls -l -- output/delete-me.txt
+rm -- output/delete-me.txt
+test ! -e output/delete-me.txt
+printf 'deleted=%s\n' "$?"
 ```
 
-适合小文件
+删除空目录使用 `rmdir`。递归删除必须由作业手顺限定范围并说明备份；不在共享环境按教程自行执行。
 
----
+## 2.10 本章任务
 
-### 5.2 less（强烈推荐）
+1. 从样例日志中提取 ERROR 和 WARN 行到 `output/error_lines.txt`。
+2. 使用 `wc -l` 验证结果为 2 行。
+3. 保留结果供最终调查演习使用。
 
 ```bash
-less file.txt
+test "$(wc -l < output/error_lines.txt)" -eq 2
+printf 'exit_status=%s\n' "$?"
 ```
 
-常用操作：
-
-- `↑ ↓`：滚动
-- `/关键词`：搜索
-- `q`：退出
-
----
-
-### 5.3 head / tail
-
-```bash
-head -n 10 file  #查看前十行 等同于 head file
-tail -n 10 file  #查看后十行 等同于 tail file
-tail -f app.log  #持续监控文件末尾的变化
-```
-
-📌 `tail -f`：实时查看日志（服务器必会）
-
----
-
-## 6. 搜索与统计
-
-### 6.1 find：查找文件
-
-```bash
-find /var/log -name "*.log"
-```
-
----
-
-### 6.2 wc：统计
-
-```bash
-wc -l file  #统计行数
-wc -w file  #统计字数
-wc -c file  #统计字节数
-```
-
----
-
-## 7. grep 过滤文本，只留下你关心的行
-
-### 7.1 grep 的作用？
-
-- 日志分析
-- 进程筛选
-- 配置文件检查
-- Shell 脚本中的文本处理
-
----
-
-### 7.2 grep 的基本语法
-
-```bash
-grep [选项] "关键词" 文件
-```
-
-示例：
-
-```bash
-grep ERROR app.log
-```
-
-含义：
-
-- 在 `app.log` 中
-- 查找包含 `ERROR` 的行
-- 并将这些行输出到终端
-
----
-
-### 7.3. grep 的常用选项
-
-```bash
-grep -i error app.log  #忽略大小写
-grep -n ERROR app.log  #显示行号
-grep -v INFO app.log  #反向匹配
-grep -r ERROR /var/log  #递归搜索目录
-grep -E "ERROR|WARN" app.log  #使用扩展正则表达式
-```
-
----
-
-## 8. grep 与管道（核心用法）
-
-grep 很少单独使用，通常与管道配合。
-
-### 8.1 查找进程
-
-```bash
-ps -ef | grep java
-```
-
----
-
-### 86.2 查端口
-
-```bash
-netstat -an | grep 8080
-```
-
----
-
-### 8.3 实时日志过滤
-
-```bash
-tail -f app.log | grep ERROR
-```
-
----
-
-### 8.4. grep 与统计结合
-
-```bash
-grep ERROR app.log | wc -l
-```
-
-统计错误日志数量
-
----
-
-## 8. 常见错误
-
-- 路径写错（相对 / 绝对）
-- rm 用错目录
-- 不会用 less 查大文件
-- 在 / 目录下乱操作
-
-📌 建议：
-> **先 ls，再操作**
-
----
-
-## 9. 本章小结
-
-你现在应该已经能够：
-
-- 自由切换目录
-- 管理文件与目录
-- 查看和分析文件内容
-- 使用基础命令组合解决问题
-
----
-
-## 10. 教学练习
-
-### 练习 1（操作）
-
-- 创建目录 `practice`
-- 在里面创建 3 个文件
-- 复制、重命名其中一个
-
-### 练习 2（日志模拟）
-
-```bash
-echo "ERROR test" >> app.log
-tail -f app.log
-```
-
----
+[上一章：Linux 环境与命令入门](01_linux_intro.md) · [下一章：用户、组与文件权限](03_user_permission.md)

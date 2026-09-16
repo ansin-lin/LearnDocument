@@ -10,27 +10,27 @@
 
 轻量标签只是一个名称指针：
 
-```powershell
+```cmd
 git tag v1.0.0
 ```
 
 附注标签还保存创建者、时间和说明，正式发布通常优先使用：
 
-```powershell
+```cmd
 git tag -a v1.1.0 -m "release: version 1.1.0"
 ```
 
 查看标签和对应内容：
 
-```powershell
+```cmd
 git tag --list
 git show v1.1.0
 ```
 
 默认在 `HEAD` 创建标签。为指定提交创建附注标签：
 
-```powershell
-git tag -a v1.0.1 <commit-id> -m "release: version 1.0.1"
+```cmd
+git tag -a v1.0.1 COMMIT_ID -m "release: version 1.0.1"
 ```
 
 创建前先确认提交 ID、测试结果和当前分支，不要只根据工作区文件判断发布内容。
@@ -39,13 +39,13 @@ git tag -a v1.0.1 <commit-id> -m "release: version 1.0.1"
 
 普通 `git push` 默认不会推送所有本地标签。推送单个已确认的标签：
 
-```powershell
+```cmd
 git push origin v1.1.0
 ```
 
 以下命令会推送所有本地标签，可能把实验或内部标签一起上传，因此只在确认列表后使用：
 
-```powershell
+```cmd
 git tag --list
 git push origin --tags
 ```
@@ -66,13 +66,13 @@ git push origin --tags
 
 删除尚未推送的本地标签：
 
-```powershell
+```cmd
 git tag -d v1.1.0
 ```
 
 删除远程标签：
 
-```powershell
+```cmd
 git push origin --delete v1.1.0
 ```
 
@@ -80,9 +80,9 @@ git push origin --delete v1.1.0
 
 仅在明确允许修正未发布标签时：
 
-```powershell
+```cmd
 git tag -d v1.1.0
-git tag -a v1.1.0 <correct-commit-id> -m "release: corrected version 1.1.0"
+git tag -a v1.1.0 CORRECT_COMMIT_ID -m "release: corrected version 1.1.0"
 ```
 
 若旧标签已经推送，还需要按平台和团队流程处理远程标签，不要直接强制覆盖。
@@ -91,7 +91,7 @@ git tag -a v1.1.0 <correct-commit-id> -m "release: corrected version 1.1.0"
 
 **环境与范围：** 使用第 06 章练习仓库或新建仓库。本实验只创建本地标签，不触发远程发布。
 
-```powershell
+```cmd
 git status
 git log --oneline -3
 git tag -a v0.1.0 -m "release: practice version 0.1.0"
@@ -101,7 +101,7 @@ git show v0.1.0
 
 验证标签指向预期提交后删除练习标签：
 
-```powershell
+```cmd
 git tag -d v0.1.0
 ```
 
@@ -120,7 +120,7 @@ git tag -d v0.1.0
 
 ### 自检提示
 
-- `git show <annotated-tag>` 应同时显示标签说明和目标提交。
+- `git show ANNOTATED_TAG` 应同时显示标签说明和目标提交。
 - 普通 `git push` 后不要假定标签已上传，使用远程平台或 `git ls-remote --tags origin` 检查。
 - 已发布标签指错提交时，优先创建新的修正版本，而不是静默移动原标签。
 

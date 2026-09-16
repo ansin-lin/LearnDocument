@@ -4,7 +4,7 @@
 /backups/
 /docs/_archive/
 /docs/python/_archive/
-/docs/training_projects/
+/docs/training_projects/employee_management_system/
 /docs/python/web/fastapi_topics/
 /docs/**/backup/
 /docs/**/backups/
@@ -59,6 +59,9 @@ node_modules/
 .next/
 .nuxt/
 coverage/
+
+# Teacher-only frontend reference implementation
+/docs/frontend/training/paid-leave-system/
 
 # Editor, operating-system, and temporary files
 .idea/
