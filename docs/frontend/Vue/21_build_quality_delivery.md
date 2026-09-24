@@ -1,6 +1,6 @@
-# 第 20 章 Vue项目中的TypeScript写法与项目质量
+# 第 21 章 Vue项目中的TypeScript写法与项目质量
 
-前19章用JavaScript建立Vue开发能力。本章把已经能运行的项目渐进加强为Vue + TypeScript项目，并完成质量检查与交付。
+前20章用JavaScript建立Vue开发与测试能力。本章把已经能运行的项目渐进加强为Vue + TypeScript项目，并完成质量检查与交付。
 
 ## 本章目标
 
@@ -117,7 +117,7 @@ export interface CreateTaskInput {
 
 ## 4. ref、reactive与空值
 
-先对照前19章的JavaScript写法：
+先对照前20章的JavaScript写法：
 
 ```js
 const loading = ref(false)

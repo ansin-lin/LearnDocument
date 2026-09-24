@@ -1,25 +1,58 @@
-# 第 19 章 Vue单元测试与组件测试
+# 第 20 章 Vue自动测试：Vitest与Vue Test Utils
 
-测试代码会自动准备输入、执行操作，并比较实际结果与预期结果。修改组件、Composable或Store后，重新执行测试就能快速发现原有功能是否被破坏。
+第19章已经从TaskForm规格设计测试Case并执行手动打鍵。本章使用相同的测试观点，把适合反复执行的Case转换为自动测试。自动测试不是另一套测试思想，而是用代码重复准备输入、执行操作和比较结果。
 
 ## 本章目标与前置知识
 
-- 【必须掌握】区分单元测试、组件测试和端到端测试。
+- 【必须掌握】判断哪些Case适合自动化，哪些仍需手动打鍵。
 - 【必须掌握】使用Vitest组织用例、执行测试并阅读失败信息。
 - 【必须掌握】使用Vue Test Utils验证页面显示、Props、用户操作和Emits。
 - 【必须掌握】正确等待Vue更新和Promise完成。
 - 【必须掌握】独立测试Composable和Pinia Store。
 - 【会使用、能看懂】使用Mock控制API结果，并查看覆盖率。
 
-需要掌握组件、Props与Emits、表单、Composable、Promise、API模块和Pinia。本章继续使用普通JavaScript。
+需要掌握第19章的正常系、異常系、境界値和测试Case设计，以及组件、Props与Emits、表单、Composable、Promise、API模块和Pinia。本章继续使用JavaScript。
 
-## 1. 测试要解决什么问题
+## 1. 从手工Case到自动测试
 
-修改任务表单的校验规则后，需要重新确认：空标题不能提交、合法标题能够提交、事件携带正确数据、API失败时显示错误，而且失败后加载状态能够恢复。
+第19章UT001要求：Title为空时点击保存，显示必填错误且不发送请求。手动执行需要打开浏览器、操作表单并确认Evidence；自动测试把同一Case写成代码：
 
-手工点击可以验证一次，却难以在每次改修后稳定重复所有条件。自动测试把输入、操作和预期结果保存为代码，适合反复执行和提交给团队Review。
+```js
+const wrapper = mount(TaskForm)
 
-### 1.1 常见测试层次
+await wrapper.get('form').trigger('submit')
+
+expect(wrapper.get('#title-error').text())
+  .toContain('任务标题为必填项')
+
+expect(wrapper.emitted('submit'))
+  .toBeUndefined()
+```
+
+`TaskForm`本身不直接发送HTTP请求，而是通过`submit`事件通知上层。因此在这个Component Test的职责边界内，“不发送API请求”对应“不触发`submit`事件”。API是否真正被调用，应在Store或更高层测试中确认。测试当前对象负责的行为，不跨越不属于它的职责边界。
+
+修改组件后可以反复执行这条Case，适合Regression Test。但真实Layout、浏览器差异和完整系统联动仍需要其他测试方式。
+
+## 2. Vitest / Vue Test Utils、Browser E2E与手动打鍵
+
+| 测试对象 | Vitest / VTU | Browser E2E | 手动打鍵 |
+| --- | ---: | ---: | ---: |
+| 纯计算逻辑 | ◎ | △ | △ |
+| Validation | ◎ | ○ | ○ |
+| Store | ◎ | △ | △ |
+| Props / Emits | ◎ | △ | △ |
+| 实际页面点击 | △ | ◎ | ◎ |
+| 页面跳转 | △ | ◎ | ◎ |
+| 浏览器实际行为 | △ | ◎ | ◎ |
+| API完整联动 | △ | ◎ | ◎ |
+| Layout视觉确认 | △ | ○ | ◎ |
+| Regression | ◎ | ◎ | △ |
+
+自动测试不只有Vitest。Vitest与Vue Test Utils主要负责Unit Test和Component Test；Playwright等Browser E2E工具负责真实浏览器中的完整操作流程。不是自动化越多越好，应根据重复次数、风险、稳定性、维护成本和测试目标决定。
+
+## 3. 自动测试的对象与层次
+
+### 3.1 常见测试层次
 
 | 测试层次 | 主要对象 | 运行环境 | 适合发现的问题 |
 | --- | --- | --- | --- |
@@ -29,11 +62,11 @@
 
 本章主线是单元测试和组件测试。E2E测试不能由大量单元测试完全代替，也不需要把同一行为在所有层次重复测试。
 
-### 1.2 测试公开行为
+### 3.2 测试公开行为
 
 组件的公开行为包括接收的Props、显示的内容、用户操作、发出的事件，以及加载、空数据、成功和失败状态。不要直接断言内部`ref`的变量名或内部方法调用。内部实现重构后，只要用户看到的行为没有变化，测试通常不应失败。
 
-## 2. 一条测试怎样工作
+## 4. Arrange / Act / Assert
 
 测试通常按Arrange、Act、Assert三个阶段思考：
 
@@ -61,9 +94,9 @@ it('两个任务中有一个已完成', () => {
 
 不必每次都保留三段注释，但测试中应能看出输入、操作和断言。
 
-## 3. 准备Vue测试环境
+## 5. Vitest、Vue Test Utils与jsdom
 
-### 3.1 安装工具
+### 5.1 安装工具
 
 在Vite项目根目录执行：
 
@@ -80,7 +113,7 @@ npm install --save-dev vitest @vue/test-utils jsdom @vitest/coverage-v8
 
 这些依赖只用于开发和测试，因此使用`--save-dev`。
 
-### 3.2 配置和命令
+### 5.2 配置和命令
 
 在项目已有的`vite.config.js`中增加`test`，不要创建第二份Vite配置：
 
@@ -113,7 +146,7 @@ export default defineConfig({
 
 `npm run test:unit`执行一次后结束，适合提交前检查和CI；开发时可以使用`npm run test:unit:watch`在文件变化后自动重测。
 
-### 3.3 测试文件位置
+### 5.3 测试文件位置
 
 Vitest识别`*.test.js`和`*.spec.js`。本课程把测试放在被测文件旁边：
 
@@ -130,7 +163,7 @@ src/
    └─ tasks.spec.js
 ```
 
-## 4. 测试分组与常用断言
+## 6. 测试分组与常用Matcher
 
 ```js
 import { describe, expect, it } from 'vitest'
@@ -153,6 +186,8 @@ describe('任务状态判断', () => {
 | `toContain(value)` | 字符串或数组包含内容 | `expect(text).toContain('失败')` |
 | `toHaveLength(number)` | 数组或字符串长度 | `expect(tasks).toHaveLength(2)` |
 | `toBeUndefined()` | 结果为`undefined` | `expect(events).toBeUndefined()` |
+| `toBeDefined()` | 结果不是`undefined` | `expect(value).toBeDefined()` |
+| `toBeNull()` | 结果为`null` | `expect(result).toBeNull()` |
 | `toThrow()` | 函数抛出错误 | `expect(() => parseTask('')).toThrow()` |
 
 对象内容通常使用`toEqual()`，不要误用`toBe()`比较两个分别创建的对象。
@@ -163,7 +198,7 @@ npm run test:unit
 
 失败时先看用例名称，再比较Expected（预期）和Received（实际）。
 
-## 5. 第一个组件测试
+## 7. 第一个组件测试
 
 `src/components/TaskItem.vue`：
 
@@ -205,7 +240,7 @@ describe('TaskItem', () => {
 
 `mount()`渲染组件并返回wrapper。wrapper是测试代码查询和操作组件的入口。
 
-### 5.1 查询元素
+### 7.1 查询元素
 
 - `get(selector)`用于必须存在的元素，找不到时立即失败；
 - `find(selector)`用于可能不存在的元素，配合`exists()`判断；
@@ -215,7 +250,7 @@ describe('TaskItem', () => {
 
 优先使用语义元素、表单`name`或稳定的`data-test`属性，不要用只负责布局的CSS class定位业务控件。
 
-### 5.2 测试条件显示
+### 7.2 测试条件显示
 
 ```js
 it('已完成任务显示状态文字', () => {
@@ -233,7 +268,7 @@ it('未完成任务不显示状态文字', () => {
 
 条件渲染至少检查显示和不显示两个分支。
 
-## 6. 测试点击与Emits
+## 8. 测试点击与Emits
 
 给`TaskItem.vue`增加事件：
 
@@ -274,7 +309,7 @@ it('点击完成按钮后发送任务编号和状态', async () => {
 
 `trigger()`触发DOM事件；`emitted()`读取组件事件记录。每次组件事件的参数会保存为一个数组。这里第一次`changeStatus`事件的参数是`[1, 'done']`：`1`是task id，`'done'`是新状态。不要直接调用内部`completeTask()`，测试目标是用户点击后的公开行为。
 
-## 7. 测试表单输入与校验
+## 9. 测试表单输入与校验
 
 组件测试应按照真实操作顺序填写输入、提交表单，再检查错误或事件：
 
@@ -309,9 +344,26 @@ describe('TaskForm', () => {
 
 `setValue()`修改控件值并触发`v-model`需要的事件。表单至少覆盖合法和非法输入，边界长度、重复提交等条件根据规格增加。
 
-## 8. 正确等待Vue和Promise
+## 10. 正确等待Vue和Promise
 
 Vue不会保证在当前一行JavaScript结束前完成DOM更新。`trigger()`和`setValue()`返回可等待的Promise，因此要使用`await`。
+
+| 场景 | 处理方法 |
+| --- | --- |
+| `trigger()`、`setValue()`引起的更新 | 直接`await`该操作 |
+| 代码直接修改响应式状态后等待DOM | `await nextTick()` |
+| 普通Promise或Mock API完成 | `await flushPromises()` |
+| 不确定要等多久 | 不要使用固定`setTimeout()` |
+
+`nextTick()`等待Vue把已发生的响应式变化更新到DOM：
+
+```js
+import { nextTick } from 'vue'
+
+taskStore.addTaskLocally('测试结果确认')
+await nextTick()
+expect(wrapper.text()).toContain('测试结果确认')
+```
 
 如果组件还执行普通Promise或Mock API，使用`flushPromises()`等待已经开始的Promise：
 
@@ -327,11 +379,11 @@ it('读取完成后显示任务', async () => {
 })
 ```
 
-`flushPromises()`不负责启动请求，也不能替代必要的点击。不要使用固定`setTimeout()`等待，因为环境变慢时容易偶发失败。
+`flushPromises()`不负责启动请求，也不能替代必要的点击。不要形成“不知道为什么失败就加`flushPromises()`”的习惯；先判断正在等待Vue DOM更新，还是等待普通Promise。固定`setTimeout()`会因执行环境速度变化而偶发失败。
 
 异步页面通常检查加载、空数据、成功、失败和最终恢复五种状态。
 
-## 9. 测试Composable
+## 11. 测试Composable
 
 第15章的`useTaskFilter()`只使用响应式API，可以直接调用：
 
@@ -364,7 +416,7 @@ describe('useTaskFilter', () => {
 
 如果Composable使用`onMounted()`或`inject()`，它依赖组件上下文，需要通过测试用宿主组件挂载。本章先保证纯响应式Composable能够独立测试。
 
-## 10. 测试Pinia Store
+## 12. 测试Pinia Store
 
 每条Store测试创建新的Pinia，防止状态互相污染：
 
@@ -378,28 +430,32 @@ describe('任务Store', () => {
     setActivePinia(createPinia())
   })
 
-  it('新增任务后列表增加', () => {
+  it('本地新增后任务列表增加', () => {
     const store = useTaskStore()
-    store.addTask('Review对应')
+
+    store.addTaskLocally('Review对应')
+
     expect(store.tasks).toHaveLength(1)
     expect(store.tasks[0].title).toBe('Review对应')
   })
 })
 ```
 
-`beforeEach()`在组内每条测试前执行；`createPinia()`创建独立容器；`setActivePinia()`让Store使用该容器。Store应验证action后的state、getter结果、异步状态和`reset()`。
+`beforeEach()`在组内每条测试前执行；`createPinia()`创建独立容器；`setActivePinia()`让Store使用该容器。这个Case只测试同步Pinia Action。真实业务新增使用`createTask()`，应在API Mock测试中确认异步流程。
 
-## 11. Mock API的成功与失败
+## 13. Mock API与异步状态
 
 单元测试不访问真实API。Mock用固定结果替换API模块，让成功和失败都能稳定重现。
 
 ```js
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { getTasks } from '@/api/tasks'
+import { createTask as createTaskApi, getTasks } from '@/api/tasks'
 import { useTaskStore } from './tasks'
 
 vi.mock('@/api/tasks', () => ({
+  createTask: vi.fn(),
+  getTask: vi.fn(),
   getTasks: vi.fn(),
 }))
 
@@ -425,11 +481,53 @@ describe('任务Store的异步读取', () => {
     getTasks.mockRejectedValue(new Error('服务器暂时不可用'))
     const store = useTaskStore()
 
-    await expect(store.loadTasks()).rejects.toThrow('服务器暂时不可用')
+    await store.loadTasks()
 
     expect(store.tasks).toEqual([])
     expect(store.errorMessage).toBe('服务器暂时不可用')
     expect(store.loading).toBe(false)
+  })
+
+  it('新增成功后任务加入列表并恢复保存状态', async () => {
+    const created = {
+      id: 2,
+      title: 'Review对应',
+      assignee: '田中',
+      priority: 'normal',
+      status: 'todo',
+      dueDate: '2026-10-10',
+    }
+    createTaskApi.mockResolvedValue(created)
+    const store = useTaskStore()
+
+    const result = await store.createTask({
+      title: 'Review对应',
+      priority: 'normal',
+    })
+
+    expect(createTaskApi).toHaveBeenCalledWith({
+      title: 'Review对应',
+      priority: 'normal',
+    })
+    expect(result?.id).toBe(2)
+    expect(store.tasks).toHaveLength(1)
+    expect(store.saving).toBe(false)
+    expect(store.errorMessage).toBe('')
+  })
+
+  it('新增失败时保存错误并恢复保存状态', async () => {
+    createTaskApi.mockRejectedValue(new Error('任务新增失败'))
+    const store = useTaskStore()
+
+    const result = await store.createTask({
+      title: 'Review对应',
+      priority: 'normal',
+    })
+
+    expect(result).toBeNull()
+    expect(store.tasks).toEqual([])
+    expect(store.errorMessage).toBe('任务新增失败')
+    expect(store.saving).toBe(false)
   })
 })
 ```
@@ -438,11 +536,15 @@ describe('任务Store的异步读取', () => {
 - `vi.fn()`创建可控制的Mock函数；
 - `mockResolvedValue()`设定成功结果；
 - `mockRejectedValue()`设定失败结果；
-- `rejects.toThrow()`断言Promise以错误结束。
+- `toHaveBeenCalledWith()`确认Mock收到的参数；
+
+本课程采用“Store内部保存错误状态”的设计：API模块抛出错误，Store捕获并保存`errorMessage`，Component负责显示。真实项目也可以选择重新抛给调用方，但必须统一设计，避免Store和Component重复处理同一个错误。
+
+`createTask()`中的`saving`还负责防止重复提交：当它已经是`true`时，再次调用应直接返回`null`，并且不再次调用`createTask` API。本章不展开复杂并发测试，但测试设计中必须保留这一观点。
 
 只Mock当前测试需要控制的外部边界，不要把被测Store本身也Mock掉。Mock数据字段必须符合第17章API契约。
 
-## 12. `mount()`与`shallowMount()`
+## 14. `mount()`与`shallowMount()`
 
 `mount()`正常渲染子组件，默认优先使用。`shallowMount()`把子组件替换成占位，只在子组件复杂或当前测试明确只关心父组件接口时使用：
 
@@ -466,7 +568,7 @@ const wrapper = mount(TaskList, {
 })
 ```
 
-## 13. 保持测试隔离
+## 15. 保持测试隔离
 
 一条测试必须能够单独运行，不能依赖执行顺序：
 
@@ -484,7 +586,7 @@ afterEach(() => {
 
 `beforeEach()`准备共同初始状态；`afterEach()`负责清理；`restoreAllMocks()`恢复通过spy替换的实现。手工添加的全局事件、计时器和存储数据也要清理。
 
-## 14. 覆盖率的用途与限制
+## 16. 覆盖率的用途与限制
 
 ```bash
 npm run test:coverage
@@ -499,7 +601,7 @@ npm run test:coverage
 
 覆盖率用于提示遗漏，不代表测试质量。即使行覆盖率为100%，错误断言或缺少业务结果检查仍会漏掉缺陷。先根据风险设计测试，再用覆盖率寻找遗漏分支。
 
-## 15. 调查失败测试
+## 17. 调查失败测试
 
 ```text
 Expected: "任务标题为必填项"
@@ -515,7 +617,7 @@ Received: "请输入标题"
 
 不要为了让测试通过而删除断言，或直接把预期改成当前错误结果。
 
-## 16. 常见错误
+## 18. 常见错误
 
 | 现象 | 常见原因 | 修正方法 |
 | --- | --- | --- |
@@ -528,19 +630,56 @@ Received: "请输入标题"
 | 测试通过但页面组合出错 | Stub了过多子组件 | 对关键组合使用`mount()` |
 | 覆盖率高仍出现缺陷 | 只执行代码而未检查结果 | 根据业务状态补充断言 |
 
-## 17. WorkHub练习与提交证据
+## 19. 从手工UT Case到自动测试
 
-### 17.1 实现任务
+第19章和第20章的测试观点没有发生变化，变化的是执行方式：第19章由人执行操作并确认结果，第20章由测试代码执行操作并确认结果。
+
+| Case | 第19章测试内容 | 第20章自动测试重点 |
+| --- | --- | --- |
+| UT001 | Title为空 | Error显示、无`submit` |
+| UT002 | 普通合法Title | `submit`参数正确 |
+| UT003 | 99字符 | 可以`submit` |
+| UT004 | 100字符 | 可以`submit` |
+| UT005 | 101字符 | Error显示、无`submit` |
+| UT006 | 保存中连续点击 | 不重复处理 |
+| API成功 | 正常保存 | Store更新、`saving`恢复 |
+| API失败 | 500等异常 | `errorMessage`、`saving`恢复 |
+
+不是每一条手工Case都必须转换成Vitest。Layout视觉确认、浏览器兼容、复杂Tab或Focus、真实文件上传和跨系统操作，更适合Browser E2E或手动打鍵。
+
+## 20. CI中的自动测试基础
+
+CI（Continuous Integration，持续集成）会在代码提交后自动执行团队规定的检查。最基础的流程如下：
+
+```text
+Developer
+↓ Push / Pull Request
+CI
+↓
+npm ci
+↓
+npm run test:unit
+↓
+npm run build
+↓
+结果返回Pull Request
+```
+
+`npm ci`按照锁文件重建依赖，适合CI中的可重复安装。自动测试不需要人工逐条点击页面，因此代码每次提交后都能重复执行相同Case，用于尽早发现Regression。CI通过不代表所有打鍵、E2E和视觉确认都可以省略。
+
+## 21. WorkHub练习与提交证据
+
+### 21.1 实现任务
 
 1. 配置测试依赖、环境和三个测试脚本。
-2. 为`TaskItem`测试Props、完成状态和`complete`事件参数。
+2. 为`TaskItem`测试Props、完成状态和`changeStatus`事件参数。
 3. 为`TaskForm`测试空标题、合法提交和重复提交限制。
 4. 为`useTaskFilter`测试有结果、无结果和清空关键字。
 5. 为Pinia测试同步action、getter、`reset()`和用例隔离。
 6. Mock API，测试异步action的加载、成功和失败状态。
 7. 人为修改一条断言，阅读失败信息后恢复。
 
-### 17.2 验证命令
+### 21.2 验证命令
 
 ```bash
 npm run test:unit
@@ -548,7 +687,7 @@ npm run test:coverage
 npm run build
 ```
 
-### 17.3 提交内容
+### 21.3 提交内容
 
 - 测试文件与必要配置；
 - 三条命令的成功结果；
@@ -567,6 +706,7 @@ npm run build
 - [ ] 能测试Composable和Pinia Store。
 - [ ] 能Mock API成功与失败，并保持用例隔离。
 - [ ] 能说明覆盖率的用途与限制。
+- [ ] 能说明自动测试在CI中何时执行以及不能替代什么。
 
 官方参考：[Vue测试指南](https://vuejs.org/guide/scaling-up/testing.html)、[Vue Test Utils指南](https://test-utils.vuejs.org/guide/)、[Vitest指南](https://vitest.dev/guide/)。
 

@@ -153,7 +153,7 @@ onMounted(() => {
 </template>
 ```
 
-模板中的`ref="titleInput"`与脚本中的`const titleInput = ref(null)`使用相同名称建立引用。挂载前`titleInput.value`是`null`，挂载后才指向真实输入元素，所以示例使用可选链`?.`安全调用`focus()`。第20章再说明怎样为这个引用增加DOM类型。
+模板中的`ref="titleInput"`与脚本中的`const titleInput = ref(null)`使用相同名称建立引用。挂载前`titleInput.value`是`null`，挂载后才指向真实输入元素，所以示例使用可选链`?.`安全调用`focus()`。第21章再说明怎样为这个引用增加DOM类型。
 
 ### 3.1 模板引用不适合做什么
 

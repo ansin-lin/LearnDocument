@@ -1,75 +1,104 @@
 # 第 18 章 Pinia：跨页面状态管理
 
-Pinia是Vue的状态管理库。它允许多个组件或页面共享同一份响应式状态，并把读取、计算和修改规则集中到Store中。
+第17章由页面自己保存`tasks`、读取用的`loading`、保存用的`saving`和`errorMessage`。当任务列表、任务详情和首页都需要访问同一份任务数据时，状态需要提升到独立的Store。本章使用Pinia完成这次重构，并继续区分读取状态与保存状态。
 
 ## 本章目标与前置知识
 
-- 【必须掌握】判断状态应该留在组件还是进入Store。
-- 【必须掌握】安装并注册Pinia，使用`defineStore()`建立Setup Store。
-- 【必须掌握】理解state、getter和action的职责。
-- 【必须掌握】在组件中使用Store，并通过`storeToRefs()`保持解构后的响应性。
-- 【会使用、能看懂】在action中调用API、处理加载和错误，并重置Store。
+- 【必须掌握】判断状态应放在Component、Router Query、Pinia、API模块还是Backend；
+- 【必须掌握】理解Backend与Pinia的Source of Truth关系；
+- 【必须掌握】使用`defineStore()`建立Setup Store；
+- 【必须掌握】区分state、getter和action；
+- 【必须掌握】让Store调用第17章API模块；
+- 【会使用、能看懂】使用`storeToRefs()`、重置Store和处理详情页重新读取。
 
-需要掌握`ref()`、`computed()`、组件状态归属和第17章API模块。本章继续使用普通JavaScript。
+## 1. 先判断状态应该放在哪里
 
-## 1. 为什么需要Pinia
+不是“能不能放Pinia”，而是“是否有多个无直接父子关系的组件或页面需要共享和修改”。
 
-单个输入框内容只属于一个组件，可以用组件自己的`ref()`保存。但任务一览和任务详情都需要读取、修改同一批任务时，如果两个页面分别保存一份数组，就可能出现不同步。
-
-```text
-TaskListView自己的tasks   ← 修改后只更新列表页
-TaskDetailView自己的tasks ← 仍然保留旧数据
-```
-
-Pinia把共同状态放进独立Store：
-
-```text
-                 ┌─ TaskListView读取任务列表
-后端API → Task Store
-                 └─ TaskDetailView读取并修改同一状态
-```
-
-Store不属于某一个页面，因此路由切换后，只要应用仍在运行，其他页面可以继续读取同一个Store实例。
-
-### 1.1 Pinia负责什么
-
-- 保存跨组件或跨页面共享的业务状态；
-- 集中定义状态的计算结果和修改操作；
-- 让不同页面取得同一份响应式数据；
-- 通过Vue DevTools观察状态和action执行过程；
-- 为状态逻辑测试提供明确入口。
-
-### 1.2 Pinia不负责什么
-
-- 不负责URL与页面切换，那是Vue Router的职责；
-- 不负责发送HTTP请求，请求细节属于API模块；
-- 不会自动把状态永久保存到数据库；
-- 刷新浏览器后，默认内存状态会消失；
-- 不应该保存所有组件的临时变量。
-
-## 2. 什么是Store
-
-Store可以理解为一组有明确业务职责的共享状态和操作。任务Store只管理任务相关数据，不同时管理登录用户、系统主题和所有表单。
-
-Pinia中的三个核心概念是：
-
-| 概念 | 作用 | Vue组件中的相似概念 |
+| 状态 | 推荐位置 | 原因 |
 | --- | --- | --- |
-| state | 保存原始状态 | `ref()`、`reactive()` |
-| getter | 根据state得到派生结果 | `computed()` |
-| action | 执行修改或异步业务操作 | 普通函数、事件处理函数 |
+| 当前输入框 | Component | 只属于当前画面 |
+| 当前弹窗状态 | Component | 属于局部UI |
+| 多页面共享任务 | Pinia | 多个页面读取和修改 |
+| 当前用户 | Pinia | 导航栏和多个页面共用 |
+| URL筛选条件 | Router Query | 刷新、复制URL和前进后退时应恢复 |
+| API URL、请求方法和HTTP处理 | API模块 | 属于服务器通信契约 |
+| 永久业务数据 | Backend / Database | 应跨刷新和跨设备保存 |
 
-本课程使用Setup Store，它与已经学习的Composition API写法一致：`ref`成为state，`computed`成为getter，函数成为action。
+一个父组件向一两层子组件传Props并不需要Pinia；一棵组件树内部共享表单上下文也可以使用`provide / inject`。
 
-## 3. 安装并注册Pinia
+## 2. Source of Truth：谁才是真正的数据源
 
-在项目根目录执行：
+```text
+Backend / Database
+        ↓ API Response
+      Pinia
+        ↓
+    Component
+```
 
-```bash
+Pinia通常保存前端应用运行期间需要共享的状态，以及服务器数据在前端的当前副本。需要永久保存的业务数据，通常仍以Backend / Database为最终数据源（Source of Truth）。
+
+因此：
+
+```text
+刷新浏览器
+→ Pinia重新创建
+→ 必要时重新请求Backend
+```
+
+只修改Pinia不等于数据已经保存到数据库。新增、修改或删除业务数据时，应先按API规格请求Backend，再用成功响应更新Store。
+
+## 3. 第17章到第18章是一次重构
+
+第17章：
+
+```text
+TaskListView
+├─ tasks
+├─ loading
+├─ errorMessage
+└─ loadTasks()
+      ↓
+   API Module
+```
+
+第18章：
+
+```text
+TaskListView / TaskDetailView
+           ↓
+       Task Store
+       ├─ tasks
+       ├─ loading
+       ├─ saving
+       ├─ errorMessage
+       ├─ loadTasks()
+       └─ createTask()
+           ↓
+       API Module
+           ↓
+      Axios Instance
+```
+
+第17章写法并没有错。数据只属于一个页面时，组件自己管理更简单；出现真实共享需求时，才提升到Pinia。
+
+## 4. Store、Component与API模块的分工
+
+- Component负责输入、显示、点击和页面局部状态；
+- Store负责共享业务状态、派生结果和跨页面操作；
+- API模块负责URL、HTTP方法、请求体和响应转换；
+- Backend负责权限、业务校验和永久保存。
+
+Store可以调用API模块，但不要在Store中重新创建Axios实例；Component也不要绕过Store维护另一份相同任务数组。
+
+## 5. 安装并注册Pinia
+
+```cmd
 npm install pinia
 ```
 
-修改`src/main.js`：
+`src/main.js`：
 
 ```js
 import { createApp } from 'vue'
@@ -78,38 +107,26 @@ import App from './App.vue'
 import { router } from './router'
 
 const app = createApp(App)
-const pinia = createPinia()
 
-app.use(pinia)
+app.use(createPinia())
 app.use(router)
 app.mount('#app')
 ```
 
-`createPinia()`创建Pinia实例；`app.use(pinia)`把它安装到Vue应用，必须在`mount()`前执行。安装后，各组件才能取得相同Store。
+`createPinia()`创建Pinia容器，`app.use()`在应用挂载前完成注册。
 
-## 4. 建立第一个最小Store
+## 6. 建立最小Store
 
-先只建立一项state和一个action，不要一次加入请求、getter和全部业务操作。
-
-新建`src/stores/tasks.js`：
+先只学习本地状态，暂时不接入Backend。`src/stores/tasks.js`：
 
 ```js
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
 export const useTaskStore = defineStore('tasks', () => {
-  const tasks = ref([
-    {
-      id: 101,
-      title: '规格确认',
-      assignee: '田中',
-      priority: 'high',
-      status: 'doing',
-      dueDate: '2026-09-30',
-    },
-  ])
+  const tasks = ref([])
 
-  function addTask(title) {
+  function addTaskLocally(title) {
     tasks.value.push({
       id: Date.now(),
       title,
@@ -120,25 +137,15 @@ export const useTaskStore = defineStore('tasks', () => {
     })
   }
 
-  return {
-    tasks,
-    addTask,
-  }
+  return { tasks, addTaskLocally }
 })
 ```
 
-`defineStore(id, setup)`定义Store：
+`defineStore(id, setup)`定义Store。`id`在项目中唯一；Setup Store中的`ref`成为state，`computed`成为getter，函数成为action；只有返回的成员才能被组件使用。
 
-- `id`是项目内唯一的Store标识，这里是`tasks`；
-- 第二个参数是建立Store内容的函数；
-- 函数中创建state和action；
-- 最后必须返回需要让组件使用的内容。
+这里的`addTaskLocally()`只用于理解Pinia响应性，不代表接入Backend后的真实新增流程。
 
-`defineStore()`返回的是`useTaskStore`函数。组件调用它时，才取得当前应用中的任务Store实例。
-
-## 5. 在组件中使用Store
-
-`TaskListView.vue`：
+## 7. 在组件中使用Store
 
 ```vue
 <script setup>
@@ -148,119 +155,93 @@ const taskStore = useTaskStore()
 </script>
 
 <template>
-  <main>
-    <h1>任务一览</h1>
-    <button type="button" @click="taskStore.addTask('代码Review')">
-      添加演示任务
-    </button>
-
-    <ul>
-      <li v-for="task in taskStore.tasks" :key="task.id">
-        {{ task.title }}
-      </li>
-    </ul>
-  </main>
+  <ul>
+    <li v-for="task in taskStore.tasks" :key="task.id">{{ task.title }}</li>
+  </ul>
 </template>
 ```
 
-`useTaskStore()`取得Store。模板可以直接读取`taskStore.tasks`，也可以调用`taskStore.addTask()`。添加任务后，所有使用同一Store的页面都会读取到更新后的数组。
+`useTaskStore()`取得当前应用中的Store实例。基础阶段优先写`taskStore.tasks`，可以清楚看出状态来源。
 
-先使用完整的`taskStore.xxx`写法，可以清楚看出数据来自Store。
+## 8. state、getter和action
 
-## 6. state：Store保存的原始状态
-
-Setup Store中的`ref()`是state：
+### 8.1 state保存原始状态
 
 ```js
 const tasks = ref([])
 const loading = ref(false)
+const saving = ref(false)
 const errorMessage = ref('')
 ```
 
-state应保存业务的原始事实，例如任务数组和请求状态。能够从现有state计算出来的数据不要重复保存，否则修改任务后还必须手动同步多个字段。
+`loading`表示列表或详情正在读取，`saving`表示新增数据正在保存。不要用一个`loading`表示所有异步操作，这样页面才能分别控制列表Loading和保存按钮Disabled。
 
-例如“已完成任务数”能从`tasks`计算出来，不应再维护一个需要手动加减的普通state。
-
-## 7. action：集中执行状态修改
-
-Store中的函数是action。action可以接收参数、修改state、调用其他action，也可以执行异步请求。
+### 8.2 getter计算派生结果
 
 ```js
-function changeTaskStatus(id, status) {
-  const task = tasks.value.find((item) => item.id === id)
-  if (!task) return false
-
-  task.status = status
-  return true
-}
-```
-
-把修改规则集中在`changeTaskStatus()`中，可以统一校验状态和任务编号。组件只表达“请求修改”，不在多个页面重复实现相同规则。
-
-简单状态技术上可以直接修改，但复杂业务修改优先通过含义明确的action完成，便于调查影响范围和测试。
-
-## 8. getter：根据state得到派生结果
-
-Setup Store中的`computed()`是getter：
-
-```js
-import { computed, ref } from 'vue'
-
-const tasks = ref([])
-
 const completedCount = computed(() =>
   tasks.value.filter((task) => task.status === 'done').length,
 )
 ```
 
-`completedCount`依赖`tasks`。任务新增、删除或状态变化后，结果自动重新计算。getter不应该产生请求、修改state或操作DOM。
+能从`tasks`计算出的值不要再保存一份普通state，否则容易不同步。getter不应发送请求、修改state或操作DOM。
 
-把getter加入Store返回值后，组件可以像读取state一样读取它：
+### 8.3 action表达状态操作
 
 ```js
-return {
-  tasks,
-  completedCount,
-  addTask,
-  changeTaskStatus,
+function changeTaskStatusLocally(id, status) {
+  const task = tasks.value.find((item) => item.id === id)
+  if (!task) return false
+  task.status = status
+  return true
 }
 ```
 
-## 9. storeToRefs：解构时保持响应性
+真实项目接入Backend后，状态修改通常还需要调用更新API。action名称应表达业务含义，不使用`setData`之类模糊名称。
 
-不解构时可以直接写：
+## 9. 从本地push改为Backend新增
 
-```js
-const taskStore = useTaskStore()
-console.log(taskStore.tasks)
+学习阶段1只修改本地状态；接入Backend后的阶段2如下：
+
+```text
+Component
+    ↓
+store.createTask()
+    ↓
+API createTask()
+    ↓
+Backend
+    ↓ 返回创建结果
+Store更新tasks
 ```
 
-如果希望单独取得state和getter，应使用`storeToRefs()`：
-
 ```js
-import { storeToRefs } from 'pinia'
-import { useTaskStore } from '@/stores/tasks'
+import { createTask as createTaskApi } from '@/api/tasks'
 
-const taskStore = useTaskStore()
-const { tasks, completedCount } = storeToRefs(taskStore)
-const { addTask, changeTaskStatus } = taskStore
+async function createTask(input) {
+  if (saving.value) return null
+
+  saving.value = true
+  errorMessage.value = ''
+  try {
+    const created = await createTaskApi(input)
+    tasks.value.push(created)
+    return created
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '任务新增失败'
+    return null
+  } finally {
+    saving.value = false
+  }
+}
 ```
 
-`storeToRefs(store)`把Store中的state和getter转换成保持响应性的ref。action本身是函数，直接从Store解构，不放进`storeToRefs()`。
+不要先生成一个假的前端Task再假装已经保存。Store使用后端返回的`id`和完整字段更新列表。`saving`为`true`时直接返回，可以防止保存处理中再次调用新增API。
 
-基础阶段也可以始终使用`taskStore.tasks`，不必为了少写字符强制解构。
-
-## 10. 异步action与API模块
-
-API模块负责URL、请求方法、HTTP状态和响应数据检查；Store action负责调用API，并维护需要跨页面共享的加载和错误状态。
-
-在`src/stores/tasks.js`中增加：
+## 10. 异步action调用API模块
 
 ```js
 import { getTasks } from '@/api/tasks'
-
-const loading = ref(false)
-const errorMessage = ref('')
 
 async function loadTasks() {
   loading.value = true
@@ -269,94 +250,117 @@ async function loadTasks() {
   try {
     tasks.value = await getTasks()
   } catch (error) {
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : '任务读取失败'
-    throw error
+    errorMessage.value = error instanceof Error ? error.message : '任务读取失败'
   } finally {
     loading.value = false
   }
 }
 ```
 
-`getTasks()`来自第17章API模块。action不重新编写Axios请求细节。`finally`保证成功或失败后都恢复`loading`。
+API模块负责产生错误，Store捕获错误并保存共享的`errorMessage`，Component读取并显示该状态。本课程不再从Store重新抛出同一个错误，避免Store和Component重复处理。真实项目也可以选择向调用方重新抛出，但一条项目主线必须采用统一策略。
 
-调用方和Store应约定谁显示错误。如果Store保存`errorMessage`供页面显示，页面不要再显示另一份含义相同的错误。
+## 11. 列表与详情的数据读取
 
-## 11. 列表页与详情页共享状态
-
-列表页读取`taskStore.tasks`，详情页根据路由编号从同一个数组查找：
+从已经加载的列表进入详情时，可以先查找Store：
 
 ```js
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { useTaskStore } from '@/stores/tasks'
-
-const route = useRoute()
-const taskStore = useTaskStore()
-
 const currentTask = computed(() =>
   taskStore.tasks.find((task) => task.id === Number(route.params.id)),
 )
 ```
 
-从列表页进入详情时可以复用已加载数据。但用户直接刷新详情页时，Store会重新创建，数组可能为空，因此详情页仍要按项目规则调用加载action。
+但这种方式只适用于列表已经完整加载，并且详情字段与列表相同。真实项目经常分别提供：
 
-需要提前约定：
+```text
+GET /tasks       读取列表
+GET /tasks/{id}  读取一条详情
+```
 
-- 哪个页面负责首次加载；
-- Store已有数据时是否重新请求；
-- 同一请求是否允许重复发送；
-- 失败后由哪个页面提供重试。
+列表可能分页、字段可能精简，用户也可能直接打开详情URL。因此API模块应根据规格提供：
 
-## 12. 状态应该放在哪里
+```js
+export async function getTask(id) {
+  const response = await http.get(`/tasks/${id}`)
+  return response.data
+}
+```
 
-| 状态 | 推荐位置 | 原因 |
-| --- | --- | --- |
-| 多页面共用任务、当前用户 | Pinia | 跨页面读取和修改 |
-| 只属于当前表单的输入值 | 组件 | 离开表单后通常无需保留 |
-| 当前弹窗是否打开 | 通常组件 | 属于局部界面状态 |
-| 深层组件共同使用的表单上下文 | `provide / inject` | 只在一棵组件树中使用 |
-| URL中的筛选条件 | Router query | 需要复制、刷新和前进后退 |
-| 请求URL和HTTP检查 | API模块 | 属于服务器通信契约 |
+Store再提供详情action：
 
-判断标准不是“能不能放进Pinia”，而是“是否需要被多个无直接父子关系的组件共同使用和修改”。
+```js
+async function loadTask(id) {
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const task = await getTask(id)
+    const index = tasks.value.findIndex((item) => item.id === task.id)
+    if (index >= 0) tasks.value[index] = task
+    else tasks.value.push(task)
+    return task
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '任务详情读取失败'
+    return null
+  } finally {
+    loading.value = false
+  }
+}
+```
 
-## 13. 重置、刷新与持久化边界
+必须约定何时复用已有数据、何时重新请求，以及失败后由哪个页面提供重试。
 
-Setup Store需要自己提供重置action：
+## 12. `storeToRefs()`保持解构响应性
+
+```js
+import { storeToRefs } from 'pinia'
+
+const taskStore = useTaskStore()
+const { tasks, loading, saving, completedCount } = storeToRefs(taskStore)
+const { loadTasks, createTask } = taskStore
+```
+
+`storeToRefs()`只处理state和getter。action是函数，直接从Store取得。也可以始终使用`taskStore.xxx`，不必为了少写字符强制解构。
+
+## 13. 刷新、重置和持久化边界
+
+Pinia默认保存在内存，刷新后状态消失，所以路由页面应在需要时重新请求Backend。退出登录或切换用户时应清理共享状态：
 
 ```js
 function reset() {
   tasks.value = []
   loading.value = false
+  saving.value = false
   errorMessage.value = ''
 }
 ```
 
-退出登录或切换业务上下文时可以调用`reset()`，避免上一用户的数据继续留在内存。
+不要随意把整个Store写入`localStorage`。持久化必须考虑有效期、敏感信息、用户切换、旧数据和恢复规则。
 
-Pinia默认只保存在内存，刷新页面后状态会消失。需要持久化时必须设计过期时间、用户切换、敏感数据和恢复规则，不能随意把整个Store写入`localStorage`。真正的业务数据仍应由后端保存。
+## 14. 课程最终Task Store示例
 
-## 14. 完整Task Store示例
+为了让本章所有知识可以在一个文件中回顾，下面的课程示例仍保留`addTaskLocally()`和`changeTaskStatusLocally()`。这两个Action主要用于学习同步Pinia状态操作。真实项目接入Backend以后，如果不存在本地修改需求，可以删除这些教学用途Action，改为使用对应Backend API。
 
-学习完各部分后，把Store整理成一个可以直接运行的版本。注意：Setup Store中的state、getter和action只有写在`return`中，组件才能访问。
+前面逐段学习后，`src/stores/tasks.js`的课程最终状态如下：
 
 ```js
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getTasks } from '@/api/tasks'
+import {
+  createTask as createTaskApi,
+  getTask,
+  getTasks,
+} from '@/api/tasks'
 
 export const useTaskStore = defineStore('tasks', () => {
   const tasks = ref([])
   const loading = ref(false)
+  const saving = ref(false)
   const errorMessage = ref('')
 
   const completedCount = computed(() =>
     tasks.value.filter((task) => task.status === 'done').length,
   )
 
-  function addTask(title) {
+  function addTaskLocally(title) {
     tasks.value.push({
       id: Date.now(),
       title,
@@ -367,7 +371,7 @@ export const useTaskStore = defineStore('tasks', () => {
     })
   }
 
-  function changeTaskStatus(id, status) {
+  function changeTaskStatusLocally(id, status) {
     const task = tasks.value.find((item) => item.id === id)
     if (!task) return false
     task.status = status
@@ -380,76 +384,99 @@ export const useTaskStore = defineStore('tasks', () => {
     try {
       tasks.value = await getTasks()
     } catch (error) {
-      errorMessage.value = error instanceof Error
-        ? error.message
-        : '任务读取失败'
-      throw error
+      errorMessage.value = error instanceof Error ? error.message : '任务读取失败'
     } finally {
       loading.value = false
+    }
+  }
+
+  async function loadTask(id) {
+    loading.value = true
+    errorMessage.value = ''
+    try {
+      const task = await getTask(id)
+      const index = tasks.value.findIndex((item) => item.id === task.id)
+      if (index >= 0) tasks.value[index] = task
+      else tasks.value.push(task)
+      return task
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '任务详情读取失败'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function createTask(input) {
+    if (saving.value) return null
+
+    saving.value = true
+    errorMessage.value = ''
+    try {
+      const created = await createTaskApi(input)
+      tasks.value.push(created)
+      return created
+    } catch (error) {
+      errorMessage.value = error instanceof Error ? error.message : '任务新增失败'
+      return null
+    } finally {
+      saving.value = false
     }
   }
 
   function reset() {
     tasks.value = []
     loading.value = false
+    saving.value = false
     errorMessage.value = ''
   }
 
   return {
     tasks,
     loading,
+    saving,
     errorMessage,
     completedCount,
-    addTask,
-    changeTaskStatus,
+    addTaskLocally,
+    changeTaskStatusLocally,
     loadTasks,
+    loadTask,
+    createTask,
     reset,
   }
 })
 ```
 
-## 15. 调试与命名
+`addTaskLocally()`和`changeTaskStatusLocally()`只演示同步Pinia状态操作。需要永久保存的新增或状态变更，应调用Backend对应API，并在成功后使用响应更新Store。
 
-使用Vue DevTools检查Store的state、getter和action执行记录。action使用`loadTasks`、`changeTaskStatus`等业务名称，不使用含义模糊的`setData`。
+## 15. 调试与常见错误
 
-调查状态问题时按以下顺序确认：
+使用Vue DevTools查看调用了哪个action、参数是什么、state怎样变化以及页面是否读取同一Store。
 
-1. 哪个组件调用了哪个action；
-2. action接收了什么参数；
-3. state在调用前后怎样变化；
-4. getter是否根据新state重新计算；
-5. 页面是否读取了同一个Store实例。
+- 把所有输入框、弹窗和hover状态都放进Pinia；
+- 只修改Pinia就认为数据库已更新；
+- 列表页和详情页分别维护一份任务数组；
+- 在Store中重新书写Axios配置；
+- 直接打开详情时只从空列表`find()`；
+- action结束后没有在`finally`恢复对应的`loading`或`saving`；
+- Setup Store忘记返回需要公开的成员。
 
-## 16. 常见错误
+## 16. WorkHub练习与检查点
 
-- 所有输入框、弹窗和hover状态都放进Store。
-- 列表页和详情页分别维护一份任务数组。
-- 直接解构state后误以为一定保持响应性。
-- 在组件和Store中重复编写相同API请求。
-- action失败后没有在`finally`恢复`loading`。
-- 误以为Pinia会自动保存到数据库或`localStorage`。
-- Setup Store漏掉返回值，导致组件无法访问对应state或action。
+1. 列出当前状态并决定Component、Router Query、Pinia、API模块或Backend归属。
+2. 注册Pinia并建立最小Task Store。
+3. 从两个页面读取同一Store，观察共享状态。
+4. 将第17章组件中的任务状态和`loadTasks()`重构到Store。
+5. 将本地新增改为`createTask()`请求成功后再更新Store。
+6. 增加`getTask(id)`并验证直接打开详情URL。
+7. 刷新页面并说明为什么需要重新请求。
+8. 退出时执行`reset()`。
 
-## 17. WorkHub练习与检查点
-
-1. 安装并注册Pinia，创建只有任务数组和`addTask()`的最小Store。
-2. 从两个组件读取同一个Store，确认一个组件添加任务后另一个组件同步显示。
-3. 增加`changeTaskStatus()`和`completedCount`，分别验证action和getter。
-4. 使用`storeToRefs()`解构state和getter，action保持直接解构。
-5. 把第17章API模块接入异步action，分别模拟成功和失败。
-6. 从详情页直接刷新，确认能够重新加载任务。
-7. 增加`reset()`并验证状态恢复。
-8. 列出当前页面状态，判断哪些应留在组件、Router、API模块或Pinia。
-
-- [ ] 能说明Pinia解决的问题及其职责边界。
-- [ ] 能安装、注册并定义Setup Store。
-- [ ] 能区分state、getter和action。
-- [ ] 能在多个组件或页面中使用同一个Store。
-- [ ] 能正确使用`storeToRefs()`并处理action。
-- [ ] 能实现带加载和错误处理的异步action。
-- [ ] 能说明刷新、重置和持久化的边界。
-
-
-
-
-
+- [ ] 能判断状态应该放在Component、Router还是Pinia。
+- [ ] 能说明Backend与Pinia的Source of Truth关系。
+- [ ] 能解释刷新后为什么通常需要重新请求。
+- [ ] 能区分Store与API模块的职责。
+- [ ] 能区分本地演示push和真实POST流程。
+- [ ] 能实现列表读取、详情读取和新增后的Store更新。
+- [ ] 能用`loading`表示读取中，用`saving`表示保存中。
+- [ ] 能说明为什么不能把所有状态都放进Pinia。

@@ -1,10 +1,10 @@
 # Vue 3 新人教程
 
-本课程面向已经完成HTML、CSS、JavaScript、ES6、DOM/Event、Promise、Axios和HTTP基础的学员。第1～19章统一使用Vue 3、Composition API、`<script setup>`、JavaScript和Vite；第20章再集中说明怎样为已掌握的Vue写法增加TypeScript约束。
+本课程面向已经完成HTML、CSS、JavaScript、ES6、DOM/Event、Promise、Axios和HTTP基础的学员。第1～20章统一使用Vue 3、Composition API、`<script setup>`、JavaScript和Vite；第21章再集中说明怎样为已掌握的Vue写法增加TypeScript约束。
 
 ## 1. 最终成果
 
-学员将逐步完成WorkHub任务管理前端，并在综合项目中连接Router、Axios API层、Pinia、表单校验和自动化测试。完成Vue基础主线后，再渐进理解Vue + TypeScript项目，并留下可供Review的自测与交付证据。
+学员先通过WorkHub示例逐步掌握Vue的核心能力，再把HTML、CSS、JavaScript阶段完成的“有給休暇申請システム”重构为Vue项目。综合项目会连接Router、Axios API层、Pinia、表单校验和自动化测试，并使用课程提供的Node.js + MySQL后台保存业务数据。
 
 ## 2. 课程路线
 
@@ -32,15 +32,18 @@
 ### 单页应用工程
 
 16. [Vue Router路由](16_vue_router.md)
-17. [Vue项目中的API层与异步状态管理](17_http_api.md)
-18. [Pinia状态管理](18_pinia.md)
-19. [Vue单元测试与组件测试](19_unit_testing.md)
-20. [Vue项目中的TypeScript写法与项目质量](20_build_quality_delivery.md)
+17. [Vue项目中的API层与异步处理](17_http_api.md)
+18. [Pinia：跨页面状态管理](18_pinia.md)
+19. [前端测试基础与日本项目中的单体测试](19_frontend_testing.md)
+20. [Vue自动测试：Vitest与Vue Test Utils](20_vue_unit_testing.md)
+21. [Vue项目中的TypeScript写法与项目质量](21_build_quality_delivery.md)
 
 ### 综合实践
 
-21. [WorkHub综合项目](21_vue_project.md)
-22. [SES改修与影响范围调查](22_ses_change_practice.md)
+22. [用Vue重构有給休暇申請系统](22_vue_project.md)
+23. [SES改修与影响范围调查](23_ses_change_practice.md)
+
+[附录：有給休暇申請系统 API 入出力规格](appendix_paid_leave_api.md)
 
 [附录：阅读既有Vue项目中的Options API](appendix_options_api.md)
 
@@ -54,7 +57,7 @@ Render Function、JSX、复杂动画、响应式底层实现等低频高级内�
 
 ## 4. 贯穿项目约定
 
-WorkHub在前19章统一使用固定的Task字段契约；第20章再把它提取为公共TypeScript类型。组件、Composable、Router、API模块与Pinia各自承担明确职责，不在组件中散落请求配置，也不把所有状态都放进Store。
+WorkHub在前20章作为连续示例，统一使用固定的Task字段契约；第21章再示范怎样为已经掌握的Vue写法增加TypeScript类型。第22章不继续扩展WorkHub业务，而是把此前完成的“有給休暇申請システム”作为既有系统进行Vue重构，业务字段和验收结果继续以三份递进练习为准。
 
 每章都应形成可观察结果，并保留实际项目需要的空数据、加载、失败、调查、Review和回归测试意识。
 

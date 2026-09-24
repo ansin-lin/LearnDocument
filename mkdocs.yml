@@ -501,13 +501,15 @@ nav:
       - 15. Composables: frontend/Vue/15_composables.md
     - 单页应用工程:
       - 16. Vue Router路由: frontend/Vue/16_vue_router.md
-      - 17. API层与异步状态: frontend/Vue/17_http_api.md
-      - 18. Pinia状态管理: frontend/Vue/18_pinia.md
-      - 19. Vue单元测试与组件测试: frontend/Vue/19_unit_testing.md
-      - 20. Vue项目中的TypeScript写法与项目质量: frontend/Vue/20_build_quality_delivery.md
+      - 17. API层与异步处理: frontend/Vue/17_http_api.md
+      - 18. Pinia跨页面状态管理: frontend/Vue/18_pinia.md
+      - 19. 前端测试基础与日本项目中的单体测试: frontend/Vue/19_frontend_testing.md
+      - 20. Vue自动测试: frontend/Vue/20_vue_unit_testing.md
+      - 21. Vue项目中的TypeScript写法与项目质量: frontend/Vue/21_build_quality_delivery.md
     - 综合实践:
-      - 21. WorkHub综合项目: frontend/Vue/21_vue_project.md
-      - 22. SES改修与影响范围调查: frontend/Vue/22_ses_change_practice.md
+      - 22. 用Vue重构有給休暇申請系统: frontend/Vue/22_vue_project.md
+      - 23. SES改修与影响范围调查: frontend/Vue/23_ses_change_practice.md
+    - 附录. 有給休暇API入出力规格: frontend/Vue/appendix_paid_leave_api.md
     - 附录. 阅读旧Vue项目: frontend/Vue/appendix_options_api.md
   - React + TypeScript 新人教程:
     - 学习路线: frontend/React/index.md

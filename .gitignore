@@ -60,8 +60,12 @@ node_modules/
 .nuxt/
 coverage/
 
-# Teacher-only frontend reference implementation
-/docs/frontend/training/paid-leave-system/
+# Teacher-only frontend reference implementation; the reusable API is versioned.
+/docs/frontend/training/paid-leave-system/*
+!/docs/frontend/training/paid-leave-system/backend/
+!/docs/frontend/training/paid-leave-system/backend/**
+!/docs/frontend/training/paid-leave-system/vue/
+!/docs/frontend/training/paid-leave-system/vue/**
 
 # Editor, operating-system, and temporary files
 .idea/
