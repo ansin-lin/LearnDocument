@@ -76,8 +76,9 @@ Spring Boot 4和MyBatis Starter 4属于另一套兼容组合。学习主线时�
 | 18 | [部署与运行检查](mainline/18_deployment_operations_check.md) | 在Ubuntu上受控部署JAR，用systemd管理服务并完成四层检查与回滚 |
 | 19 | [按改修票完成一次日本项目变更](mainline/19_japanese_project_change_practice.md) | 按确定规格完成影响调查、多选查询改修、Review、回归测试和改修报告 |
 | 20 | [综合验收与交付](mainline/20_acceptance_and_delivery.md) | 从干净环境重建、验收、部署并交付可追踪的完整成果 |
+| 21 | [结业综合练习：为Vue有給休暇系统实现后台API](mainline/21_paid_leave_vue_backend_practice.md) | 用Spring Boot与MyBatis替换参考后台，并与既有Vue完成联调 |
 
-完成第20章后，再使用附录补足进入既存项目时的代码识读能力。附录不会改变Employee主线最终状态：
+完成第20章后，先使用第21章独立完成一次前后端联调综合练习，再按需要使用附录补足进入既存项目时的代码识读能力。第21章和附录都不会改变Employee主线最终状态：
 
 | 附录 | 学习成果 |
 | --- | --- |

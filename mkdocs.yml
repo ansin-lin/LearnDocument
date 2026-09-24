@@ -375,6 +375,7 @@ nav:
       - 18. 部署与运行检查: backend/springboot/mainline/18_deployment_operations_check.md
       - 19. 日本项目改修实战: backend/springboot/mainline/19_japanese_project_change_practice.md
       - 20. 综合验收与交付: backend/springboot/mainline/20_acceptance_and_delivery.md
+      - 21. Vue有給休暇后台综合练习: backend/springboot/mainline/21_paid_leave_vue_backend_practice.md
     - 附录:
       - Appendix学习入口: backend/springboot/appendix/index.md
       - A01. Spring Boot调用外部REST API: backend/springboot/appendix/external_api_restclient.md
