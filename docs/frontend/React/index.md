@@ -1,21 +1,22 @@
-# React + TypeScript 新人教程
+# React 新人教程
 
-本课程面向已完成 JavaScript、TypeScript、HTML 与 CSS 基础的新人。目标不是记住所有 Hook，而是能独立开发普通企业 Web 系统，并能进入既有 React 项目定位页面、数据、事件、请求和缺陷。
+本课程面向已完成 JavaScript、HTML 与 CSS 基础的新人。目标不是记住所有 Hook，而是能独立开发普通企业 Web 系统，并能进入既有 React 项目定位页面、数据、事件、请求和缺陷。
 
-贯穿案例统一为 **Employee Management System**：从静态员工列表开始，逐步完成登录、查询、分页、详情、新增、编辑、删除、错误处理、权限和测试。
+第 1～23 章以 **Employee Management System** 为贯穿案例，逐步学习登录、查询、分页、详情、新增、编辑、删除、错误处理、权限和测试。第 24～27 章切换到此前 HTML、CSS、JavaScript 阶段完成的“有給休暇申請システム”，使用 React 连接同一套 Node.js + MySQL API 进行重构和改修。
 
 ## 学完能完成什么
 
 - 解释 `Component + Props + State` 如何生成 UI，以及为什么会重新渲染。
 - 判断数据应放在局部组件、共同父组件、Context、全局 Store 还是服务器状态中。
 - 使用 Router、Axios、表单和自定义 Hook 完成员工 CRUD。
+- 把既有七页面有給休暇申請系统重构为连接 Node.js + MySQL API 的 React 项目。
 - 正确处理加载、空数据、失败、取消、重复提交、认证与授权。
 - 用 Vitest 和 React Testing Library 验证用户可观察行为。
-- 按 `package.json → main.tsx → Router → Page → Component → Hook → Service → API` 调查既有项目。
+- 按 `package.json → main.jsx → Router → Page → Component → Hook → Service → API` 调查既有项目。
 
 ## 前置检查
 
-开始前应会使用 ES Module、对象/数组展开、`map`/`filter`、类型别名、联合类型、泛型、`async/await`、`try...catch`、HTTP/JSON 和 npm。需要复习时，回到 [JavaScript](../JavaScript/index.md)、[TypeScript](../TypeScript/index.md) 和 [Node.js 与 npm](../NodeJS/index.md)。
+开始前应会使用 ES Module、对象/数组展开、`map`/`filter`、`async/await`、`try...catch`、HTTP/JSON 和 npm。需要复习时，回到 [JavaScript](../JavaScript/index.md) 和 [Node.js 与 npm](../NodeJS/index.md)。
 
 ## 封版技术基线
 
@@ -26,7 +27,6 @@
 | Node.js | `20.19+` 或 `22.12+` |
 | create-vite / Vite / React 插件 | `9.2.1` / `8.3.0` / `@vitejs/plugin-react 6.1.1` |
 | React / React DOM | `19.3.0` / `19.3.0` |
-| TypeScript | `7.0.2` |
 | React Router DOM | `7.18.4` |
 | Axios | `1.20.0` |
 | Zustand | `5.0.15` |
@@ -66,7 +66,7 @@
 ### 阶段三：状态与工程结构
 
 16. [Zustand 与 Redux Toolkit](16_state_libraries.md)
-17. [项目目录、API Layer 与类型](17_project_structure.md)
+17. [项目目录、API Layer 与数据约定](17_project_structure.md)
 18. [错误处理与重复提交](18_error_handling.md)
 19. [性能分析与优化](19_performance.md)
 20. [常见业务 UI 功能](20_common_features.md)
@@ -78,31 +78,30 @@
 
 ### 阶段四：完整项目与现场实践
 
-24. [实战项目规格与起始状态](24_project_spec.md)
-25. [登录与员工列表](25_project_login_list.md)
-26. [详情、新增、编辑与删除](26_project_crud.md)
-27. [验收、既有项目改修与不具合调查](27_delivery_existing_project.md)
+24. [用 React 重构有給休暇申請系统：规格与起始结构](24_project_spec.md)
+25. [React 实战：登录、注册与首页](25_project_login_list.md)
+26. [React 实战：申请、确认、完成与一览](26_project_crud.md)
+27. [React SES 改修、回归测试与交付](27_delivery_existing_project.md)
 
 [附录：旧项目与进阶能力导读](appendix_legacy_advanced.md)
 
-## 贯穿数据模型与接口
+## 第 1～23 章贯穿数据模型与接口
 
-```ts
-export type EmployeeStatus = 'ACTIVE' | 'INACTIVE';
-
-export type Employee = {
-  id: number;
-  name: string;
-  email: string;
-  department: string;
-  role: 'ADMIN' | 'USER';
-  joinedDate: string;
-  status: EmployeeStatus;
+```js
+const employee = {
+  id: 1,
+  employeeCode: 'EMP0001',
+  name: '田中太郎',
+  email: 'tanaka@example.com',
+  department: 'Sales',
+  role: 'USER',
+  joinedDate: '2026-04-01',
+  status: 'ACTIVE',
 };
 ```
 
 ```text
-POST   /api/login
+POST   /api/auth/login
 GET    /api/employees?keyword=&page=1&size=10&sort=name,asc
 GET    /api/employees/:id
 POST   /api/employees
@@ -110,7 +109,7 @@ PUT    /api/employees/:id
 DELETE /api/employees/:id
 ```
 
-接口返回值来自外部系统。TypeScript 类型不能替代运行时校验，前端校验也不能替代后端的业务规则和权限检查。
+接口返回值来自外部系统，必要时需要在运行时检查字段。前端校验不能替代后端的业务规则和权限检查。
 
 ## 学习和提交方式
 

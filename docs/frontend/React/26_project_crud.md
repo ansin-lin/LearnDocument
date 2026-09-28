@@ -1,90 +1,186 @@
-# 第 26 章 实战：详情、新增、编辑与删除
+# 第 26 章 React 实战：申请、确认、完成与一览
 
-本章追加四个页面和共享 EmployeeForm。核心目标是保持 ID、表单草稿、接口响应和列表刷新之间的一致性。
+本章完成其余四个业务页面，并把申请草稿、React Router、Zustand 和后台 API 连接成完整流程。
 
-## 本章目标
+## 1. 申请输入页面
 
-- 复用统一 EmployeeInput、Service、AsyncState 与 AppError 完成 CRUD。
-- 正确初始化编辑草稿，并处理 400、403、404、409 和 500。
-- 验证取消、重复提交、缓存/列表同步和权限边界。
+`LeaveForm` 负责以下字段：
 
-## 1. 详情页
+- 休假类型；
+- 开始日和结束日；
+- 申请理由；
+- 引继状态。
 
-```tsx
-const employeeId = parseEmployeeId(useParams().id);
-if (!employeeId) return <InvalidId />;
+表单值保存在 `LeaveApplyPage` 的局部 State。选择或输入结束时执行当前字段校验；点击“確認画面へ”时再执行一次全表单校验。
 
-const { state, reload } = useEmployee(employeeId);
+```text
+输入/选择 → 当前字段即时校验
+点击确认 → 全表单校验
+           ├─ 失败：停留并聚焦第一个错误
+           └─ 成功：保存 Zustand 草稿 → 确认页
 ```
 
-Hook 负责随 ID 读取、取消旧请求和四态 UI。404 显示“员工不存在”与返回列表；403 显示权限不足；不要把所有失败统一成“系统异常”。
+前端校验用于及时提示，不能代替后台校验。字段规则以 API 规格为准，不在组件中临时创造另一套业务规则。
 
-## 2. 共享表单
+`LeaveForm` 通过 Props 接收值和错误，通过回调通知变化与提交；它不直接调用 Router、Store 或 Axios。
 
-```tsx
-type EmployeeFormProps = {
-  initialValue: EmployeeInput;
-  submitLabel: string;
-  onSubmit: (value: EmployeeInput) => Promise<void>;
+## 2. 申请草稿 Store
+
+Application Store 至少保存：
+
+```js
+{
+  draft: null,
+  applications: [],
+  loading: false,
+  submitting: false,
+  errorMessage: ''
+}
+```
+
+并提供：
+
+```text
+setDraft(input)
+clearDraft()
+submitDraft()
+loadApplications(query, signal)
+cancelApplication(id)
+reset()
+```
+
+`draft` 只是输入页到确认页之间的临时数据。用户直接打开确认 URL 且没有草稿时，应返回输入页并显示说明，不能提交空对象。
+
+## 3. 申请确认页面
+
+确认页使用 `ApplicationSummary` 只读显示草稿。用户可以返回修改，也可以提交：
+
+```text
+点击“申請する”
+  ↓ 检查 submitting，防止重复点击
+POST /api/leave-applications
+  ├─ 成功：保存响应 → 清除草稿 → 完成页
+  └─ 失败：保留草稿 → 显示字段或业务错误
+```
+
+后台返回字段错误时，应回到输入页并把错误显示在对应字段附近。系统错误留在确认页，允许用户恢复或重试。
+
+请求超时不能直接判断为“保存失败”，因为后台可能已经完成保存。先查询申请一览确认是否存在刚才的记录，再决定是否重试；新增请求不要自动重试。
+
+## 4. 申请完成页面
+
+提交成功后导航到：
+
+```text
+/applications/{id}/complete
+```
+
+页面显示受付番号、休假期间、申请状态和返回首页/一览的入口。刷新完成页时，根据路由 ID 调用详情 API，不能再次执行新增请求。
+
+```text
+提交响应 → 完成页立即显示
+刷新页面 → GET /api/leave-applications/:id → 显示同一申请
+```
+
+路由 ID 必须转换并校验。详情不存在时显示 404 业务信息，不伪装成空页面。
+
+## 5. 申请一览页面
+
+一览页组合：
+
+```text
+ApplicationListPage
+├─ ApplicationSearch
+├─ LoadingIndicator / AppMessage
+└─ ApplicationTable
+   └─ ApplicationStatusBadge
+```
+
+基础查询条件为状态和关键字：
+
+```js
+const query = {
+  status: searchParams.get('status') ?? '',
+  keyword: searchParams.get('keyword') ?? '',
 };
 ```
 
-新增页传空值；编辑页等待详情成功后再挂载表单，或通过明确 key/重置规则初始化草稿。不要简单 `useState(props.initialValue)` 后期待异步 Props 自动同步。
+条件提交后写入 Search Params，再由 Effect/Hook 请求 API。必须区分：
+
+- 当前用户从未申请过：显示“暂无申请”；
+- 存在申请但筛选无结果：显示“没有符合条件的申请”；
+- API 读取失败：显示错误和重试；
+- 读取成功：显示结果件数和表格。
+
+状态显示统一使用映射，不直接把 `pending` 等代码值显示给用户。
+
+## 6. 取消申请
+
+只有 `pending` 行显示取消按钮。点击后确认，再调用：
 
 ```text
-Edit Page server data
-        ↓ 初始化一次
-EmployeeForm draft
-        ↓ user edits / validates
-PUT input
-        ↓ success response
-Detail Page
+PATCH /api/leave-applications/:id/cancel
 ```
 
-## 3. Create 与 Update
+```jsx
+async function handleCancel(id) {
+  if (cancelingId !== null) return;
+  if (!window.confirm('この申請を取り消しますか？')) return;
 
-```tsx
-async function submitCreate(input: EmployeeInput) {
-  const created = await createEmployee(input);
-  navigate(`/employees/${created.id}`, { replace: true });
-}
+  setCancelingId(id);
+  setErrorMessage('');
 
-async function submitEdit(input: EmployeeInput) {
-  const updated = await updateEmployee(employeeId, input);
-  navigate(`/employees/${updated.id}`, { replace: true });
+  try {
+    await cancelApplication(id);
+    await loadApplications(currentQuery);
+  } catch (error) {
+    setErrorMessage('取消失败，请重新读取后再试');
+  } finally {
+    setCancelingId(null);
+  }
 }
 ```
 
-Service 返回服务端最终对象，避免自行猜测 ID、默认状态或规范化字段。400 字段错误映射到表单；409 提示数据已被更新并给出重新载入选项。
+正式页面可以换成可访问的 Dialog。前端隐藏按钮只是改善体验，后台必须再次确认当前用户和状态。`approved`、`returned`、`cancelled` 均不能取消。
 
-## 4. Delete
+## 7. 日期时间显示
+
+API 返回 ISO UTC，例如：
 
 ```text
-点击删除 → Dialog 确认 → deleting=true → DELETE
-        → 成功：返回列表并刷新/失效缓存
-        ↘ 失败：保留页面、恢复按钮、显示可行动错误
+2026-09-18T03:15:20.123Z
 ```
 
-详情页删除成功后不能继续显示已删除对象。列表最后一项删除后修正页码。路由与 Store/缓存策略必须共享同一失效规则。
+数据处理时保留原始值，渲染时使用第 25 章的 `formatJapanDateTime()`。不要通过截取字符串把 UTC 冒充日本时间。
 
-## 5. 常见错误
+## 8. 组件测试与联调
 
-- 异步详情到达后仍显示空表单：明确等待挂载或草稿重置规则。
-- Create 自行生成 ID：应使用服务端返回的 Employee。
-- 409 时静默覆盖：提示数据已变化并让用户重新读取。
-- 删除成功后详情和列表仍保留旧数据：统一刷新或缓存失效规则。
+| 对象 | 验证内容 |
+| --- | --- |
+| `LeaveForm` | 输入收集、即时错误、提交中禁用 |
+| `ApplicationSummary` | 草稿字段和显示文字 |
+| `ApplicationTable` | Props 渲染、稳定 key、取消回调 |
+| Application Store | 草稿、提交成功/失败、重复提交保护 |
+| Router | 无草稿确认页、完成页刷新、未登录重定向 |
+| 一览页 | 无申请、无筛选结果、读取失败、重试 |
 
-## 6. 验收测试
+单元/组件测试使用 API Mock，不连接真实 MySQL。最终联调启动课程后台，验证 Cookie、数据库和随机申请状态。
 
-1. 详情：合法 ID、非法 ID、404、慢请求切换 ID。
-2. 新增：必填、格式、重复提交、成功后进入服务端 ID。
-3. 编辑：初始值、修改、取消、400、409、成功。
-4. 删除：取消不请求、确认只请求一次、失败恢复、成功列表同步。
-5. 权限：USER 直接访问新增/编辑 URL 得到 403/受保护页面，列表/详情不显示写按钮，API 同样拒绝；ADMIN 通过按钮和直接 URL 都能进入。
-6. 运行 `npm run test -- --run` 与 `npm run build`，浏览器 Console 无错误。
+## 9. 业务验收
+
+- [ ] 输入页即时显示字段错误，全表单正确后才能进入确认页。
+- [ ] 确认页不允许修改字段，返回后输入仍保留。
+- [ ] 连续点击提交只发送一次请求。
+- [ ] 后台错误不会清除草稿或进入成功页。
+- [ ] 提交成功显示受付番号，完成页刷新不重复新增。
+- [ ] 后台随机生成的 `pending`、`approved`、`returned` 均能正确显示。
+- [ ] 状态和关键字能够组合检索。
+- [ ] 只有当前用户的 `pending` 申请能够取消。
+- [ ] 退出再登录后，MySQL 中的申请仍然存在。
 
 ## 本章检查点
 
-- [ ] 详情、新增、编辑和删除复用同一类型与 Service。
-- [ ] 每个页面覆盖正常、边界、权限和失败状态。
-- [ ] 写入成功后路由、列表与服务器状态保持一致。
+- [ ] 四个申请页面形成输入、确认、提交、完成和查询闭环。
+- [ ] 局部表单 State 与跨页面 Zustand 草稿职责清楚。
+- [ ] 前端校验和后台校验都存在，且后台结果优先。
+- [ ] loading、empty、error、submitting 和 canceling 状态可区分。

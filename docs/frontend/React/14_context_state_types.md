@@ -19,6 +19,13 @@
 
 “项目大”不是使用 Redux 的充分理由。先看共享范围、更新方式、调试要求和服务器缓存需求。
 
+判断顺序可以是：
+
+1. 只有一个组件使用：留在当前组件。
+2. 父子组件使用：通过 Props 传递或提升到最近共同父组件。
+3. 很深的不同区域都需要：考虑 Context。
+4. 变化和业务 Action 较复杂：再评估第 16 章的 Store。
+
 ## 2. Context 解决什么问题
 
 ```text
@@ -26,29 +33,50 @@ App → Layout → Header → UserMenu
           每层都只为继续传 user
 ```
 
-```tsx
-// src/features/auth/authTypes.ts
-export type AuthUser = {
-  id: number;
-  name: string;
-  permissions: string[];
-};
+这种中间组件不使用数据、只负责继续传递的情况称为 Props Drilling。Context 让上层 Provider 直接向后代组件提供数据。
 
-export type AuthState =
-  | { status: 'checking'; user: null }
-  | { status: 'anonymous'; user: null }
-  | { status: 'authenticated'; user: AuthUser };
+### 2.1 Context 的最小写法
 
-export type AuthContextValue = AuthState & {
-  setUser: (user: AuthUser | null) => void;
-  logout: () => Promise<void>;
-};
+```jsx
+import { createContext, useContext } from 'react';
+
+const ThemeContext = createContext(null);
+
+export function ThemeProvider({ children }) {
+  return (
+    <ThemeContext.Provider value="light">
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export function ThemeLabel() {
+  const theme = useContext(ThemeContext);
+  return <p>当前主题：{theme}</p>;
+}
 ```
 
-`AuthState` 使用判别联合：只有 `authenticated` 状态允许出现非空 user，避免“状态说已登录但 user 仍是 null”的矛盾。第 15、16、25 章都沿用这套类型。
+- `createContext(defaultValue)` 创建 Context 对象；本例用 `null` 表示没有 Provider。
+- `Provider` 的 `value` 是要提供给后代的数据。
+- `useContext(ThemeContext)` 读取距离当前组件最近的 Provider 值。
+- `children` 表示包在 Provider 标签内部的组件内容。
 
-```tsx
-// src/features/auth/AuthContext.tsx（核心实现）
+只有需要读取主题的组件才调用 `useContext`，中间层不再转交 `theme` Props。
+
+### 2.2 从最小 Context 到认证 Context
+
+认证状态统一使用下面三种对象结构：
+
+```text
+{ status: 'checking', user: null }
+{ status: 'anonymous', user: null }
+{ status: 'authenticated', user: { id, name, permissions } }
+```
+
+只有 `authenticated` 状态允许出现非空 `user`，这样可以避免“状态说已登录但 user 仍是 null”的矛盾。第 15、16、25 章都沿用这套数据约定。
+
+```jsx
+// src/features/auth/AuthContext.jsx（核心实现）
 import {
   createContext,
   useCallback,
@@ -56,22 +84,20 @@ import {
   useEffect,
   useRef,
   useState,
-  type ReactNode,
 } from 'react';
 import { getCurrentUser, logout as logoutApi } from './authService';
-import type { AuthContextValue, AuthState, AuthUser } from './authTypes';
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>({
+export function AuthProvider({ children }) {
+  const [authState, setAuthState] = useState({
     status: 'checking',
     user: null,
   });
-  const [restoreError, setRestoreError] = useState<string | null>(null);
-  const restoreControllerRef = useRef<AbortController | null>(null);
+  const [restoreError, setRestoreError] = useState(null);
+  const restoreControllerRef = useRef(null);
 
-  const setUser = useCallback((user: AuthUser | null) => {
+  const setUser = useCallback((user) => {
     setAuthState(
       user
         ? { status: 'authenticated', user }
@@ -133,26 +159,25 @@ export function useAuth() {
 }
 ```
 
+`useAuth()` 把读取 Context 和缺少 Provider 时的检查集中起来。其他组件不应直接重复 `useContext(AuthContext)`。
+
 这里在 `finally` 清除前端身份，是本课程选择的退出策略：即使退出 API 暂时失败，也不继续把当前浏览器画面当作已登录。它不是所有系统的通用答案。采用服务端 Session、可撤销 Token 或离线策略时，应根据威胁模型、后端返回和产品要求决定是否重试、是否保留提示，以及怎样使服务器凭据真正失效；前端清空 State 本身不能撤销服务端会话。
 
-`getCurrentUser(signal)` 是认证 Service：有效会话返回 `AuthUser`，无会话返回 `null`；网络失败则抛出错误并显示重试，不会被误判成 anonymous。Provider 之下的组件可读取值。Context 更新会让读取该 Context 的组件重新渲染。Context 是传递机制，不自动提供复杂 Action、时间旅行、缓存或持久化。
+`getCurrentUser(signal)` 是认证 Service：有效会话返回包含 `id`、`name`、`permissions` 的用户对象，无会话返回 `null`；网络失败则抛出错误并显示重试，不会被误判成 anonymous。Provider 之下的组件可读取值。Context 更新会让读取该 Context 的组件重新渲染。Context 是传递机制，不自动提供复杂 Action、时间旅行、缓存或持久化。
 
 ## 3. useReducer：集中相关状态变化
 
 当多个 State 总是一起变化，用分散 Setter 容易漏改。例如关键字变化时必须回到第 1 页：
 
-```tsx
-type SearchState = { keyword: string; page: number };
-type SearchAction =
-  | { type: 'keywordChanged'; keyword: string }
-  | { type: 'pageChanged'; page: number };
-
-function searchReducer(state: SearchState, action: SearchAction): SearchState {
+```jsx
+function searchReducer(state, action) {
   switch (action.type) {
     case 'keywordChanged':
       return { ...state, keyword: action.keyword, page: 1 };
     case 'pageChanged':
       return { ...state, page: action.page };
+    default:
+      throw new Error(`未知的 action：${action.type}`);
   }
 }
 
@@ -169,7 +194,31 @@ dispatch({ type: 'keywordChanged', keyword: '田中' });
 - Reducer：根据旧 State 和 Action 纯计算新 State。
 - Dispatch：把 Action 交给 Reducer。
 
+执行过程如下：
+
+```text
+用户输入关键字
+  ↓
+dispatch({ type: 'keywordChanged', keyword: '田中' })
+  ↓
+React 调用 searchReducer(旧 State, Action)
+  ↓
+Reducer 返回 { keyword: '田中', page: 1 }
+  ↓
+组件使用新 State 重新渲染
+```
+
+Reducer 不直接修改原 State，不请求 API，也不操作 DOM。相同的 State 和 Action 应得到相同结果，便于测试和调查。
+
 `useReducer` 仍是当前组件的局部状态，不会自动成为全局 Store。第 16 章 Redux Toolkit 会复用这些词汇并增加集中 Store 与 Selector。
+
+### 3.1 什么时候使用 useReducer
+
+适合：多个字段经常一起变化，或希望用明确的 Action 表达业务事件。
+
+不必使用：只有一个简单开关或输入值时，`useState` 更直接。
+
+Context 与 `useReducer` 可以组合，让多个后代读取 State 和 Dispatch；但组合后仍没有自动持久化、服务器缓存和开发工具，不应把它描述成 Redux。
 
 ## 4. 选择指南
 
@@ -181,9 +230,11 @@ dispatch({ type: 'keywordChanged', keyword: '田中' });
 
 不要把 API 返回的所有数据永久复制到多个 Store。决定谁是事实来源，并定义刷新/失效策略。
 
+Context 的 `value` 改变时，读取该 Context 的组件会重新渲染。把主题、认证、高频输入和大型业务数据全部塞进同一个 Context，会扩大更新范围。按稳定职责拆分 Context，但不要为每个值建立一个 Context。
+
 ## 5. 常见错误
 
-- Context 同时出现 `authenticated + null user`：使用统一判别联合消除无效组合。
+- Context 同时出现 `authenticated + null user`：统一状态对象结构，避免无效组合。
 - Reducer 内请求 API 或修改外部变量：Reducer 必须保持纯粹，副作用放事件或 Effect。
 - 把所有 API 数据放进 Context：服务器状态的缓存、失效与重新获取问题没有因此消失。
 
@@ -197,6 +248,6 @@ dispatch({ type: 'keywordChanged', keyword: '田中' });
 
 ## 本章检查点
 
-- [ ] 能用统一 AuthState 表达检查中、未登录和已登录。
+- [ ] 能用统一认证状态对象表达检查中、未登录和已登录。
 - [ ] 能解释 Context 传递机制与全局状态库的区别。
 - [ ] 能说明 State、Action、Reducer、Dispatch，并保持 Reducer 纯粹。
