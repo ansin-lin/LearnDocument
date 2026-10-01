@@ -2,7 +2,7 @@
 
 本课程面向已完成 JavaScript、HTML 与 CSS 基础的新人。目标不是记住所有 Hook，而是能独立开发普通企业 Web 系统，并能进入既有 React 项目定位页面、数据、事件、请求和缺陷。
 
-第 1～23 章以 **Employee Management System** 为贯穿案例，逐步学习登录、查询、分页、详情、新增、编辑、删除、错误处理、权限和测试。第 24～27 章切换到此前 HTML、CSS、JavaScript 阶段完成的“有給休暇申請システム”，使用 React 连接同一套 Node.js + MySQL API 进行重构和改修。
+第 1～22 章以 **Employee Management System** 为贯穿案例，逐步学习登录、查询、分页、详情、新增、编辑、删除、错误处理、权限和测试。第 23～26 章切换到此前 HTML、CSS、JavaScript 阶段完成的“有給休暇申請システム”，使用 React 连接同一套 Node.js + MySQL API 进行重构和改修。
 
 ## 学完能完成什么
 
@@ -68,24 +68,23 @@
 16. [Zustand 与 Redux Toolkit](16_state_libraries.md)
 17. [项目目录、API Layer 与数据约定](17_project_structure.md)
 18. [错误处理与重复提交](18_error_handling.md)
-19. [性能分析与优化](19_performance.md)
-20. [常见业务 UI 功能](20_common_features.md)
-21. [文件、环境变量与安全](21_files_env_security.md)
-22. [React 测试](22_testing.md)
-23. [调试与项目调查](23_debug_investigation.md)
+19. [常见业务 UI 功能](19_common_features.md)
+20. [文件、环境变量与安全](20_files_env_security.md)
+21. [React 测试](21_testing.md)
+22. [调试与项目调查](22_debug_investigation.md)
 
 阶段成果：能维护具备清晰目录、统一错误处理、全局状态与自动测试的业务项目。
 
 ### 阶段四：完整项目与现场实践
 
-24. [用 React 重构有給休暇申請系统：规格与起始结构](24_project_spec.md)
-25. [React 实战：登录、注册与首页](25_project_login_list.md)
-26. [React 实战：申请、确认、完成与一览](26_project_crud.md)
-27. [React SES 改修、回归测试与交付](27_delivery_existing_project.md)
+23. [用 React 重构有給休暇申請系统：规格与起始结构](23_project_spec.md)
+24. [React 实战：登录、注册与首页](24_project_login_list.md)
+25. [React 实战：申请、确认、完成与一览](25_project_crud.md)
+26. [React SES 改修、回归测试与交付](26_delivery_existing_project.md)
 
 [附录：旧项目与进阶能力导读](appendix_legacy_advanced.md)
 
-## 第 1～23 章贯穿数据模型与接口
+## 第 1～22 章贯穿数据模型与接口
 
 ```js
 const employee = {

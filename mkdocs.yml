@@ -535,16 +535,15 @@ nav:
       - 16. Zustand 与 Redux Toolkit: frontend/React/16_state_libraries.md
       - 17. 项目目录、API Layer 与数据约定: frontend/React/17_project_structure.md
       - 18. 错误处理与重复提交: frontend/React/18_error_handling.md
-      - 19. 性能分析与优化: frontend/React/19_performance.md
-      - 20. 常见业务 UI 功能: frontend/React/20_common_features.md
-      - 21. 文件、环境变量与安全: frontend/React/21_files_env_security.md
-      - 22. React 测试: frontend/React/22_testing.md
-      - 23. 调试与项目调查: frontend/React/23_debug_investigation.md
+      - 19. 常见业务 UI 功能: frontend/React/19_common_features.md
+      - 20. 文件、环境变量与安全: frontend/React/20_files_env_security.md
+      - 21. React 测试: frontend/React/21_testing.md
+      - 22. 调试与项目调查: frontend/React/22_debug_investigation.md
     - 完整项目与现场实践:
-      - 24. 用 React 重构有給休暇申請系统：规格与起始结构: frontend/React/24_project_spec.md
-      - 25. React 实战：登录、注册与首页: frontend/React/25_project_login_list.md
-      - 26. React 实战：申请、确认、完成与一览: frontend/React/26_project_crud.md
-      - 27. React SES 改修、回归测试与交付: frontend/React/27_delivery_existing_project.md
+      - 23. 用 React 重构有給休暇申請系统：规格与起始结构: frontend/React/23_project_spec.md
+      - 24. React 实战：登录、注册与首页: frontend/React/24_project_login_list.md
+      - 25. React 实战：申请、确认、完成与一览: frontend/React/25_project_crud.md
+      - 26. React SES 改修、回归测试与交付: frontend/React/26_delivery_existing_project.md
     - 附录. 旧项目与进阶能力导读: frontend/React/appendix_legacy_advanced.md
   - UI 组件库:
     - 学习路线: frontend/ui/index.md

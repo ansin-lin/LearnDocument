@@ -127,7 +127,7 @@ function useEmployees({ keyword, department, page }) {
 
 这里沿用第 11 章的 `searchEmployees(query, signal)`。组件卸载或查询条件变化时，cleanup 中止旧请求；中止后即使 Promise 进入失败分支，也不会写入过期状态。请求逻辑移入 Hook 不代表可以省略取消和竞态处理。
 
-这里的 `useCallback` 让 `reload` 在依赖不变时保持同一函数引用，使 Effect 不会因函数引用每次变化而重复执行；第 19 章会说明它只应在依赖或性能确有需要时使用。自定义 Hook 名称以 `use` 开头，并遵守 Hook 规则。它复用逻辑，不自动共享 State；两个组件各调用一次会得到两份独立状态。纯格式化函数应放 `utils`，不要伪装成 Hook。
+这里的 `useCallback` 让 `reload` 在依赖不变时保持同一函数引用，使 Effect 不会因函数引用每次变化而重复执行。它只应在依赖稳定或经过测量确有优化需要时使用，不要把它加到所有函数上。自定义 Hook 名称以 `use` 开头，并遵守 Hook 规则。它复用逻辑，不自动共享 State；两个组件各调用一次会得到两份独立状态。纯格式化函数应放 `utils`，不要伪装成 Hook。
 
 调用示例：
 
