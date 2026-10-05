@@ -1,235 +1,408 @@
 # 04 分支、合并与冲突
 
-## 4.1 分支解决什么问题
+第 03 章完成了本地 Commit。本章进入多人开发的第一个核心问题：怎样让每个任务独立开发，再把正确结果整合回目标 Branch。
 
-分支让不同任务在相互隔离的提交线上进行。开发登录功能时，可以从稳定的 `main` 创建 `feature/login`；修复紧急问题时，则创建独立的修复分支。
+## 本章学习目标
 
-分支不是项目文件夹的完整复制，而是指向提交的轻量指针。新分支创建时通常与当前分支指向同一个提交。
+### Level A：必须掌握
 
-## 4.2 查看、创建和切换分支
+- 说明团队开发为什么需要 Branch。
+- 使用 `branch`、`switch`、`switch -c` 和 `merge` 完成本地分支流程。
+- 根据规格解决基本 Conflict，而不是机械选择 Current 或 Incoming。
 
-```cmd
-git branch
-git branch -v
-git switch -c feature/login
-git switch main
+### Level B：理解并能够查资料操作
+
+- 区分 fast-forward 和 merge commit。
+- 确认 Branch 已合并后，安全删除本地任务 Branch。
+- 识别 modify/delete 和 add/add 等特殊 Conflict。
+
+### Level C：后续章节再学习
+
+- rebase、已经共享的历史改写和强制推送。
+- 本章只知道这些操作可能改变 Commit History，正式说明见第 09 章。
+
+## 4.1 为什么不能所有人都直接修改 develop
+
+假设两名开发者都直接在 `develop` 上工作：
+
+```text
+张三：APP-123 增加部门名称
+李四：APP-124 修改员工搜索
 ```
 
-- `git branch`：列出本地分支，`*` 表示当前分支
-- `git switch -c`：创建并切换到新分支
-- `git switch`：切换到已有分支
+任何一方提交半成品、调试代码或错误修改，都会立即混入共同开发线。团队将难以单独 Review、测试、撤销和交付某一个 Ticket。
 
-切换前执行 `git status`。如果未提交修改会被切换覆盖或产生冲突，Git 通常会拒绝切换。此时应完成当前提交、谨慎使用 stash，或撤销不需要的修改。
+更安全的做法是让每个 Ticket 使用独立任务 Branch：
 
-命名应遵守团队规则。常见形式包括 `feature/login`、`fix/email-validation`、`docs/setup-guide`，名称应能对应任务或 Issue。
-
-创建并在功能分支提交后，分支关系可能如下：
-
-```mermaid
-flowchart LR
-    A["commit A"] --> B["commit B"]
-    B --> C["commit C"] --> D["commit D"]
-    MAIN["main"] -.-> B
-    FEATURE["feature/APP-123"] -.-> D
-    HEAD["HEAD"] -.-> FEATURE
+```text
+                    C ── D  feature/APP-123
+                   /
+A ── B  develop
+                   \
+                    E ── F  feature/APP-124
 ```
 
-`main` 仍指向 B，`feature/APP-123` 指向 D，`HEAD` 指向当前检出的功能分支。分支只是移动的 commit 指针，不会复制一整套项目目录。
+每条任务线可以独立 Commit、测试和 Review，确认完成后再整合回 `develop`。
 
-## 4.3 merge 的两种常见结果
+## 4.2 Branch 是什么
 
-在 `main` 上合并功能分支：
+第 02 章已经初步认识 Branch：它是指向某个 Commit、并会随新 Commit 前进的名称。
 
-```cmd
-git switch main
-git merge feature/login
+```text
+A ── B
+     ↑
+  develop
+     ↑
+    HEAD
 ```
 
-### 快进合并
+从 B 创建 `feature/APP-123` 后：
 
-如果 `main` 从分支创建后没有新提交，Git 只需把 `main` 指针向前移动，这叫 fast-forward。
+```text
+A ── B
+     ↑
+  develop
+     ↑
+feature/APP-123
+     ↑
+    HEAD
+```
 
-### 合并提交
+此时两个 Branch 指向同一个 Commit。Branch 不是一整套项目目录副本，因此创建通常很快。
 
-如果 `main` 和功能分支都产生了新提交，Git 可能创建一个有两个父提交的 merge commit，从而保留分叉历史。
+在任务 Branch 上创建新 Commit 后：
 
-团队也可能通过托管平台选择 Squash Merge 或 Rebase Merge。合并方式应由仓库规则决定，不能只凭个人喜好。
+```text
+A ── B  develop
+     \
+      C  feature/APP-123 ← HEAD
+```
 
-## 4.4 冲突是什么
+`develop` 仍指向 B，任务 Branch 向前移动到 C。
 
-Git 能自动合并不同文件或同一文件中互不影响的修改。当两个分支修改同一处内容且 Git 无法判断应保留哪一方时，会产生冲突。
+## 4.3 查看、创建和切换 Branch
 
-冲突文件通常由三种标记分隔：`<<<<<<< HEAD` 表示当前分支一侧开始，`=======` 分隔双方内容，`>>>>>>> feature/login` 表示另一分支一侧结束。
+开始状态：Working Tree 干净，当前项目规定从 `develop` 派生任务 Branch。
 
-这些标记不是最终答案。解决者需要理解双方意图，编辑为正确业务结果，并删除全部标记。
-
-除了双方都修改同一位置的 `both modified`，还可能遇到：
-
-- `modify/delete`：一个分支修改文件，另一个分支删除同一文件。需要根据规格判断保留修改后的文件，还是确认删除。
-- `add/add`：两个分支在同一路径新增不同内容。需要整合为正确文件，或按设计调整路径。
-
-冲突解决不是机械选择 ours（当前一侧）或 theirs（另一侧）。这两个词只表示操作中的相对一侧，不代表哪一侧符合最新规格；最终结果必须通过需求、代码影响和测试确认。
-
-## 4.5 merge 冲突处理流程
+先确认：
 
 ```cmd
-git merge feature/login
+git status
+git branch -vv
+```
+
+- `git branch -vv`：列出本地 Branch；`*` 表示当前 Branch，并显示最新 Commit 和 upstream 信息。
+- 如果 `status` 显示未提交修改，不要直接切换任务，应先判断修改归属。
+
+切换到派生元 Branch，再创建任务 Branch：
+
+```cmd
+git switch develop
+git switch -c feature/APP-123
+git branch -vv
+```
+
+- `git switch develop`：让 `HEAD` 指向已有的 `develop`，并更新 Working Tree 以匹配它。
+- `git switch -c feature/APP-123`：从当前位置创建并切换到新 Branch；`-c` 表示 create。
+
+验证结果：`branch -vv` 的 `*` 应位于 `feature/APP-123`。
+
+> **现场注意：** 第 05 章会学习怎样先把本地 `develop` 更新到远程最新状态。本章只练习本地 Branch 行为。
+
+## 4.4 在任务 Branch 上开发
+
+APP-123 要求给员工一览增加部门名称。修改前：
+
+```text
+1001,山田太郎
+1002,佐藤花子
+```
+
+修改后：
+
+```text
+1001,山田太郎,営業部
+1002,佐藤花子,総務部
+```
+
+按照第 03 章形成本地 Commit：
+
+```cmd
+git status
+git diff -- employee-list.txt
+git add employee-list.txt
+git diff --staged
+git commit -m "feat: add employee departments"
+git log --oneline --decorate -3
+```
+
+预期只有 `feature/APP-123` 指向新 Commit，`develop` 仍停留在原位置。
+
+## 4.5 Merge 为什么存在
+
+任务完成后，需要把任务 Branch 的成果整合回目标 Branch。这个操作叫 Merge（合并）。
+
+方向取决于当前 Branch：
+
+```text
+当前 Branch ← 要合入的 Branch
+develop      ← feature/APP-123
+```
+
+先切换到接收修改的 `develop`，再执行 Merge：
+
+```cmd
+git switch develop
+git merge feature/APP-123
+```
+
+执行前必须使用 `git branch` 或 `git status` 确认当前 Branch。如果方向弄反，历史结果可能与预期不同。
+
+执行后验证：
+
+```cmd
+git log --oneline --graph --decorate --all
 git status
 ```
 
-典型冲突信息类似：
+## 4.6 Fast-forward Merge
+
+如果创建任务 Branch 后，`develop` 没有新 Commit：
 
 ```text
-CONFLICT (content): Merge conflict in FILE_PATH
-Automatic merge failed; fix conflicts and then commit the result.
+A ── B  develop
+     \
+      C ── D  feature/APP-123
 ```
 
-第一行指出冲突文件，第二行表示自动合并已经停止，需要人工处理。
+合并时 Git 只需把 `develop` 指针移动到 D：
 
-发生冲突后：
+```text
+A ── B ── C ── D
+               ↑
+ develop / feature/APP-123
+```
 
-1. 用 `git status` 找到 `both modified` 文件。
-2. 阅读冲突两侧内容和相关需求。
-3. 编辑文件，删除冲突标记并形成最终内容。
-4. 运行测试、格式检查或构建。
-5. 暂存解决后的文件并完成合并提交。
+这叫 fast-forward（快进）Merge。它不会额外创建 Merge Commit。
+
+## 4.7 Merge Commit
+
+如果两个 Branch 都继续产生 Commit：
+
+```text
+      C ── D  feature/APP-123
+     /
+A ── B ── E  develop
+```
+
+Git 可能创建一个同时连接 D 和 E 的 Merge Commit：
+
+```text
+      C ── D
+     /       \
+A ── B ── E ── M  develop
+```
+
+Merge Commit 保留“这里整合了两条开发历史”的信息。项目是否允许 fast-forward、是否总是创建 Merge Commit、是否由平台执行 Merge，应遵守仓库规则。
+
+## 4.8 Conflict 为什么发生
+
+如果两个 Branch 修改了同一位置，而且 Git 无法自动判断最终结果，就会发生 Conflict（冲突）。
+
+例如：
+
+```text
+feature/APP-123：1002,佐藤花子,総務部
+develop：        1002,佐藤花子,人事部
+```
+
+Git 会使用 `<<<<<<< HEAD`、`=======`、`>>>>>>> feature/APP-123` 标出双方区域。例如：
+
+```text
+Current（HEAD）:
+1002,佐藤花子,人事部
+
+Incoming（feature/APP-123）:
+1002,佐藤花子,総務部
+```
+
+实际文件中的 `<<<<<<< HEAD` 到 `=======` 是当前 Branch 一侧，`=======` 到 `>>>>>>> ...` 是要合入 Branch 一侧。
+
+这些标记只说明双方内容，不能告诉你业务上哪一个正确。
+
+> **新人常见误解：** Conflict 的目标不是让红色提示消失，也不是固定选择 Current 或 Incoming，而是根据最新规格形成正确代码。
+
+## 4.9 Conflict 解决流程
+
+Merge 停止后先确认状态：
 
 ```cmd
-git add CONFLICTED_FILE
+git status
+```
+
+按照以下顺序处理：
+
+```text
+读取双方修改
+→ 确认 Ticket、规格和影响范围
+→ 必要时向负责人或修改者确认
+→ 编辑正确的最终内容
+→ 删除全部 Conflict Marker
+→ 运行测试
+→ git add 标记已解决
+→ 检查暂存差异
+→ 完成 Merge Commit
+```
+
+命令示例：
+
+```cmd
+git add employee-list.txt
 git diff --staged
-git commit
+git commit -m "merge: resolve employee department conflict"
+git status
 ```
 
-不带 `-m` 的 `git commit` 会打开第 01 章配置的编辑器。保留或修改 Git 生成的合并说明，保存文件并关闭编辑器后才会完成提交。如果编辑器未配置或不熟悉操作，也可以明确填写说明：
+存在进行中的 Merge 且所有 Conflict 已解决时，也可以使用 `git merge --continue`。它会继续完成 Merge 并打开提交说明编辑器；仍然不能代替测试和差异检查。
 
-```cmd
-git commit -m "merge: resolve login conflict"
-```
-
-如果发现不应继续合并，可在尚未完成合并提交时返回合并前状态：
+如果确认本次 Merge 不应继续，并且尚未创建 Merge Commit：
 
 ```cmd
 git merge --abort
 ```
 
-执行合并前应保持干净工作区，否则本地修改可能使恢复更困难。
+`--abort` 尝试恢复到 Merge 开始前。执行前仍要用 `status` 确认当前确实处于 Merge 中。
 
-## 4.6 实验：制造并解决冲突
+## 4.10 实验：制造并解决 Conflict
 
-**环境与范围：** Windows CMD；在新目录中执行。实验只影响 `git-merge-lab`。
+**环境：** Windows CMD，新建独立目录 `git-branch-lab`，不连接远程仓库。
+
+### 准备基线
 
 ```cmd
-mkdir git-merge-lab
-cd git-merge-lab
-git init -b main
+mkdir git-branch-lab
+cd git-branch-lab
+git init -b develop
 git config user.name "Git Learner"
 git config user.email "learner@example.com"
-echo message=original>message.txt
-git add message.txt
-git commit -m "docs: add original message"
-
-git switch -c feature/message
-echo message=feature>message.txt
-git commit -am "feat: change feature message"
-
-git switch main
-echo message=main>message.txt
-git commit -am "fix: change main message"
-git merge feature/message
 ```
 
-`git merge` 应报告冲突。检查状态和文件：
+使用编辑器创建 `employee-list.txt`：
+
+```text
+1001,山田太郎
+1002,佐藤花子
+```
+
+提交基线：
 
 ```cmd
+git add employee-list.txt
+git commit -m "chore: initialize employee list"
+git switch -c feature/APP-123
+```
+
+### 在任务 Branch 修改
+
+把 `1002` 行改为：
+
+```text
+1002,佐藤花子,総務部
+```
+
+```cmd
+git add employee-list.txt
+git commit -m "feat: add employee department"
+```
+
+### 在 develop 修改同一行
+
+```cmd
+git switch develop
+```
+
+把 `1002` 行改为：
+
+```text
+1002,佐藤花子,人事部
+```
+
+```cmd
+git add employee-list.txt
+git commit -m "fix: update employee department"
+git merge feature/APP-123
 git status
-type message.txt
 ```
 
-把文件修改成双方确认的最终内容，例如：
+此时应出现 Conflict。假设最新规格确认部门为 `人事部`，编辑文件形成正确结果，删除全部标记，再执行：
 
 ```cmd
-echo message=resolved>message.txt
-git add message.txt
+git add employee-list.txt
 git diff --staged
-git commit -m "merge: resolve message conflict"
+git commit -m "merge: resolve employee department conflict"
 git log --oneline --graph --decorate --all
 git status
 ```
 
-验证结果：历史图中应能看到两个分支和合并提交，工作区应保持干净。
+验收标准：最终文件符合规格、Conflict Marker 全部消失、测试通过、`status` 显示工作区干净，并能在提交图中看见两条历史被整合。
 
-## 4.7 rebase 的作用和边界
+## 4.11 Level B：特殊 Conflict 与 Branch 清理
 
-新人必须理解：rebase 会改变 commit ID，公共分支不能随意 rebase。新人不要求独立处理已 push 分支的 rebase、交互式 rebase 或 `force-with-lease`；只有项目规则明确要求并有人指导时再操作。
+Conflict 不只发生在同一行：
 
-rebase 会把当前分支的提交重新应用到新的基础提交上，使历史更线性：
+- modify/delete：一侧修改文件，另一侧删除文件。
+- add/add：两侧在同一路径创建不同内容。
+- rename/modify：一侧重命名，另一侧继续修改。
 
-```cmd
-git switch feature/login
-git rebase main
-```
+处理原则仍然相同：确认双方意图和业务规格，再决定最终文件状态。
 
-rebase 会创建新的提交对象，因此提交 ID 会改变。适合整理尚未与他人共享的个人功能分支；不要擅自 rebase 团队成员正在基于其开发的公共分支。
-
-发生冲突时：
-
-```cmd
-git status
-REM 编辑冲突文件并完成测试
-git add CONFLICTED_FILE
-git rebase --continue
-```
-
-放弃整个 rebase：
-
-```cmd
-git rebase --abort
-```
-
-如果已经推送过个人分支，rebase 后是否允许使用 `git push --force-with-lease` 必须遵守团队规则。不要使用无保护的 `--force` 覆盖他人提交。
-
-## 4.8 清理已合并分支
-
-确认功能已经合并后再删除本地分支：
+确认任务 Branch 已经合入当前 Branch 后：
 
 ```cmd
 git branch --merged
-git branch -d feature/login
+git branch -d feature/APP-123
 ```
 
-`-d` 会拒绝删除尚未合并的分支。`-D` 会强制删除，可能丢失仅由该分支引用的提交，使用前必须确认提交已存在于其他分支或远程仓库。
+- `--merged`：列出已经合入当前 `HEAD` 的本地 Branch。
+- `-d`：安全删除本地 Branch；Git 判断未合并时会拒绝。
 
-## 4.9 常见错误
+`-D` 会强制删除，可能让仅由该 Branch 引用的 Commit 难以找回，不属于新人日常操作。
 
-```text
-error: you need to resolve your current index first
-```
+## 4.12 常见错误
 
-当前存在尚未解决的冲突。执行 `git status`，完成冲突解决并提交，或者使用当前操作对应的 `--abort` 返回操作前状态。
+### 在错误 Branch 上开发
 
-```text
-fatal: There is no merge to abort (MERGE_HEAD missing).
-```
+发现后先停止继续 Commit，执行 `git status` 和 `git log --oneline --decorate -5` 记录状态，再根据是否已经共享向负责人确认处理方式。
 
-当前没有正在进行的 merge。先通过 `git status` 判断实际状态，不要把 `--abort` 当成普通撤销命令。
+### 切换 Branch 被拒绝
 
-## 4.10 本章总结
+当前未提交修改可能被目标 Branch 覆盖。不要为了切换而强制丢弃；先确认修改归属，必要时使用第 09 章的 stash 或创建合理 Commit。
 
-- 分支是指向提交的轻量指针。
-- merge 保留分支结合关系，rebase 会重写当前分支提交。
-- 解决冲突的目标是形成正确代码，而不只是删除标记。
-- 冲突处理后必须重新测试；不继续操作时使用对应的 `--abort`。
+### Conflict 标记仍在文件中
 
-## 练习
+提交前搜索 `<<<<<<<`、`=======`、`>>>>>>>`，运行测试并检查 `git diff --staged`。仅删除标记不代表业务结果正确。
 
-1. 创建一个没有冲突的功能分支，观察是否发生快进合并。
-2. 重复冲突实验，但在解决前执行 `git merge --abort`。
-3. 解释为什么公共分支通常不应随意 rebase。
+## 本章必须掌握
 
-### 自检提示
+- Branch 让不同 Ticket 的开发相互隔离。
+- `switch -c` 从当前位置创建并切换 Branch。
+- Merge 的方向是“当前 Branch 接收参数 Branch”。
+- Conflict 必须根据规格解决并重新测试。
 
-- 快进合并后通常不会出现新的 merge commit。
-- 冲突期间 `git status --short` 会用 `UU` 标记双方都修改的文件。
-- `git merge --abort` 后，`git status` 应回到合并前状态。
+## 本章不要求现在掌握
+
+- rebase 和历史改写。
+- 复杂 Merge Strategy。
+- 强制删除尚未合并 Branch。
+
+## 进入下一章前确认
+
+1. 为什么不应让所有开发者直接在 `develop` 上提交？
+2. 创建 `feature/APP-123` 前为什么要确认当前 Branch？
+3. `switch` 会改变 `HEAD` 和什么内容？
+4. Merge 前如何判断谁接收谁？
+5. Fast-forward 为什么不需要额外 Merge Commit？
+6. Conflict 为什么不能机械选择 Current 或 Incoming？
+7. 解决 Conflict 后为什么仍要测试和检查暂存差异？
 
 [上一章：基本命令与日常提交](03_common_commands.md) · [下一章：远程仓库与同步](05_remote_repo.md)

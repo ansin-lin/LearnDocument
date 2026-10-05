@@ -1,35 +1,59 @@
 # 09 常用高级操作
 
-本章不是新人入场前需要全部熟练操作的内容。它们能解决特定问题，但也更容易造成冲突或历史混乱。操作前先保持状态可确认，并优先在个人练习仓库验证。
+本章处理日常主线之外的特殊场景。重点是识别问题、知道应该查什么，并理解历史改写风险；不是要求新人把所有命令当作每天使用的工具。
 
-| 学习等级 | 内容 |
-|---|---|
-| 较常用 | stash |
-| 项目需要时掌握 | cherry-pick、reflog、普通 rebase |
-| 进阶 | interactive rebase（交互式 rebase） |
-| 项目已经采用时再学 | submodule |
+## 本章学习目标
 
-普通 Java、React 或 Vue 项目新人不要求主动引入 submodule；只有既有项目已经采用时，才需要按项目手顺掌握 clone、init 和 update。
+### Level A：本章无新增必会命令
 
-## 9.1 stash：临时保存未提交工作
+- 特殊操作前仍应先确认 `status`、当前 Branch、共享范围和恢复方式。
 
-需要临时切换任务，又不适合创建正式提交时，可以使用 stash。示例中的 WIP 是 Work in Progress 的缩写，表示“尚未完成的工作”：
+### Level B：理解并能够查资料操作
+
+- stash：短期保存尚不能 Commit 的工作。
+- cherry-pick：把指定 Commit 的修改应用到当前 Branch，并创建新 Commit。
+
+### Level C：了解用途与风险
+
+- rebase、interactive rebase、reflog 和 submodule。
+- 已共享 Commit 不应在不了解项目规则时自行改写。
+
+## 9.1 stash：开发一半需要切换任务
+
+场景：正在 `feature/APP-123` 开发，修改尚不能形成正式 Commit，负责人要求立即切换到 hotfix Branch 调查紧急障碍。
+
+```text
+未完成 Working Tree 修改
+        │ stash
+        ▼
+短期保存记录 + 较干净的 Working Tree
+        │ 处理紧急任务后恢复
+        ▼
+继续原任务
+```
+
+执行前确认状态并添加可识别说明：
 
 ```cmd
 git status
-git stash push -m "WIP: login validation"
+git stash push -m "WIP: APP-123 department display"
 git stash list
+git status
 ```
 
-默认情况下，stash 保存已跟踪文件的修改，不包含普通未跟踪文件。确实需要同时保存未跟踪文件时：
+- `stash push`：创建一条临时保存记录，并把被保存的修改从 Working Tree 移开。
+- `-m`：添加说明，避免多个 stash 难以区分。
+- `stash list`：按新到旧列出记录。
+
+stash 不是 Commit，也不是 Remote 备份。默认主要保存已跟踪文件的修改，不包含普通 Untracked 文件。确实需要包含 Untracked 文件时：
 
 ```cmd
-git stash push -u -m "WIP: include new login file"
+git stash push -u -m "WIP: APP-123 include new file"
 ```
 
-不要用 `-a` 随意保存被忽略的依赖或构建目录，这可能产生巨大 stash。
+不要随意使用 `-a` 保存被忽略的依赖或构建目录，这可能生成巨大 stash。
 
-查看和应用：
+恢复前先查看内容：
 
 ```cmd
 git stash show -p "stash@{0}"
@@ -37,13 +61,16 @@ git stash apply "stash@{0}"
 git status
 ```
 
-CMD 中花括号没有特殊含义，但给 `stash@{0}` 加引号可以明确它是一个完整参数，也能与其他终端保持一致。确认应用结果并完成测试后，再删除对应 stash：
+- `apply`：应用修改，但保留 stash 记录，便于确认成功后再删除。
+- `stash@{0}`：列表中最新一条；使用前仍应核对说明和补丁。
+
+确认应用、测试和后续 Commit 完成后：
 
 ```cmd
 git stash drop "stash@{0}"
 ```
 
-`pop` 相当于尝试应用后删除；发生冲突时仍需要检查 stash 列表，不能假定它已经删除：
+也可以使用：
 
 ```cmd
 git stash pop
@@ -51,95 +78,174 @@ git status
 git stash list
 ```
 
-stash 适合短期切换，不适合代替清晰提交或长期备份。
+`pop` 会尝试应用并删除记录；如果发生 Conflict，不能假定记录已经删除，必须检查 `stash list`。
 
-## 9.2 cherry-pick：复制指定提交的变更
+stash 适合短期任务切换，不适合长期保存重要工作。
 
-cherry-pick 会把指定提交的变更应用到当前分支，并创建一个新的提交：
+## 9.2 cherry-pick：只取得一个 Commit
+
+另一个 Branch 有一个已经确认的 Bug Fix，但当前 Branch 不需要整合它的全部历史：
+
+```text
+来源 Branch：A ── B ── C
+                         ↑
+                      Bug Fix
+
+当前 Branch：A ── D ── E
+```
+
+只把 C 的修改应用到当前 Branch：
 
 ```cmd
 git status
 git cherry-pick COMMIT_ID
 ```
 
-常见场景是把已经确认的修复提交应用到另一个维护分支。它不是“移动原提交”，新提交会有不同 ID。
+结果：
 
-发生冲突后：
+```text
+当前 Branch：A ── D ── E ── C'
+```
+
+`C'` 的内容来源于 C，但它是在当前位置创建的新 Commit，因此 Commit ID 通常不同。
+
+发生 Conflict 后：
 
 ```cmd
 git status
-REM 编辑并测试冲突文件
+REM 根据规格编辑和测试冲突文件
 git add CONFLICTED_FILE
 git cherry-pick --continue
 ```
 
-取消操作：
+放弃尚未完成的操作：
 
 ```cmd
 git cherry-pick --abort
 ```
 
-不要 cherry-pick 一个大型 merge commit 或大量相互依赖的提交来代替正常合并；这容易遗漏依赖并造成重复提交。
+不要 cherry-pick 大型 Merge Commit 或大量相互依赖的 Commit 来代替正常 Merge，这可能遗漏依赖或制造重复历史。
 
-## 9.3 交互式 rebase：整理个人提交
+## 9.3 rebase：把个人提交重放到新基线
 
-在尚未共享的个人分支上，可以整理最近几次提交：
+场景：`feature/APP-123` 从较早的 `develop` 创建，之后 `develop` 增加了 Commit F：
+
+```text
+          D ── E  feature/APP-123
+         /
+A ── B ── C ── F  develop
+```
+
+Rebase 会把 D、E 的修改重新应用到 F 后面，产生新的 D'、E'：
+
+```text
+A ── B ── C ── F ── D' ── E'  feature/APP-123
+```
+
+在项目明确允许、且确认是个人未共享历史时，形式上可能执行：
+
+```cmd
+git status
+git switch feature/APP-123
+git fetch origin
+git rebase origin/develop
+```
+
+发生 Conflict 时：
+
+```cmd
+git status
+REM 编辑、测试并暂存冲突文件
+git add CONFLICTED_FILE
+git rebase --continue
+```
+
+放弃整个 rebase：
+
+```cmd
+git rebase --abort
+```
+
+【风险】rebase 会重新创建 Commit，改变 Commit ID。对已共享历史执行会让其他成员的历史与服务器不一致。
+
+【什么时候可以使用】项目明确采用 rebase，且目标 Commit 属于自己尚未共享的个人历史。
+
+【什么时候不应该使用】公共 Branch，或其他成员已经基于这些 Commit 开发。
+
+【执行前确认】当前 Branch、Working Tree、Commit 范围、是否 Push、项目策略和恢复入口。
+
+【更安全的替代方案】按项目规则使用 Merge，或向负责人确认同步方式。
+
+如果 rebase 后项目允许更新个人 Remote Branch，可能要求 `git push --force-with-lease`。它仍然是覆盖式更新，只比无保护 `--force` 多一层远程状态检查；新人不得自行使用。
+
+## 9.4 Merge 与 rebase 的区别
+
+```text
+Merge：保留两条开发历史，再创建整合关系
+Rebase：重新播放 Commit，形成较线性的历史，但 Commit ID 改变
+```
+
+两者都可能整合修改，也都可能发生 Conflict。哪一种“更好”没有脱离项目规则的统一答案。新人只需要根据仓库手顺操作，不参与复杂历史风格争论。
+
+## 9.5 Interactive Rebase：整理个人历史
+
+对尚未共享的最近三个个人 Commit，可以打开交互计划：
 
 ```cmd
 git status
 git rebase -i HEAD~3
 ```
 
-假设整理前最近三次提交为：
+常见动作：
+
+- `pick`：保留 Commit。
+- `reword`：修改 Commit Message。
+- `squash`：合并到前一个 Commit，并编辑说明。
+- `fixup`：合并到前一个 Commit，丢弃当前说明。
 
 ```text
-A -- B -- C  feature
+整理前：A ── B ── C
+整理后：A ── D
 ```
 
-把 C 标记为 `squash` 合并到 B 后，Git 会创建新的提交 D：
+D 是新 Commit，B、C 的原 ID 不再位于当前 Branch 历史。该操作属于 Level C，只建议用于自己尚未共享的历史。
 
-```text
-A -- D  feature
-```
+## 9.6 reflog：寻找看似丢失的 Commit
 
-B、C 的旧提交 ID 不再位于当前分支历史中，因此整理前后要分别使用 `git log --oneline` 比较结果。
-
-编辑器中常见动作包括：
-
-- `pick`：保留提交
-- `reword`：修改提交信息
-- `squash`：合并到前一个提交并编辑说明
-- `fixup`：合并到前一个提交并丢弃当前说明
-
-交互式 rebase 会重写提交 ID。不要擅自整理公共分支，发生问题时使用：
-
-```cmd
-git rebase --abort
-```
-
-操作完成后检查：
-
-```cmd
-git log --oneline --graph --decorate
-git status
-```
-
-## 9.4 reflog：恢复入口
-
-reset、rebase 或误删本地分支后，使用：
+reset、rebase 或误删本地 Branch 后，可以查看本地 HEAD 和引用近期移动记录：
 
 ```cmd
 git reflog --date=local
-git branch rescue/NAME COMMIT_ID
 ```
 
-详细恢复原则参见[第 07 章](07_undo_and_reset.md)。reflog 是本地、会过期的引用日志，不是远程备份，也不能保证恢复未提交文件。
+找到疑似 Commit 后，先建立恢复 Branch，再检查：
 
-## 9.5 submodule：固定引用另一个仓库
+```cmd
+git branch rescue/APP-123 COMMIT_ID
+git show COMMIT_ID
+```
 
-submodule 让主仓库记录另一个仓库的特定提交。它不是普通目录复制，主仓库保存的是子模块地址和提交指针。
+reflog 是本机记录、会过期，并且通常不会在另一台电脑出现。它不是 Remote 备份，也不能保证恢复未提交文件。
 
-只有项目明确采用 submodule 时才使用：
+## 9.7 submodule：引用另一个 Repository
+
+Submodule 让主 Repository 记录另一个 Repository 的特定 Commit。它不是普通目录复制。
+
+项目已经采用 Submodule 时，clone 可能需要：
+
+```cmd
+git clone --recurse-submodules REPOSITORY_URL
+```
+
+已经 clone 后初始化：
+
+```cmd
+git submodule update --init --recursive
+```
+
+主 Repository 记录的是子模块 Commit 指针，不会自动升级到子模块最新 Branch。子模块常处于 detached HEAD 状态；更新、删除和提交都应遵守项目手顺。
+
+主动添加 Submodule：
 
 ```cmd
 git submodule add REPOSITORY_URL libs/shared-lib
@@ -147,83 +253,36 @@ git status
 git commit -m "build: add shared library submodule"
 ```
 
-克隆包含 submodule 的项目：
+普通 Java、React 或 Vue 新人不要求主动引入 Submodule，只需知道不能把既有 Submodule 当作普通目录随意删除或提交。
 
-```cmd
-git clone --recurse-submodules REPOSITORY_URL
-```
+## 9.8 场景练习
 
-已经克隆后初始化：
+1. APP-123 开发一半，需要立即切换任务，且修改还不能形成正式 Commit。说明 stash 前后应检查什么。
+2. 维护 Branch 只需要另一个 Branch 中一个已确认 Bug Fix。说明 cherry-pick 的结果为什么是新 Commit。
+3. 已 Push 的个人 Branch 准备 rebase。列出执行前必须确认的事项。
+4. reset 后看不到原 Commit。说明怎样使用 reflog 建立恢复入口，以及它为什么不是万能备份。
+5. clone 后发现 Submodule 目录为空。说明应查阅什么命令和项目手顺。
 
-```cmd
-git submodule update --init --recursive
-```
+## 本章必须掌握
 
-子模块默认检出主仓库记录的特定提交，常处于 detached HEAD（分离头指针）状态：`HEAD` 直接指向提交，而不是指向可移动分支。此时创建新提交后如果没有建立分支或标签，后续切换位置可能让提交失去容易找到的引用。
+- 识别 stash、cherry-pick、rebase、reflog 和 submodule 分别解决什么问题。
+- 所有特殊操作前先确认状态、Branch 和共享范围。
+- rebase 和覆盖式 Push 可能改变共享历史。
 
-更新子模块版本需要在子模块中取得目标提交，再回到主仓库提交新的子模块指针。删除 submodule 涉及 `.gitmodules`、索引和模块元数据，应遵循项目文档，不要只删除目录。
+## 本章不要求现在掌握
 
-## 9.6 实验：串联 stash、cherry-pick 和 reflog
+- 独立整理复杂历史。
+- 对已 Push Branch 执行 rebase 或 force push。
+- 设计或维护 Submodule 架构。
 
-**环境与范围：** Windows CMD；在新的 `git-advanced-lab` 中执行，不连接远程仓库。
+## 进入下一章前确认
 
-```cmd
-mkdir git-advanced-lab
-cd git-advanced-lab
-git init -b main
-git config user.name "Git Learner"
-git config user.email "learner@example.com"
-echo base>app.txt
-git add app.txt
-git commit -m "feat: add base"
+1. stash 与 Commit、Remote 备份有什么区别？
+2. apply 与 pop 的基本区别是什么？
+3. cherry-pick 为什么通常产生不同 Commit ID？
+4. rebase 为什么会改变 Commit ID？
+5. Merge 和 rebase 在历史形状上有什么区别？
+6. 哪些历史不应自行 interactive rebase？
+7. reflog 为什么只能作为本地恢复入口？
 
-git switch -c fix/message
-echo fixed>fix.txt
-git add fix.txt
-git commit -m "fix: add message fix"
-git rev-parse HEAD
-
-REM 复制上一条命令显示的提交 ID，替换下一条命令中的 COMMIT_ID
-
-git switch main
-git cherry-pick COMMIT_ID
-echo unfinished>>app.txt
-git stash push -m "WIP: unfinished app change"
-git status
-git stash apply "stash@{0}"
-git status
-git reflog -5
-```
-
-验证结果：`main` 中应包含 `fix.txt`；stash 后工作区应干净；apply 后 `app.txt` 应再次显示为已修改；reflog 应列出最近的 cherry-pick、分支切换和提交位置。
-
-## 9.7 常见错误
-
-```text
-No local changes to save
-```
-
-当前没有可由默认 stash 保存的已跟踪修改。如果只有未跟踪文件，需要确认是否应使用 `git stash push -u`。
-
-cherry-pick 或 rebase 冲突后如果继续执行其他历史操作，Git 会提示当前操作尚未完成。先用 `git status` 判断是应解决并 `--continue`，还是使用对应的 `--abort`。
-
-## 9.8 本章总结
-
-- stash 用于短期保存未提交工作，默认不包含未跟踪文件。
-- cherry-pick 在当前分支创建内容相同但 ID 不同的新提交。
-- 交互式 rebase 只用于允许改写的个人历史。
-- submodule 记录其他仓库的固定提交，需要独立初始化和更新。
-
-## 练习
-
-1. 分别 stash 已跟踪修改和未跟踪文件，观察 `-u` 的区别。
-2. 创建两个分支，将一个小提交 cherry-pick 到另一个分支。
-3. 比较 `git stash push` 与 `git stash push -u` 对未跟踪文件的处理差异。
-
-### 自检提示
-
-- `git stash list` 应显示带有自定义说明的 stash 条目。
-- cherry-pick 后新提交内容相同，但提交 ID通常与来源提交不同。
-- detached HEAD 状态下需要先创建分支，才能让新提交长期具有清晰引用。
-
-[上一章：标签与版本发布](08_tags_and_release.md) · [返回课程入口](index.md)
+[上一章：标签与版本发布](08_tags_and_release.md) · [下一章：Git 新人综合实战](10_comprehensive_practice.md)

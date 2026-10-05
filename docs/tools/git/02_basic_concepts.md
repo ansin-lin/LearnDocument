@@ -1,221 +1,460 @@
 # 02 基本概念与工作原理
 
-## 2.1 为什么需要版本控制
+第 01 章说明了为什么需要 Git。本章先从整体上区分工作区、暂存区、本地仓库和远程仓库，再通过修改一个文件理解内容怎样在这些位置之间流转。本章以理解状态为主，第 03 章再完整执行命令。
 
-如果只用 `project-final`、`project-final-v2` 复制文件夹保存版本，很难回答以下问题：
+## 本章学习目标
 
-- 哪些文件发生了变化，为什么修改？
-- 某个错误从哪个版本开始出现？
-- 两个人同时修改后，怎样合并双方成果？
-- 线上版本对应哪一次代码状态？
+### Level A：必须掌握
 
-Git 用一系列提交记录项目历史。每次提交都包含项目快照、作者、时间、说明和父提交，因此可以比较版本、恢复内容并审查变更。
+- 解释 Working Tree、Staging Area、Local Repository 和 Remote Repository。
+- 说明 `git add`、`git commit`、`git push` 分别改变哪里。
+- 区分 Untracked、Modified、Staged 和 Committed。
+- 初步理解 Commit、Branch 和 `HEAD`。
 
-Git 是分布式版本控制系统：克隆仓库后，本地通常拥有完整的提交历史，可以离线查看历史、创建分支和提交。GitHub、GitLab 是托管 Git 仓库并提供 Pull Request、权限和 CI 等协作能力的平台，它们不是 Git 本身。
+### Level B：理解并能够查资料操作
 
-## 2.2 四个位置
+- 理解同一文件可以同时存在已暂存和未暂存修改。
+- 看懂 `HEAD~1`、Commit ID、分支名和标签名代表的版本。
+- 理解 `--` 用于分隔版本或选项与文件路径。
 
-日常使用 Git 时，要区分四个位置：
+### Level C：后续章节再学习
 
-| 位置 | 英文 | 作用 |
+- 本地分支、Remote-tracking branch 和服务器分支的详细区别。
+- Git Object、复杂 revision 表达式和 detached HEAD。
+
+## 开始前先理解：Git 的四个位置
+
+学习 Git 命令之前，必须先知道修改可能处于哪个位置。工作区、暂存区和本地仓库都在开发者自己的电脑上；远程仓库通常位于 GitHub、GitLab 或公司的 Git 服务器上。
+
+```text
+Working Tree（工作区）
+正在编辑的实际文件
+        │
+        │ git add
+        ▼
+Staging Area（暂存区）
+下一次 Commit 准备包含的内容
+        │
+        │ git commit
+        ▼
+Local Repository（本地仓库）
+本机已经创建的 Commit 和历史
+        │
+        │ git push
+        ▼
+Remote Repository（远程仓库）
+服务器上供团队共享的 Commit 和历史
+```
+
+### 四个位置分别有什么作用
+
+| 位置 | 概念 | 主要作用 | 典型动作 |
+|---|---|---|---|
+| Working Tree（工作区） | 当前项目中可以直接看到和编辑的文件 | 编写、修改、运行和测试代码 | 使用编辑器修改并保存文件 |
+| Staging Area（暂存区） | 本机上为下一次 Commit 准备内容的区域，也称 Git Index | 从所有修改中选择这一次准备提交的内容 | `git add` |
+| Local Repository（本地仓库） | 本机保存 Git 数据和 Commit 历史的仓库，通常由项目中的 `.git` 目录管理 | 保存已经创建的 Commit，供本机查看、比较和恢复 | `git commit` |
+| Remote Repository（远程仓库） | GitHub、GitLab 或公司服务器上的共享仓库 | 让团队成员交换 Commit，并支持 Branch、PR/MR 和 Review | `git push`、`git fetch` |
+
+### 它们最核心的区别
+
+四个位置解决的是四个不同问题：
+
+```text
+工作区：我现在正在修改什么？
+暂存区：下一次 Commit 准备包含什么？
+本地仓库：我的电脑已经记录了哪些 Commit？
+远程仓库：团队服务器已经共享了哪些 Commit？
+```
+
+以修改 `employee-list.txt` 为例：
+
+1. 在编辑器中保存文件，只改变 Working Tree。
+2. 执行 `git add employee-list.txt`，把执行当时的内容放入 Staging Area。
+3. 执行 `git commit`，用暂存区的内容在 Local Repository 创建 Commit。
+4. 执行 `git push`，才会尝试把本地 Commit 发送到 Remote Repository。
+
+因此下面四个动作不能混为一谈：
+
+```text
+保存文件 ≠ git add ≠ git commit ≠ git push
+```
+
+同一个文件的内容也可能在这些位置中不同。例如，文件已经 add 后又继续编辑：暂存区仍保存 add 当时的内容，而工作区保存后来继续修改的内容。本章后面会用实际场景详细说明这种状态。
+
+## 2.1 从修改一个文件开始
+
+员工管理项目中有一个已经提交过的文件：
+
+```text
+employee-list.txt
+```
+
+原内容：
+
+```text
+1001,山田太郎
+```
+
+开发者增加一名员工并保存文件：
+
+```text
+1001,山田太郎
+1002,佐藤花子
+```
+
+保存完成只表示磁盘上的文件发生了变化。此时还没有创建新的 Git 版本记录，也没有上传到 GitLab。
+
+Git 接下来需要解决三个问题：
+
+1. 当前哪些文件发生了变化？
+2. 哪些变化应该进入下一次 Commit？
+3. 怎样把选中的变化保存为一次可追踪的历史记录？
+
+这三个问题分别对应 Working Tree、Staging Area 和 Local Repository。
+
+## 2.2 Working Tree：实际编辑文件的位置
+
+Working Tree（工作区）是当前项目目录中可以直接编辑、编译和运行的文件。
+
+```text
+employee-system\
+├─ employee-list.txt
+├─ README.md
+└─ .git\
+```
+
+其中 `employee-list.txt` 和 `README.md` 是工作区文件。隐藏的 `.git` 目录属于本地仓库的数据，不应像普通业务文件一样手工修改或删除。
+
+当你在编辑器中修改并保存 `employee-list.txt` 时，首先变化的是 Working Tree。
+
+```text
+编辑器保存文件
+      ↓
+Working Tree 中的 employee-list.txt 发生变化
+```
+
+> **新人常见误解：** 保存文件不等于 Commit。保存只更新工作区中的文件内容。
+
+## 2.3 为什么需要 Staging Area
+
+假设当前同时修改了：
+
+```text
+employee-list.txt：APP-123 要求增加员工
+README.md：自己顺手修改了说明文字
+```
+
+当前 Ticket 只要求提交 `employee-list.txt`。如果 Git 只能把所有修改一次性记录，`README.md` 就会混入无关变更。
+
+因此 Git 在 Working Tree 和 Commit 之间提供了 Staging Area（暂存区）：
+
+```text
+Working Tree                         Staging Area
+employee-list.txt：Modified  ──选择──> employee-list.txt：Staged
+README.md：Modified                  README.md：未选择
+```
+
+Staging Area 用来准备“下一次 Commit 要包含的内容”。它不是远程服务器，也不是临时备份目录。
+
+把指定文件当前内容选择进暂存区：
+
+```cmd
+git add employee-list.txt
+```
+
+执行前：
+
+```text
+employee-list.txt 的修改只在 Working Tree
+```
+
+执行后：
+
+```text
+employee-list.txt 执行 add 当时的内容进入 Staging Area
+```
+
+技术上更准确地说，`git add` 会用当前工作区内容更新 Git Index；Index 是 Staging Area 的另一个常见名称。
+
+> **新人常见误解：** `git add` 不会上传文件，也不会创建 Commit。它只是选择下一次 Commit 的内容。
+
+## 2.4 为什么需要 Commit
+
+暂存区已经准备好以后，还需要把这些内容记录为一次正式历史。这个动作叫 Commit：
+
+```cmd
+git commit -m "feat: add employee"
+```
+
+Commit 可以先理解为：
+
+> 一次有作者、有时间、有说明、能够追踪的项目版本记录。
+
+一段历史可能是：
+
+```text
+A 项目初始化
+│
+B 增加员工一览
+│
+C 增加部门名称
+```
+
+每个 Commit 至少关联：
+
+- 本次记录的项目内容。
+- 作者和时间。
+- Commit Message（提交说明）。
+- 前一个 Commit，形成历史关系。
+- Commit ID，也称 Commit Hash，用于唯一识别该 Commit。
+
+Commit ID 通常显示为十六进制字符串，例如 `a82c310`。日常输出经常只显示较短前缀，只要在当前仓库中能够唯一识别即可。
+
+## 2.5 Local Repository：Commit 保存在哪里
+
+`git commit` 创建的历史保存在 Local Repository（本地仓库）中。它通常位于项目的 `.git` 目录，由 Git 管理。
+
+至此形成三个位置：
+
+```text
+Working Tree
+      │
+      │ git add
+      ▼
+Staging Area
+      │
+      │ git commit
+      ▼
+Local Repository
+```
+
+- Working Tree：编辑实际文件。
+- Staging Area：准备下一次 Commit。
+- Local Repository：保存已经创建的 Commit 和相关历史。
+
+Commit 完成以后，即使没有网络，本机仍然可以查看这段历史。
+
+> **新人常见误解：** Commit 完成不代表代码已经上传。它只说明 Local Repository 新增了 Commit。
+
+## 2.6 Remote Repository：团队如何看到 Commit
+
+团队成员需要共享历史时，通常会使用 GitHub 或 GitLab 上的 Remote Repository（远程仓库）。
+
+```text
+Working Tree
+      │ git add
+      ▼
+Staging Area
+      │ git commit
+      ▼
+Local Repository
+      │ git push
+      ▼
+Remote Repository
+```
+
+`git push` 才会把本地 Commit 发送到远程仓库。本章只理解它发生在哪两个位置之间，具体连接、同步和错误处理将在第 05 章学习。
+
+四个位置承担不同职责：
+
+| 位置 | 当前阶段的理解 | 是否在本机 |
 |---|---|---|
-| 工作区 | Working tree | 实际编辑的文件 |
-| 暂存区 | Index / Staging area | 选择下一次提交包含哪些内容 |
-| 本地仓库 | Local repository | `.git` 中保存的提交、分支和对象 |
-| 远程仓库 | Remote repository | 团队共享的仓库，例如 GitHub 或 GitLab |
+| Working Tree | 正在编辑和运行的文件 | 是 |
+| Staging Area | 下一次 Commit 的候选内容 | 是 |
+| Local Repository | 本机已经创建的 Commit 历史 | 是 |
+| Remote Repository | 团队通过网络共享的仓库 | 通常否 |
 
-```mermaid
-flowchart LR
-    A["工作区"] -->|"git add"| B["暂存区"]
-    B -->|"git commit"| C["本地仓库"]
-    C -->|"git push"| D["远程仓库"]
-    D -->|"git fetch"| C
-```
+## 2.7 文件状态如何变化
 
-`git add` 不是“上传”，`git commit` 也不是“推送”。提交只进入本地仓库，执行 `git push` 后才会发送到远程仓库。
+Git 首先区分文件是否已经被跟踪。
 
-### 本地分支、远程跟踪分支与服务器分支
+### 新文件
 
-克隆团队仓库后，开发者电脑上还会同时出现本地分支和远程跟踪分支。它们与 GitHub/GitLab 服务器上的分支是三个不同对象：
-
-```mermaid
-flowchart TB
-    subgraph PC["开发者电脑"]
-        L["本地分支<br/>main<br/>feature/APP-123"]
-        RT["远程跟踪分支<br/>origin/main<br/>origin/feature/APP-123"]
-    end
-    subgraph SERVER["GitHub / GitLab 服务器"]
-        R["服务器分支<br/>main<br/>feature/APP-123"]
-    end
-
-    L -->|"git push"| R
-    R -->|"git fetch 更新本地记录"| RT
-    RT -.->|"merge / rebase / pull 的整合阶段"| L
-```
-
-- `main`：本地分支，当前开发者可以在其上创建提交。
-- `origin/main`：保存在本地仓库中的远程跟踪分支，记录最近一次 fetch 后所见的远程 `main`。
-- 服务器上的 `main`：团队共享仓库中的真实远程分支。
-
-因此，`origin/main` 不等于服务器上的 `main`。其他人 push 后，服务器分支已经变化，但在本机再次执行 `git fetch origin` 以前，`origin/main` 仍可能停留在旧位置。第 05 章会用提交图演示同步过程。
-
-## 2.3 文件状态
-
-Git 首先区分文件是否被跟踪：
-
-- `untracked`：Git 尚未跟踪的新文件
-- `tracked`：已经进入过暂存区或提交的文件
-
-已跟踪文件又可能处于：
-
-- `unchanged`：与当前提交一致
-- `modified`：工作区内容已修改，但尚未完整暂存
-- `staged`：暂存区已经记录下一次提交要使用的内容
-
-新文件通常经历：
+新建 `employee-list.txt` 后，典型状态变化是：
 
 ```text
-untracked -> staged -> committed
+Untracked
+    │ git add
+    ▼
+Staged
+    │ git commit
+    ▼
+Committed
 ```
 
-已提交文件再次修改时通常经历：
+- Untracked：Git 看到了新文件，但它还没有进入跟踪范围。
+- Staged：文件当前内容已经进入暂存区，准备进入下一次 Commit。
+- Committed：该内容已经进入本地 Git 历史。
+
+### 已提交文件再次修改
+
+文件提交后再次编辑，典型状态变化是：
 
 ```text
-unchanged -> modified -> staged -> committed
+Committed / Unchanged
+    │ 修改并保存
+    ▼
+Modified
+    │ git add
+    ▼
+Staged
+    │ git commit
+    ▼
+Committed
 ```
 
-同一个文件可以同时有“已暂存修改”和“未暂存修改”。因此提交前要分别执行 `git diff` 与 `git diff --staged`。
+- Unchanged：工作区内容与当前 Commit 一致。
+- Modified：已跟踪文件发生修改，但新内容尚未完整进入暂存区。
 
-## 2.4 提交、分支和 HEAD
+“Committed”主要是帮助新人理解内容已经进入历史；`git status` 在没有新变化时通常显示 `working tree clean`，而不是逐个文件显示 `Committed`。
 
-提交（commit）是项目在某个时间点的快照。每个提交都有唯一对象 ID，通常显示为一段较短的十六进制字符。
+## 2.8 为什么暂存后继续修改仍要检查
 
-分支是指向某个提交的可移动指针。创建新提交后，当前分支会向前移动。`HEAD` 通常指向当前分支，因此也表示“当前检出的版本位置”。
+`git add` 选择的是执行当时的文件内容。假设：
 
-```mermaid
-gitGraph
-    commit id: "A"
-    commit id: "B"
-    branch feature
-    checkout feature
-    commit id: "C"
-    checkout main
+```text
+1. 修改 employee-list.txt
+2. git add employee-list.txt
+3. 再次修改 employee-list.txt
 ```
 
-上图中，`main` 指向 B，`feature` 指向 C。切换分支时，Git 会调整工作区，使其匹配目标分支指向的提交。
+此时同一个文件可以同时包含：
 
-切换分支不是进入另一个项目目录，而是改变 `HEAD` 所指向的分支，并让当前工作区尽可能匹配该分支的内容。
+```text
+Staging Area：第 2 步 add 时的内容
+Working Tree：第 3 步继续修改后的内容
+```
 
-## 2.5 如何指定一个版本
+因此 Commit 前不能只看文件名，还要区分：
 
-Git 命令经常需要指定某个提交，这类参数统称 revision（版本引用）。
+- `git diff`：Working Tree 与 Staging Area 之间尚未暂存的差异。
+- `git diff --staged`：Staging Area 与当前 Commit 之间准备提交的差异。
+
+这两个命令只读取和显示差异，不修改文件。本章先理解比较对象，第 03 章会实际观察输出。
+
+## 2.9 Commit、Branch 和 HEAD 初识
+
+Commit 是历史中的版本节点。Branch（分支）可以先理解为指向某个 Commit、并会随着新 Commit 向前移动的名称。
+
+```text
+A ── B ── C
+          ↑
+         main
+          ↑
+         HEAD
+```
+
+- `A`、`B`、`C`：三个 Commit。
+- `main`：当前指向 Commit C 的 Branch。
+- `HEAD`：可以先理解为“我当前所在的位置”，通常指向当前 Branch。
+
+第 04 章会正式学习 Branch 的创建、切换、合并和冲突。本章不要求操作 Branch，也不学习 rebase 或 detached HEAD。
+
+## 2.10 本地 main、origin/main 与服务器 main 预告
+
+连接远程仓库后，还会看到三个容易混淆的名称：
+
+```text
+本地 main
+本地 origin/main
+服务器 main
+```
+
+当前只需要知道它们不是同一个对象：
+
+- `main`：本地 Branch。
+- `origin/main`：本机记录的 Remote-tracking branch。
+- 服务器 `main`：GitHub/GitLab 远程仓库中的 Branch。
+
+`origin/main` 不是服务器分支本身，只有执行 fetch 等获取操作后，它才会反映本机最近取得的服务器状态。详细同步过程留到第 05 章。
+
+## 2.11 Level B：如何指定某个版本
+
+Git 命令有时需要指定某个 Commit，这类写法通常称为 revision（版本引用）。第一次学习只需能够查阅：
 
 | 写法 | 含义 |
 |---|---|
-| `HEAD` | 当前检出的提交 |
-| `HEAD~1` | 当前提交沿第一父提交向前一代，常写作“上一个提交” |
-| `HEAD~3` | 沿第一父提交连续向前三代 |
-| `COMMIT_ID` | 用提交 ID 指定版本，例如 `a1b2c3d` |
-| `main` | 用分支名指定该分支当前指向的提交 |
-| `v1.0.0` | 用标签名指定标签指向的提交 |
+| `HEAD` | 当前所在的 Commit |
+| `HEAD~1` | 沿第一父提交向前一代，简单线性历史中常理解为上一个 Commit |
+| `COMMIT_ID` | 使用 Commit ID 指定版本 |
+| `main` | `main` 当前指向的 Commit |
+| `v1.0.0` | 标签 `v1.0.0` 指向的 Commit |
 
-例如查看上一个提交：
+例如查看上一个 Commit：
 
 ```cmd
 git show HEAD~1
 ```
 
-命令中的独立 `--` 常用于分隔“版本或选项”和“文件路径”。例如：
+如果仓库只有一个 Commit，`HEAD~1` 不存在，命令会失败。
+
+独立的 `--` 常用于分隔版本或选项与文件路径：
 
 ```cmd
 git diff HEAD~1 -- README.md
 ```
 
-这表示只查看 `README.md` 相对于上一个提交的变化，也能避免文件名与分支名相同时产生歧义。
+它表示只查看 `README.md` 相对于上一个 Commit 的差异，也可以避免路径名与分支名相同时产生歧义。这些写法不属于第二章 Level A 考点。
 
-## 2.6 实验：观察文件状态
+## 2.12 新人常见误解
 
-**环境与范围：** Windows CMD；在新建的 `git-basic-lab` 目录中执行。删除该练习目录即可清理，不要在已有项目中运行。
+| 误解 | 正确认识 |
+|---|---|
+| 保存文件就是 Commit | 保存只更新 Working Tree |
+| `git add` 是上传 | `add` 更新 Staging Area |
+| `git commit` 是上传 | `commit` 更新 Local Repository |
+| Staging Area 就是 Local Repository | 暂存区准备内容，本地仓库保存 Commit 历史 |
+| Local Repository 就是 GitLab | Local Repository 在本机，GitLab 通常承载 Remote Repository |
+| `git status` 会整理或修改代码 | 它只读取并报告状态 |
+| `git diff` 会修改文件 | 它只读取并显示差异 |
+| `origin/main` 就是服务器 `main` | 它是保存在本机的远程状态记录 |
 
-先确认已安装 Git：
+## 2.13 场景练习
 
-```cmd
-git --version
-```
-
-如果提示找不到命令，请先完成[第 01 章](01_install_and_config.md)。然后创建独立练习仓库，并只为该仓库设置练习身份：
-
-```cmd
-mkdir git-basic-lab
-cd git-basic-lab
-git init -b main
-git config user.name "Git Learner"
-git config user.email "learner@example.com"
-git status
-```
-
-创建文件并观察状态变化：
-
-```cmd
-echo hello>hello.txt
-git status --short
-git add hello.txt
-git status --short
-git commit -m "docs: add hello text"
-git log --oneline
-```
-
-典型的简短状态如下：
+当前工作区有三个变化：
 
 ```text
-?? hello.txt
-A  hello.txt
+A.java：APP-123 要求修改
+B.java：APP-123 要求修改
+README.md：与 APP-123 无关的个人修改
 ```
 
-`??` 表示未跟踪，`A` 表示已加入暂存区。提交成功后，`git status` 应显示工作区干净。
+请回答：
 
-再次修改文件，并在暂存后继续修改：
+1. 哪些文件应该进入本次 Staging Area？
+2. `README.md` 应该进入本次 Commit 吗？为什么？
+3. 执行 `git add A.java B.java` 后，内容进入了哪里？
+4. 执行 Commit 后，GitLab 是否已经出现这些修改？
+5. 如果 add 后又继续修改 `A.java`，暂存区会自动更新吗？
+6. 想确认下一次 Commit 包含什么，应查看哪一组差异？
 
-```cmd
-echo staged line>>hello.txt
-git add hello.txt
-echo working tree line>>hello.txt
-git status
-git diff
-git diff --staged
-```
+参考判断：
 
-此时同一个文件会同时出现在“Changes to be committed”和“Changes not staged for commit”中。前者是已经进入暂存区的修改，后者是暂存后继续产生的工作区修改。
+- 只有 `A.java` 和 `B.java` 属于当前 Ticket。
+- `git add` 选择的是执行当时的内容，不会上传，也不会跟随之后的编辑自动更新。
+- Commit 只进入 Local Repository；尚未 Push 时，Remote Repository 不会更新。
+- Commit 前应使用 `git diff --staged` 检查暂存内容。
 
-## 2.7 常见错误
-
-- 在错误目录执行 `git init`：先用不带参数的 `cd` 确认当前位置；误初始化且尚未产生有价值提交时，再通过文件资源管理器谨慎删除该目录下的 `.git`。
-- 把提交理解成上传：使用 `git remote -v` 检查是否配置远程，使用 `git push` 才会发送提交。
-- 直接删除 `.git`：这会删除本地提交、分支和配置，不应作为普通撤销方法。
+## 2.14 本章总结
 
 ```text
-fatal: not a git repository (or any of the parent directories): .git
+编辑和保存
+    ↓
+Working Tree
+    │ git add
+    ▼
+Staging Area
+    │ git commit
+    ▼
+Local Repository
+    │ git push
+    ▼
+Remote Repository
 ```
 
-这表示当前目录及其父目录中没有 Git 仓库。先用 `cd` 和 `dir /a` 检查位置，不要在不确定的目录再次执行 `git init`。
-
-## 2.8 本章总结
-
-- Git 的核心是提交历史，不是文件夹副本。
-- 工作区负责编辑，暂存区负责选择，本地仓库负责保存提交，远程仓库负责共享。
-- 分支指向提交，`HEAD` 通常指向当前分支。
-- `git status`、`git diff` 和 `git diff --staged` 是判断当前状态的基础工具。
-
-## 练习
-
-1. 创建 `notes.txt`，分别观察未跟踪、已暂存和已提交状态。
-2. 暂存一次修改后继续编辑同一文件，说明两个 `git diff` 的结果为何不同。
-3. 用自己的话解释 `git add`、`git commit`、`git push` 分别把内容送到哪里。
-
-### 自检提示
-
-- 新文件未暂存时，`git status --short` 应显示 `??`。
-- 同一文件暂存后又修改，简短状态应显示 `MM`。
-- `git show HEAD~1` 应显示当前提交的父提交；仓库只有一个提交时，该引用不存在。
+- Working Tree、Staging Area、Local Repository 和 Remote Repository 不能混为一谈。
+- Untracked、Modified、Staged、Committed 描述内容所处的不同阶段。
+- Branch 指向 Commit；`HEAD` 可以先理解为当前所在位置。
+- 下一章将真正执行 `status → diff → add → diff --staged → commit → log → show`。
 
 [上一章：安装与初始配置](01_install_and_config.md) · [下一章：基本命令与日常提交](03_common_commands.md)

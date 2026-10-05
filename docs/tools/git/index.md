@@ -51,36 +51,33 @@ Git 是用于记录文件变更、协同开发和追踪发布版本的分布式�
 7. [撤销与恢复](07_undo_and_reset.md)
 8. [标签与版本发布](08_tags_and_release.md)
 9. [常用高级操作](09_advanced_operations.md)
-10. [Git 命令速查表](cheatsheet.md)
+10. [Git 新人综合实战](10_comprehensive_practice.md)
+11. [Git 命令速查表](cheatsheet.md)
 
 章节仍按从基础到团队协作的顺序学习，但不同内容不要求一次达到相同熟练度：
 
-### Level 1：新人必须掌握
+### Level A：必须独立操作
 
 - 工作区、暂存区、提交、分支和 `HEAD`
 - `status`、`diff`、`add`、`commit` 和 `.gitignore`
 - `clone`、`fetch`、`pull`、`push`、`origin` 和 `origin/main`
 - `branch`、`switch`、merge 和常见 conflict
 - PR/MR 与 Review 的基本流程
+- Review 指摘対応、基本 Conflict、Merge 后同步和分支清理
 
-### Level 2：日本项目必须理解
+### Level B：理解场景并能够查教程操作
 
-- Ticket → Branch、Source / Target Branch
-- Review 指摘、指摘対応、再 Review
-- CI、Protected Branch 与 Merge Gate
-- Branch Strategy、影响范围和既有项目参画
-- 使用 Git 历史调查既有代码
+- restore、restore staged、amend、revert 和 stash
+- log、show、blame、历史和影响范围调查
+- 已合并分支删除与远程跟踪分支清理
+- Protected Branch、Branch Strategy 和 Merge Strategy
 
-### Level 3：工作后逐步掌握
+### Level C：了解用途，项目规则决定
 
-- stash、amend、reset、revert、cherry-pick
-- rebase、reflog、`force-with-lease` 和 tag
+- reset、reflog、rebase、interactive rebase
+- cherry-pick、tag、submodule 和 `force-with-lease`
 
-### Level 4：项目需要时
-
-- submodule、Git LFS、fork 与名为 `upstream` 的远程仓库、interactive rebase、signed commit
-
-Level 4 只表示识别这些名称，不代表本教程逐项展开。遇到采用这些能力的项目时，再按照项目手顺和对应专题学习；不要为了练习主动把它们引入普通项目。
+Level C 不要求新人独立操作。遇到采用这些能力的项目时，再按照项目手顺和对应章节学习；不得为了练习在共享仓库主动执行历史改写。
 
 ## 完成主线后的关键自检
 
@@ -92,6 +89,8 @@ Level 4 只表示识别这些名称，不代表本教程逐项展开。遇到采
 4. PR 合并后，为什么自己电脑上的目标分支还需要 fetch/pull？
 
 如果无法画出“本地分支 → 服务器功能分支 → PR/MR → 服务器目标分支 → 本地更新”，请回看[远程仓库与同步](05_remote_repo.md)和[团队协作与代码评审](06_teamwork_and_conflicts.md)，并在练习仓库中用 `git branch -vv` 与提交图核对实际状态。
+
+完成知识自检后，必须通过[Git 新人综合实战](10_comprehensive_practice.md)。结业判断不是背出多少命令，而是能否根据一个 Repository 和 Ticket，安全完成 Branch、Commit、Push、PR、Review、Conflict、Merge 和 Cleanup。
 
 ## 命令示例约定
 
@@ -105,6 +104,21 @@ git status
 ```
 
 - 看到错误时先阅读完整信息，不要立即执行强制删除、强制推送或历史改写命令。
+
+教程中的少量 CMD 辅助命令用于准备和查看练习文件：
+
+| CMD 写法 | 作用 |
+|---|---|
+| `cd` / `cd DIRECTORY` | 显示当前目录 / 进入指定目录 |
+| `mkdir DIRECTORY` | 创建练习目录 |
+| `dir /a PATH` | 显示目录内容，并包含隐藏项 |
+| `echo TEXT>FILE` | 创建或覆盖文件；`>` 是覆盖重定向 |
+| `echo TEXT>>FILE` | 把一行追加到文件；`>>` 不覆盖原内容 |
+| `type FILE` | 在终端显示文本文件内容 |
+| `where git` | 显示 CMD 实际找到的 Git 程序路径 |
+| `REM TEXT` | CMD 注释，不会执行后面的说明文字 |
+
+这些命令不改变 Git 历史。真正改变 Git 状态的命令会在首次出现的章节说明作用对象、参数、结果和验证方法；后续实验重复使用时含义不变。
 
 ## 练习目录清理
 

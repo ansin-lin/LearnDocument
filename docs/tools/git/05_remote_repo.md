@@ -1,201 +1,283 @@
 # 05 远程仓库与同步
 
-## 5.1 本地分支与远程跟踪分支
+第 04 章在本地完成了 Branch 和 Merge。本章解决团队协作的下一问题：本机 Commit 怎样与 GitHub/GitLab 服务器交换，并且怎样确认每个 Branch 当前位于哪里。
 
-远程仓库是团队共享的 Git 仓库。`origin` 是克隆时常见的远程名称，只是一个可更改的别名，并不是 Git 关键字。
+## 本章学习目标
+
+### Level A：必须掌握
+
+- 区分 Local Repository、Remote Repository 和 `origin`。
+- 区分本地 `develop`、本地 `origin/develop` 和服务器 `develop`。
+- 使用 `remote`、`fetch`、`pull --ff-only`、`push` 和 `clone`。
+- 说明 Push 与 PR/MR 不是同一个动作。
+
+### Level B：理解并能够查资料操作
+
+- 理解 upstream/tracking，并跟踪已有 Remote Branch。
+- 根据状态调查 non-fast-forward 拒绝。
+- 按项目规则删除、清理或重命名 Remote Branch。
+
+### Level C：项目规则决定
+
+- 分叉后的 rebase、共享历史改写和强制推送。
+- 新人不应把这些操作作为 Push 失败时的默认解决方案。
+
+## 5.1 为什么需要 Remote Repository
+
+Local Repository 能保存个人 Commit，但其他成员无法自动看到本机历史。如果电脑损坏或只有一人持有 Commit，团队也无法稳定协作。
+
+Remote Repository（远程仓库）提供团队通过网络共享的 Git 仓库，常由 GitHub、GitLab 或公司内部平台托管。
+
+```text
+开发者 A 的 Local Repository
+              │
+              ├── Remote Repository
+              │
+开发者 B 的 Local Repository
+```
+
+Remote Repository 不是自动同步网盘。开发者需要明确执行 fetch、pull 或 push。
+
+## 5.2 origin 是什么
+
+一个本地仓库可以登记多个 Remote Repository。`origin` 是 clone 时常见的默认远程名称，只是一个可更改的别名，不是 Git 关键字。
+
+查看已经登记的远程：
 
 ```cmd
 git remote -v
 git remote get-url origin
 ```
 
-克隆后常见的名称有：
+- `remote -v`：显示 Remote 名称以及 fetch、push 使用的 URL。
+- `remote get-url origin`：只读取 `origin` 的 URL，不连接服务器。
 
-- `main`：本地分支，可以直接提交
-- `origin/main`：最近一次获取到的远程 `main` 状态，不能像普通本地分支一样直接提交
-- `origin`：远程仓库别名
-
-执行 `git fetch origin` 后，Git 更新 `origin/main` 等远程跟踪分支，但不会自动改动当前工作区。
-
-```mermaid
-flowchart TB
-    subgraph PC["开发者电脑"]
-        L["Local branch<br/>main"]
-        RT["Remote-tracking branch<br/>origin/main"]
-    end
-    subgraph REMOTE["GitHub / GitLab"]
-        R["Remote server branch<br/>main"]
-    end
-    R -->|"fetch"| RT
-    L -->|"push"| R
-    RT -.->|"integrate"| L
-```
-
-三者名称相似，但并不是同一个 branch。`origin/main` 位于本地，是“本机上一次 fetch 后看到的服务器 main 状态”。
-
-## 5.2 添加远程仓库
-
-本地初始化的仓库可以添加远程地址：
+没有 `origin` 的本地仓库，可以按项目提供的真实地址添加：
 
 ```cmd
 git remote add origin REPOSITORY_URL
 git remote -v
 ```
 
-远程地址填写错误时：
+`REPOSITORY_URL` 必须替换为项目 HTTPS 或 SSH 地址。地址错误时修改：
 
 ```cmd
 git remote set-url origin NEW_REPOSITORY_URL
 ```
 
-提交前不要把访问令牌嵌入 HTTPS 地址。优先使用系统凭据管理器、平台命令行工具（Command Line Interface，CLI）或 SSH。
+这些命令只修改本地 Remote 配置，不会移动 Branch 或上传 Commit。
 
-## 5.3 fetch、pull 和 push
+## 5.3 三个 develop 不是同一个对象
 
-### 获取但不合并
-
-假设服务器上的 `main` 已经从 B 前进到 C，而本地尚未获取：
+连接远程仓库以后，必须区分：
 
 ```text
-服务器 main:       A──B──C
-本地 main:         A──B
-本地 origin/main:  A──B
+本地 Branch：              develop
+本地 Remote-tracking Branch：origin/develop
+服务器 Branch：            develop
 ```
+
+- 本地 `develop`：可以切换并创建本地 Commit。
+- `origin/develop`：保存在本机、记录最近一次取得的服务器 `develop` 状态。
+- 服务器 `develop`：团队 Remote Repository 中的真实 Branch。
+
+```text
+本地 develop  ────────────── push ──────────────> 服务器 develop
+                                                       │
+本地 origin/develop <──────── fetch 更新本地记录 ──────┘
+```
+
+`origin/develop` 不是服务器 Branch 本身，也不能像普通本地 Branch 一样直接在上面继续开发。
+
+## 5.4 fetch：先取得服务器状态
+
+假设服务器已经前进到 C，本地仍停留在 B：
+
+```text
+服务器 develop：       A ── B ── C
+本地 develop：         A ── B
+本地 origin/develop：  A ── B
+```
+
+只想先取得并调查远程变化：
 
 ```cmd
 git fetch origin
 git log --oneline --graph --decorate --all
-git diff main..origin/main
+git diff develop..origin/develop
 ```
+
+- `fetch origin`：从 `origin` 获取 Commit 和引用，更新 `origin/develop` 等 Remote-tracking Branch。
+- `log ... --all`：查看本地各引用的相对位置。
+- `diff develop..origin/develop`：比较两个 Branch 端点的文件差异。
 
 执行后：
 
 ```text
-本地 main:         A──B
-本地 origin/main:  A──B──C
+服务器 develop：       A ── B ── C
+本地 develop：         A ── B
+本地 origin/develop：  A ── B ── C
 ```
 
-`fetch` 更新 `origin/main`，不会自动移动本地 `main`，也不会自动改变 Working Tree。它适合先查看远程变化，再决定是否以及如何整合。
+`fetch` 不会自动移动本地 `develop`，也不会自动改变当前 Working Tree。因此它适合“先看看服务器发生了什么”。
 
-### 拉取并整合
+## 5.5 pull：取得并整合
 
-```cmd
-git pull --ff-only
-```
-
-`pull` 会先 fetch，再把当前分支与其上游分支整合。`--ff-only` 只允许快进，可以避免不知情地创建合并提交；如果双方已经分叉，命令会停止，由开发者根据团队规则选择 merge 或 rebase。
-
-继续上面的场景，且本地没有独有提交时：
+`pull` 可以理解为：
 
 ```text
-pull 前
-main:         A──B
-origin/main:  A──B──C
-
-git pull --ff-only
-
-pull 后
-main:         A──B──C
-origin/main:  A──B──C
+fetch
+  +
+把取得的 upstream 变化整合进当前 Branch
 ```
 
-可以把 `pull` 理解为 `fetch + integrate`，但整合使用 merge、rebase 还是只允许 fast-forward，取决于命令选项和项目配置。
-
-### 推送本地提交
-
-首次推送并建立上游关系：
+在本地 `develop` 没有独有 Commit、只需要安全快进时：
 
 ```cmd
-git push -u origin main
+git switch develop
+git status
+git pull --ff-only
 ```
 
-之后在该分支通常可以直接执行：
+- `switch develop`：确认接收更新的是本地 `develop`。
+- `status`：确认没有遗留修改和进行中的操作。
+- `--ff-only`：只允许 fast-forward；如果历史已经分叉则停止，不自动创建 Merge Commit。
+
+成功后：
+
+```text
+本地 develop：         A ── B ── C
+本地 origin/develop：  A ── B ── C
+```
+
+项目可能规定 pull 时使用 merge、rebase 或 `ff-only`。新人教程使用 `--ff-only` 避免在状态不清楚时自动产生合并；真实项目以开发手顺为准。
+
+## 5.6 push：把本地 Commit 发送到服务器
+
+假设本地任务 Branch 有一个服务器尚未拥有的 Commit D：
+
+```text
+本地 feature/APP-123：A ── B ── C ── D
+服务器：尚无 feature/APP-123
+```
+
+首次 Push：
+
+```cmd
+git push -u origin feature/APP-123
+```
+
+- `origin`：目标 Remote。
+- `feature/APP-123`：要上传的本地 Branch。
+- `-u`：在 Push 成功后设置 upstream。
+
+执行后：
+
+```text
+本地 feature/APP-123            → D
+本地 origin/feature/APP-123     → D
+服务器 feature/APP-123          → D
+```
+
+后续通常可以简写：
 
 ```cmd
 git push
 ```
 
-`-u` 建立本地分支与远程分支的跟踪关系。使用以下命令检查：
+Push 后必须阅读完整输出，并在平台确认目标 Branch。命令成功只说明指定 Remote Branch 已更新。
+
+## 5.7 Push 不等于 PR/MR
+
+```text
+Push：
+Local feature/APP-123
+        ↓
+Remote feature/APP-123
+
+PR / MR：
+Remote feature/APP-123
+        ↓ 请求 Review 和合并
+Remote develop
+```
+
+因此：
+
+> `git push` 成功以后，修改不一定已经进入 `develop`。
+
+是否进入目标 Branch，还取决于 PR/MR、Review、CI 和 Merge。第 06 章正式学习这段流程。
+
+## 5.8 upstream / tracking 是什么
+
+Remote-tracking Branch 是具体的本地引用，例如 `origin/feature/APP-123`。upstream（上游）是本地 Branch 与默认同步目标之间的关联：
+
+```text
+本地 feature/APP-123
+          │ upstream
+          ▼
+本地 origin/feature/APP-123
+          │ 对应远程状态
+          ▼
+服务器 feature/APP-123
+```
+
+首次执行 `push -u` 后检查：
 
 ```cmd
 git branch -vv
 ```
 
-首次推送功能分支前后可以这样理解：
+方括号中应出现类似 `[origin/feature/APP-123]`。之后不带 Branch 名的 `push` 或 `pull` 才能根据关联确定默认目标。
 
-```text
-push 前
-本地 feature/APP-123:  A──B──C──D
-服务器：尚无该功能分支
+upstream 不是第四种 Branch，也不一定名为 `upstream`。某些 fork 工作流会把另一个 Remote 别名命名为 `upstream`，那只是 Remote 名称，与本节的 tracking 关系不要混淆。
 
-git push -u origin feature/APP-123
+## 5.9 clone：取得已有项目
 
-push 后
-本地分支:             feature/APP-123 -> D
-本地远程跟踪分支:     origin/feature/APP-123 -> D
-服务器分支:           feature/APP-123 -> D
-```
-
-### Upstream 是关系，不是第四种分支
-
-Remote-tracking branch 是具体的本地引用，例如 `origin/feature/APP-123`；upstream（上游）则是本地分支与默认同步目标之间的关联：
-
-```mermaid
-flowchart TB
-    L["本地分支<br/>feature/APP-123"]
-    RT["本地远程跟踪分支<br/>origin/feature/APP-123"]
-    R["服务器分支<br/>feature/APP-123"]
-    L <-->|"upstream relationship"| RT
-    L -->|"push"| R
-    R -->|"fetch"| RT
-```
-
-`git push -u origin feature/APP-123` 中的 `-u`（`--set-upstream`）在首次推送时建立这项关联。之后 `git push` 和 `git pull` 才能在省略分支名时知道默认目标。`git branch -vv` 用方括号显示每个本地分支的 upstream。
-
-### push 不等于 PR/MR
-
-```text
-git push:
-本地功能分支 -> 服务器功能分支
-
-Pull Request / Merge Request:
-服务器功能分支 -> 请求合入服务器目标分支
-```
-
-push 是 Git 数据同步；PR/MR 是 GitHub/GitLab 等平台上的审查与合并请求。推送成功不会自动等于已经创建 PR，更不等于已经合并。
-
-## 5.4 克隆和远程分支
+加入既有项目时通常使用 clone，而不是先创建空目录执行 `git init`：
 
 ```cmd
 git clone REPOSITORY_URL
 cd REPOSITORY_DIRECTORY
 git remote -v
 git branch --all
+git status
 ```
 
-从已有远程分支创建本地跟踪分支：
+`git clone` 通常会：
+
+- 创建目标目录。
+- 下载 Commit 和引用。
+- 检出 Remote 默认 Branch。
+- 登记名为 `origin` 的 Remote。
+
+`REPOSITORY_DIRECTORY` 是 clone 创建的实际目录名。执行后应阅读项目 README 和开发手顺，不能假设默认 Branch 一定是 `main` 或 `develop`。
+
+跟踪一个已有 Remote Branch：
 
 ```cmd
 git fetch origin
-git switch --track origin/feature/login
+git switch --track origin/feature/APP-123
 ```
 
-如果本地分支名与远程不同，可以明确指定：
+需要使用不同本地名称时：
 
 ```cmd
-git switch -c local-login --track origin/feature/login
+git switch -c local-app-123 --track origin/feature/APP-123
 ```
 
-## 5.5 处理推送被拒绝
+这些属于 Level B；新人日常流程通常自己从目标 Branch 创建任务 Branch。
 
-常见提示是远程分支包含本地没有的提交。不要立即强制推送。先取得并检查远程历史：
+## 5.10 Push 被拒绝时先调查
+
+典型错误：
 
 ```text
-! [rejected] main -> main (non-fast-forward)
-error: failed to push some refs to 'REPOSITORY_URL'
+! [rejected] feature/APP-123 -> feature/APP-123 (non-fast-forward)
 ```
 
-`non-fast-forward` 表示远程分支不能只向前移动到本地位置，通常说明远程存在本地尚未取得的提交。
+含义是服务器 Branch 包含本地没有的历史，直接 Push 可能覆盖变化。不要立即强制推送。
+
+先执行只读调查：
 
 ```cmd
 git fetch origin
@@ -203,28 +285,28 @@ git status
 git log --oneline --graph --decorate --all
 ```
 
-然后按照团队策略选择：
+然后确认：
+
+- 是否推送到了正确 Branch。
+- 是否有其他成员更新了同名 Branch。
+- 当前 Branch 是否允许共享。
+- 项目要求 merge、rebase，还是重新建立 Branch。
+
+rebase 和 `force-with-lease` 的风险见第 09 章。受保护的 `develop` 通常要求通过 PR/MR 合入，不允许开发者直接 Push。
+
+## 5.11 Level B：Remote Branch 清理与重命名
+
+删除已经确认不再需要的 Remote Branch：
 
 ```cmd
-REM 保留合并关系
-git merge origin/main
-
-REM 或者，仅在允许整理当前分支历史时
-git rebase origin/main
-```
-
-解决冲突并完成测试后再推送。受保护的 `main` 通常应通过 Pull Request 合并，而不是由开发者直接推送。
-
-## 5.6 删除和重命名功能分支
-
-删除已经合并的远程功能分支：
-
-```cmd
-git push origin --delete feature/old-name
+git push origin --delete feature/old-task
 git fetch --prune origin
 ```
 
-重命名正在使用的共享分支会影响 Pull Request、CI、文档和其他开发者。普通功能分支需要重命名时，先在本地改名并推送新名称，确认成功后再删除旧远程分支：
+- `push origin --delete`：请求服务器删除指定 Branch，会影响其他成员。
+- `fetch --prune`：清理本地已经不存在于服务器的 Remote-tracking Branch，不删除本地工作 Branch。
+
+重命名一个尚未完成的个人功能 Branch：
 
 ```cmd
 git branch -m feature/old-name feature/new-name
@@ -232,76 +314,78 @@ git push -u origin feature/new-name
 git push origin --delete feature/old-name
 ```
 
-不要仅按以上步骤重命名仓库默认分支；默认分支还需要修改托管平台设置、保护规则、流水线和所有引用。
+这是本地重命名、创建新 Remote Branch、删除旧 Remote Branch 三个独立动作，每一步都要验证。默认 Branch 重命名还涉及平台设置、保护规则、CI 和文档，不应只执行以上命令。
 
-## 5.7 实验：推送一个练习仓库
+## 5.12 实验：Push 一个练习 Branch
 
-**环境与前置条件：** 已完成第 02 章认证配置；在 GitHub 或 GitLab 创建一个没有 README、许可证和 `.gitignore` 的空仓库。以下操作会在远程平台创建分支和提交。
+**前置条件：** 教师准备一个允许学员 Push 功能 Branch 的练习 Remote Repository；默认 Branch 为 `develop`。认证、网络和权限依赖外部环境，无法只靠本地审计验证。
 
 ```cmd
-mkdir git-remote-lab
-cd git-remote-lab
-git init -b main
-git config user.name "Git Learner"
-git config user.email "learner@example.com"
-echo # Git Remote Lab>README.md
-git add README.md
-git commit -m "docs: initialize remote lab"
-git remote add origin REPOSITORY_URL
+git clone REPOSITORY_URL
+cd REPOSITORY_DIRECTORY
 git remote -v
-git push -u origin main
+git switch develop
+git pull --ff-only
+git switch -c feature/APP-123
+```
+
+使用编辑器创建或修改教师指定文件，然后：
+
+```cmd
+git status
+git diff
+git add FILE_PATH
+git diff --staged
+git commit -m "feat: complete APP-123 practice"
+git push -u origin feature/APP-123
 git branch -vv
 ```
 
-在远程网页确认提交后，再创建功能分支：
+验证：平台上出现 `feature/APP-123`，最新 Commit ID 与本地一致；`develop` 尚未因这次 Push 自动变化。
 
-```cmd
-git switch -c feature/add-note
-echo remote practice>note.txt
-git add note.txt
-git commit -m "docs: add remote practice note"
-git push -u origin feature/add-note
-```
+## 5.13 常见错误
 
-由于认证、网络和平台权限依赖外部环境，本实验无法仅通过本地文档审计验证。失败时记录完整错误，重点检查远程地址、账号权限、SSH/HTTPS 凭据和网络限制。
-
-## 5.8 常见错误
+### origin 不存在或 URL 错误
 
 ```text
 fatal: 'origin' does not appear to be a git repository
 ```
 
-远程名称不存在或地址错误。执行 `git remote -v` 检查名称和 URL。
+使用 `git remote -v` 检查名称和 URL。
+
+### 当前 Branch 没有 upstream
 
 ```text
 There is no tracking information for the current branch.
 ```
 
-当前本地分支尚未关联上游。首次推送时使用 `git push -u origin BRANCH_NAME`，或按项目要求建立跟踪关系。
+确认 Remote 和 Branch 名后，首次 Push 使用 `git push -u origin BRANCH_NAME`，或按项目手顺建立 tracking。
 
-```text
-Your branch and 'origin/main' have diverged
-```
+### 认证或权限失败
 
-本地与远程都包含对方没有的提交。先 fetch 和查看提交图，再按团队规则 merge 或 rebase，不要直接强推。
+记录完整错误，检查 Remote URL、账号权限、HTTPS/SSH 凭据、VPN 和 SSO。不要把令牌、私钥或内部地址贴到公开渠道。
 
-## 5.9 本章总结
+## 本章必须掌握
 
-- `origin/main` 是本地保存的远程状态，不是远程服务器本身。
-- `fetch` 只获取，`pull` 获取并整合，`push` 上传本地提交。
-- 推送被拒绝时先 fetch 和查看历史，不要直接强推。
-- 默认分支、共享分支和个人功能分支的变更策略不同。
+- `origin` 是 Remote 别名。
+- fetch 更新 Remote-tracking Branch，不自动改变本地工作 Branch。
+- pull 会获取并整合，执行前必须确认当前 Branch 和状态。
+- push 上传 Commit 到指定 Remote Branch，不等于完成 PR/MR 或 Merge。
 
-## 练习
+## 本章不要求现在掌握
 
-1. 使用 `git branch -vv` 找出当前分支的上游。
-2. 比较 `main` 与 `origin/main`。
-3. 解释为什么重命名默认分支不能只执行一条 Git 命令。
+- 分叉历史的 rebase 和强制推送。
+- 默认 Branch 迁移。
+- 复杂的 fork 与多 Remote 工作流。
 
-### 自检提示
+## 进入下一章前确认
 
-- `git branch -vv` 中当前分支后面的方括号应显示上游，例如 `[origin/main]`。
-- `git fetch` 后工作区文件不应自动变化。
-- 重命名默认分支还要同步平台设置、CI、保护规则和文档引用。
+1. `develop`、`origin/develop` 和服务器 `develop` 有何区别？
+2. 同事更新了服务器 `develop`，只想先查看变化，应使用什么操作？
+3. 为什么 fetch 后 Working Tree 通常不变？
+4. `pull --ff-only` 为什么可能停止？
+5. 首次 Push 为什么常使用 `-u`？
+6. Push 成功后，修改是否已经进入 `develop`？
+7. non-fast-forward 时为什么不能立即强制推送？
 
 [上一章：分支、合并与冲突](04_branches_and_merge.md) · [下一章：团队协作与代码评审](06_teamwork_and_conflicts.md)
