@@ -284,23 +284,220 @@ for (Employee employee : employees) {
 
 即使外层有事务，这段代码仍可能执行多次INSERT。事务解决“全部成功或全部回滚”，不是自动批量化工具。
 
-### 2. 常见处理方向
+### 2. 共通重点：使用ExecutorType.BATCH
 
-| 方式 | 特点 | 使用前要确认 |
+跨数据库项目中，更共通的做法是使用JDBC Batch。MyBatis通过 `ExecutorType.BATCH` 提供这一执行方式。
+
+它不会把Java循环自动改成一条多值SQL。业务代码仍然逐个调用同一个Mapper方法，但MyBatis会把同类写语句及其参数暂存起来，再通过JDBC批量执行：
+
+```text
+循环调用mapper.insert(employee)
+            ↓
+MyBatis暂存同类PreparedStatement及参数
+            ↓
+flushStatements()触发JDBC批量执行
+            ↓
+检查BatchResult
+            ↓
+commit()或rollback()
+```
+
+这种方式使用JDBC标准批处理接口，因此比某一种数据库的多值INSERT语法更容易迁移。但具体发送方式、性能、错误计数和生成主键能力仍受JDBC驱动与数据库影响，必须在目标环境验证。
+
+### 3. 继续复用单条INSERT
+
+不需要为批处理重新编写一条集合参数SQL。继续使用第7章的单条Mapper方法：
+
+```java
+int insert(Employee employee);
+```
+
+以及原有XML：
+
+```xml
+<insert id="insert"
+        parameterType="Employee"
+        useGeneratedKeys="true"
+        keyProperty="id"
+        keyColumn="id">
+    INSERT INTO employees (name, department_id, email)
+    VALUES (#{name}, #{departmentId}, #{email})
+</insert>
+```
+
+普通执行器中，循环调用这个方法会逐次执行。批量执行器中，MyBatis会暂存这些调用，直到需要flush。
+
+### 4. 完整批量调用片段
+
+下面是普通MyBatis环境中的调用片段。`employees` 是已经完成必填、长度、邮箱格式和部门规则检查的员工集合：
+
+```java
+import java.sql.Statement;
+import java.util.List;
+import org.apache.ibatis.executor.BatchResult;
+import org.apache.ibatis.session.ExecutorType;
+import org.apache.ibatis.session.SqlSession;
+
+if (employees == null || employees.isEmpty()) {
+    throw new IllegalArgumentException("批量新增员工不能为空");
+}
+
+try (SqlSession sqlSession = sqlSessionFactory.openSession(
+        ExecutorType.BATCH, false)) {
+    try {
+        EmployeeMapper mapper = sqlSession.getMapper(EmployeeMapper.class);
+
+        for (Employee employee : employees) {
+            mapper.insert(employee);
+        }
+
+        List<BatchResult> batchResults = sqlSession.flushStatements();
+
+        for (BatchResult batchResult : batchResults) {
+            for (int updateCount : batchResult.getUpdateCounts()) {
+                if (updateCount == Statement.EXECUTE_FAILED) {
+                    throw new IllegalStateException("批量新增中存在执行失败的数据");
+                }
+            }
+        }
+
+        sqlSession.commit();
+    } catch (RuntimeException exception) {
+        sqlSession.rollback();
+        throw exception;
+    }
+}
+```
+
+这段代码必须作为一个整体理解，不能只复制循环部分。
+
+#### 4.1 `openSession(ExecutorType.BATCH, false)`
+
+第一个参数选择批量执行器。第二个参数 `false` 表示不自动提交，由代码在全部批次成功后统一调用 `commit()`。
+
+如果使用自动提交，或者每插入一条就提交一次，就失去了“整批共同成功或共同回滚”的事务边界。
+
+#### 4.2 循环中的返回值不是最终影响行数
+
+在Batch执行器中，下面的调用主要表示“把本次语句和参数加入批次”：
+
+```java
+mapper.insert(employee);
+```
+
+它的即时 `int` 返回值不能按普通执行器的方式理解为已经插入的行数。不要在循环中用 `mapper.insert(employee) == 1` 判断批量写入成功。
+
+真正执行批次并取得结果的是：
+
+```java
+List<BatchResult> batchResults = sqlSession.flushStatements();
+```
+
+#### 4.3 怎样阅读BatchResult
+
+一个 `BatchResult` 对应一组被批量执行的映射语句和SQL。`getUpdateCounts()` 返回JDBC驱动报告的每次更新结果。
+
+常见值包括：
+
+| 返回值 | 含义 | 处理方式 |
 | --- | --- | --- |
-| 循环普通INSERT | 简单，错误位置容易理解 | 数据量小且调用次数可接受 |
-| 多值INSERT | 一条SQL写入多行 | SQL长度、生成主键、单次失败范围 |
-| `ExecutorType.BATCH` | JDBC批量发送写语句 | flush时机、错误返回、内存和事务 |
+| `0`或正整数 | 驱动报告的影响行数 | 与接口规格和输入数据核对 |
+| `Statement.SUCCESS_NO_INFO` | 执行成功，但驱动不提供具体行数 | 不能用行数合计证明全部写入，需要查询验证 |
+| `Statement.EXECUTE_FAILED` | 该批次元素执行失败 | 回滚事务并调查失败数据 |
 
-`ExecutorType.BATCH` 会把更新语句批量执行，但不代表业务代码可以忽略事务，也不保证所有驱动最终只发送一条SQL。批量模式中的错误可能在 `flushStatements()` 或提交时才暴露。
+不同驱动可能返回不同形式的计数。即使没有 `EXECUTE_FAILED`，仍要在测试中查询数据库，确认实际插入行数和字段值。
 
-项目采用批量方式时应验证：
+#### 4.4 flush、commit和rollback各自负责什么
+
+| 操作 | 作用 |
+| --- | --- |
+| `flushStatements()` | 把暂存的批次交给JDBC执行，并取得批处理结果 |
+| `commit()` | 提交当前事务，使成功写入正式生效 |
+| `rollback()` | 回滚当前事务，撤销本次事务中的写入 |
+
+`commit()` 会处理尚未flush的语句，但示例显式调用 `flushStatements()`，是为了在提交前取得 `BatchResult` 并检查失败。
+
+错误可能在循环中、`flushStatements()` 或 `commit()` 时出现。异常处理必须覆盖整个批量过程。
+
+### 5. 批量执行时最容易忽略的边界
+
+#### 5.1 空集合和输入校验
+
+空集合是“不执行并返回成功”，还是“请求参数错误”，应由接口规格确定。本例选择报告参数错误。
+
+批量执行不会代替字段校验和业务校验。姓名为空、邮箱格式错误或部门不存在等问题，应尽可能在进入数据库批次前发现；数据库唯一约束和外键约束仍作为最后防线。
+
+#### 5.2 中间一条失败
+
+准备三条数据，让第二条违反邮箱唯一约束。至少确认：
+
+1. 异常在哪个阶段出现；
+2. 是否执行了 `rollback()`；
+3. 第一条和第三条是否也没有保留；
+4. 日志能否定位输入批次和失败范围，同时不泄露敏感数据。
+
+是否允许“成功一部分、失败一部分”属于另一种业务规格，不能通过捕获异常后继续提交来临时实现。
+
+#### 5.3 批次不能无限增大
+
+大量对象一直暂存在内存中，可能增加应用和驱动的内存压力。实际项目通常按固定上限切分输入，每批调用一次 `flushStatements()`，但批量大小没有适用于所有项目的统一数字。
+
+需要用目标数据库、JDBC驱动和接近实际的数据量测试：
+
+- 每批执行时间；
+- 内存变化；
+- 网络往返和数据库负载；
+- 失败时需要回滚和重新处理的数据范围。
+
+即使分成多个flush，只要还没有提交，它们仍可以属于同一个事务。是否整批统一提交，取决于业务是否要求全部成功或全部失败。
+
+#### 5.4 不要在批量循环中穿插查询
+
+批量写入过程中执行查询，可能使MyBatis为了保证行为可理解而提前flush已暂存的写语句。批量阶段应尽量先完成校验，再集中写入，不要形成“写一条、查一条”的新问题。
+
+#### 5.5 自动生成主键必须实测
+
+`useGeneratedKeys="true"` 不代表所有数据库和驱动都能以相同方式返回批量生成的主键。采用前验证：
+
+- 每个 `Employee.id` 是否被正确回填；
+- 回填顺序是否与输入一致；
+- flush或提交失败后，对象中的ID是否还能代表已提交数据；
+- 后续业务是否真的必须立即使用这些ID。
+
+主键回填不稳定时，应根据规格选择单条插入、预先生成业务编号或写入后按唯一键查询，不能根据连续自增规律自行计算ID。
+
+### 6. Spring项目中的使用边界
+
+接入Spring后，`SqlSession` 和事务通常由MyBatis-Spring及Spring事务管理器负责。不要把上面的 `openSession()`、`commit()` 和 `rollback()` 原样复制进使用 `@Transactional` 的Service。
+
+Spring项目需要按照项目配置创建使用 `ExecutorType.BATCH` 的批量会话或 `SqlSessionTemplate`，并保持执行器类型和事务边界一致。不要在同一事务中临时混用普通执行器和批量执行器。具体配置应结合项目现有数据源、事务管理器和MyBatis-Spring版本验证。
+
+### 7. MySQL多值INSERT只作为补充方案
+
+MySQL支持一条SQL包含多组VALUES：
+
+```sql
+INSERT INTO employees (name, department_id, email)
+VALUES
+    (?, ?, ?),
+    (?, ?, ?);
+```
+
+MyBatis可以用 `<foreach>` 生成这种SQL，但它属于数据库SQL能力，不作为本节的共通主线。其他数据库可能使用不同语法，SQL长度、参数上限和批量生成主键行为也不同。
+
+只有项目已经确定数据库产品，并经过性能、失败回滚和主键回填验证时，再考虑把多值INSERT作为方言优化。
+
+### 8. 本节验证要求
+
+项目采用批量执行时至少验证：
 
 1. 0条、1条和多条输入；
 2. 中间一条违反唯一约束时是否整体回滚；
-3. 生成主键是否符合项目预期；
-4. 批量大小增加时的内存和执行时间；
-5. 失败日志能否定位到具体数据。
+3. `flushStatements()` 返回的结果怎样解释；
+4. 生成主键是否符合项目预期；
+5. 批量大小增加时的内存和执行时间；
+6. 批量循环中没有穿插不必要的查询；
+7. 失败日志能否定位到具体批次和数据范围。
 
 ## 五、查询范围没有上限
 
@@ -560,7 +757,7 @@ SQL次数合理后，如果单条查询仍然慢，再使用MySQL `EXPLAIN` 观�
 
 `EXPLAIN ANALYZE` 会实际执行语句。只应对安全的查询并在受控环境中使用，不能对未知成本的写操作随意执行。
 
-MyBatis的嵌套查询、嵌套结果映射和N+1说明可参考[MyBatis Mapper XML官方文档](https://mybatis.org/mybatis-3/sqlmap-xml.html)，动态SQL标签参考[MyBatis Dynamic SQL官方文档](https://mybatis.org/mybatis-3/dynamic-sql.html)，批量执行器参考[MyBatis Java API](https://mybatis.org/mybatis-3/java-api.html)。执行计划原理继续学习SQL课程，并可核对[MySQL 8.0 EXPLAIN说明](https://dev.mysql.com/doc/refman/8.0/en/explain.html)。
+MyBatis的嵌套查询、嵌套结果映射和N+1说明可参考[MyBatis Mapper XML官方文档](https://mybatis.org/mybatis-3/sqlmap-xml.html)，动态SQL标签参考[MyBatis Dynamic SQL官方文档](https://mybatis.org/mybatis-3/dynamic-sql.html)，批量执行器与flush方法参考[MyBatis Java API](https://mybatis.org/mybatis-3/java-api.html)，JDBC批处理返回值参考[Java 17 Statement API](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Statement.html)。MySQL多值语法只作为方言补充，可核对[MySQL 8.0 INSERT说明](https://dev.mysql.com/doc/refman/8.0/en/insert.html)。执行计划原理继续学习SQL课程，并可核对[MySQL 8.0 EXPLAIN说明](https://dev.mysql.com/doc/refman/8.0/en/explain.html)。
 
 ## 十三、综合Review练习
 
@@ -622,6 +819,7 @@ MyBatis的嵌套查询、嵌套结果映射和N+1说明可参考[MyBatis Mapper 
 | 参数安全 | 外部输入是否进入文本替换？ |
 | 写入条件 | 条件缺失时会不会全表UPDATE或DELETE？ |
 | 影响行数 | INSERT、UPDATE、DELETE结果是否符合规格？ |
+| 批量插入 | 是否处理空集合、单批上限、事务回滚、影响行数和主键回填？ |
 | 事务 | 多步写入失败时能否整体回滚？ |
 | 缓存 | 是否用缓存掩盖重复调用或引入旧数据风险？ |
 | 超时与重试 | 是否有明确边界，写操作是否考虑重复执行？ |
@@ -633,7 +831,7 @@ MyBatis的嵌套查询、嵌套结果映射和N+1说明可参考[MyBatis Mapper 
 
 1. 根据Java循环和SQL日志识别N+1与重复Mapper调用；
 2. 在JOIN、嵌套查询和两次批量查询之间说明取舍；
-3. 区分事务、批量执行、缓存、超时和结果数量限制；
+3. 区分多值INSERT、批量执行器、事务、缓存、超时和结果数量限制；
 4. 识别一对多JOIN分页、COUNT条件漂移和空条件写入；
 5. 使用参数绑定与白名单避免动态SQL注入；
 6. 用SQL次数、影响行数和数据库结果完成一次可Review的改修说明。
