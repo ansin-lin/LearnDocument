@@ -352,6 +352,8 @@ nav:
     - 10. 关联查询与 ResultMap: backend/mybatis/10_association_resultmap.md
     - 11. 缓存机制: backend/mybatis/11_cache_mechanism.md
     - 12. MyBatis 综合练习: backend/mybatis/12_comprehensive_practice.md
+    - 附录:
+      - A01. 项目常见SQL调用陷阱与Review: backend/mybatis/appendix/A01_project_sql_call_pitfalls.md
   - Spring Boot:
     - 课程入口: backend/springboot/index.md
     - 基础主线:
