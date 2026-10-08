@@ -27,13 +27,14 @@ src/main/java/com/example/employee/
 └── service/impl/EmployeeServiceImpl.java            ← 完整替换
 
 src/main/resources/application.yml                   ← 完整替换
+.gitignore                                           ← 追加运行日志目录
 ```
 
 SLF4J API和默认Logback实现已经由Spring Boot Web Starter提供，本章不新增Maven依赖，也不在 `pom.xml` 中另外指定日志库版本。
 
 ## 二、完整示例
 
-先完成本节全部文件，再从第三节开始逐项理解第一次出现的日志对象、级别、占位符、MDC和滚动配置。
+先阅读 `application.yml` 及其紧随其后的日志配置说明，再完成本节其他文件。这样在阅读Java日志代码前，已经知道日志会不会输出、输出到哪里，以及旧文件怎样滚动归档。
 
 ### 1. 完整替换application.yml
 
@@ -51,21 +52,180 @@ spring:
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.example.employee.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    default-statement-timeout: 10
 
 logging:
   level:
     root: INFO
-    com.example.employee: ${APP_LOG_LEVEL:INFO}
+    com.example.employee: INFO
+    com.example.employee.service.impl.EmployeeServiceImpl: ${APP_SERVICE_LOG_LEVEL:INFO}
+    com.example.employee.mapper: INFO
   file:
     name: logs/employee-api.log
   logback:
     rollingpolicy:
+      file-name-pattern: "${LOG_FILE}.%d{yyyy-MM-dd}.%i.gz"
       max-file-size: 10MB
       max-history: 7
+      total-size-cap: 100MB
+      clean-history-on-start: false
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:-no-request}] %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId:-no-request}] %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"
 ```
+
+#### 1.1 先看懂logging配置的结构
+
+`logging` 是Spring Boot的日志配置入口。本章使用Spring Boot Web Starter默认提供的SLF4J和Logback，因此可以直接在 `application.yml` 中设置日志等级、日志文件、滚动策略和输出格式，不需要另外创建 `logback-spring.xml`。
+
+```text
+logging
+├── level           决定哪些日志允许输出
+├── file            决定当前日志文件写到哪里
+├── logback
+│   └── rollingpolicy
+│       └── ...     决定当前文件何时归档、归档怎样命名和保留多少
+└── pattern         决定控制台和文件中的每一行长什么样
+```
+
+YAML通过缩进表示从属关系。例如 `max-file-size` 必须位于 `logging.logback.rollingpolicy` 下面；缩进层级错误时，它就不再是这一组滚动配置。修改配置后需要重新启动应用，不能只刷新浏览器。
+
+#### 1.2 level：决定哪些日志可以输出
+
+日志等级从详细到严重依次为：
+
+```text
+TRACE < DEBUG < INFO < WARN < ERROR
+```
+
+配置的等级是“最低输出等级”。例如设为 `INFO` 时，`INFO`、`WARN` 和 `ERROR` 会输出，`DEBUG` 和 `TRACE` 不会输出。Spring Boot配置还接受 `FATAL` 和 `OFF`：默认Logback会把FATAL映射为ERROR，SLF4J也没有 `fatal()` 方法，因此本项目统一使用ERROR；OFF表示关闭指定Logger的全部日志，它也不是业务代码中调用的日志方法。
+
+| 等级 | 含义 | 本项目中的典型内容 | 生产环境通常是否长期输出 |
+| --- | --- | --- | --- |
+| `TRACE` | 最细的执行轨迹，比DEBUG更详细 | 框架内部或极细粒度跟踪 | 否 |
+| `DEBUG` | 开发和排查时使用的调试信息 | 查询是否带筛选条件、返回数量 | 通常否，需要时临时开启 |
+| `INFO` | 系统正常运行中的重要事实 | 应用启动、员工新增成功、一次请求完成 | 是 |
+| `WARN` | 程序仍能处理，但需要关注的情况 | 员工不存在、重复邮箱等可预期失败 | 是 |
+| `ERROR` | 当前操作失败，需要调查原因 | 数据库访问失败、未预期系统异常 | 是 |
+| `FATAL` | Spring Boot可接受的配置等级；默认Logback按ERROR处理 | 本项目不单独使用 | 不适用 |
+| `OFF` | 关闭指定范围的所有日志 | 临时屏蔽极端噪声Logger | 仅特殊场景 |
+
+等级描述的是事件严重程度，不表示代码位于Controller、Service还是Mapper。查询结果为空不一定是错误；数据库无法连接也不能只记成DEBUG。
+
+本章的四条等级配置按“全局 → 项目包 → 具体类或子包”逐步缩小范围：
+
+| 配置 | 可接受的值 | 本章值 | 作用 |
+| --- | --- | --- | --- |
+| `logging.level.root` | `TRACE`、`DEBUG`、`INFO`、`WARN`、`ERROR`、`FATAL`、`OFF` | `INFO` | 所有Logger的默认最低等级；没有更具体配置时使用它 |
+| `logging.level.com.example.employee` | 同一组等级值，也可以使用环境变量占位符 | `INFO` | 整个项目包使用INFO，明确项目代码的基础等级 |
+| `logging.level.com.example.employee.service.impl.EmployeeServiceImpl` | 同一组等级值，也可以使用环境变量占位符 | `${APP_SERVICE_LOG_LEVEL:INFO}` | 只允许通过环境变量临时调整这个Service类；变量未设置时使用INFO |
+| `logging.level.com.example.employee.mapper` | 同一组等级值，也可以使用环境变量占位符 | `INFO` | 明确保持Mapper为INFO，防止排查Service时误输出大量SQL细节 |
+
+Logger名称通常是类的完整包名。多个配置同时匹配时，范围更具体的配置生效。因此把 `EmployeeServiceImpl` 调成DEBUG不会把整个项目或Mapper一起调成DEBUG。
+
+`${APP_SERVICE_LOG_LEVEL:INFO}` 是Spring Boot占位符：先读取环境变量 `APP_SERVICE_LOG_LEVEL`，没有设置时使用冒号后的默认值 `INFO`。本地需要查看Service调试日志时，在启动应用的同一个PowerShell窗口执行：
+
+```powershell
+$env:APP_SERVICE_LOG_LEVEL = "DEBUG"
+.\mvnw.cmd spring-boot:run
+```
+
+验证结束后停止应用，删除当前PowerShell进程中的变量，再重新启动：
+
+```powershell
+Remove-Item Env:APP_SERVICE_LOG_LEVEL
+.\mvnw.cmd spring-boot:run
+```
+
+MyBatis通常使用Mapper接口名或XML的namespace作为Logger名称。Mapper达到DEBUG时可能输出SQL，进一步提高到TRACE时还可能出现更细的结果信息。因此不能为了查看一条Service调试日志而把 `root` 或整个项目包长期改成DEBUG。
+
+#### 1.3 file：同时写入控制台和日志文件
+
+```yaml
+logging:
+  file:
+    name: logs/employee-api.log
+```
+
+`logging.file.name` 指定当前正在写入的日志文件。设置它以后，日志仍会显示在控制台，同时还会写入文件。
+
+| 配置 | 可接受的值 | 本章值 | 作用 |
+| --- | --- | --- | --- |
+| `logging.file.name` | 应用进程有权写入的相对或绝对文件路径 | `logs/employee-api.log` | 指定当前活动日志文件，并启用文件输出 |
+
+本章使用相对路径 `logs/employee-api.log`：
+
+- `logs` 是目录；
+- `employee-api.log` 是当前活动日志文件；
+- 相对路径以启动应用时的工作目录为基准；
+- 目录不存在时，默认日志系统会尝试创建；
+- 部署环境应由运行目录、权限和磁盘规划决定最终路径，不能假设一定与本地相同。
+
+只配置 `logging.file.path` 也能指定目录，但同时配置 `name` 和 `path` 时容易让新人误判实际文件位置。本章只使用更明确的 `logging.file.name`。
+
+#### 1.4 rollingpolicy：限制活动文件和历史文件
+
+如果一直向同一个文件追加日志，文件会持续增大。滚动（rolling）是指达到条件后，把当前活动文件归档，再建立新的活动文件继续写入。
+
+本章的过程是：
+
+```text
+持续写入 logs/employee-api.log
+  → 日期进入下一天，或同一天内文件达到10MB
+  → 按日期和序号生成压缩归档文件
+  → 新的 employee-api.log 继续接收日志
+  → 超过历史数量或总容量时清理较旧归档
+```
+
+| 配置 | 可接受的值 | 本章值 | 作用 |
+| --- | --- | --- | --- |
+| `file-name-pattern` | 合法的Logback滚动文件名格式 | `${LOG_FILE}.%d{yyyy-MM-dd}.%i.gz` | 指定归档文件的名称；日期区分日期，序号区分同一天的多个文件，`.gz` 表示压缩 |
+| `max-file-size` | 例如 `10MB`、`100MB` | `10MB` | 同一个日期周期内，当前活动文件达到该大小时触发滚动 |
+| `max-history` | 非负整数 | `7` | 保留最近7个日期周期；本章按天滚动，因此约为7天，每天可以有多个序号归档 |
+| `total-size-cap` | 例如 `100MB`、`1GB`；`0B` 表示不限制 | `100MB` | 所有归档文件合计超过该容量时清理较旧文件 |
+| `clean-history-on-start` | `true` 或 `false` | `false` | 是否在应用启动时立即执行历史归档清理；false不代表永远不清理 |
+
+`${LOG_FILE}` 代表前面 `logging.file.name` 确定的当前日志文件，所以归档文件仍生成在 `logs` 目录。`%d{yyyy-MM-dd}` 写入归档日期，`%i` 是同一日期内从0开始递增的序号。实际文件名可能类似：
+
+```text
+employee-api.log.2026-10-08.0.gz
+employee-api.log.2026-10-08.1.gz
+```
+
+本章的 `%d{yyyy-MM-dd}` 表示按天划分周期，`%i` 和 `max-file-size` 又把同一天的大文件继续拆分。因此滚动既可能由日期变化后的第一条新日志触发，也可能由文件达到10MB触发。
+
+清理时先应用 `max-history`，再应用 `total-size-cap`；即使仍在最近7个日期周期内，只要归档总量超过100MB，较旧归档仍会被删除。滚动只能控制应用日志文件，不能代替磁盘空间监控、备份或集中日志平台。
+
+这些属性由Spring Boot交给默认Logback配置处理；属性入口可对照[Spring Boot官方日志说明](https://docs.spring.io/spring-boot/reference/features/logging.html)，日期周期、大小序号和清理顺序可对照[Logback滚动文件说明](https://logback.qos.ch/manual/appenders.html#SizeAndTimeBasedRollingPolicy)。
+
+#### 1.5 pattern：决定每一行日志的格式
+
+`logging.pattern.console` 控制控制台格式，`logging.pattern.file` 控制文件格式。本章让两处保持一致，方便用同一个requestId对照控制台和文件。
+
+| 配置 | 可接受的值 | 本章值 | 作用 |
+| --- | --- | --- | --- |
+| `logging.pattern.console` | 合法的Logback日志格式字符串 | 本章所示格式 | 决定控制台中每一行日志的字段和顺序 |
+| `logging.pattern.file` | 合法的Logback日志格式字符串 | 与控制台相同 | 决定日志文件中每一行日志的字段和顺序 |
+
+```text
+%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n
+```
+
+| 写法 | 输出内容 |
+| --- | --- |
+| `%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}` | 带毫秒和UTC偏移的时间，例如 `2026-10-08T10:20:31.123+09:00` |
+| `%-5level` | 左对齐、至少5个字符宽的日志等级 |
+| `%thread` | 当前执行线程名 |
+| `%X{requestId:-no-request}` | 读取MDC中的requestId；不存在时显示 `no-request` |
+| `%logger{36}` | Logger名称，过长时缩短到约36个字符 |
+| `%msg` | 代码传入的日志消息 |
+| `%n` | 换行 |
+
+UTC偏移表示该条日志使用的时间偏移量，但不包含完整的区域时区规则。Java Web时间类型和时区边界见[日期时间附录](../appendix/A11_java_web_datetime.md)。
+
+此时学员应该先能回答四个问题：INFO配置会显示哪些等级、日志文件写在哪里、什么时候生成归档、requestId会出现在日志的什么位置。随后再编写产生这些日志的Java代码。
 
 ### 2. 新建RequestLoggingFilter.java
 
@@ -87,6 +247,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -94,6 +256,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private static final Logger log =
@@ -128,6 +291,100 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 }
 ```
 
+#### 2.1 Logger、SLF4J和Logback各自负责什么
+
+这段代码第一次创建Logger：
+
+```java
+private static final Logger log =
+        LoggerFactory.getLogger(RequestLoggingFilter.class);
+```
+
+- `SLF4J` 是Java日志接口规范，业务代码通过它记录日志。
+- `Logger` 是SLF4J提供的日志记录接口，包含 `trace()`、`debug()`、`info()`、`warn()` 和 `error()` 等方法。
+- `LoggerFactory.getLogger(RequestLoggingFilter.class)` 根据当前类取得Logger，Logger名称默认就是这个类的完整包名。
+- `Logback` 是Spring Boot默认采用的日志实现，负责把SLF4J日志真正输出到控制台和文件。
+- `private static final` 表示该类共享一个Logger引用，而且引用不会被重新赋值；不需要为每次请求创建Logger。
+
+业务代码面向SLF4J编写，底层由Logback输出。Spring Boot Web Starter已经提供这套兼容组合，不要再手动加入另一套SLF4J实现，否则可能出现多个日志提供者冲突。接口定位和标准占位写法可参考[SLF4J官方手册](https://slf4j.org/manual.html)。
+
+`log.info()` 表示按INFO等级记录消息。消息中的 `{}` 是SLF4J参数占位符，后面的参数按顺序填入：
+
+```java
+log.info(
+        "request_complete method={} path={} status={} elapsedMs={}",
+        request.getMethod(),
+        request.getRequestURI(),
+        response.getStatus(),
+        elapsedMs);
+```
+
+这里四个 `{}` 分别对应method、path、status和elapsedMs。不要使用字符串拼接生成普通日志；占位写法更容易核对字段，并能在该等级关闭时避免不必要的字符串拼接。
+
+#### 2.2 Filter为什么适合建立requestId
+
+Filter位于Controller之前，可以包住一次HTTP请求的后续处理：
+
+```text
+请求进入
+  → RequestLoggingFilter建立requestId并记录开始时间
+  → Controller → Service → Mapper
+  → 正常响应或异常处理结果
+  → RequestLoggingFilter记录状态和耗时
+  → 请求结束
+```
+
+因为requestId要在Controller、Service和异常处理器写日志之前建立，所以本章把它放在Filter，而不是某一个Controller方法中。
+
+示例中第一次出现的主要注解、类型和方法如下：
+
+| 类型或方法 | 参数与可接受值 | 返回值或运行效果 |
+| --- | --- | --- |
+| `@Component` | 无必填属性 | 让Spring扫描并管理这个Filter对象 |
+| `@Order` | 任意 `int` 顺序值；数值越小越早 | 明确多个Filter之间的执行优先级 |
+| `OncePerRequestFilter` | 当前类继承的Spring Web基类 | 提供每次请求执行一次过滤逻辑的入口 |
+| `HttpServletRequest` | 由Servlet容器提供当前请求 | 可以读取HTTP方法和请求路径等信息 |
+| `HttpServletResponse` | 由Servlet容器提供当前响应 | 可以写入响应头并读取当前响应状态 |
+| `FilterChain` | 由Servlet容器组建的后续处理链 | 表示当前Filter之后还需要继续执行的处理 |
+| `doFilterInternal()` | request、response、filterChain均由容器提供 | Spring Web调用的重写入口 |
+| `filterChain.doFilter()` | 当前request和response，必填 | 把请求继续交给Controller等后续处理 |
+| `UUID.randomUUID()` | 无参数 | 返回随机UUID，作为本次请求编号 |
+| `System.nanoTime()` | 无参数 | 返回适合计算经过时间的 `long` 值，不用于显示日期 |
+| `response.setHeader()` | 响应头名称和字符串值 | 设置或替换指定响应头 |
+| `request.getMethod()` | 无参数 | 返回GET、POST等HTTP方法名 |
+| `request.getRequestURI()` | 无参数 | 返回请求路径，不包含查询字符串 |
+| `response.getStatus()` | 无参数 | 返回当前HTTP状态码整数 |
+
+`@Order(Ordered.HIGHEST_PRECEDENCE)` 的完整属性写法是 `@Order(value = Ordered.HIGHEST_PRECEDENCE)`。`value` 接受整数，数值越小优先级越高；省略属性名后就是示例写法。这里使用最高优先级，让后续处理产生的日志都能取得requestId。以后加入Spring Security或其他Filter时，仍应通过配置和实际日志核对顺序，不能根据类名猜测。
+
+`doFilterInternal()` 声明的 `ServletException` 表示Servlet处理失败，`IOException` 表示请求或响应读写失败。它们是后续处理链可能抛出的受检异常；当前Filter不改变异常含义，所以按重写方法签名继续声明。
+
+#### 2.3 MDC怎样让同一次请求的日志带上同一个编号
+
+多个请求可能同时执行，日志会互相穿插。如果只有时间和类名，很难判断若干行日志是否属于同一次调用。
+
+`MDC` 的完整名称是Mapped Diagnostic Context（映射诊断上下文），类位于 `org.slf4j` 包。它保存当前执行上下文中的诊断键值，不是员工业务数据，也不是返回给前端的Map。
+
+| 方法 | 参数与可接受值 | 返回值或运行效果 |
+| --- | --- | --- |
+| `MDC.put()` | 非空键和字符串值；本章为 `requestId` 和UUID | 把请求编号放入当前执行上下文 |
+| `MDC.remove()` | 要删除的键；本章为 `requestId` | 请求结束时移除编号，防止线程复用造成串号 |
+
+`MDC.put("requestId", requestId)` 执行后，前面日志格式中的 `%X{requestId:-no-request}` 会自动读取这个编号。`response.setHeader("X-Request-Id", requestId)` 又把相同编号返回给调用方，因此前端或测试人员可以把一次失败与服务端日志对应起来。
+
+#### 2.4 try...finally为什么必须保留
+
+`filterChain.doFilter()` 可能正常返回，也可能因为后续代码异常而提前退出。放在 `finally` 中的代码无论哪种情况都会执行，因此能够记录最终HTTP状态并清理MDC：
+
+```text
+startedAt = 开始时的单调时间
+elapsedMs = (结束时间 - startedAt) ÷ 1,000,000
+```
+
+`System.nanoTime()` 适合计算时间间隔，不受系统时钟调整直接影响；除以1,000,000把纳秒换算成毫秒。它不能转换成日期时间，日志日期由Logback格式负责输出。
+
+过滤器只记录HTTP方法、请求路径、状态和耗时，不记录查询字符串、请求体、Cookie或Authorization请求头，避免把密码、Token和个人信息写入日志。
+
 ### 3. 完整替换EmployeeNotFoundException.java
 
 ```java
@@ -149,6 +406,25 @@ public class EmployeeNotFoundException extends RuntimeException {
 ```
 
 异常继续保存对外业务消息，同时单独保存结构明确的员工编号。日志不需要从错误消息文本中截取编号。
+
+#### 3.1 为什么异常对象还要保存employeeId
+
+`EmployeeNotFoundException extends RuntimeException` 表示这是一个运行时业务异常。Service发现员工不存在时主动抛出它，Controller不需要在每个方法上声明 `throws`，之后由全局异常处理器统一转换为404响应。
+
+构造方法同时保存两类信息：
+
+```java
+super("员工不存在：" + employeeId); // 交给RuntimeException保存公开错误消息
+this.employeeId = employeeId;       // 保存结构明确的业务编号
+```
+
+| 成员 | 类型或参数 | 作用 |
+| --- | --- | --- |
+| `super(...)` | 非空错误消息字符串 | 调用父类构造方法，使 `getMessage()` 可以取得错误消息 |
+| `private final Long employeeId` | 当前请求中的员工编号 | 创建异常后不再改变，并且只允许通过方法读取 |
+| `getEmployeeId()` | 无参数，返回 `Long` | 让异常处理器直接取得编号并写入结构化日志 |
+
+如果异常只保存字符串，异常处理器就只能从“员工不存在：1001”中截取编号。这种做法容易受文字变化影响，也不利于Review。把业务字段独立保存后，响应消息可以调整，日志字段仍保持稳定。
 
 ### 4. 完整替换EmployeeServiceImpl.java
 
@@ -211,11 +487,12 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public EmployeeResponse create(EmployeeCreateRequest request) {
-        validateDepartment(request.getDepartment());
+        String department = request.getDepartment().trim();
+        validateDepartment(department);
 
         Employee employee = new Employee();
         employee.setName(request.getName().trim());
-        employee.setDepartment(request.getDepartment().trim());
+        employee.setDepartment(department);
         employee.setEmail(normalizeEmail(request.getEmail()));
         employee.setStatus("ACTIVE");
 
@@ -239,26 +516,32 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeResponse update(
             Long id,
             EmployeeUpdateRequest request) {
-        validateDepartment(request.getDepartment());
-        findEmployeeOrThrow(id);
+        String department = request.getDepartment().trim();
+        validateDepartment(department);
 
         Employee employee = new Employee();
         employee.setId(id);
         employee.setName(request.getName().trim());
-        employee.setDepartment(request.getDepartment().trim());
+        employee.setDepartment(department);
         employee.setEmail(normalizeEmail(request.getEmail()));
 
+        int affectedRows;
         try {
-            int affectedRows = employeeMapper.update(employee);
-            if (affectedRows > 1) {
-                throw new EmployeeSystemException("修改员工影响多行");
-            }
-            if (affectedRows == 0
-                    && employeeMapper.findById(id) == null) {
-                throw new EmployeeNotFoundException(id);
-            }
+            affectedRows = employeeMapper.update(employee);
         } catch (DuplicateKeyException exception) {
             throw new DuplicateEmailException(employee.getEmail());
+        }
+
+        if (affectedRows > 1) {
+            throw new EmployeeSystemException("修改员工影响多行");
+        }
+        if (affectedRows == 0) {
+            Employee existing = employeeMapper.findById(id);
+            if (existing == null) {
+                throw new EmployeeNotFoundException(id);
+            }
+            log.debug("employee_update_no_change employeeId={}", id);
+            return toResponse(existing);
         }
 
         log.info(
@@ -327,7 +610,74 @@ public class EmployeeServiceImpl implements EmployeeService {
 }
 ```
 
-### 5. 完整替换GlobalExceptionHandler.java
+#### 4.1 Service为什么只记录业务结果
+
+第10章已经完成查询、新增、修改、删除、字段标准化和异常转换。本节保留这些业务行为，只在能够确认结果的位置增加日志：
+
+```text
+读取或校验输入
+  → 调用Mapper
+  → 检查影响行数或返回结果
+  → 确认操作结果
+  → 记录一条有业务意义的日志
+```
+
+不能在调用Mapper之前就记录“新增成功”或“删除成功”，因为数据库操作仍可能失败。日志必须描述已经发生的事实，而不是准备执行的动作。
+
+`EmployeeServiceImpl.class` 取得以当前Service类命名的Logger。它与第2节的Filter Logger写法相同，但配置可以按完整类名把这个Service单独调成DEBUG。
+
+#### 4.2 本节每条业务日志表示什么
+
+| 代码位置 | 等级 | 事件名和字段 | 为什么这样记录 |
+| --- | --- | --- | --- |
+| `findList()` 返回前 | DEBUG | `employee_list_completed`、是否筛选、结果数量 | 排查查询条件和结果规模；正常运行不必长期输出 |
+| `create()` 确认插入成功后 | INFO | `employee_created`、员工编号、部门 | 留下新增成功的业务事实 |
+| `update()` 影响行数为0但员工存在 | DEBUG | `employee_update_no_change`、员工编号 | 说明请求内容与既有数据相同，不误报为404 |
+| `update()` 确认修改成功后 | INFO | `employee_updated`、员工编号、部门 | 留下修改成功的业务事实 |
+| `delete()` 确认只删除一行后 | INFO | `employee_deleted`、员工编号 | 留下删除成功的业务事实 |
+
+事件名采用稳定的小写单词和下划线，例如 `employee_created`；字段采用 `key={}`，例如 `employeeId={}`。这种写法比“新增完成了”更容易检索，也能让Review人员快速核对日志中保存了哪些数据。
+
+`log.debug()` 和 `log.info()` 的参数规则相同：消息中的 `{}` 按顺序接收后续参数。区别在于DEBUG只有当前Logger的有效等级达到DEBUG或更低时才输出；INFO在本章默认配置下会输出。
+
+#### 4.3 为什么catch中转换异常但不立即写日志
+
+新增和修改捕获 `DuplicateKeyException` 后，将数据库唯一约束异常转换成 `DuplicateEmailException`：
+
+```java
+} catch (DuplicateKeyException exception) {
+    throw new DuplicateEmailException(employee.getEmail());
+}
+```
+
+这里不记录一次ERROR，因为重复邮箱是可以预期的业务冲突，稍后的全局异常处理器会统一记录WARN并返回409。如果Service和全局异常处理器各记录一次，同一事件就会产生重复日志。
+
+`EmployeeNotFoundException` 和 `EmployeeSystemException` 也采用相同原则：Service负责判断业务结果并抛出含义明确的异常，全局异常处理器负责选择日志等级和HTTP响应。
+
+#### 4.4 哪些数据不能写入业务日志
+
+本章只记录完成排查所需的操作名、员工编号、已校验部门、筛选是否存在和结果数量。不要记录：
+
+- 数据库密码、Token、Cookie和Authorization请求头；
+- 完整请求体；
+- 员工姓名、邮箱等没有排查必要的个人信息；
+- 拼接后的完整SQL和敏感参数；
+- “进入方法”“执行下一行”等没有诊断价值的逐行轨迹。
+
+日志需要同时满足“能够定位”和“不过度收集”。即使员工编号本身不是密码，也应遵守项目的日志访问权限和保存期限。
+
+### 5. 在.gitignore追加日志目录
+
+本章运行后会在项目根目录生成 `logs`。它属于当前机器的运行产物，不进入源码版本管理。在项目根目录的 `.gitignore` 末尾追加：
+
+```gitignore
+# Local runtime logs
+logs/
+```
+
+这里只追加两行，不要覆盖Spring Initializr已经生成的其他忽略规则。日志证据需要提交时，应摘取并脱敏后放入项目规定的证据目录，不能直接提交整个运行日志。
+
+### 6. 完整替换GlobalExceptionHandler.java
 
 ```java
 package com.example.employee.exception;
@@ -455,141 +805,64 @@ public class GlobalExceptionHandler {
 }
 ```
 
-## 三、SLF4J、Logger和LoggerFactory是什么
+#### 6.1 全局异常处理器同时面对两类读者
 
-SLF4J是一套Java日志接口，业务代码面向它写日志；Spring Boot默认使用Logback执行实际输出。这样代码不必直接依赖某一个日志实现。
-
-- `Logger` 是记录日志的接口。
-- `LoggerFactory.getLogger(CurrentClass.class)` 接收当前类的 `Class`对象，返回以该类名命名的Logger。
-- `private static final` 表示同一类共享一个不可重新赋值的Logger引用，不需要为每个Service对象重复取得。
-
-Spring Boot Starter已经提供兼容组合，不要再手动加入另一套SLF4J实现，否则可能出现多个日志提供者冲突。SLF4J的接口定位和典型用法可参考[SLF4J官方手册](https://slf4j.org/manual.html)。
-
-## 四、日志级别怎样选择
-
-| 级别 | 当前项目中的用途 | 默认INFO时是否输出 |
-| --- | --- | --- |
-| `debug` | 查询条件是否存在、结果数量等调试细节 | 否 |
-| `info` | 员工新增、修改、删除成功和请求完成 | 是 |
-| `warn` | 可预期的400、404、409业务失败 | 是 |
-| `error` | 数据库故障或内部系统异常，并记录堆栈 | 是 |
-
-级别表示事件严重性，不表示代码所在层。正常的查询结果为空不是错误；数据库无法连接也不能只记成debug。
-
-本地临时查看debug日志时，在启动应用的同一PowerShell设置：
-
-```powershell
-$env:APP_LOG_LEVEL = "DEBUG"
-```
-
-验证完成后删除当前进程变量并重启应用：
-
-```powershell
-Remove-Item Env:APP_LOG_LEVEL
-```
-
-生产环境长期打开大量debug会增加存储、检索和信息暴露风险，应遵循项目运行方针。
-
-## 五、占位符和异常堆栈
-
-下面的 `{}` 是SLF4J参数占位符，参数按顺序填入：
-
-```java
-log.info(
-        "employee_updated employeeId={} department={}",
-        id,
-        employee.getDepartment());
-```
-
-不要用字符串拼接构造普通日志。占位写法更清楚，而且日志级别关闭时可以避免不必要的字符串拼接。
-
-记录异常堆栈时，把异常对象放在最后一个参数：
-
-```java
-log.error("database_access_error path={}", path, exception);
-```
-
-只写 `exception.getMessage()` 会丢失异常类型、调用位置和原因链。堆栈中的 `Caused by` 表示下一层原因；定位时通常从最底部的具体数据库、SQL或Java异常向上核对调用链。
-
-业务性的404和409通常不需要整段堆栈，否则正常业务分支会制造大量噪声。系统异常才使用 `error`并保留堆栈。
-
-## 六、一次请求为什么需要requestId
-
-多个用户可能同时调用接口，日志会交错。`MDC.put("requestId", value)` 把请求编号放入当前执行上下文，日志格式中的 `%X{requestId:-no-request}` 会自动输出它。
-
-`MDC` 的完整名称是Mapped Diagnostic Context（映射诊断上下文），类位于 `org.slf4j` 包。它保存的是当前执行上下文中的诊断键值，不是员工业务数据，也不是返回给前端的Map。
-
-`RequestLoggingFilter` 中第一次出现的类型和方法如下：
-
-| 类型或方法 | 参数与可接受值 | 返回值或运行效果 |
-| --- | --- | --- |
-| `OncePerRequestFilter` | 项目继承的Spring Web基类 | 为请求提供一次过滤处理入口 |
-| `HttpServletRequest` | 由Servlet容器为当前HTTP请求提供 | 可读取方法、路径等请求信息 |
-| `HttpServletResponse` | 由Servlet容器为当前HTTP响应提供 | 可写入响应头并读取当前状态 |
-| `FilterChain` | 由容器组建的后续处理链 | 决定当前过滤器之后还要继续执行哪些处理 |
-| `doFilterInternal()` | request、response、filterChain均由容器提供 | Spring Web调用的重写入口，执行本项目的请求日志逻辑 |
-| `filterChain.doFilter()` | 当前请求和响应，必填 | 继续进入Controller等后续处理 |
-| `UUID.randomUUID()` | 无参数 | 返回随机UUID作为本次请求编号 |
-| `MDC.put()` | 非空键和字符串值 | 让后续同一执行上下文的日志带requestId |
-| `MDC.remove()` | 要删除的键 | 请求结束时清理，防止线程复用造成串号 |
-| `response.setHeader()` | 响应头名与字符串值 | 设置或替换指定响应头，本章写入requestId |
-| `request.getMethod()` | 无参数 | 返回GET、POST等HTTP方法名 |
-| `request.getRequestURI()` | 无参数 | 返回请求路径，不包含查询字符串 |
-| `response.getStatus()` | 无参数 | 返回当前HTTP响应状态整数 |
-
-`doFilterInternal()` 声明的 `ServletException` 表示Servlet处理失败，`IOException` 表示请求或响应读写失败。它们都是后续处理链可能抛出的受检异常，本过滤器不擅自改变其含义，因此按重写方法签名继续声明。
-
-`try...finally` 保证正常和异常路径都会记录耗时并清理MDC。`System.nanoTime()` 无参数，返回只适合计算经过时间的 `long`值，不用来显示日期；两次结果相减后除以1,000,000得到毫秒。
-
-过滤器只记录 `getRequestURI()`，不记录查询字符串、请求体或请求头。响应中的 `X-Request-Id` 让调用方可以把一次失败与服务端日志对应起来。
-
-## 七、应该记录哪些业务事实
-
-本章只在写操作成功后记录：操作名称、员工编号和已验证的部门。列表debug日志只记录是否使用筛选和结果数量，不记录原始用户输入。
-
-不要记录：
-
-- 数据库密码、Token、Cookie、Authorization请求头；
-- 完整请求体；
-- 员工姓名、邮箱等没有排查必要的个人信息；
-- SQL拼接后的敏感数据；
-- “进入方法”“执行下一行”之类没有诊断价值的逐行轨迹。
-
-日志需要同时满足“能定位”和“不过度收集”。即使员工编号本身不是密码，也应受访问权限、保存期限和项目规则约束。
-
-## 八、日志配置和滚动文件
-
-`logging.file.name` 同时启用控制台和文件输出；相对路径 `logs/employee-api.log` 以应用启动工作目录为基准。目录不存在时，日志系统会尝试创建。
-
-| 配置 | 可接受的值 | 默认值或本章值 | 作用 |
-| --- | --- | --- | --- |
-| `logging.level.root` | TRACE、DEBUG、INFO、WARN、ERROR、OFF等 | 本章INFO | 设置全局最低输出级别 |
-| `logging.level.com.example.employee` | 同上，也可来自环境变量 | 默认INFO | 单独控制项目包日志 |
-| `logging.file.name` | 可写文件路径 | `logs/employee-api.log` | 设置当前日志文件 |
-| `max-file-size` | 合法数据大小 | 10MB | 当前文件达到大小后滚动归档 |
-| `max-history` | 非负整数 | 7 | 限制保留的历史归档周期 |
-| `logging.pattern.console/file` | Logback格式字符串 | 本章固定格式 | 决定时间、级别、requestId、类名和消息顺序 |
-
-日志滚动控制单个文件和历史数量，但不能替代磁盘监控、备份和集中日志平台。Spring Boot支持的文件输出方式可参考[Spring Boot日志说明](https://docs.spring.io/spring-boot/how-to/logging.html)。
-
-## 九、异常日志与对外响应怎样分工
-
-全局异常处理器做两件不同的事：
+异常发生后，服务端排查人员和接口调用方需要的信息不同：
 
 ```text
-服务端日志：给开发和运维排查，可保存受控堆栈
-HTTP响应：给调用方判断，只返回稳定状态和公开消息
+异常对象
+├── 服务端日志：记录事件名、路径、必要业务编号；系统异常保留受控堆栈
+└── HTTP响应：返回稳定状态码和允许公开的消息，不暴露SQL和内部调用栈
 ```
 
-`HttpServletRequest` 来自 `jakarta.servlet.http`，由Spring提供给异常处理方法。`getRequestURI()` 返回当前路径，使失败日志可以定位接口。
+因此，日志不能直接等同于响应正文。数据库异常可以在服务端保存堆栈，但客户端只得到500和“服务器内部错误”。
 
-`DataAccessException` 是Spring统一的数据访问异常父类。无法连接数据库、SQL执行失败等异常会记录完整堆栈并返回通用500；第10章已经转换过的重复邮箱仍由更具体的业务异常返回409。
+#### 6.2 每个处理方法怎样选择日志和响应
 
-本章仍不添加 `@ExceptionHandler(Exception.class)`。笼统捕获会把方法不支持、媒体类型不支持等框架异常也改成统一500，破坏已有405和415语义。未预期编程错误由Spring Boot记录；只有项目明确设计并回归全部框架错误后，才应加入项目级兜底。
+`@RestControllerAdvice` 让Spring管理这个全局异常处理器，并把返回对象写入响应体。每个 `@ExceptionHandler(异常类型.class)` 只处理声明的异常类型；处理方法通过 `ResponseEntity` 明确返回状态码和统一响应对象。
 
-同一异常不要在Mapper、Service和全局处理器连续记录三次。Service负责转换已知业务含义，最终处理器负责记录一次；重复日志会让一次故障看起来像发生了多次。
+| 异常类型 | 日志等级和事件 | HTTP状态 | 对外响应重点 |
+| --- | --- | --- | --- |
+| `MethodArgumentNotValidException` | WARN、`request_rejected reason=validation` | 400 | 返回字段校验错误 |
+| `HttpMessageNotReadableException` | WARN、`request_rejected reason=unreadable_json` | 400 | 只说明JSON格式错误 |
+| `InvalidDepartmentException` | WARN、`request_rejected reason=invalid_department` | 400 | 返回允许公开的业务消息 |
+| `EmployeeNotFoundException` | WARN、`employee_not_found` | 404 | 返回不存在消息，并在日志中记录员工编号 |
+| `DuplicateEmailException` | WARN、`employee_conflict reason=duplicate_email` | 409 | 返回重复邮箱业务消息，不记录邮箱值 |
+| `EmployeeSystemException` | ERROR、`employee_system_error` | 500 | 响应隐藏内部原因，日志保留异常堆栈 |
+| `DataAccessException` | ERROR、`database_access_error` | 500 | 响应隐藏数据库细节，日志保留异常堆栈 |
 
-## 十、运行并读取日志
+400、404和409是应用已经预期并能转换的失败，因此使用WARN而不是ERROR；数据库故障和内部状态异常会阻止当前操作完成，需要调查根因，因此使用ERROR。
+
+#### 6.3 HttpServletRequest和DataAccessException的作用
+
+`HttpServletRequest` 来自 `jakarta.servlet.http`，由Spring为当前失败请求传入处理方法。`request.getRequestURI()` 返回请求路径，使日志能说明哪个接口发生问题；本章仍不读取请求体、查询字符串或敏感请求头。
+
+`DataAccessException` 是Spring统一的数据访问异常父类。数据库连接失败、SQL执行错误等底层异常可以转换为它的子类，因此处理器不必依赖某一种数据库驱动异常。第10章已经转成 `DuplicateEmailException` 的唯一约束冲突会优先进入更具体的业务处理方法，不会在这里统一变成500。
+
+#### 6.4 怎样记录异常堆栈
+
+记录系统异常时，把异常对象作为日志方法的最后一个参数：
+
+```java
+log.error(
+        "database_access_error path={}",
+        request.getRequestURI(),
+        exception);
+```
+
+第一个 `{}` 只接收请求路径，最后的 `exception` 由SLF4J识别为需要输出的异常。这样会保留异常类型、调用位置和原因链。只记录 `exception.getMessage()` 会丢失这些信息。
+
+堆栈中的 `Caused by` 表示下一层原因。排查时通常从最底部具体的数据库、SQL或Java异常开始，再向上核对它经过Mapper、Service和异常处理器的调用路径。
+
+业务性的400、404和409通常不输出整段堆栈，否则大量可预期请求会制造噪声。系统异常才使用ERROR并保留堆栈。
+
+#### 6.5 为什么不添加Exception.class兜底处理
+
+本章仍不添加 `@ExceptionHandler(Exception.class)`。笼统捕获可能把HTTP方法不支持、媒体类型不支持等框架异常也改成统一500，破坏原有405和415语义。只有项目明确规定统一兜底响应，并为各类框架错误建立回归测试后，才应增加这样的处理。
+
+同一个异常也不要在Mapper、Service和全局处理器连续记录。Service负责转换已知业务含义，最终处理器负责记录一次；否则一次故障会产生多条相似ERROR，让排查人员误以为故障发生了多次。
+
+## 三、运行并读取日志
 
 设置数据库环境变量并启动应用，完成一次详情查询、一次不存在查询和一次新增：
 
@@ -600,9 +873,9 @@ HTTP响应：给调用方判断，只返回稳定状态和公开消息
 响应头中应出现 `X-Request-Id`。下面是格式示例，时间、线程、UUID、耗时和员工编号以实际结果为准：
 
 ```text
-2026-09-14 10:20:31.123 INFO  [7f...c2] c.e.e.c.RequestLoggingFilter - request_complete method=GET path=/employees/1001 status=200 elapsedMs=28
-2026-09-14 10:20:35.456 WARN  [a1...9d] c.e.e.e.GlobalExceptionHandler - employee_not_found path=/employees/999999 employeeId=999999
-2026-09-14 10:20:35.457 INFO  [a1...9d] c.e.e.c.RequestLoggingFilter - request_complete method=GET path=/employees/999999 status=404 elapsedMs=7
+2026-09-14T10:20:31.123+09:00 INFO  [http-nio-8080-exec-1] [7f...c2] c.e.e.c.RequestLoggingFilter - request_complete method=GET path=/employees/1001 status=200 elapsedMs=28
+2026-09-14T10:20:35.456+09:00 WARN  [http-nio-8080-exec-2] [a1...9d] c.e.e.e.GlobalExceptionHandler - employee_not_found path=/employees/999999 employeeId=999999
+2026-09-14T10:20:35.457+09:00 INFO  [http-nio-8080-exec-2] [a1...9d] c.e.e.c.RequestLoggingFilter - request_complete method=GET path=/employees/999999 status=404 elapsedMs=7
 ```
 
 读取文件最后100行：
@@ -621,7 +894,7 @@ Select-String `
 
 查找时先缩小时间范围，再用requestId串起同一次请求，最后沿类名和异常原因进入代码。不要只看到最后一条500就猜测原因。
 
-## 十一、四类故障的排查起点
+## 四、四类故障的排查起点
 
 | 现象 | 第一检查点 | 后续证据 |
 | --- | --- | --- |
@@ -632,13 +905,31 @@ Select-String `
 
 日志指出运行到了哪里，断点可以检查当时对象里有什么值。需要确认跨层传值时，可依次在Controller参数、Service方法、Mapper调用前设置断点；不要为了调试把完整DTO长期打印到日志。
 
-## 十二、完成一次故障调查
+日志功能本身出现问题时，按下面顺序检查：
 
-### 1. 安全制造连接故障
+| 现象 | 先检查 | 常见原因 | 修正方向 |
+| --- | --- | --- | --- |
+| 找不到日志文件 | 启动工作目录、`logging.file.name` | 相对路径基准与预想不同 | 确认启动目录；部署时使用受控绝对路径 |
+| Service debug不出现 | `APP_SERVICE_LOG_LEVEL`和重启后的配置 | 变量设在其他终端，或修改后没有重启 | 在启动进程所在终端设置并重新启动 |
+| SQL也大量输出 | Mapper Logger最终级别 | 打开了整个项目包或Mapper DEBUG | 保持Mapper为INFO，只打开目标Service |
+| 同一异常出现多次 | Service与异常处理器 | 多层重复记录同一异常 | 确定一个最终记录位置 |
+| 启动日志显示no-request | 日志发生时机 | 启动阶段没有HTTP请求上下文 | 属于正常现象，不伪造requestId |
+| 日志无法写入 | 父目录、文件权限、磁盘空间 | 运行账号无写权限或磁盘已满 | 修正限定目录权限或按运维手顺处理容量 |
+| 归档数量与预期不同 | 日期周期、文件大小、`max-history`和`total-size-cap` | 只看某一项限制，忽略每天可能生成多个序号归档 | 先按日期周期核对，再检查10MB拆分和100MB总容量清理 |
+| 时间无法与其他系统对照 | 时间中的UTC偏移 | 不同环境使用不同默认时区 | 保留偏移，调查时统一换算时间范围 |
 
-先停止应用，把当前PowerShell中的 `DB_PASSWORD` 临时改成错误值并重启。调用详情接口，记录响应状态、`X-Request-Id`和日志最底部数据库认证原因。不要反复重试，不要修改数据库账号，也不要把错误或正确密码写进证据。
+## 五、完成一次故障调查
 
-随后恢复正确的环境变量并重启，再次调用同一接口确认200。恢复动作是本次实验的一部分。
+### 1. 区分启动故障和请求期间故障
+
+先做启动故障实验：停止应用，把当前PowerShell中的 `DB_PASSWORD` 临时改成错误值并重启。数据库连接池可能在启动阶段确认连接，也可能在第一次访问数据库时才取连接；因此先观察应用是否成功启动，不预先假定一定能取得HTTP响应。
+
+- 如果应用启动失败：保存启动日志中的最底层数据库认证原因，不发送接口请求。
+- 如果应用能够启动：只调用一次详情接口，记录状态、`X-Request-Id`和同一requestId下的数据库异常。
+
+随后恢复正确环境变量并重启，确认应用正常启动且详情接口返回200。不要反复猜密码，也不要把错误或正确密码写进证据。
+
+再做一次能够稳定产生requestId的运行时SQL故障实验：在个人练习分支中，把 `EmployeeMapper.xml` 的 `findById` 查询表名临时改为不存在的 `employees_log_lab_missing`，重启后调用 `GET /employees/1001`。预期得到500、`X-Request-Id`以及同一requestId下的 `database_access_error`和数据库“表不存在”原因。完成后立即恢复表名、重启，并确认同一请求重新返回200。不得在共享环境修改Mapper，也不要把错误表名保留到后续章节。
 
 ### 2. 问题记录必须形成闭环
 
@@ -657,188 +948,28 @@ Select-String `
 
 1. Review `log.info("request={}", request)`，指出可能泄露的字段并改成必要的业务事实。
 2. Review“Service catch异常后打印error再原样抛出、全局处理器再次打印error”，说明重复日志的影响并选择唯一记录位置。
-3. 临时把项目包级别设为DEBUG，验证列表debug出现；恢复INFO并证明它不再输出。
+3. 临时把 `APP_SERVICE_LOG_LEVEL` 设为DEBUG，验证列表debug出现且Mapper SQL没有同时输出；恢复INFO并证明debug不再输出。
 4. 对404、409和数据库500分别保存状态、requestId、关键日志和判定。
 5. 使用断点核对一次PUT中路径id、Update DTO、Employee Entity和Mapper参数，确认日志不代替对象检查。
 
-## 十三、Spring共通处理机制的位置
+## 六、知道共通处理发生在哪一层
 
-本章已经实际使用Servlet Filter，第7章使用ControllerAdvice，第13章和第16章还会使用事务代理与方法安全代理。它们都能执行“共通处理”，但作用位置和适用问题不同。
-
-### 1. 先建立课程级简化流程
+本章实际使用Servlet Filter建立requestId，第7章使用Controller Advice转换MVC异常。两者不是同一种机制：
 
 ```text
-HTTP Request
-  → Servlet Filter
-  → Spring Security Filter Chain
-  → DispatcherServlet
-  → HandlerInterceptor preHandle
-  → Controller
-  → Service上的Spring Proxy / AOP
-  → Mapper
-  ← HandlerInterceptor postHandle / afterCompletion
-  ← HTTP Response
+HTTP请求
+  → RequestLoggingFilter：建立requestId、记录HTTP完成状态
+  → DispatcherServlet与Controller
+  → Service与Mapper
+  → GlobalExceptionHandler：把Controller调用阶段的已知异常转换成响应
 ```
 
-这是一张帮助定位的简化图，不是所有配置下绝对固定的源码调用栈。一个请求可能经过多个Filter、多个Interceptor和多层代理；异常、异步请求及响应已经提交等情况也会改变可执行的回调。调查真实项目时仍要查看注册顺序和日志证据。
+`RequestLoggingFilter` 使用 `@Order(Ordered.HIGHEST_PRECEDENCE)` 明确优先级，因此后续处理产生的日志能够取得requestId。Controller Advice不能替代Filter，也不能处理以后Spring Security在Controller之前拒绝的所有请求。
 
-Spring Security本身由一组Servlet Filter组成，因此它位于进入Controller之前。Filter顺序配置错误可能让日志、CORS或安全行为变化，不能只根据类名推断执行次序。
+HandlerInterceptor、WebMvcConfigurer、自定义AOP和Spring Proxy属于进入既存项目后需要识读的共通机制，不在本章再建立第二套实验。需要比较它们的位置、回调和适用问题时，阅读[Spring共通处理机制附录](../appendix/A13_spring_common_processing_mechanisms.md)。
 
-### 2. Filter适合HTTP入口级处理
 
-当前 `RequestLoggingFilter extends OncePerRequestFilter` 属于Servlet层。它面对的是请求和响应对象，不依赖某个Controller方法，适合：
-
-- 建立requestId和HTTP访问日志；
-- 统一字符编码或请求/响应包装；
-- Spring Security等入口安全处理；
-- 在非常早的阶段拒绝不合规请求。
-
-`OncePerRequestFilter` 的目标是让一次请求分派按其规则执行一次过滤逻辑，但异步和错误分派仍有专门行为。它不是“每个业务方法只执行一次”的AOP工具。
-
-### 3. 完整的HandlerInterceptor独立实验
-
-下面实验观察Controller前后时机，不替换RequestLoggingFilter。新建 `dilab/RequestTimingInterceptor.java`：
-
-```java
-package com.example.employee.dilab;
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
-
-@Component
-public class RequestTimingInterceptor implements HandlerInterceptor {
-
-    private static final Logger log = LoggerFactory.getLogger(
-            RequestTimingInterceptor.class);
-    private static final String START_NANOS =
-            RequestTimingInterceptor.class.getName() + ".startNanos";
-
-    @Override
-    public boolean preHandle(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Object handler) {
-        request.setAttribute(START_NANOS, System.nanoTime());
-        return true;
-    }
-
-    @Override
-    public void postHandle(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Object handler,
-            ModelAndView modelAndView) {
-        log.debug("controller returned status={}", response.getStatus());
-    }
-
-    @Override
-    public void afterCompletion(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Object handler,
-            Exception exception) {
-        Long startNanos = (Long) request.getAttribute(START_NANOS);
-        if (startNanos != null) {
-            long elapsedNanos = System.nanoTime() - startNanos;
-            log.info("mvc completed status={} elapsedMs={}",
-                    response.getStatus(), elapsedNanos / 1_000_000);
-        }
-    }
-}
-```
-
-再新建 `dilab/InterceptorLabConfig.java` 完成注册：
-
-```java
-package com.example.employee.dilab;
-
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-@Configuration
-public class InterceptorLabConfig implements WebMvcConfigurer {
-
-    private final RequestTimingInterceptor requestTimingInterceptor;
-
-    public InterceptorLabConfig(
-            RequestTimingInterceptor requestTimingInterceptor) {
-        this.requestTimingInterceptor = requestTimingInterceptor;
-    }
-
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(requestTimingInterceptor)
-                .addPathPatterns("/employees/**");
-    }
-}
-```
-
-`HandlerInterceptor` 来自 `org.springframework.web.servlet`。`WebMvcConfigurer` 是Spring MVC配置回调接口；实现 `addInterceptors` 后，通过 `InterceptorRegistry` 注册实例及路径范围。`addPathPatterns("/employees/**")` 只匹配员工路径，避免实验影响health。
-
-三个回调的意义：
-
-| 方法 | 时机 | 返回或参数 | 适合 |
-| --- | --- | --- | --- |
-| `preHandle` | Controller执行前 | 返回true继续，false停止链 | 计时开始、MVC上下文检查 |
-| `postHandle` | Controller正常执行后 | 可看到ModelAndView | 传统视图模型后处理 |
-| `afterCompletion` | 请求完成后的清理阶段 | 可接收处理异常 | 计时结束、清理资源、最终记录 |
-
-对于 `@ResponseBody`、`@RestController` 和 `ResponseEntity`，响应可能在 `postHandle` 前已经写出，因此不要把“修改REST响应正文或响应头”的关键逻辑放在 `postHandle`。Spring官方也明确说明这一边界，参见[HandlerInterceptor说明](https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-servlet/handlermapping-interceptor.html)。
-
-`System.nanoTime()` 适合计算同一进程内的经过时间，不代表日期时间；相减后除以1,000,000得到近似毫秒。日志不输出请求体、Cookie或Authorization。
-
-运行员工详情、404和业务异常请求，观察preHandle与afterCompletion证据。完成后删除两个 `dilab` 文件并执行全部测试，主线不保留第二套重复访问日志。
-
-### 4. ControllerAdvice处理MVC异常和共通响应
-
-`@RestControllerAdvice` 让第7章的全局异常处理器参与Controller调用阶段的异常转换。它更接近MVC异常解析：业务异常进入后，根据 `@ExceptionHandler` 选择处理方法并生成HTTP响应。
-
-它不替代Servlet Filter，也不能自然处理Spring Security在Controller之前拒绝的401/403。第16章因此使用 `AuthenticationEntryPoint` 和 `AccessDeniedHandler`。
-
-### 5. AOP和Spring Proxy只做基础识读
-
-Spring AOP可以通过代理在Bean方法调用前后加入处理。课程已经使用两个典型能力：
-
-- `@Transactional`：代理在Service方法前开启或加入事务，正常返回时提交，符合条件的异常时回滚；
-- `@PreAuthorize`：方法安全代理在目标方法执行前检查授权表达式。
-
-既存项目自定义AOP时常见：
-
-| 注解 | 所属 | 识读含义 |
-| --- | --- | --- |
-| `@Aspect` | AspectJ注解、由Spring AOP使用 | 声明一个切面类 |
-| `@Before` | AspectJ注解 | 匹配的方法调用前执行 |
-| `@AfterReturning` | AspectJ注解 | 匹配的方法正常返回后执行 |
-| `@Around` | AspectJ注解 | 包围方法调用，必须正确调用 `proceed()` 才会继续目标方法 |
-
-本课程不创建自定义切面。看到这些注解时先调查切点表达式匹配哪些Bean方法、是否记录敏感参数、异常是否被改变，以及调用是否真正经过Spring代理。Spring AOP是代理式AOP，`@Transactional` 的同类内部调用问题正来自这一边界。官方概念见[Spring AOP代理](https://docs.spring.io/spring-framework/reference/core/aop/introduction-proxies.html)和[Advice说明](https://docs.spring.io/spring-framework/reference/core/aop/ataspectj/advice.html)。
-
-### 6. 四种机制不是同一个问题的四种写法
-
-| 机制 | 常见位置 | 适合做什么 | 不适合替代 |
-| --- | --- | --- | --- |
-| Filter | Servlet层、MVC之前 | HTTP日志、Security、编码、请求包装 | 具体Service业务规则 |
-| Interceptor | Spring MVC、Controller前后 | Handler相关计时、MVC共通处理 | 主要安全边界、任意Bean方法 |
-| ControllerAdvice | MVC异常/响应处理 | 全局业务异常、Controller共通转换 | Security过滤器拒绝、数据库事务 |
-| AOP / Spring Proxy | Spring Bean方法调用 | Transaction、方法权限、横切逻辑 | 原始HTTP报文处理 |
-
-排查共通逻辑时先问“问题发生在HTTP入口、MVC Handler、异常转换还是Bean方法调用”，再找对应机制。不要为了统一而把所有逻辑都塞进Filter或AOP。
-
-### 7. 识读与Review任务
-
-1. 为一次员工详情请求标出RequestLoggingFilter、Security、Interceptor、Controller、Service事务代理和Mapper的大致位置。
-2. Review“在Interceptor读取 `X-Role` 并授予ADMIN”的设计，说明为什么应交给Spring Security和可信身份来源。
-3. Review一个 `@Around` 切面记录所有方法参数的方案，列出密码、Token、个人数据和大对象风险。
-4. 制造Controller异常，比较Filter日志、Interceptor afterCompletion和ControllerAdvice各自能看到的证据。
-5. 删除实验文件后执行全部测试，确认没有留下重复日志或路径行为变化。
-
-## 十四、本章稳定状态
+## 七、本章稳定状态
 
 完成故障实验并恢复正确数据库变量、INFO级别后，工程新增或修改状态为：
 
@@ -851,6 +982,7 @@ src/main/java/com/example/employee/
 └── service/impl/EmployeeServiceImpl.java
 
 src/main/resources/application.yml
+.gitignore
 logs/employee-api.log                            ← 运行时生成，不提交Git
 ```
 
@@ -864,7 +996,7 @@ logs/employee-api.log                            ← 运行时生成，不提交
 6. 避免日志泄露凭据、请求体和个人信息；
 7. 避免多层重复记录同一异常；
 8. 结合日志、响应、数据库状态和断点形成完整故障记录；
-9. 区分Filter、Interceptor、ControllerAdvice与AOP/Proxy的位置和责任；
-10. 识别 `preHandle`、`postHandle`、`afterCompletion` 以及常见AOP注解。
+9. 区分当前使用的Filter和Controller Advice的位置与责任；
+10. 在需要阅读既存项目时，知道从附录继续比较Interceptor和AOP。
 
 下一章会把第10章的手工验证整理成可重复执行的自动化测试。日志用于诊断失败原因，测试用于自动判断结果，两者不能互相替代。

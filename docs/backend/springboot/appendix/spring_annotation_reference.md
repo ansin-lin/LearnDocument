@@ -9,11 +9,12 @@
 | `@Component`（Spring） | 类；注册通用Bean | 第4章；看到后检查组件扫描范围 |
 | `@Service`（Spring） | 业务类；表达Service职责并注册Bean | 第4章；事务和方法权限常通过该Bean代理生效 |
 | `@Repository`（Spring） | 数据访问类；表达Repository职责 | JPA附录；Spring Data接口不一定显式书写 |
-| `@Controller`（Spring MVC） | Web控制器类；常与视图返回配合 | 既存MVC项目可能返回页面名 |
+| `@Controller`（Spring MVC） | Web控制器类；常与视图返回配合 | 第3章、A09；返回字符串时先判断它是视图名还是响应正文 |
 | `@RestController`（Spring MVC） | REST控制器类；相当于Controller加响应体语义 | 第3章；方法返回值通常写入HTTP响应体 |
+| `@ResponseBody`（Spring MVC） | Controller类或方法；把返回值写入HTTP响应正文 | 第3章；类级使用时作用于全部处理方法 |
 | `@Autowired`（Spring） | 构造器、方法或字段；请求依赖注入 | 第4章主要用单构造器省略写法；优先识别注入位置 |
-| `@Qualifier`（Spring） | 注入点或Bean；多个同类型Bean时按名称/限定符选择 | 第4章；与字段名巧合匹配不同，应看明确限定规则 |
-| `@Primary`（Spring） | Bean定义；多个候选中提供默认首选 | 第4章；显式Qualifier通常比默认首选更具体 |
+| `@Qualifier`（Spring） | 注入点或Bean；多个同类型Bean时按名称/限定符选择 | A06；与字段名巧合匹配不同，应看明确限定规则 |
+| `@Primary`（Spring） | Bean定义；多个候选中提供默认首选 | A06；显式Qualifier通常比默认首选更具体 |
 | `@Configuration`（Spring） | 配置类；声明Bean定义来源 | 第4、16章；方法间调用和代理行为按项目配置理解 |
 | `@Bean`（Spring） | 配置类方法；把返回对象注册为Bean | 第4章；方法名通常成为默认Bean名 |
 
@@ -33,19 +34,21 @@
 | 注解（Spring MVC） | 输入位置/作用 | 本课程/既存项目怎样读 |
 | --- | --- | --- |
 | `@RequestMapping` | 类或方法；路径、方法、媒体类型等通用映射 | 第3、6章；类与方法条件会组合 |
-| `@GetMapping` | 方法；GET映射 | 查询，不应承担普通写入 |
-| `@PostMapping` | 方法；POST映射 | 新增、登录或动作型请求 |
-| `@PutMapping` | 方法；PUT映射 | 第10章更新 |
+| `@GetMapping` | 方法；GET映射 | 第3、4、6章；查询不应承担普通写入 |
+| `@PostMapping` | 方法；POST映射 | 第6、10章；新增、登录或动作型请求 |
+| `@PutMapping` | 方法；PUT映射 | 第6章建立映射关系，第10章实现更新 |
 | `@PatchMapping` | 方法；PATCH映射 | 既存项目中的局部更新，先确认字段语义 |
-| `@DeleteMapping` | 方法；DELETE映射 | 第10章删除 |
+| `@DeleteMapping` | 方法；DELETE映射 | 第6章建立映射关系，第10章实现删除 |
 | `@PathVariable` | URL路径变量 | 第6章；缺少路径通常是不匹配路由 |
 | `@RequestParam` | Query String或表单参数 | 第6、14、19章；常用`value`、`required`、`defaultValue` |
 | `@RequestBody` | HTTP body，经消息转换器读取JSON等 | 第6章；通常只能有一个主要请求体对象 |
-| `@RequestHeader` | HTTP Header | 第6章；常用`value`、`required`、`defaultValue`，Header名语义不区分大小写 |
-| `@CookieValue` | Cookie | 第6章；JSESSIONID通常由Session/Security处理 |
-| `@RequestPart` | multipart中的某个part | 第6章；可绑定JSON metadata或文件part，常用`value`、`required` |
+| `@RequestHeader` | HTTP Header | A08；常用`value`、`required`、`defaultValue`，Header名语义不区分大小写 |
+| `@CookieValue` | Cookie | A08；JSESSIONID通常由Session/Security处理 |
+| `@RequestPart` | multipart中的某个part | A08；可绑定JSON metadata或文件part，常用`value`、`required` |
 | `@ModelAttribute` | 请求参数绑定到对象，也可处理模型属性 | 第6章；REST课程主要使用参数绑定部分 |
 | `@CrossOrigin` | Controller或方法；局部声明CORS规则 | 第16章；不等于认证、授权或CSRF保护 |
+
+映射注解的 `name`、路径、参数、请求头及媒体类型属性和一行完整写法见第6章。`value` 与 `path` 是路径属性别名，不应为了展示属性而重复填写。
 
 `MultipartFile` 是 `org.springframework.web.multipart` 接口，不是注解；它表示上传文件part。文件名、Content-Type和大小仍需安全检查。
 
@@ -56,7 +59,7 @@
 | 注解 | 主要规则 | 本课程/识读重点 |
 | --- | --- | --- |
 | `@Valid` | 触发对象级联校验 | 第8章；没有它时嵌套对象约束可能不执行 |
-| `@Validated` | Spring校验入口并支持分组 | 第8章；类/方法级校验需结合代理和配置 |
+| `@Validated` | Spring校验入口并支持分组 | 第8章、A10；请求DTO分组与类级方法校验不是同一种触发场景 |
 | `@NotNull` | 值不能为null | 不限制空字符串或空集合 |
 | `@NotBlank` | 字符串不能为null且去除空白后非空 | 姓名等文本 |
 | `@NotEmpty` | 字符串、集合、数组等不能为null且非空 | 不会自动去除字符串空白 |
@@ -67,6 +70,8 @@
 
 字段格式通过不代表业务规则通过。邮箱重复、员工状态变更许可等仍由Service和数据库约束负责。
 
+约束注解共有的 `message`、`groups`、`payload` 属性及本课程已出现约束的完整一行写法见第8章；`@Validated` 的全部属性写法见A10。
+
 ## 五、异常与响应
 
 | 注解（所属框架） | 写在哪里、解决什么问题 | 本课程/既存项目怎样读 |
@@ -75,6 +80,8 @@
 | `@RestControllerAdvice`（Spring MVC） | 类；ControllerAdvice加响应体语义 | 第7章全局异常JSON |
 | `@ExceptionHandler`（Spring MVC） | 方法；处理指定异常类型 | 第7章；看参数类型、返回状态和更具体匹配 |
 | `@ResponseStatus`（Spring MVC） | 异常类或方法；声明HTTP状态 | 既存项目识读；不要与业务错误码混为一谈 |
+
+`@RestControllerAdvice` 的筛选属性，以及Spring Framework 6.2中 `@ExceptionHandler` 的 `exception`、`produces` 属性和完整写法见第7章。
 
 安全过滤器在Controller之前拒绝的401/403通常不会进入ControllerAdvice，第16章使用Security专用处理器。
 
@@ -93,10 +100,10 @@
 
 | 注解（Jackson） | 作用位置和问题 | 本课程/既存项目怎样读 |
 | --- | --- | --- |
-| `@JsonProperty` | 字段、方法、参数；指定JSON属性名等 | 第5章；确认读写方向和命名 |
-| `@JsonIgnore` | 字段或方法；忽略JSON读写 | 第5章；不能替代DTO边界和权限控制 |
-| `@JsonInclude` | 类或属性；控制null、空值等是否输出 | 第5章；缺失字段与显式null可能有不同语义 |
-| `@JsonFormat` | 属性；指定日期等JSON格式 | 第5、9章；不会给LocalDateTime增加时区 |
+| `@JsonProperty` | 字段、方法、参数；指定JSON属性名等 | A07；确认读写方向和命名 |
+| `@JsonIgnore` | 字段或方法；忽略JSON读写 | A07；不能替代DTO边界和权限控制 |
+| `@JsonInclude` | 类或属性；控制null、空值等是否输出 | A07；缺失字段与显式null可能有不同语义 |
+| `@JsonFormat` | 属性；指定日期等JSON格式 | A07、第9章；不会给LocalDateTime增加时区 |
 
 ## 八、测试
 

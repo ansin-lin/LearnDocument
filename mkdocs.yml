@@ -385,6 +385,14 @@ nav:
       - A03. 日本既存Spring项目的新旧结构识读: backend/springboot/appendix/A03_legacy_spring_project_reading.md
       - A04. Lombok与Spring Data JPA识读: backend/springboot/appendix/A04_lombok_jpa_reading.md
       - A05. Spring项目常见注解速查: backend/springboot/appendix/spring_annotation_reference.md
+      - A06. 多个Bean候选的选择与排错: backend/springboot/appendix/A06_multiple_bean_candidates.md
+      - A07. Jackson字段映射与输出规则: backend/springboot/appendix/A07_jackson_json_mapping.md
+      - A08. Header、Cookie与文件上传: backend/springboot/appendix/A08_http_headers_cookies_file_upload.md
+      - A09. 使用@Controller返回HTML页面: backend/springboot/appendix/A09_spring_mvc_html_views.md
+      - A10. 使用@Validated选择校验分组: backend/springboot/appendix/A10_validated_validation_groups.md
+      - A11. Java Web项目中的日期时间与时区: backend/springboot/appendix/A11_java_web_datetime.md
+      - A12. Spring Boot怎样读取独立MyBatis配置: backend/springboot/appendix/A12_springboot_mybatis_config.md
+      - A13. Spring共通处理机制: backend/springboot/appendix/A13_spring_common_processing_mechanisms.md
       - 常见运行与数据库迁移组件识读: backend/springboot/appendix/operations_components_reading.md
       - 常见问题与排查索引: backend/springboot/appendix/troubleshooting_review_index.md
   - 新主线：WorkHub 任务管理:

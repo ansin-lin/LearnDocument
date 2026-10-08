@@ -82,12 +82,20 @@ Spring Boot 4和MyBatis Starter 4属于另一套兼容组合。学习主线时�
 
 | 附录 | 学习成果 |
 | --- | --- |
-| [Appendix学习入口](appendix/index.md) | 按A01～A05选择实际开发或既存项目识读主题 |
+| [Appendix学习入口](appendix/index.md) | 按A01～A13选择实际开发、既存项目识读或单主题扩展 |
 | [Spring Boot调用外部REST API](appendix/external_api_restclient.md) | 用RestClient识别GET、POST、超时和外部异常转换 |
 | [如何阅读一个陌生的Spring项目](appendix/existing_project_reading.md) | 从构建、启动、配置、业务链到共通机制完成调查 |
 | [日本既存Spring项目的新旧结构识读](appendix/A03_legacy_spring_project_reading.md) | 识别Boot 2/3、JAR/WAR、外部Tomcat和XML配置 |
 | [Lombok与Spring Data JPA识读](appendix/A04_lombok_jpa_reading.md) | 识别编译期生成代码、Entity和Repository |
 | [Spring项目常见注解速查](appendix/spring_annotation_reference.md) | 按框架、位置、处理时机和课程场景理解注解 |
+| [多个Bean候选的选择与排错](appendix/A06_multiple_bean_candidates.md) | 处理同一接口多个实现时的选择规则与启动失败 |
+| [Jackson字段映射与输出规则](appendix/A07_jackson_json_mapping.md) | 在理解序列化后学习字段改名、忽略、空值和日期格式 |
+| [Header、Cookie与文件上传](appendix/A08_http_headers_cookies_file_upload.md) | 在三种基础输入之后扩展请求头、Cookie和multipart |
+| [使用@Controller返回HTML页面](appendix/A09_spring_mvc_html_views.md) | 理解视图名称、Model数据和Thymeleaf服务端渲染 |
+| [使用@Validated选择校验分组](appendix/A10_validated_validation_groups.md) | 让同一个请求对象在草稿和提交阶段执行不同约束 |
+| [Java Web项目中的日期时间与时区](appendix/A11_java_web_datetime.md) | 区分本地时间、UTC瞬间、区域时区和MySQL时间列 |
+| [Spring Boot怎样读取独立MyBatis配置](appendix/A12_springboot_mybatis_config.md) | 在可恢复实验中切换YAML与mybatis-config.xml |
+| [Spring共通处理机制](appendix/A13_spring_common_processing_mechanisms.md) | 区分Filter、Interceptor、Controller Advice与AOP的执行位置和责任 |
 | [常见运行与数据库迁移组件识读](appendix/operations_components_reading.md) | 初步识别Actuator、Flyway和Liquibase |
 | [常见问题与排查索引](appendix/troubleshooting_review_index.md) | 按失败阶段回到对应内容查找原因 |
 

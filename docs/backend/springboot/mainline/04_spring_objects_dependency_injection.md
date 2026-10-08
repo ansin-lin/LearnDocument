@@ -1,6 +1,6 @@
 # 第4章 Spring怎样创建并连接各层对象
 
-> 本章目标：在第3章工程中完成 `Controller → Service` 调用，理解对象为什么由Spring创建、Service为什么通过构造方法传入Controller，并能定位“没有候选Bean”和“存在多个候选Bean”两类注入问题。
+> 本章目标：在第3章工程中完成 `Controller → Service` 调用，理解对象为什么由Spring创建、Service为什么通过构造方法传入Controller，并能定位“没有候选Bean”的注入问题。
 
 第2章已经说明Controller负责接收请求，Service负责处理业务。现在要解决一个具体问题：Controller需要调用Service，这个Service对象应该由谁创建？
 
@@ -14,7 +14,6 @@ Controller需要Service
   → Controller调用Service并返回结果
 ```
 
-完成Employee主线示例后，本章还会使用一个可删除的Payment独立实验，观察同一接口有两个实现时Spring怎样选择Bean。实验不会修改 `EmployeeService` 或员工接口。
 
 ## 一、开始状态与完成结果
 
@@ -48,7 +47,7 @@ src/main/java/com/example/employee/
 | 成功状态 | `200 OK` |
 | 响应正文 | `Suzuki` |
 
-这一接口暂时使用固定字符串，不接收请求数据，也不访问数据库。本章的学习重点是对象创建和连接。完成后还应能在独立实验中观察Qualifier、Primary和候选不唯一三种状态，并把实验文件清理干净。
+这一接口暂时使用固定字符串，不接收请求数据，也不访问数据库。本章的学习重点是对象创建和连接。完成后应能解释Spring怎样创建并连接Controller与Service，并能通过启动日志定位缺少Bean的问题。
 
 ## 二、完整示例
 
@@ -119,6 +118,37 @@ GET /employees/sample-name
   → EmployeeService
   → 返回"Suzuki"
 ```
+
+### 3. 先建立对象管理的整体图
+
+完整示例里同时发生了两类事情，但发生时间不同：
+
+```text
+应用启动时
+  → Spring扫描到@RestController和@Service
+  → 创建EmployeeService对象
+  → 发现EmployeeController的构造方法需要EmployeeService
+  → 创建EmployeeController对象，并把EmployeeService传进去
+  → 两个对象都成为Spring管理的Bean
+
+收到请求时
+  → Spring找到EmployeeController中的处理方法
+  → Controller使用已经保存的EmployeeService
+  → Service返回业务结果
+```
+
+也就是说，Spring不是每收到一次请求才临时 `new EmployeeService()`。对象的创建和连接主要发生在应用启动阶段；请求到达后，Controller使用已经连接好的对象完成处理。
+
+先用下面四个问题区分本章概念：
+
+| 概念 | 它回答的问题 | 当前示例 |
+| --- | --- | --- |
+| 类 | 可以创建什么样的对象？ | `EmployeeController`、`EmployeeService` 的源码定义 |
+| Bean | 哪个运行时对象由Spring管理？ | Spring创建的Controller对象和Service对象 |
+| IoC | 对象的创建和连接由谁统一控制？ | 从Controller自己创建，改为由Spring容器管理 |
+| DI | 一个对象需要的另一个对象怎样交给它？ | Spring通过构造方法传入 `EmployeeService` |
+
+开发者负责写类、添加组件注解并用构造方法声明依赖；Spring负责发现这些类、创建对象、寻找匹配对象并完成连接。`@Service` 说明“这个类的对象交给Spring管理”，构造方法说明“Controller必须得到一个EmployeeService才能建立”。两者组合后，Spring才知道要创建什么以及怎样连接。
 
 接下来按照实际执行关系解释其中的内容。
 
@@ -470,254 +500,11 @@ public class EmployeeService {
 
 记录失败现象后，必须恢复 `@Service`，重新执行 `clean test` 并确认 `BUILD SUCCESS`。不要把故障状态留给下一章。
 
-## 十一、同一接口有多个Bean时怎样选择
+## 十一、同一类型出现多个Bean时怎么办
 
-前面的 `EmployeeService` 只有一个实现，Spring按照类型就能找到唯一对象。既存项目中，一个接口可能有多种实现，例如信用卡支付和银行转账都实现 `PaymentService`：
+当前Employee主线中，每一种依赖都只有一个候选Bean，构造器按类型就能完成注入。真实项目中，一个接口可能有多个实现；此时Spring需要进一步知道应该选择哪一个，否则应用会在启动阶段报告候选不唯一。
 
-```text
-PaymentService
-├── CreditPaymentService Bean
-└── BankPaymentService Bean
-```
-
-如果Controller只声明“需要一个 `PaymentService`”，候选对象却有两个，Spring不能替业务决定使用哪一种。下面先完成独立实验，再解释选择规则。
-
-### 1. 完整的多Bean实验
-
-实验文件放在独立的 `com.example.employee.dilab` 包中：
-
-```text
-src/main/java/com/example/employee/dilab/
-├── PaymentService.java
-├── CreditPaymentService.java
-├── BankPaymentService.java
-└── PaymentDemoController.java
-```
-
-这些文件位于启动类根包下面，会被当前项目的组件扫描发现；它们只用于观察依赖注入，不属于Employee Management业务。实验结束后会删除整个 `dilab` 包。
-
-#### PaymentService.java
-
-```java
-package com.example.employee.dilab;
-
-public interface PaymentService {
-
-    String getPaymentMethod();
-}
-```
-
-#### CreditPaymentService.java
-
-```java
-package com.example.employee.dilab;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
-
-@Service
-@Qualifier("credit")
-public class CreditPaymentService implements PaymentService {
-
-    @Override
-    public String getPaymentMethod() {
-        return "CREDIT";
-    }
-}
-```
-
-#### BankPaymentService.java
-
-```java
-package com.example.employee.dilab;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
-
-@Service
-@Qualifier("bank")
-public class BankPaymentService implements PaymentService {
-
-    @Override
-    public String getPaymentMethod() {
-        return "BANK";
-    }
-}
-```
-
-#### PaymentDemoController.java
-
-```java
-package com.example.employee.dilab;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-@RestController
-public class PaymentDemoController {
-
-    private final PaymentService paymentService;
-
-    public PaymentDemoController(
-            @Qualifier("credit") PaymentService paymentService) {
-        this.paymentService = paymentService;
-    }
-
-    @GetMapping("/di-lab/payment-method")
-    public String getPaymentMethod() {
-        return paymentService.getPaymentMethod();
-    }
-}
-```
-
-先执行测试并启动项目：
-
-```powershell
-.\mvnw.cmd clean test
-.\mvnw.cmd spring-boot:run
-```
-
-另开PowerShell窗口执行：
-
-```powershell
-$response = Invoke-WebRequest `
-    -Uri "http://localhost:8080/di-lab/payment-method"
-$response.StatusCode
-$response.Content
-```
-
-预期结果：
-
-```text
-200
-CREDIT
-```
-
-两个Service都是 `PaymentService` 类型的候选Bean。构造参数上的 `@Qualifier("credit")` 把候选范围缩小到带有 `credit` 限定值的Bean，因此Controller收到 `CreditPaymentService`。
-
-### 2. @Qualifier解决什么问题
-
-`@Qualifier` 的完整名称是 `org.springframework.beans.factory.annotation.Qualifier`。它可以写在组件类和注入参数等位置。本例分成两端：
-
-```java
-@Qualifier("credit")
-public class CreditPaymentService implements PaymentService {
-```
-
-类上的注解给这个候选Bean附加 `credit` 限定值。
-
-```java
-public PaymentDemoController(
-        @Qualifier("credit") PaymentService paymentService) {
-```
-
-构造参数上的注解要求Spring只在 `PaymentService` 候选中选择具有同一限定值的Bean。字符串必须准确匹配；写成 `@Qualifier("cash")` 时没有符合条件的Bean，应用仍会启动失败。
-
-这里仍然是构造器注入。`@Qualifier` 只负责缩小候选范围，不负责创建对象，也不是从HTTP请求读取的参数。
-
-### 3. Bean名称是什么
-
-每个Bean在容器中都有名称。没有显式指定名称时，Spring通常根据类名生成默认名称：
-
-| Bean类型 | 本例默认Bean名称 |
-| --- | --- |
-| `CreditPaymentService` | `creditPaymentService` |
-| `BankPaymentService` | `bankPaymentService` |
-| `PaymentDemoController` | `paymentDemoController` |
-
-也可以写成 `@Service("creditPayment")` 显式指定名称。Bean名称用于容器内部标识和按名称查找；类名表示Java类型，`credit` 则是本例主动声明的Qualifier值，三者不要混为一谈。
-
-Spring在没有更明确选择条件时，可以把注入点名称与Bean名称进行后备匹配，但这还受参数名是否保留等编译条件影响。业务代码有多个实现时，应明确使用 `@Qualifier` 或 `@Primary`，不要仅靠构造参数碰巧与Bean同名。Spring官方也将Qualifier定义为“在按类型得到的候选中进一步缩小范围”，而不是单纯按名称取得对象，参见[Spring Framework的Qualifier说明](https://docs.spring.io/spring-framework/reference/core/beans/annotation-config/autowired-qualifiers.html)。
-
-### 4. @Primary提供默认实现
-
-当一个实现是大多数调用方的默认选择时，可以在该实现上使用 `@Primary`。前面的完整Payment代码保持不变，只对 `CreditPaymentService.java` 增加下面两处差分：
-
-```java
-package com.example.employee.dilab;
-
-@Service
-@Primary
-public class CreditPaymentService implements PaymentService {
-    // getPaymentMethod()保持不变
-}
-```
-
-其中还需要新增 `import org.springframework.context.annotation.Primary;`。同时只修改Controller构造器，移除参数上的Qualifier：
-
-```java
-public PaymentDemoController(PaymentService paymentService) {
-    this.paymentService = paymentService;
-}
-```
-
-`@Primary` 的完整名称是 `org.springframework.context.annotation.Primary`，写在候选实现类上。本例存在两个 `PaymentService` Bean，但只有 `CreditPaymentService` 被标记为主要候选，因此未指定Qualifier的注入点默认得到它。
-
-重新执行 `clean test`、启动项目并请求 `/di-lab/payment-method`，预期仍然返回200和 `CREDIT`。相同结果来自不同规则：前一种写法是当前注入点明确指定credit候选，后一种写法是没有特别指定时采用主要候选。
-
-一个类型不应同时出现两个主要候选，否则又会失去唯一选择。`@Primary` 表达“默认用谁”，`@Qualifier` 表达“这个注入点明确需要哪一类候选”：
-
-| 场景 | 选择方式 |
-| --- | --- |
-| 全项目通常使用一个默认实现 | 在默认实现上使用 `@Primary` |
-| 不同调用方明确使用不同实现 | 在实现和注入点使用匹配的 `@Qualifier` |
-| 只有一个同类型Bean | 直接按类型构造器注入 |
-
-可以把本章范围内的选择过程简化为：
-
-```text
-先按PaymentService类型寻找候选
-  → 注入点有Qualifier：按限定值缩小候选
-  → 没有Qualifier且存在唯一Primary：使用主要候选
-  → 没有明确规则：可能尝试注入点名称与Bean名称的后备匹配
-  → 最终仍有多个候选：启动失败
-```
-
-Qualifier已经明确选中某类候选时，不会因为另一个不匹配的Bean带有 `@Primary` 就改选另一个实现。真实项目还存在泛型限定、集合注入等规则，本章不展开；新人先掌握“类型、明确限定、默认候选、歧义失败”这条主线。
-
-### 5. 主动制造NoUniqueBeanDefinitionException
-
-保持两个实现都带有 `@Service`，删除 `CreditPaymentService` 上的 `@Primary`，并让Controller构造参数不带 `@Qualifier`：
-
-```java
-public PaymentDemoController(PaymentService paymentService) {
-    this.paymentService = paymentService;
-}
-```
-
-再次执行：
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-应用上下文会加载失败。日志外层可能先显示 `UnsatisfiedDependencyException`，继续查看最深层原因，应能看到 `NoUniqueBeanDefinitionException`，并列出类似下面的两个候选名称：
-
-```text
-creditPaymentService
-bankPaymentService
-```
-
-`NoUniqueBeanDefinitionException` 表示需要一个Bean时找到了多个同类型候选，并不表示Bean完全不存在。官方定义可参考[Spring Framework API](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/NoUniqueBeanDefinitionException.html)。定位时按下面顺序检查：
-
-1. 哪个Bean创建失败；
-2. 哪个构造参数需要唯一对象；
-3. 日志列出了哪些同类型候选；
-4. 业务规格是否规定默认实现；
-5. 应使用明确的Qualifier，还是确实存在全局默认实现。
-
-不要看到异常后随意删除一个实现。两个实现可能都被其他业务使用，真正缺少的是当前注入点的选择规则。
-
-### 6. 恢复Employee主线状态
-
-完成三种实验并保存结果后，停止应用，删除临时的 `src/main/java/com/example/employee/dilab` 目录，再执行：
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-最终必须再次看到 `BUILD SUCCESS`，并确认员工接口和 `/health` 没有变化。实验中的Payment类型不进入后续章节。
+现阶段只需要能够识别“缺少候选”和“候选过多”是两类不同问题。`@Qualifier`、`@Primary`、Bean名称及 `NoUniqueBeanDefinitionException` 的完整独立实验，放在附录[多个Bean候选的选择与排错](../appendix/A06_multiple_bean_candidates.md)中。
 
 ## 十二、常见问题与Review
 
@@ -729,9 +516,6 @@ bankPaymentService
 | 构造参数有对象但字段仍无法使用 | 漏写 `this.employeeService = employeeService` | 补上构造赋值并重新构建 |
 | Controller直接返回业务固定值 | 业务处理写进请求入口 | 让Service返回业务结果，Controller只调用和返回 |
 | 新接口成功但旧接口未检查 | 缺少回归确认 | 同时保存新接口和 `/health` 的状态码与正文 |
-| 一个接口有两个实现，启动出现 `NoUniqueBeanDefinitionException` | 注入点没有唯一候选 | 根据业务规则使用 `@Qualifier` 或标记唯一的 `@Primary` |
-| 只因参数名碰巧匹配Bean名称而能启动 | 依赖隐式名称后备匹配，意图不清楚 | 多实现时明确写Qualifier或Primary |
-| 同一类型有两个 `@Primary` | 主要候选仍不唯一 | 每组候选最多保留一个真正的默认实现 |
 
 Review这两个文件时，不要只确认“注解是否存在”。还要沿着下面的方向阅读：
 
@@ -808,18 +592,6 @@ controller/EmployeeController.java
 
 这项练习考查的不是记忆错误全文，而是能否沿依赖关系找到缺少的Bean。
 
-### 练习4：比较三种多Bean状态
-
-使用第十一节的独立实验，依次记录：
-
-1. `@Qualifier("credit")` 时接口返回什么；
-2. 改用唯一 `@Primary` 时接口返回什么；
-3. 两者都不使用时，日志中的依赖类型、候选数量和候选名称；
-4. 为什么不能通过删除另一个业务实现来掩盖选择规则缺失；
-5. 删除 `dilab` 后主线测试和原接口是否恢复正常。
-
-提交的证据必须同时包含两次成功状态、一次预期启动失败和最终恢复成功，不能把故障实验留在工程中。
-
 ## 十四、本章稳定状态
 
 完成练习并恢复故障实验后，工程应保持：
@@ -842,8 +614,5 @@ src/main/java/com/example/employee/
 4. Spring从哪里取得Controller构造方法的参数；
 5. 为什么Controller中不写 `new EmployeeService()`；
 6. 缺少Service Bean时怎样沿构造参数定位问题；
-7. 一个接口存在多个实现时为什么不能只按类型选择；
-8. `@Qualifier`、`@Primary` 和Bean名称分别解决什么问题；
-9. 怎样从错误链中识别 `NoUniqueBeanDefinitionException` 并找到候选Bean。
 
 下一章将在这个稳定的 `Controller → Service` 结构上定义接口数据边界。请求数据对象、响应数据对象和数据库对象承担不同职责，但不会改变本章已经建立的对象注入方式。

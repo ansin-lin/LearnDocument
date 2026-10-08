@@ -397,6 +397,33 @@ public class GlobalExceptionHandler {
 }
 ```
 
+### 8. 先建立输入检查的整体图
+
+“校验”不是一次统一检查。一个请求从原始JSON变成可保存的数据，要依次经过多个关口；每个关口只能回答自己的问题。
+
+```text
+原始请求体
+  → 1. JSON解析：语法能否读懂
+  → 2. 参数绑定：能否创建DTO并转换为目标类型
+  → 3. DTO字段校验：单个值的必填、长度、格式是否合格
+  → 4. Service业务规则：这个值在当前业务状态下是否允许
+  → 5. 数据库约束：最终数据是否满足非空、唯一键、外键等规则
+```
+
+本章实现前四个关口；数据库约束从第9章接入数据库后开始承担作用。
+
+| 关口 | 主要处理者 | 当前例子 | 失败时Controller方法是否执行 |
+| --- | --- | --- | --- |
+| JSON解析 | Jackson与Spring MVC | JSON少了引号或括号 | 否 |
+| 参数绑定 | Spring MVC | 文本无法转换为目标Java类型 | 否 |
+| DTO字段校验 | Jakarta Validation | 姓名空白、邮箱格式错误 | 否 |
+| 业务规则 | `EmployeeService` | 部门不在允许范围、邮箱重复 | 是，随后进入Service |
+| 数据库约束 | 数据库 | 唯一键、外键等冲突 | 已进入业务和持久化流程 |
+
+约束注解负责声明规则，`@Valid` 负责在请求DTO绑定完成后触发这些规则，全局异常处理器负责把失败整理成稳定响应。三者职责不同，缺少任何一个都不是完整的HTTP校验流程。
+
+前端校验可以更早提示用户，但调用者能够绕过网页直接请求API，所以不能替代后端校验；数据库约束能够保护最终数据，但也不能替代DTO和Service提供的清楚错误信息。后文的“四层约束边界”会从前端、DTO、Service和数据库四个保护位置再次整理这一关系。
+
 ## 三、Validation依赖提供了什么
 
 `spring-boot-starter-validation` 是Spring Boot提供的起步依赖，主要把Jakarta Validation API及兼容实现加入工程。代码中的约束类型位于 `jakarta.validation` 包，而不是旧项目中可能看到的 `javax.validation` 包。
@@ -423,6 +450,31 @@ Controller中的@Valid → 在请求绑定后触发校验
 ## 四、字段约束注解怎样选择
 
 三个约束都来自 `jakarta.validation.constraints`，写在字段上，由Validation实现读取。它们不是从上到下依次调用的普通Java方法。
+
+Jakarta Validation约束注解都有三个共同属性：
+
+| 共同属性 | 类型 | 默认值与作用 |
+| --- | --- | --- |
+| `message` | `String` | 使用该约束的默认消息；可以填写固定文字，也可以填写消息资源键 |
+| `groups` | `Class<?>[]` | 默认空数组，约束属于默认校验组；只有按业务阶段选择校验规则时才需要显式填写 |
+| `payload` | `Class<? extends Payload>[]` | 默认空数组，用于附带给校验客户端读取的元数据，普通业务项目很少使用 |
+
+`groups` 和 `payload` 不是字段允许值的条件。新人阶段不要因为看到它们就随意填写；分组用法统一放在附录[使用@Validated选择校验分组](../appendix/A10_validated_validation_groups.md)。本章涉及的每个约束注解，其全部属性一行写法如下：
+
+```java
+@NotBlank(message = "文本不能为空", groups = {}, payload = {})
+@NotEmpty(message = "集合或文本不能为空", groups = {}, payload = {})
+@NotNull(message = "值不能为空", groups = {}, payload = {})
+@Size(min = 0, max = 50, message = "长度不能超过50", groups = {}, payload = {})
+@Email(message = "邮箱格式不正确", regexp = ".+@example\\.com", flags = {}, groups = {}, payload = {})
+@Min(value = 1, message = "不能小于1", groups = {}, payload = {})
+@Max(value = 100, message = "不能大于100", groups = {}, payload = {})
+@Positive(message = "必须大于0", groups = {}, payload = {})
+@PositiveOrZero(message = "不能小于0", groups = {}, payload = {})
+@Pattern(regexp = "[0-9-]+", flags = {}, message = "格式不正确", groups = {}, payload = {})
+```
+
+这些行是属性查阅示例，不是一组应该同时加到同一字段上的规则。`@Email` 的 `regexp` 用于叠加项目自己的正则限制，`flags` 用于改变该正则的匹配方式；本章项目只需要基础邮箱格式，所以正文仍使用更简单的 `@Email(message = "邮箱格式不正确")`。
 
 ### 1. @NotBlank
 
@@ -493,6 +545,16 @@ Controller中的@Valid → 在请求绑定后触发校验
 
 这些注解同样来自 `jakarta.validation.constraints`。当前DTO没有数字字段，不应为了展示注解虚构年龄或级别字段。分页参数出现时，应根据正式规格选择 `@Min`、`@Max`；员工编号的业务含义也必须先由接口规格确认。
 
+`@Min`、`@Max`、`@Positive` 和 `@PositiveOrZero` 通常把 `null` 视为不由当前约束判断的值。因此，“数值范围正确”和“数值必须提供”是两条不同规则。必填数字需要组合约束：
+
+```java
+@NotNull(message = "页码不能为空")
+@Min(value = 1, message = "页码必须大于等于1")
+private Integer page;
+```
+
+这里使用包装类型 `Integer`，才能区分“没有提供”形成的 `null` 和实际数字。若使用基本类型 `int`，字段本身不能保存 `null`，还要结合请求绑定方式判断缺失值会在哪个阶段失败。
+
 ## 五、@Valid在什么时候执行
 
 `@Valid` 的完整名称是 `jakarta.validation.Valid`，写在要校验的Controller参数上：
@@ -520,7 +582,15 @@ JSON语法正确
 
 `@Valid` 没有需要填写的参数。校验失败发生在Controller方法执行前，因此Service不会收到字段校验失败的请求。
 
+因此它的全部属性写法就是注解本身：
+
+```java
+@Valid
+```
+
 临时删除 `@Valid` 后，DTO上的约束仍存在，但当前HTTP请求不会触发这次对象校验。约束注解不是看到对象就自动执行。
+
+既存项目中还经常出现Spring提供的 `@Validated`。它也能触发请求对象校验，并且可以选择校验分组；本章没有分组需求，继续使用Jakarta Validation的 `@Valid`。完整示例和两者区别见附录[使用@Validated选择校验分组](../appendix/A10_validated_validation_groups.md)。
 
 ## 六、字段错误怎样成为400响应
 

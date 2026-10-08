@@ -4,6 +4,8 @@
 
 CRUD是Create、Read、Update、Delete的缩写。接口返回成功只说明请求处理结束；对于写操作，还必须确认数据库实际新增、修改或删除了预期的一行。
 
+本章先完成**功能闭环**：每个接口能够正确读写一行数据。此时尚未使用 `@Transactional`，所以一个Service方法中的多次Mapper调用还不是共同提交或回滚的整体。第13章会在已有测试基础上建立事务一致性边界；本章不能把一次正常执行成功误认为已经具备多步回滚能力。
+
 本章完成下面的闭环：
 
 ```text
@@ -28,6 +30,18 @@ CRUD是Create、Read、Update、Delete的缩写。接口返回成功只说明请
 | EMP-DELETE-01 | 物理删除 | `DELETE /employees/{id}` | 路径编号 | 204且无正文；不存在或重复删除返回404 |
 
 新增和修改都要求姓名、部门和邮箱完整提供，并继续使用第8章的格式校验及部门业务规则。邮箱与其他记录重复时返回409。JSON损坏或字段校验失败仍返回400。
+
+接口还必须明确输入整理和比较规则：
+
+| 输入 | 当前规格 | 示例结果 |
+| --- | --- | --- |
+| 姓名 | DTO先按原始文本校验长度，进入Service后去除首尾空白 | `" Sato "` 保存为 `"Sato"` |
+| 新增、修改的部门 | 去除首尾空白后，必须区分大小写地等于 `Sales`、`Development` 或 `Support` | `" Sales "` 保存为 `"Sales"`；`"sales"` 返回400 |
+| 邮箱 | DTO先按原始文本校验格式和长度，因此首尾空白会返回400；通过后按固定区域规则转为小写 | `"SATO@EXAMPLE.COM"` 保存为 `"sato@example.com"` |
+| 列表部门条件 | 省略、空或纯空白表示全部；其他值去除首尾空白后交给数据库比较 | 当前表排序规则 `utf8mb4_0900_ai_ci` 下比较不区分大小写 |
+| 路径编号 | 能转换为 `Long` 才能进入Controller；当前未额外限制正数 | `abc` 返回400；数据库不存在的 `0`、负数或其他编号返回404 |
+
+MySQL表的邮箱唯一约束也使用不区分大小写的排序规则，Service统一转成小写可以让保存值更稳定，但最终防止并发重复的仍是数据库唯一约束。若实际项目要求保留邮箱大小写或使用其他排序规则，必须同步修改接口规格、整理逻辑、DDL和测试。
 
 ### 2. 为什么PUT要求三个字段全部提供
 
@@ -302,11 +316,12 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public EmployeeResponse create(EmployeeCreateRequest request) {
-        validateDepartment(request.getDepartment());
+        String department = request.getDepartment().trim();
+        validateDepartment(department);
 
         Employee employee = new Employee();
         employee.setName(request.getName().trim());
-        employee.setDepartment(request.getDepartment().trim());
+        employee.setDepartment(department);
         employee.setEmail(normalizeEmail(request.getEmail()));
         employee.setStatus("ACTIVE");
 
@@ -326,26 +341,31 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeResponse update(
             Long id,
             EmployeeUpdateRequest request) {
-        validateDepartment(request.getDepartment());
-        findEmployeeOrThrow(id);
+        String department = request.getDepartment().trim();
+        validateDepartment(department);
 
         Employee employee = new Employee();
         employee.setId(id);
         employee.setName(request.getName().trim());
-        employee.setDepartment(request.getDepartment().trim());
+        employee.setDepartment(department);
         employee.setEmail(normalizeEmail(request.getEmail()));
 
+        int affectedRows;
         try {
-            int affectedRows = employeeMapper.update(employee);
-            if (affectedRows > 1) {
-                throw new EmployeeSystemException("修改员工影响多行");
-            }
-            if (affectedRows == 0
-                    && employeeMapper.findById(id) == null) {
-                throw new EmployeeNotFoundException(id);
-            }
+            affectedRows = employeeMapper.update(employee);
         } catch (DuplicateKeyException exception) {
             throw new DuplicateEmailException(employee.getEmail());
+        }
+
+        if (affectedRows > 1) {
+            throw new EmployeeSystemException("修改员工影响多行");
+        }
+        if (affectedRows == 0) {
+            Employee existing = employeeMapper.findById(id);
+            if (existing == null) {
+                throw new EmployeeNotFoundException(id);
+            }
+            return toResponse(existing);
         }
 
         return findById(id);
@@ -501,7 +521,7 @@ public class EmployeeController {
 | `createdAt` | 数据库默认时间 | 记录真实插入时间 |
 | `updatedAt` | 数据库自动维护 | 记录真实数据库更新时间 |
 
-Controller上的 `@Valid` 先检查DTO格式；Service随后检查允许部门并整理文本；Mapper最后把Entity属性绑定到SQL。不同检查位置保护不同边界。
+Controller上的 `@Valid` 先检查DTO原始值的格式和长度；Service随后去除首尾空白、统一邮箱大小写并检查整理后的部门；Mapper最后把Entity属性绑定到SQL。不同检查位置保护不同边界。若整理规则可能使值变长或改变业务含义，还应对整理后的值再次验证，不能假设DTO校验自动检查了修改后的字符串。
 
 ## 四、INSERT和生成主键怎样工作
 
@@ -542,9 +562,9 @@ List<Employee>
 
 Service不会信任请求体中的编号，因为修改DTO根本不定义id。这样不会出现URL要求修改1001、请求体却要求修改1002的冲突。
 
-UPDATE返回的 `int` 是数据库影响行数。不同驱动设置对“把值改成原值”的计数可能不同，因此代码先确认记录存在；UPDATE返回0时再次查询，只有记录确实消失才返回404。超过1行违反主键更新规格，返回内部错误。
+UPDATE返回的 `int` 是数据库影响行数。不同驱动设置对“把值改成原值”的计数可能不同，因此代码先执行UPDATE：返回0时再查询一次，记录仍存在表示提交了原值，记录不存在才返回404；返回1时查询最终状态并返回；超过1行违反主键更新规格，返回内部错误。这样一次修改最多执行两次SQL，不使用一个无法防止并发删除的事前查询。
 
-当前“查询存在→UPDATE→再次查询”不是一个不可分割的整体。并发请求可能在步骤之间改变同一行，后提交者也可能覆盖先提交者。复杂业务需要事务和乐观锁等机制；当前必须先认识这种风险，不能把一次演示成功当作并发安全。
+当前“UPDATE→必要时查询存在性或查询最终状态”不是一个不可分割的整体。并发请求可能在步骤之间改变同一行，后提交者也可能覆盖先提交者。复杂业务需要事务和乐观锁等机制；当前必须先认识这种风险，不能把一次演示成功当作并发安全。
 
 ## 七、DELETE语义与物理删除
 
@@ -597,6 +617,18 @@ DELETE路径id → 物理删除 → 204无正文
 ```
 
 Controller不直接注入Mapper，Entity也不直接作为JSON返回。HTTP、业务流程、SQL和接口字段继续由不同对象负责。
+
+### 3. 当前提交边界
+
+当前Service方法没有 `@Transactional`。MyBatis-Spring会管理Mapper使用的会话，但发生在Spring事务之外的每次Mapper调用仍会分别提交：
+
+```text
+create：INSERT已提交 → 回查失败时，新增记录不会自动撤销
+update：UPDATE已提交 → 最终回查失败时，修改不会自动撤销
+delete：单条DELETE由数据库保证单语句原子性
+```
+
+因此本章验收的是CRUD功能和数据库结果，不宣称多步操作能够整体回滚。第12章先建立自动化测试，第13章再使用 `@Transactional` 证明成功提交和失败回滚。
 
 ## 十、按顺序验证数据库状态
 
@@ -769,5 +801,6 @@ src/main/resources/mapper/EmployeeMapper.xml
 6. 解释PUT完整替换、DELETE物理删除和204无正文；
 7. 用HTTP响应与SELECT结果完成CRUD验证闭环；
 8. 识别完整更新覆盖他人修改的风险。
+9. 说明当前事务外Mapper调用分别提交，以及该限制将在第13章解决。
 
 下一章会在当前可运行CRUD上增加结构化日志和故障定位方法，不改变这些接口的业务语义。

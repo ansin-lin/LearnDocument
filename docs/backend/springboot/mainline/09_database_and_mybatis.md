@@ -42,7 +42,7 @@ MySQL一行数据
 
 ### 1. 建立数据库、账号、表和样例数据
 
-以下脚本只适用于MySQL 8.0本地练习环境。先使用拥有建库和创建用户权限的管理账号，在MySQL Workbench或命令行客户端中执行：
+以下脚本只适用于MySQL 8.0.16及以上版本的本地练习环境。先使用拥有建库和创建用户权限的管理账号，在MySQL Workbench或命令行客户端中执行：
 
 ```sql
 CREATE DATABASE IF NOT EXISTS employee_db
@@ -187,7 +187,17 @@ spring:
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.example.employee.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    default-statement-timeout: 10
 ```
+
+`mybatis` 下的配置分成两类：
+
+- `mapper-locations`、`type-aliases-package` 是MyBatis Spring Boot Starter提供的集成配置，负责告诉Starter去哪里找Mapper XML和类型别名；
+- `configuration` 下面是MyBatis核心运行设置，Starter会把这些值写入MyBatis的 `Configuration` 对象。
+
+`map-underscore-to-camel-case: true` 允许自动映射时把 `created_at` 对应到 `createdAt`。当前 `EmployeeMapper.xml` 使用了明确的 `resultMap`，所以即使开启该设置，仍以 `resultMap` 中写出的 `column` 和 `property` 为准。`default-statement-timeout: 10` 把未单独指定超时的SQL默认等待时间设为10秒；它用于限制等待时间，不保证SQL一定在10秒内完成，具体终止行为还受JDBC驱动和数据库影响。
 
 在将要启动应用的PowerShell窗口中设置本地环境变量：
 
@@ -505,7 +515,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 - `NOT NULL` 禁止SQL `NULL`，但不会自动禁止空字符串。
 - `DEFAULT` 只在INSERT省略该列时使用；主动传入 `NULL` 仍会违反非空约束。
 - `UNIQUE (email)` 保证表内邮箱不重复。
-- `CHECK` 限制状态只能是 `ACTIVE` 或 `INACTIVE`。本章以MySQL 8.0为基线，不把这段DDL复制到不支持相同行为的旧数据库。
+- `CHECK` 限制状态只能是 `ACTIVE` 或 `INACTIVE`。本章以MySQL 8.0.16及以上版本为基线；更早版本可能接受语法却不实际执行约束，不能照搬本章结论。
 
 ## 四、JDBC、DataSource、连接池和MyBatis分别做什么
 
@@ -533,9 +543,28 @@ EmployeeMapper方法
 
 连接池复用连接，不等于所有请求共用一个正在执行SQL的连接。借出、归还和事务绑定由框架管理，业务代码不手动关闭连接池中的物理连接。
 
-## 五、数据库连接配置怎样生效
+## 五、Spring Boot怎样读取数据库和MyBatis配置
+
+### 1. 两组配置分别由谁处理
 
 `spring.datasource` 是Spring Boot配置前缀，不是Java包。启动时，Spring Boot读取URL、账号、密码和驱动，创建 `DataSource`；MyBatis再通过它取得连接。Spring Boot的数据源属性和连接池选择可参考[Spring Boot 3.5 SQL数据库说明](https://docs.spring.io/spring-boot/3.5/reference/data/sql.html)。
+
+`mybatis` 是MyBatis Spring Boot Starter使用的配置前缀。应用启动时，两组配置按照下面的方向生效：
+
+```text
+application.yml
+  ├─ spring.datasource.*
+  │    → Spring Boot创建DataSource
+  └─ mybatis.*
+       → Starter读取并绑定MyBatis配置
+       → 创建SqlSessionFactory
+       → 创建SqlSessionTemplate
+       → 加载Mapper XML并注册@Mapper代理对象
+```
+
+业务代码不需要自己读取YAML，也不需要手动使用 `SqlSessionFactoryBuilder`。Starter检测到 `DataSource` 后，把它交给自动创建的 `SqlSessionFactory`，再让Mapper代理通过Spring管理的 `SqlSessionTemplate` 执行SQL。这个流程与普通Java项目手动读取 `mybatis-config.xml`、手动构建工厂的方式不同。
+
+### 2. 本章application.yml中的主要配置
 
 | 配置项 | 可接受的值 | 默认值或必填性 | 当前作用 |
 | --- | --- | --- | --- |
@@ -543,12 +572,30 @@ EmployeeMapper方法
 | `username` | 有权限的MySQL账号 | 默认 `employee_app` | 指定应用身份 |
 | `password` | 账号密码 | 必填，无默认值 | 从环境变量读取凭据 |
 | `driver-class-name` | 可加载的JDBC驱动类 | 本章固定MySQL驱动 | 明确使用Connector/J |
-| `mapper-locations` | 一个或多个classpath资源模式 | 本章固定 `classpath:mapper/*.xml` | 查找Mapper XML |
-| `type-aliases-package` | Java包名 | 本章固定Entity包 | 允许XML用 `Employee` 代替完整类名 |
+| `mybatis.mapper-locations` | 一个或多个Spring资源路径或通配模式 | Starter没有自动填写本项目路径，本章明确设置 | 查找并加载Mapper XML |
+| `mybatis.type-aliases-package` | 一个或多个Java包名 | 默认不扫描指定别名包，本章固定Entity包 | 允许XML用 `Employee` 代替完整类名 |
+| `mybatis.configuration.map-underscore-to-camel-case` | `true`、`false` | MyBatis默认 `false`，本章设置 `true` | 自动映射时把下划线列名转换为驼峰属性名 |
+| `mybatis.configuration.default-statement-timeout` | 正整数秒数 | MyBatis默认不设置统一值，本章设置10秒 | 为没有单独配置超时的SQL提供默认等待上限 |
 
 `${DB_URL:默认值}` 表示优先读取环境变量，变量不存在时使用冒号后的默认值；`${DB_PASSWORD}` 没有默认值，缺失时应用应启动失败。生产环境应使用部署平台的密钥管理或受控环境变量，并为不同环境使用不同账号。
 
 JDBC URL中的 `connectionTimeZone=Asia/Tokyo` 设置连接解释时间值时使用的时区。数据库列使用 `DATETIME`，Java使用不携带时区的 `LocalDateTime`；这表示业务上的本地日期时间，不代表UTC瞬间。具体转换边界可参考[MySQL Connector/J日期时间说明](https://dev.mysql.com/doc/connector-j/en/connector-j-time-instants.html)。
+
+YAML使用短横线命名，例如 `map-underscore-to-camel-case`；对应的MyBatis核心设置名称是 `mapUnderscoreToCamelCase`。Spring Boot的配置绑定会完成这种命名转换。
+
+本章没有设置下面这些选项：
+
+- 不设置 `log-impl: STDOUT_LOGGING`，因为项目使用Spring Boot的SLF4J日志体系，第11章统一配置SQL日志；
+- 不为了展示而启用懒加载或二级缓存，这些行为会改变对象加载和数据一致性判断；
+- 不把 `default-fetch-size` 当成查询行数限制，它只是给JDBC驱动的抓取提示，不能替代SQL中的分页或 `LIMIT`。
+
+MyBatis全部核心设置及默认值应以[MyBatis官方Configuration说明](https://mybatis.org/mybatis-3/configuration)为准，不应把所有设置复制进项目。
+
+### 3. 项目使用独立mybatis-config.xml时怎样读取
+
+有些既存项目把MyBatis核心设置放在 `mybatis-config.xml` 中。Spring Boot不会仅凭文件名自动读取它，必须通过 `mybatis.config-location` 指定资源位置。`mybatis.configuration.*` 和 `mybatis.config-location` 是两种核心设置来源，不能同时使用；`mapper-locations` 和 `type-aliases-package` 仍可保留在 `application.yml` 中。
+
+当前主线继续使用结构更直观的 `mybatis.configuration.*`。独立XML的完整文件、配置切换、`<environments>`差异、故障观察和恢复步骤见附录[Spring Boot怎样读取独立MyBatis配置](../appendix/A12_springboot_mybatis_config.md)。
 
 ## 六、Employee为什么不是请求或响应对象
 
@@ -596,7 +643,7 @@ DOCTYPE告诉编辑器和解析器该XML遵循MyBatis Mapper 3格式。`resultMa
 </select>
 ```
 
-列别名适合简单且字段较少的结果；可复用的完整记录映射使用 `resultMap` 更容易集中核对。本章主线只采用一个明确的 `resultMap`，不同时维护两套正式映射。
+这是对比片段，表示用它**替换**当前 `findById` 的 `<select>`；不能直接追加到同一个 `<mapper>`，否则相同的 `namespace + id` 会重复。列别名适合简单且字段较少的结果；可复用的完整记录映射使用 `resultMap` 更容易集中核对。本章主线只采用一个明确的 `resultMap`，不同时维护两套正式映射。
 
 ### 3. `#{}`和`${}`不是两种随意替换的写法
 
@@ -616,7 +663,9 @@ DOCTYPE告诉编辑器和解析器该XML遵循MyBatis Mapper 3格式。`resultMa
   → 把结果映射为Employee
 ```
 
-Starter还会自动配置 `SqlSessionFactory` 和 `SqlSessionTemplate`。前者保存解析后的MyBatis配置并创建会话，后者是MyBatis-Spring提供的线程安全调用入口，负责让Mapper调用参与Spring管理的会话和事务。业务代码不手动调用 `openSession()`、`commit()`或 `close()`。
+Starter还会自动配置 `SqlSessionFactory` 和 `SqlSessionTemplate`。前者保存解析后的MyBatis配置并创建会话，后者是MyBatis-Spring提供的线程安全调用入口，负责让Mapper调用在已有Spring事务中共用会话。业务代码不手动调用 `openSession()`、`commit()`或 `close()`。
+
+这里的“支持Spring事务”不等于所有Service方法已经自动具有事务边界。当前还没有使用 `@Transactional`；发生在Spring事务之外的每次Mapper调用会各自提交。第10章先完成CRUD功能闭环，第13章再为多步写入建立共同提交或回滚的事务边界。
 
 Mapper代理只负责把接口调用连接到数据访问过程，不包含“员工不存在应返回404”这种接口业务判断。
 
@@ -659,104 +708,7 @@ Service接口与Mapper接口的关键区别是：
 
 第8章的DTO校验仍然保护新增预览入口，但按编号查询没有请求DTO；路径文本转换为 `Long` 的400处理仍由Spring MVC负责。查询不到记录不是格式错误，Service继续抛出 `EmployeeNotFoundException`，全局异常处理器把它变成404。
 
-## 十一、DAO、Repository和Mapper是不是三个层
-
-它们通常都是“数据访问代码”的命名，不表示必须再创建三个依次调用的架构层：
-
-- `DAO` 是Data Access Object的通用叫法，强调封装数据访问。
-- `Repository` 常见于领域设计或Spring Data项目，语义偏向对象集合；不同框架对它的实现方式不同。
-- `Mapper` 是MyBatis项目的常见名称，强调方法、SQL参数和结果之间的映射。
-
-本项目使用MyBatis，因此统一采用 `mapper` 包和 `EmployeeMapper`。不要再创建内容完全相同的 `EmployeeDao`和 `EmployeeRepository`，否则只会增加转发代码。阅读既有日本项目时，应先看接口、SQL和调用关系，再判断名称实际承担什么职责。
-
-## 十二、Java Web项目中的日期与时间
-
-Employee表的 `created_at`、`updated_at` 使用MySQL `DATETIME`，Java对象使用 `LocalDateTime`。这种组合能保存“2026-09-16 09:30:00”这样的本地日期时间，但字符串看起来完整，不代表它已经说明时区和时间点。
-
-### 1. 五种常见Java时间类型
-
-| 类型 | 示例 | 包含的信息 | 常见用途 |
-| --- | --- | --- | --- |
-| `LocalDate` | `2026-09-16` | 日期，无时间、无时区 | 生日、营业日、开始日期 |
-| `LocalTime` | `09:30:00` | 一天中的时间，无日期、无时区 | 每日营业时间 |
-| `LocalDateTime` | `2026-09-16T09:30:00` | 日期和时间，无时区 | 已明确业务地区的本地业务时间 |
-| `OffsetDateTime` | `2026-09-16T09:30:00+09:00` | 日期、时间和UTC偏移 | API中携带偏移的时间 |
-| `Instant` | `2026-09-16T00:30:00Z` | 时间轴上的唯一瞬间 | 事件发生时刻、跨时区系统交换 |
-
-这些类型都来自Java 17的 `java.time` 包。Oracle文档明确说明 `LocalDateTime` 不保存时区，不能在没有额外offset或zone信息时确定时间轴上的唯一瞬间，参见[LocalDateTime API](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/time/LocalDateTime.html)。
-
-```text
-2026-09-16T09:30:00+09:00  日本偏移表示
-2026-09-16T00:30:00Z       UTC表示，Z表示+00:00
-2026-09-16T09:30:00        只有本地日期时间，单独看无法证明是哪一瞬间
-```
-
-### 2. Asia/Tokyo、UTC和+09:00不是同一种概念
-
-- `UTC` 是协调世界时基准；Java中常用 `ZoneOffset.UTC`。
-- `+09:00` 是固定offset，表示比UTC快9小时，本身不包含地区规则。
-- `Asia/Tokyo` 是区域时区ID，由 `ZoneId` 表示，可通过时区规则为某个日期时间决定offset。
-
-当前日本标准时间通常是+09:00，但区域时区和固定offset在概念上仍不同。其他区域可能随日期使用夏令时，同一 `ZoneId` 在不同日期对应的offset可能变化。因此跨区域系统应保存明确的时间语义，而不是看到 `09:30:00` 就默认是日本时间。
-
-### 3. 常见转换必须提供缺少的信息
-
-```java
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-
-ZoneId tokyo = ZoneId.of("Asia/Tokyo");
-LocalDateTime local = LocalDateTime.of(2026, 9, 16, 9, 30);
-
-Instant instant = local.atZone(tokyo).toInstant();
-OffsetDateTime offsetDateTime = instant.atZone(tokyo).toOffsetDateTime();
-LocalDateTime restoredLocal = LocalDateTime.ofInstant(instant, tokyo);
-```
-
-`ZoneId.of(...)` 根据区域名称取得时区规则；`atZone(tokyo)` 给没有时区的本地时间补充“按东京规则解释”的前提；`toInstant()` 得到唯一瞬间。反向转换时 `ofInstant(instant, tokyo)` 必须再次指定希望看到哪个地区的本地时间。
-
-不能把任意 `LocalDateTime` 直接当UTC或东京时间。转换前必须从接口规格、数据库定义或业务规则确认它原本代表什么。
-
-### 4. Browser到数据库的完整路径
-
-```text
-Browser中的日期时间
-  → HTTP JSON字符串及offset约定
-  → Jackson解析为Java时间类型
-  → Service按业务时区转换或校验
-  → MyBatis/JDBC绑定参数
-  → MySQL DATE、DATETIME或TIMESTAMP
-```
-
-| 阶段 | 常见问题 | 调查证据 |
-| --- | --- | --- |
-| Browser→JSON | 浏览器本地时区、格式或offset丢失 | Network中的原始请求 |
-| JSON→Java | 类型与文本格式不匹配 | 400响应、Jackson异常、DTO类型 |
-| Service | 把无时区值错误解释为UTC | 业务规格、转换代码、测试时区 |
-| JDBC→DB | Java类型与列类型不一致 | Mapper参数、JDBC URL、表定义 |
-| DB→查询结果 | 连接时区或DATETIME/TIMESTAMP语义不同 | session time_zone、原始列值 |
-
-第5章出现的 `@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")` 只规定JSON文本格式，不会为 `LocalDateTime` 增加时区。需要表达offset时，应优先在接口规格中采用可携带offset的ISO-8601形式并使用 `OffsetDateTime`，而不是只改变显示样式。
-
-### 5. MySQL DATETIME与TIMESTAMP要按规格选择
-
-MySQL `DATETIME` 保存日期和时间字段，不像 `TIMESTAMP` 那样按照连接时区与UTC进行存取转换。MySQL官方对两者的区别见[DATE、DATETIME和TIMESTAMP类型](https://dev.mysql.com/doc/refman/8.0/en/datetime.html)。
-
-当前Employee项目把 `created_at`、`updated_at` 作为日本业务环境中的数据库本地时间，并映射为 `LocalDateTime`。这是一项项目规格，不是所有系统都必须采用的通用答案。跨国家事件、审计时间或多地区API更适合先确定统一的UTC/Instant策略，再明确显示时区。
-
-### 6. 时间问题的验证任务
-
-1. 写出 `2026-09-16T09:30:00+09:00` 对应的UTC表示。
-2. 说明为什么 `2026-09-16T09:30:00` 不能独立证明一个瞬间。
-3. 沿Browser→JSON→Java→JDBC→MySQL列出Employee创建时间的类型和格式。
-4. 把测试进程时区临时设为UTC，检查依赖系统默认时区的断言是否失败；恢复原设置后重新执行全部测试。
-5. Review一个只用字符串拼接“+09:00”的转换方案，指出应由 `ZoneId`、`OffsetDateTime` 或 `Instant` 明确处理的部分。
-
-本节不要求修改Employee表。任何列类型或时间语义变更都必须先调查既有数据、MyBatis映射、JSON规格、服务器/JVM/数据库时区和回归测试。
-
-## 十三、启动并验证完整调用链
+## 十一、启动并验证完整调用链
 
 ### 1. 先验证数据库
 
@@ -832,11 +784,33 @@ try {
 - 重复测试邮箱仍返回409；
 - `GET /health` 仍返回200和 `OK`。
 
+完成这一步后，数据库记录到HTTP响应的主线已经实际运行。下面两节补充项目命名和当前时间字段边界，不再阻塞本章核心验证。
+
+## 十二、DAO、Repository和Mapper是不是三个层
+
+它们通常都是“数据访问代码”的命名，不表示必须再创建三个依次调用的架构层：
+
+- `DAO` 是Data Access Object的通用叫法，强调封装数据访问。
+- `Repository` 常见于领域设计或Spring Data项目，语义偏向对象集合；不同框架对它的实现方式不同。
+- `Mapper` 是MyBatis项目的常见名称，强调方法、SQL参数和结果之间的映射。
+
+本项目使用MyBatis，因此统一采用 `mapper` 包和 `EmployeeMapper`。不要再创建内容完全相同的 `EmployeeDao`和 `EmployeeRepository`，否则只会增加转发代码。阅读既有日本项目时，应先看接口、SQL和调用关系，再判断名称实际承担什么职责。
+
+## 十三、当前项目的日期时间映射
+
+Employee表的 `created_at`、`updated_at` 使用MySQL `DATETIME`，Entity使用Java 17的 `LocalDateTime`。两者都表示日期和时间，但都不携带时区或UTC偏移；当前项目把它们定义为日本业务环境中的数据库本地时间。
+
+这只是当前项目规格，不是所有系统的通用答案。跨国家事件、审计时间或多地区API需要另外确定UTC、区域时区和接口格式，不能看到 `LocalDateTime` 就默认它代表东京时间。`DATETIME`、`TIMESTAMP`、`LocalDateTime`、`OffsetDateTime`、`Instant` 及Browser到数据库的转换与验证，统一放在附录[Java Web项目中的日期时间与时区](../appendix/A11_java_web_datetime.md)。
+
+本章只需确认MyBatis能够把两列写入Entity对应属性；它们不会进入当前详情响应。任何时间列类型或语义变更，都必须同时调查表定义、既有数据、Mapper映射、JDBC配置和接口规格。
+
 ## 十四、按阶段排查数据库问题
 
 | 现象 | 所在阶段 | 常见原因 | 检查和修正 |
 | --- | --- | --- | --- |
 | 提示无法解析 `DB_PASSWORD` | 配置读取 | 环境变量未设置 | 在启动应用的同一PowerShell设置变量 |
+| 提示找不到MyBatis核心配置 | 配置读取 | `config-location` 路径错误，且启用了存在检查 | 核对 `src/main/resources` 下的位置和 `classpath:` 路径 |
+| 创建 `SqlSessionFactory` 时提示两种配置并存 | MyBatis自动配置 | 同时写了 `config-location` 和 `configuration` | 二选一，删除另一套核心设置来源 |
 | `Access denied for user` | 数据库认证 | 账号、密码、主机范围或权限错误 | 用应用账号单独登录并检查授权，不改用root绕过 |
 | `Unknown database` | 建立连接 | 数据库名错误或建库脚本未执行 | 在MySQL中检查 `employee_db` |
 | 连接被拒绝或超时 | 网络与MySQL服务 | 服务未启动、端口或地址错误 | 先用数据库客户端连接同一地址 |
@@ -912,7 +886,6 @@ src/main/resources/
 6. 区分项目编写的Service实现与MyBatis生成的Mapper代理；
 7. 把Entity明确转换为响应对象，并用404处理空查询结果；
 8. 按连接、SQL定位、执行、映射和业务转换的顺序排查问题；
-9. 区分 `LocalDate`、`LocalTime`、`LocalDateTime`、`OffsetDateTime` 和 `Instant`；
-10. 说明UTC、固定offset和区域时区的区别，并沿Browser到MySQL调查时间问题。
+9. 说明当前 `DATETIME` 与 `LocalDateTime` 都不携带时区，并知道何时进入日期时间附录继续学习。
 
 下一章会在这条稳定数据访问链上实现真实新增、修改和删除，并用数据库状态验证每次写操作。

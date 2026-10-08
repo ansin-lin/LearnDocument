@@ -69,6 +69,9 @@ spring:
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.example.employee.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    default-statement-timeout: 10
 
 logging:
   logback:

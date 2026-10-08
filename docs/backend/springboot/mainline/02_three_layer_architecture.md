@@ -297,34 +297,14 @@ Spring Boot不强制使用某一种代码布局；官方示例也展示了按业
 
 三层也不要求分别启动三个Java程序或部署到三台服务器。本项目的三层代码可以一起运行在同一个Spring Boot应用中，数据库是否放在另一台机器是另一个部署问题。
 
-## 八、三层架构和MVC有什么区别
+## 八、不要把三层架构和MVC强行一一对应
 
-第一章介绍过Spring MVC。“MVC”也包含三个部分，但不是Controller、Service、Mapper的缩写。
+第一章出现过Spring MVC。MVC和本章三层架构观察的是不同问题：
 
-### 1. MVC分别指什么
+- 三层架构关注后端代码的职责，当前主线使用Controller、Service、Mapper协作。
+- MVC关注Web应用的输入、处理和展示；其中Model、View、Controller不能机械等同于Mapper、Service、Controller。
 
-MVC讨论数据与业务状态、展示和用户输入处理之间的分工：
-
-- Model（模型）：表达业务数据及相关状态和规则，不等于某一张表或某一个带固定后缀的类。
-- View（视图）：把需要展示的信息呈现出来，例如员工详情页面。
-- Controller（控制器）：接收用户操作或请求，协调处理，并选择如何给出结果。
-
-在后端生成页面的Spring MVC用法中，可以先查到员工信息，再交给页面模板生成HTML。“模板”是预先写好的页面结构，把员工姓名等数据填进去，就得到具体页面；交给页面展示的数据通常称为模型数据。[Spring MVC视图处理说明](https://docs.spring.io/spring-framework/reference/6.2/web/webmvc/mvc-servlet/viewresolver.html)
-
-### 2. 为什么当前API项目没有后端页面模板
-
-本项目采用前端显示页面、后端返回JSON的方式。Spring MVC可以将处理结果转换后直接写入HTTP响应正文，不必先生成一张后端HTML页面；前端再用这些数据显示界面。[Spring MVC响应正文说明](https://docs.spring.io/spring-framework/reference/6.2/web/webmvc/mvc-controller/ann-methods/responsebody.html)
-
-因此，使用Spring MVC，不代表必须在后端创建一个名为 `View` 的类或目录。
-
-### 3. 两种划分不要逐项硬配
-
-三层架构在这里回答：“后端中，HTTP交接、业务处理和数据访问分别由谁负责？”MVC回答的是另一种关注展示与交互的职责划分问题。
-
-Service不是View，Mapper也不是MVC中的Model。不能因为都有三个部分，就把Controller→Service→Mapper改写成MVC。
-
-阅读现有项目时，应看每段代码实际承担的职责，不凭“有三个目录”就判断它采用哪一种模式。
-
+本课程当前开发的是返回JSON的后端API，没有在后端生成HTML页面，因此现阶段只需要避免把“MVC”和“三层”当成同一张对应表。等看到真实Controller代码后，再结合请求处理理解Spring MVC。
 ## 九、完整改修例子：允许Support部门新增员工
 
 “影响调查”指修改前找出需求会影响哪些处理，以及哪些处理在什么条件下可以保持不变。

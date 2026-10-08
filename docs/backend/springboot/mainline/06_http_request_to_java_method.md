@@ -168,6 +168,30 @@ GET  /employees?department=Sales → findList("Sales")
 POST /employees/preview          → previewCreate(request对象)
 ```
 
+### 3. 先建立请求绑定的整体图
+
+HTTP请求是一条结构化消息，不是直接调用Java方法。请求中的数据可能位于路径、查询字符串、请求头或请求体；Controller参数只是Java方法需要的数据。Spring MVC负责在两者之间搭桥，这个过程称为请求映射和参数绑定。
+
+```text
+HTTP方法和URL到达应用
+  → 1. 路由匹配：选择哪个Controller方法
+  → 2. 数据提取：按照注解从路径、查询字符串或请求体取值
+  → 3. 类型转换：把文本转换成Long等Java类型
+  → 4. JSON反序列化：需要时把JSON创建成请求DTO
+  → 5. 方法调用：参数准备成功后才执行Controller方法
+  → 6. 响应序列化：把返回的Java对象写成JSON
+```
+
+当前三个接口分别展示了三种常用输入位置：
+
+| HTTP中的位置 | 当前示例 | Controller中的声明 | 得到的Java值 |
+| --- | --- | --- | --- |
+| 路径的一部分 | `/employees/1001` | `@PathVariable Long id` | `1001L` |
+| 问号后的查询参数 | `?department=Sales` | `@RequestParam String department` | `"Sales"` |
+| JSON请求体 | `{"name":"Sato",...}` | `@RequestBody EmployeeCreateRequest request` | 一个请求DTO对象 |
+
+开发者负责声明“哪个请求对应哪个方法”和“每个参数从哪里来”；Spring负责读取请求、转换类型、创建DTO并调用方法。如果路由不匹配、`abc` 不能转换成 `Long`，或者JSON无法读取，流程会在Controller方法执行前停止。这一点可以帮助判断错误是在HTTP到Java的桥接阶段，还是已经进入了业务处理阶段。
+
 ## 三、类级路径和方法级路径怎样组合
 
 类上的注解：
@@ -193,7 +217,42 @@ POST /employees/preview          → previewCreate(request对象)
 | `/employees` | `@GetMapping` | `GET /employees` |
 | `/employees` | `@PostMapping("/preview")` | `POST /employees/preview` |
 
-`@GetMapping` 在第3、4章已经使用过，固定匹配GET请求。`@PostMapping` 的完整名称是 `org.springframework.web.bind.annotation.PostMapping`，固定匹配POST请求。两者括号中的路径也是 `value` 的简写，可以写一个或多个方法级路径；完全省略时不追加方法级路径，只使用类级路径。
+`@GetMapping`、`@PostMapping`、`@PutMapping` 和 `@DeleteMapping` 都位于 `org.springframework.web.bind.annotation` 包中。它们是 `@RequestMapping` 针对常用HTTP方法提供的快捷注解：
+
+| HTTP方法 | 快捷注解 | 当前阶段的典型用途 | 本课程详细使用位置 |
+| --- | --- | --- | --- |
+| GET | `@GetMapping` | 查询资源 | 第3、4、6章 |
+| POST | `@PostMapping` | 提交数据、新增资源或执行动作 | 本章预览接口、第10章新增 |
+| PUT | `@PutMapping` | 按接口规格完整修改资源 | 第10章 |
+| DELETE | `@DeleteMapping` | 删除资源 | 第10章 |
+
+例如，`@GetMapping("/{id}")` 相当于使用 `@RequestMapping` 同时声明路径 `/{id}` 和HTTP方法GET。快捷注解的括号中可以填写一个或多个方法级路径；完全省略时不追加方法级路径，只使用类级路径。
+
+这些映射注解不只能写路径。项目中还可能根据请求参数、请求头或媒体类型进一步限制匹配条件：
+
+| 属性 | 作用 | 默认值或补充说明 |
+| --- | --- | --- |
+| `name` | 给映射起一个名称 | 默认空字符串，普通业务接口很少需要填写 |
+| `value` / `path` | 声明一个或多个路径 | 二者互为别名，选择一个填写，不要重复声明同一组路径 |
+| `method` | 限制HTTP方法 | 仅 `@RequestMapping` 具有；快捷注解已经固定对应的HTTP方法 |
+| `params` | 根据查询参数是否存在或取值继续筛选 | 支持 `name`、`!name`、`name=value`、`name!=value` 等表达式 |
+| `headers` | 根据请求头是否存在或取值继续筛选 | 表达式写法与 `params` 类似 |
+| `consumes` | 限制请求正文的媒体类型 | 例如 `application/json`，主要与有请求体的POST、PUT等请求配合 |
+| `produces` | 限制响应能够生成的媒体类型 | 例如 `application/json`，还会参与客户端 `Accept` 请求头的匹配 |
+
+下面是每个注解的“全部独立属性”一行写法，用于识读既存代码，不要求在本章项目中照抄。数组属性只有一个值时可以省略花括号；空数组表示不增加该项限制：
+
+```java
+@RequestMapping(name = "createEmployee", path = "/employees", method = RequestMethod.POST, params = {}, headers = {}, consumes = "application/json", produces = "application/json")
+@GetMapping(name = "findEmployee", path = "/{id}", params = {}, headers = {}, consumes = {}, produces = "application/json")
+@PostMapping(name = "previewEmployee", path = "/preview", params = {}, headers = {}, consumes = "application/json", produces = "application/json")
+@PutMapping(name = "updateEmployee", path = "/{id}", params = {}, headers = {}, consumes = "application/json", produces = "application/json")
+@DeleteMapping(name = "deleteEmployee", path = "/{id}", params = {}, headers = {}, consumes = {}, produces = "application/json")
+```
+
+第一行还需要导入 `org.springframework.web.bind.annotation.RequestMethod`。`value` 与 `path` 是同一含义的别名，所以示例只写 `path`；这不代表遗漏属性，也不应为了展示而同时填写。GET和DELETE通常没有请求正文，因此示例把 `consumes` 保持为空。实际开发应按接口规格填写条件，不能为了“属性齐全”人为增加客户端并不发送的参数或请求头。
+
+本章只实现GET和POST接口，因此不为了展示注解提前制造修改、删除功能。这里先建立四种映射关系；第10章会在数据库CRUD场景中完整讲解PUT的修改语义、DELETE的删除语义、状态码和数据验证。
 
 路径映射同时检查HTTP方法和URL。路径正确但HTTP方法不匹配时，不会进入Controller方法。
 
@@ -223,6 +282,12 @@ findById(1001L)
 | --- | --- | --- | --- |
 | `name` | `"id"` | 与路径占位符对应的字符串 | 默认尝试使用Java参数名；本例显式写出，固定对应 `{id}` |
 | `required` | 未写 | `true` 或 `false` | 默认 `true`，表示该路径变量必须存在 |
+
+`value` 与 `name` 是同一含义的别名。全部独立属性的一行写法是：
+
+```java
+@PathVariable(name = "id", required = true) Long id
+```
 
 `Long id` 决定目标Java类型。如果请求路径是 `/employees/abc`，文本 `abc` 不能转换为 `Long`，请求会在进入方法前失败，通常返回400。
 
@@ -257,6 +322,12 @@ Controller参数使用：
 | `name` | `"department"` | 查询参数名称字符串 | 默认尝试使用Java参数名；本例显式对应URL中的 `department` |
 | `defaultValue` | `"Sales"` | 能转换成目标类型的字符串 | 默认没有业务值；本例省略查询参数时使用 `Sales` |
 | `required` | 未写 | `true` 或 `false` | 默认 `true`；但设置 `defaultValue` 后，该参数会按可选参数处理 |
+
+`value` 与 `name` 是同一含义的别名。全部独立属性的一行写法是：
+
+```java
+@RequestParam(name = "department", required = false, defaultValue = "Sales") String department
+```
 
 因此两种请求分别产生：
 
@@ -304,6 +375,12 @@ Controller参数使用：
 | 注解参数 | 当前值 | 可接受的值 | 默认值与作用 |
 | --- | --- | --- | --- |
 | `required` | 未写 | `true` 或 `false` | 默认 `true`，本例必须提供可以读取的请求体 |
+
+该注解只有 `required` 一个属性，全部属性的一行写法是：
+
+```java
+@RequestBody(required = true) EmployeeCreateRequest request
+```
 
 本章请求头声明 `Content-Type: application/json`，所以Spring选择JSON消息转换器。转换过程可以简化为：
 
@@ -459,168 +536,17 @@ Spring的singleton描述Bean在容器中的复用范围，不等于要求开发�
 
 如果缺少 `email`，预览文本中可能出现 `null`。这不是正确业务结果，只说明JSON语法和Java类型转换已经完成。第8章会根据第5章字段规格加入必填、长度和邮箱格式校验。
 
-## 十二、常见HTTP输入位置补充
+## 十二、先建立其他输入位置的地图
 
-Employee主线已经覆盖路径、查询参数和JSON请求体。本节使用可删除的 `dilab` 独立实验补充Header、Cookie和multipart文件输入；实验不修改员工接口，结束后删除实验文件并回归原测试。
+本章主线只要求掌握路径参数、查询参数和JSON请求体。继续阅读既存项目时，还会看到下面几种输入：
 
-### 1. 完整实验文件
-
-新建 `src/main/java/com/example/employee/dilab/FileMetadataRequest.java`：
-
-```java
-package com.example.employee.dilab;
-
-public class FileMetadataRequest {
-
-    private String description;
-
-    public FileMetadataRequest() {
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-}
-```
-
-新建 `src/main/java/com/example/employee/dilab/HttpInputDemoController.java`：
-
-```java
-package com.example.employee.dilab;
-
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
-
-@RestController
-public class HttpInputDemoController {
-
-    @GetMapping("/di-lab/request-info")
-    public String requestInfo(
-            @RequestHeader("User-Agent") String userAgent,
-            @RequestHeader(value = "X-Request-Id", required = false)
-            String requestId) {
-        return userAgent + " / " + requestId;
-    }
-
-    @GetMapping("/di-lab/language")
-    public String language(
-            @CookieValue(value = "language", required = false)
-            String language) {
-        return language == null ? "unset" : language;
-    }
-
-    @PostMapping(
-            value = "/di-lab/files",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String upload(
-            @RequestPart("metadata") FileMetadataRequest metadata,
-            @RequestPart("file") MultipartFile file) {
-        if (file.isEmpty()) {
-            return "empty";
-        }
-        return metadata.getDescription()
-                + " / " + file.getOriginalFilename()
-                + " / " + file.getSize();
-    }
-}
-```
-
-这两个类只证明不同HTTP位置怎样进入Java参数，不保存文件、不修改数据库，也不构成文件管理功能。
-
-### 2. @RequestHeader读取请求头
-
-`@RequestHeader` 属于 `org.springframework.web.bind.annotation`，写在Controller方法参数上。Spring MVC匹配Controller方法后，从HTTP请求头取值并转换成参数类型：
-
-| 属性 | 当前值 | 可接受的值 | 默认和结果 |
-| --- | --- | --- | --- |
-| `value` | `User-Agent`、`X-Request-Id` | 合法Header名称 | 指定从哪个请求头读取 |
-| `required` | true或false | `true`、`false` | 默认true；缺少必填Header通常在进入方法前返回400 |
-
-HTTP Header名称在协议语义上不区分大小写，但项目仍应统一写法，便于规格、日志和测试对照。`required = false` 时Header不存在会得到null；若配置 `defaultValue`，则可得到指定默认字符串。
-
-```text
-@PathVariable  → URL路径片段
-@RequestParam  → Query String或表单参数
-@RequestHeader → HTTP Header
-@RequestBody   → 整个HTTP Body，由消息转换器读取
-```
-
-`Authorization`、`X-Request-Id` 等Header都来自客户端或中间代理。除非有经过认证的可信网关和明确安全设计，不能因为客户端写了 `X-Role: ADMIN` 就授予权限。
-
-### 3. @CookieValue读取Cookie
-
-`@CookieValue` 同样属于Spring Web注解，写在Controller方法参数上。本例从请求的Cookie头中读取名为 `language` 的Cookie值。`value` 是Cookie名称，`required = false` 表示缺少时允许进入方法并得到null；默认 `required = true` 时缺少Cookie通常返回400。
-
-Cookie由浏览器保存并随符合规则的请求发送，但仍是HTTP请求数据。第15章登录使用的JSESSIONID通常由Servlet容器和Spring Security读取并恢复Session，业务Controller不需要自行读取、解析或记录JSESSIONID。
-
-### 4. multipart/form-data与@RequestPart
-
-`multipart/form-data` 可以把一次HTTP请求拆成多个part：
-
-```text
-POST /di-lab/files
-Content-Type: multipart/form-data; boundary=...
-
-part metadata → application/json → FileMetadataRequest
-part file     → text/plain       → MultipartFile
-```
-
-`@RequestPart` 属于Spring Web注解，`value` 指定part名称，默认必填。本例中Jackson把 `metadata` part转换成 `FileMetadataRequest`，multipart解析器把 `file` part包装成 `MultipartFile`。part名称错误、必填part缺失或metadata不是可转换JSON时，Controller方法不会正常执行。
-
-`MediaType.MULTIPART_FORM_DATA_VALUE` 是字符串常量 `multipart/form-data`。`consumes` 限制方法只处理这种请求媒体类型；发送普通 `application/json` 会因媒体类型不匹配而失败。
-
-### 5. MultipartFile能读取什么
-
-`MultipartFile` 的完整名称是 `org.springframework.web.multipart.MultipartFile`，表示本次请求中的上传文件，不等于服务器上已经保存的文件：
-
-| 方法 | 返回 | 用途与边界 |
+| HTTP中的位置 | Spring MVC中常见写法 | 当前要求 |
 | --- | --- | --- |
-| `getOriginalFilename()` | `String` | 客户端提供的原文件名，只用于显示或审计参考 |
-| `getContentType()` | `String` | 客户端声明的媒体类型，不能单独作为安全判定 |
-| `getSize()` | `long` | 文件字节数 |
-| `isEmpty()` | `boolean` | 没有内容时为true |
-| `getBytes()` | `byte[]` | 一次把内容读入内存，只适合已限制的小文件 |
-| `getInputStream()` | `InputStream` | 流式读取；调用方需要按Java I/O规则关闭流 |
+| 请求头 | `@RequestHeader` | 知道它从Header取值 |
+| Cookie | `@CookieValue` | 知道Cookie仍属于客户端请求数据 |
+| multipart中的JSON或文件 | `@RequestPart`、`MultipartFile` | 知道一次请求可以包含多个part |
 
-不能把 `getOriginalFilename()` 直接拼接为服务器保存路径，因为文件名来自客户端，可能包含路径片段、冲突名称或不安全字符。应由服务端生成存储标识、限定目录并校验规范化后的目标路径。`getContentType()` 也由请求声明，重要文件类型还要检查实际内容或使用可靠的内容检测策略。
-
-文件大小应在进入业务处理前设置上限。独立实验可临时在 `application.yml` 中加入：
-
-```yaml
-spring:
-  servlet:
-    multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
-```
-
-`max-file-size` 限制单个文件，`max-request-size` 限制包含所有part的整个请求。项目还要根据业务类型限制文件数量、扩展名、内容和保存权限，不能只依赖浏览器前端校验。
-
-### 6. 验证与恢复
-
-使用浏览器开发者工具、Postman或其他能分别设置Header、Cookie和multipart part的HTTP客户端验证：
-
-| 请求 | 条件 | 预期 |
-| --- | --- | --- |
-| `GET /di-lab/request-info` | 带User-Agent，不带X-Request-Id | 200，第二部分为null |
-| `GET /di-lab/language` | Cookie为`language=ja` | 200，正文为ja |
-| `POST /di-lab/files` | metadata为JSON、file为非空小文件 | 200，返回说明、原文件名和大小 |
-| `POST /di-lab/files` | 缺少file part | 400，方法不正常执行 |
-| `POST /di-lab/files` | 单文件超过5MB | 解析阶段拒绝，不进入业务保存 |
-
-证据中不要保存Session ID、Authorization值或上传文件中的个人信息。实验后删除 `dilab` 两个Java文件，移除临时multipart配置，重新执行 `clean test`，确认Employee主线接口不变。
-
-Spring MVC对Header、Cookie和multipart参数的正式说明见[Annotated Controller方法参数索引](https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-methods/)。
+这些输入各自还有必填规则、媒体类型、大小限制和安全边界，不适合与三种基础输入同时展开。需要实现相关功能时，使用附录[Header、Cookie与文件上传](../appendix/A08_http_headers_cookies_file_upload.md)完成独立实验。
 
 ## 十三、构建、运行与成功验证
 
@@ -853,8 +779,5 @@ src/main/java/com/example/employee/
 5. 区分缺少字段、`null`、类型转换失败和JSON语法错误；
 6. 说明为什么请求DTO不能保存在共享Controller或Service字段中；
 7. 根据400、404、405和415判断失败发生阶段；
-8. 区分Header、Cookie、JSON Body和multipart part的输入位置；
-9. 识别 `@RequestHeader`、`@CookieValue`、`@RequestPart` 和 `MultipartFile`；
-10. 说明上传文件名、Content-Type和大小为什么都需要服务端约束。
 
 下一章会在这些已能正常传递的数据上，明确成功、无记录、业务拒绝和系统故障分别应该使用什么HTTP状态与响应正文。

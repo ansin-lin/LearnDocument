@@ -248,6 +248,35 @@ public class EmployeeListItemResponse {
 
 三个类都只是项目自己定义的普通Java类，没有Spring注解，也不是Spring Bean。它们负责携带数据，不负责接收URL、执行业务判断或访问数据库。
 
+### 4. 先建立“数据边界”的整体图
+
+“边界”可以理解为数据从一个职责范围进入另一个职责范围的位置。每跨过一个边界，接收方需要的数据、允许修改的数据和允许看到的数据都可能不同。
+
+员工在业务上仍然是同一名员工，但在不同边界上需要不同的数据形状：
+
+```text
+客户端提交新增数据
+  → EmployeeCreateRequest
+      只接收调用方允许填写的name、department、email
+  → Service处理业务
+  → 数据库对象（第9章）
+      表示需要保存或读取的数据库字段
+  → EmployeeResponse或EmployeeListItemResponse
+      只返回当前接口允许公开的字段
+  → 客户端收到JSON
+```
+
+数据对象不是一个新的业务层，也不是数据来源。它更像一份按照用途整理好的数据清单：只保存这一次传递所需要的字段。
+
+| 对象 | 位于哪个边界 | 谁决定字段 | 不应该负责什么 |
+| --- | --- | --- | --- |
+| `EmployeeCreateRequest` | 客户端进入后端 | 新增接口的输入规格 | 生成编号、查询数据库、判断重复邮箱 |
+| `EmployeeResponse` | 后端返回详情 | 详情接口的输出规格 | 接收新增请求、保存数据库记录 |
+| `EmployeeListItemResponse` | 后端返回列表 | 列表接口的输出规格 | 为了省事公开详情专用字段 |
+| 数据库对象 | Service与数据库之间 | 表定义和持久化需求 | 直接决定外部接口必须公开哪些字段 |
+
+因此，几个类出现相同的 `name` 和 `department` 并不代表重复设计。只要它们服务的边界不同，分别定义就能避免一个接口的字段变化意外影响其他接口。判断是否应该共用对象时，应先问“输入方向、输出用途和字段权限是否完全相同”，而不是只看字段当前是否相似。
+
 ## 五、理解请求DTO
 
 ### 1. DTO表示什么
@@ -430,123 +459,11 @@ response/EmployeeResponse.java
 
 名称帮助表达职责，但后缀不能代替实际设计。一个类即使叫DTO，如果它同时接收请求、映射数据库并直接作为响应返回，仍然没有形成清楚的数据边界。
 
-## 十一、JSON与Java字段映射常见注解
+## 十一、字段进入JSON时还可能有映射规则
 
-第6章会由Jackson把Java对象转换成JSON。既存项目的数据对象中常见下面四个注解，它们只调整JSON映射，不会改变对象是请求DTO、响应DTO还是数据库对象的职责。
+本章定义的Java属性名与JSON字段名保持一致，因此暂时不需要额外注解。真实项目可能要求修改JSON名称、忽略内部属性、省略空值或规定日期格式，这些属于“Java对象与JSON之间怎样转换”，应先理解第6章的序列化和反序列化流程。
 
-### 1. 先看完整的识读示例
-
-下面是独立识读示例，不加入Employee主线。它集中展示字段改名、隐藏、null输出和日期格式：
-
-```java
-package com.example.employee.dilab;
-
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.LocalDateTime;
-
-public class EmployeeJsonView {
-
-    @JsonProperty("employee_name")
-    private final String employeeName;
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private final String note;
-
-    @JsonIgnore
-    private final String internalMemo;
-
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private final LocalDateTime createdAt;
-
-    public EmployeeJsonView(
-            String employeeName,
-            String note,
-            String internalMemo,
-            LocalDateTime createdAt) {
-        this.employeeName = employeeName;
-        this.note = note;
-        this.internalMemo = internalMemo;
-        this.createdAt = createdAt;
-    }
-
-    public String getEmployeeName() {
-        return employeeName;
-    }
-
-    public String getNote() {
-        return note;
-    }
-
-    public String getInternalMemo() {
-        return internalMemo;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-}
-```
-
-当值为姓名Tanaka、note为null、internalMemo有内容、时间为2026年9月16日9时30分时，序列化结果等价于：
-
-```json
-{
-  "employee_name": "Tanaka",
-  "createdAt": "2026-09-16 09:30:00"
-}
-```
-
-`note` 因为是null而省略，`internalMemo` 无论是否为null都不输出。JSON字段名没有自动变成数据库列名，它只由Java属性和Jackson规则决定。
-
-### 2. @JsonProperty：明确JSON属性名
-
-`@JsonProperty` 属于 `com.fasterxml.jackson.annotation`，可用于字段、getter、setter、构造参数等JSON属性位置。本例的值 `employee_name` 是对外JSON字段名：
-
-```text
-Java属性 employeeName
-        ↕ Jackson映射
-JSON字段 employee_name
-```
-
-序列化时Java值写成 `employee_name`；反序列化时同名JSON也可写入对应Java属性。接口规格必须统一使用一个字段名，不能让不同Controller随意选择驼峰或下划线。
-
-### 3. @JsonIgnore：不参与JSON映射
-
-`@JsonIgnore` 也属于Jackson annotations。本例把 `internalMemo` 排除在JSON外，即使类中存在公共getter也不应输出该属性。
-
-但“字段不会输出”不等于数据边界已经安全。响应类若混入密码哈希、内部权限或大量数据库字段，后续改动可能重新暴露数据。仍应优先使用职责明确的Response DTO，只把 `@JsonIgnore` 用于确实属于同一对象但不参与当前JSON映射的属性。
-
-### 4. @JsonInclude：什么值可以省略
-
-`@JsonInclude(JsonInclude.Include.NON_NULL)` 表示当前属性值为null时不写入JSON；非null时正常输出。它可以放在属性或类上。类级规则会影响多个字段，Review时要同时检查类和字段。
-
-省略字段与输出 `"note": null` 对客户端不是完全相同的状态。接口规格应明确调用方如何解释“字段不存在”和“字段存在但为null”，不能只为了缩短JSON随意改变规则。
-
-### 5. @JsonFormat：改变JSON表示，不增加时区
-
-`@JsonFormat` 的 `pattern` 指定日期时间的文本格式。本例 `yyyy-MM-dd HH:mm:ss` 会输出四位年份、两位月份、两位日期以及时分秒。
-
-`LocalDateTime` 本身没有时区。添加 `@JsonFormat` 只改变JSON字符串长什么样，不会自动说明它是UTC、Asia/Tokyo还是服务器本地时间。日期类型、时区、数据库字段和浏览器转换在第9章统一说明。
-
-Jackson由 `spring-boot-starter-web` 间接提供，本课程主线不单独固定Jackson版本；实际版本由Spring Boot 3.5.16依赖管理决定。四个注解的定义可从[Jackson annotations项目文档](https://github.com/FasterXML/jackson-annotations)核对。
-
-### 6. 既存DTO的阅读顺序
-
-看到Jackson注解时按下面顺序调查：
-
-```text
-接口规格中的JSON字段
-  → Java字段和getter/setter
-  → 类级Jackson规则
-  → 字段或方法级覆盖规则
-  → null、隐藏字段和日期格式
-  → Controller实际把哪种DTO作为输入或输出
-```
-
-识读练习：根据完整示例回答 `employee_name`、缺少的note、未输出的internalMemo分别由哪个规则产生；再说明为什么不能把数据库Entity加几个 `@JsonIgnore` 后直接当作所有接口响应。
+学完第6章后，可使用附录[Jackson字段映射与输出规则](../appendix/A07_jackson_json_mapping.md)完成独立实验。本章主线只确认数据对象的职责和字段边界。
 
 ## 十二、构建并检查结果
 
@@ -578,7 +495,7 @@ BUILD SUCCESS
 | 修改字段后只改一个类 | 没有做影响调查 | 检查规格、构造调用、转换代码、响应和自测项目 |
 | 为响应类随意增加setter | 沿用了请求对象写法 | 响应由构造方法完整建立时只保留getter |
 | JSON字段名与Java字段名不同却找不到原因 | 忽略了Jackson注解 | 检查类、字段、getter/setter和构造参数上的映射规则 |
-| 给Entity增加`@JsonIgnore`后直接返回 | 用注解掩盖对象职责混乱 | 保留Request/Response DTO边界，再按规格处理少量映射差异 |
+| 直接返回Entity，只靠零散JSON注解隐藏字段 | 用映射设置掩盖对象职责混乱 | 保留Request/Response DTO边界，再按规格处理少量映射差异 |
 
 Review数据对象时按下面顺序检查：
 
@@ -661,7 +578,5 @@ src/main/java/com/example/employee/dto/
 4. 区分请求DTO、响应对象和未来数据库对象；
 5. 根据目标规格逐项转换对象，而不是无条件复制所有字段；
 6. 说明DTO、Response和VO名称必须结合项目约定判断；
-7. 识别 `@JsonProperty`、`@JsonIgnore`、`@JsonInclude` 和 `@JsonFormat` 对JSON的影响；
-8. 解释Jackson映射规则不能代替职责明确的数据对象。
 
 下一章将在不改变这些字段职责的前提下，让Spring把JSON请求写入 `EmployeeCreateRequest`，并把响应对象转换为JSON返回。

@@ -352,6 +352,42 @@ public class GlobalExceptionHandler {
 }
 ```
 
+### 6. 先建立“处理结果变成HTTP响应”的整体图
+
+Service产生的是业务处理结果，客户端收到的是HTTP响应，两者不是同一个概念。
+
+- 业务处理结果回答：员工是否存在、邮箱是否重复、系统处理是否成功。
+- HTTP响应回答：使用什么状态码、响应头和JSON正文把结果告诉调用方。
+
+本章把处理流程分成成功和失败两条路线：
+
+```text
+成功路线
+Controller调用Service
+  → Service正常返回业务数据
+  → Controller用ApiResponse组织响应体
+  → ResponseEntity确定HTTP状态、响应头和响应体
+  → 客户端收到HTTP响应
+
+失败路线
+Controller调用Service
+  → Service发现业务失败并抛出异常
+  → 当前调用中断，Controller不再继续组织成功响应
+  → GlobalExceptionHandler找到对应处理方法
+  → 处理方法把异常转换成状态码和失败响应体
+  → 客户端收到HTTP响应
+```
+
+这里最容易混淆的三个对象分别位于不同层次：
+
+| 对象 | 表示什么 | 当前职责 |
+| --- | --- | --- |
+| `EmployeeResponse` | 一名员工的业务数据 | 保存详情字段 |
+| `ApiResponse<T>` | 项目约定的JSON响应体 | 统一 `success`、`message`、`data` |
+| `ResponseEntity<T>` | 整个HTTP响应 | 设置状态码、响应头和响应体 |
+
+异常本身不是HTTP响应，`GlobalExceptionHandler` 才负责把异常翻译成HTTP表达。Service也不直接返回 `ResponseEntity`，因为Service应该表达业务结果，不应该知道404、409或响应头等Web规则。这样同一个Service将来被批处理或其他入口调用时，业务逻辑仍可复用。
+
 ## 三、状态码和响应体不是同一件事
 
 HTTP响应至少包含状态码、响应头和响应体：
@@ -605,7 +641,16 @@ EmployeeSystemException   → 500和安全的通用消息
 
 `@RestControllerAdvice` 和 `@ExceptionHandler` 都来自 `org.springframework.web.bind.annotation`。
 
-`@RestControllerAdvice` 写在类上。Spring组件扫描会发现 `GlobalExceptionHandler` 并创建Bean；其中返回的对象会写入HTTP响应体，因此多个Controller不必重复编写相同失败转换。
+`@RestControllerAdvice` 写在类上，是由 `@ControllerAdvice` 和 `@ResponseBody` 组合而成的复合注解：
+
+| 组成注解 | 当前作用 |
+| --- | --- |
+| `@ControllerAdvice` | 声明这个类提供可以跨多个Controller使用的共通处理 |
+| `@ResponseBody` | 把处理方法的返回值写入HTTP响应正文，而不是解释为页面名称 |
+
+`@ControllerAdvice` 的完整名称是 `org.springframework.web.bind.annotation.ControllerAdvice`。Spring组件扫描会发现 `GlobalExceptionHandler` 并创建Bean。本章只使用它提供共通异常处理；它本身不表示“自动捕获所有异常”，真正决定处理哪些异常的是类中的 `@ExceptionHandler` 方法。
+
+第3章已经说明 `@ResponseBody` 的响应正文行为。二者组合后，多个Controller可以共用异常到JSON响应的转换，而不必重复编写相同代码。
 
 `@ExceptionHandler(EmployeeNotFoundException.class)` 写在方法上，声明该方法处理哪一种异常。括号中的 `EmployeeNotFoundException.class` 是这个异常类型对应的 `Class` 对象，不是创建异常。
 
@@ -620,11 +665,38 @@ Service抛出EmployeeNotFoundException
   → 处理器返回HTTP 404和ApiResponse失败正文
 ```
 
-| 注解或方法 | 当前参数 | 可接受的值 | 默认值或结果 |
-| --- | --- | --- | --- |
-| `@RestControllerAdvice` | 无 | 可配置包、注解或类型范围 | 无筛选时作用于扫描到的Controller |
-| `@ExceptionHandler(...)` | `EmployeeNotFoundException.class` | 一个或多个异常类型的 `Class` 对象 | 未声明时可根据方法参数推断；本章显式声明 |
-| `exception.getMessage()` | 无 | 无参数 | 返回异常构造时保存的消息字符串 |
+`@RestControllerAdvice` 可以通过属性缩小生效范围：
+
+| 属性 | 可接受的值 | 默认值或作用 |
+| --- | --- | --- |
+| `name` | Spring Bean名称字符串 | 默认空字符串，通常不需要填写 |
+| `value` / `basePackages` | 一个或多个Controller基础包名 | 二者互为别名；默认空数组，不按包筛选 |
+| `basePackageClasses` | 一个或多个类的 `Class` 对象 | 使用这些类所在的包作为筛选范围，比字符串包名更便于重构 |
+| `assignableTypes` | 一个或多个Controller类型 | 只匹配可赋值给这些类型的Controller |
+| `annotations` | 一个或多个注解类型 | 只匹配带有指定注解的Controller |
+
+多个非空筛选条件之间是“或”的关系，匹配任意一个条件就会生效。本章不填写任何筛选属性，因此处理扫描范围内全部Controller的匹配异常。完整属性的一行识读示例如下：
+
+```java
+@RestControllerAdvice(name = "employeeAdvice", basePackages = "com.example.employee.controller", basePackageClasses = EmployeeController.class, assignableTypes = EmployeeController.class, annotations = RestController.class)
+```
+
+`value` 是 `basePackages` 的别名，所以示例只写后者，不应为了展示属性而同时填写两者。这个例子只展示语法；实际项目通常选择一种最稳定的筛选方式，不会把所有筛选方式堆在一起。
+
+在当前Spring Framework 6.2基线中，`@ExceptionHandler` 具有以下属性：
+
+| 属性 | 可接受的值 | 默认值或作用 |
+| --- | --- | --- |
+| `value` / `exception` | 一个或多个异常类型的 `Class` 对象 | 二者互为别名；均未填写时根据处理方法的异常参数推断 |
+| `produces` | 一个或多个响应媒体类型 | 默认空数组，不增加媒体类型条件 |
+
+完整独立属性的一行写法如下：
+
+```java
+@ExceptionHandler(exception = {EmployeeNotFoundException.class}, produces = {"application/json"})
+```
+
+课程正文使用的 `@ExceptionHandler(EmployeeNotFoundException.class)` 是 `value = EmployeeNotFoundException.class` 的简写。上例改写为 `exception` 只是为了展示6.2版本中的显式属性名；`value` 与 `exception` 是别名，不应同时声明。`exception.getMessage()` 则不是注解属性，而是异常对象的方法，用来取得异常构造时保存的消息字符串。
 
 三个异常处理方法分别对应404、409、500。类名叫Global，表示它可以服务多个Controller，不表示它应该捕获所有Java异常。
 

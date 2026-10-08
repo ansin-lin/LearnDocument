@@ -214,7 +214,7 @@ employee-management-api/
 
 Starter是经过组合的依赖入口，不是一个替你生成接口代码的工具。不要从网络文章复制一批带独立版本号的Spring JAR覆盖父项目管理的版本。
 
-### 完整示例：生成的最小测试
+### 暂时保留生成的最小测试
 
 Spring Initializr还会生成下面的测试文件。先保留原样：
 
@@ -233,7 +233,7 @@ class EmployeeManagementApiApplicationTests {
 }
 ```
 
-`@SpringBootTest` 来自Spring Boot测试支持，表示执行测试时加载完整的Spring应用环境；`@Test` 来自JUnit Jupiter，表示 `contextLoads()` 是一个测试方法。该方法没有参数、没有返回值，方法体为空：只要应用环境能成功加载，测试就通过；加载失败则测试失败。系统化测试会在后续测试章节展开，本章只用这个生成的最小测试验证工程基础配置。
+当前只需要保留这个生成文件，并知道它用于检查Spring应用环境能否建立。`@Test` 标记测试方法，`@SpringBootTest` 会在测试时准备Spring Boot应用环境；测试范围、运行方式和适用场景统一放到第12章讲解。本章不要求现在记忆测试注解。
 
 ## 五、先构建并运行生成的空工程
 
@@ -304,6 +304,17 @@ public class EmployeeManagementApiApplication {
 `@SpringBootConfiguration` 和 `@EnableAutoConfiguration` 由Spring Boot提供，`@ComponentScan` 由Spring Framework提供。它们作为 `@SpringBootApplication` 内部组合的元注解，在应用启动时由Spring读取并执行相应配置。这里的 `@Service`、`@Component` 与 `@RestController` 都是放在类上的职责标记；本章只创建Controller，其他组件的创建和连接在下一章完成。
 
 三个注解组合后，`@SpringBootApplication` 同时告诉Spring Boot：**以当前类作为主要配置入口、启用按条件生效的自动配置、查找并注册项目中的组件**。随后执行 `SpringApplication.run(...)`，Spring Boot会据此创建Spring容器、完成配置和组件注册，并启动应用。
+### 把工程文件对应到Spring Boot的三项帮助
+
+现在可以把第1章的三个名称对应到真实工程：
+
+| 帮助 | 在本章从哪里观察 | 当前工程中的结果 |
+| --- | --- | --- |
+| Starter | `pom.xml` 中的 `spring-boot-starter-web` | 引入Web请求处理、JSON转换和内嵌服务器所需的常用依赖 |
+| 自动配置 | `@SpringBootApplication` 中的 `@EnableAutoConfiguration` | 根据现有依赖和配置准备常用Web组件 |
+| 内嵌服务器 | 启动日志中的Tomcat和端口信息 | 启动Java应用时同时开始监听HTTP端口 |
+
+三者解决的是工程准备和运行问题。员工接口的路径、处理方法和业务结果仍需要开发者编写。
 
 组件扫描默认从启动类所在包向下进行，所以本项目把启动类放在根包 `com.example.employee`，把Controller放在 `com.example.employee.controller` 等子包中。若把Controller放到无关的平级包，默认扫描不到它，对应接口也不会生效。
 
@@ -395,9 +406,20 @@ public class HealthController {
 
 ### 第一次出现：@RestController和@GetMapping
 
-`@RestController` 的完整名称是 `org.springframework.web.bind.annotation.RestController`，由Spring Web提供，写在类上。应用启动扫描到它后，会创建并管理 `HealthController` 对象；请求处理方法的返回值会写入HTTP响应体，而不是被当作后端页面名称。它组合了Web控制器标记和响应正文行为，本章先掌握当前效果。
+`@RestController` 的完整名称是 `org.springframework.web.bind.annotation.RestController`，由Spring Web提供，写在类上。它是由 `@Controller` 和 `@ResponseBody` 组合而成的复合注解：
 
-`@GetMapping` 的完整名称是 `org.springframework.web.bind.annotation.GetMapping`，也由Spring Web提供，写在方法上。当前参数 `"/health"` 是必须匹配的请求路径；应用启动时Spring记录这个映射，运行期间收到 `GET /health` 才调用 `health()`。其他HTTP方法或其他路径不会匹配这个方法。
+| 组成注解 | 写在什么位置 | 作用 |
+| --- | --- | --- |
+| `@Controller` | 类 | 表示这个类是Spring MVC控制器；组件扫描发现后，Spring会创建并管理它的对象 |
+| `@ResponseBody` | 类或方法 | 表示方法返回值经过消息转换后写入HTTP响应正文，不把字符串解释为后端页面名称 |
+
+`@Controller` 的完整名称是 `org.springframework.stereotype.Controller`。单独使用它时，方法返回的字符串通常表示视图名称，例如返回 `"welcome"` 可以交给视图解析器寻找页面模板。完整的页面返回示例见附录[使用@Controller返回HTML页面](../appendix/A09_spring_mvc_html_views.md)。
+
+`@ResponseBody` 的完整名称是 `org.springframework.web.bind.annotation.ResponseBody`。写在某个Controller方法上时，只改变该方法的返回处理；写在类上时，会作用于这个类的全部处理方法。它不会自动把任意字符串变成JSON：返回 `String` 时通常直接写入文本，返回Java对象时才由Jackson等消息转换器按协商的媒体类型转换。
+
+因此，本例使用 `@RestController` 后，Spring既把 `HealthController` 识别为Controller Bean，又把 `health()` 返回的 `"OK"` 写入HTTP响应正文。字符串不会被当成名为 `OK` 的页面模板。
+
+`@GetMapping` 的完整名称是 `org.springframework.web.bind.annotation.GetMapping`，也由Spring Web提供，写在方法上。它是把HTTP方法固定为GET的 `@RequestMapping` 快捷注解。当前参数 `"/health"` 是必须匹配的请求路径；应用启动时Spring记录这个映射，运行期间收到 `GET /health` 才调用 `health()`。其他HTTP方法或其他路径不会匹配这个方法。`@RequestMapping`及其他HTTP方法的快捷注解在第6章统一说明。
 
 `health()` 是项目自己定义的方法，不是框架库中的方法。它不接收参数，返回类型是Java的 `String`；执行 `return "OK"` 后，Spring把字符串 `OK` 写入响应体。因为方法正常完成且没有另设状态，所以本例响应状态是200。
 
