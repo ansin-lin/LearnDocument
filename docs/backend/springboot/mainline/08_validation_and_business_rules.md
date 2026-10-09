@@ -62,7 +62,11 @@ Support
 
 ## 二、完整示例
 
-先完成本节所有修改并执行构建，再从第三节开始依照代码顺序理解第一次出现的依赖、注解、异常和方法。只给DTO添加注解而不在Controller使用 `@Valid`，不会形成完整校验流程。
+先把一次失败放进处理链：`{"name":" ","department":"Sales","email":"tanaka@example.com"}` 语法正确，Jackson能创建DTO；如果没有触发字段校验，空白姓名仍可能进入Service。JSON无法读取、DTO字段不合格、部门格式正确但业务不允许，是三个不同的停止点。
+
+本章按以下顺序读代码：先加Validation Starter，它带入Jakarta Validation接口及实现；再给DTO字段声明 `@NotBlank`、`@Size`、`@Email`；紧接着在Controller请求参数上使用 `@Valid`，让Spring MVC在调用Controller前触发约束检查。失败时Spring MVC产生 `MethodArgumentNotValidException`，Advice读取字段错误，形成统一400。无法解析的JSON则产生 `HttpMessageNotReadableException`，没有可供字段校验的DTO。最后才由Service判断允许部门及邮箱冲突。单独给字段贴约束注解，不保证普通Java调用或其他入口会自动校验。
+
+下面保留各文件的完整最终状态；写入工程后按“JSON读取→字段约束→Service规则”三阶段用Postman验证。不要求每次验证前重新进行命令行构建。
 
 ### 1. 在pom.xml添加Validation依赖
 
@@ -207,32 +211,39 @@ import com.example.employee.exception.EmployeeNotFoundException;
 import com.example.employee.exception.InvalidDepartmentException;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class EmployeeService {
 
-    public EmployeeResponse findById(Long id) {
-        if (!id.equals(1001L)) {
-            throw new EmployeeNotFoundException(id);
-        }
+    private static final List<EmployeeResponse> SAMPLE_EMPLOYEES = List.of(
+            new EmployeeResponse(
+                    1001L,
+                    "Tanaka",
+                    "Sales",
+                    "tanaka@example.com"));
 
-        return new EmployeeResponse(
-                id,
-                "Tanaka",
-                "Sales",
-                "tanaka@example.com");
+    public EmployeeResponse findById(Long id) {
+        for (EmployeeResponse employee : SAMPLE_EMPLOYEES) {
+            if (employee.getId().equals(id)) {
+                return employee;
+            }
+        }
+        throw new EmployeeNotFoundException(id);
     }
 
     public List<EmployeeListItemResponse> findList(String department) {
-        if ("Unknown".equals(department)) {
-            return List.of();
+        List<EmployeeListItemResponse> results = new ArrayList<>();
+        for (EmployeeResponse employee : SAMPLE_EMPLOYEES) {
+            if (employee.getDepartment().equals(department)) {
+                results.add(new EmployeeListItemResponse(
+                        employee.getId(),
+                        employee.getName(),
+                        employee.getDepartment()));
+            }
         }
-
-        return List.of(new EmployeeListItemResponse(
-                1001L,
-                "Tanaka",
-                department));
+        return results;
     }
 
     public String previewCreate(EmployeeCreateRequest request) {
@@ -703,59 +714,33 @@ if (!isAllowedDepartment(request.getDepartment())) {
 
 数据库约束是最后防线，但数据库错误通常不足以直接作为对外业务消息。接入数据库后，需要把持久化冲突转换为稳定HTTP响应。
 
-## 十、构建、运行与分阶段验证
+## 十、在Eclipse中运行并用Postman分阶段验证
 
-在项目根目录执行：
-
-```powershell
-.\mvnw.cmd clean test
-.\mvnw.cmd spring-boot:run
-```
-
-保持应用运行，在另一个PowerShell窗口执行下面请求。
+保存代码，在Eclipse中从启动类运行应用。Console没有启动错误后，打开第6章建立的Postman Collection。下面的POST请求都使用 `{{baseUrl}}/employees/preview`；除特别说明外，Body选择 **raw → JSON**，并确认 `Content-Type: application/json`。
 
 ### 1. 有效请求
 
-```powershell
-$validBody = @{
-    name = "Sato"
-    department = "Development"
-    email = "sato@example.com"
-} | ConvertTo-Json
-
-$valid = Invoke-WebRequest `
-    -Uri "http://localhost:8080/employees/preview" `
-    -Method Post `
-    -ContentType "application/json" `
-    -Body $validBody
-
-$valid.StatusCode
-$valid.Content
+```json
+{
+  "name": "Sato",
+  "department": "Development",
+  "email": "sato@example.com"
+}
 ```
 
-预期状态为200，`success` 为 `true`，`data` 是预览文本。
+请求参数为无，预期状态为200，`success` 为 `true`，`data` 是预览文本。
 
 ### 2. 字段校验失败
 
-```powershell
-$invalidBody = @{
-    name = "   "
-    department = ""
-    email = "not-an-email"
-} | ConvertTo-Json
-
-$invalid = Invoke-WebRequest `
-    -Uri "http://localhost:8080/employees/preview" `
-    -Method Post `
-    -ContentType "application/json" `
-    -Body $invalidBody `
-    -SkipHttpErrorCheck
-
-$invalid.StatusCode
-$invalid.Content
+```json
+{
+  "name": "   ",
+  "department": "",
+  "email": "not-an-email"
+}
 ```
 
-预期状态为400，正文包含：
+请求参数为无，预期状态为400，正文包含：
 
 ```json
 {
@@ -773,55 +758,40 @@ $invalid.Content
 
 ### 3. JSON读取失败
 
-使用 `curl.exe` 原样发送损坏JSON：
+在Postman中保留HTTP方法POST和 `Content-Type: application/json`，Body选择 **raw → JSON**，故意输入不完整正文：
 
-```powershell
-$brokenJson = '{"name":"Sato"'
-
-curl.exe -i `
-    -X POST "http://localhost:8080/employees/preview" `
-    -H "Content-Type: application/json" `
-    --data-binary $brokenJson
+```json
+{"name":"Sato"
 ```
 
 预期返回400，消息是 `请求JSON格式错误`，`data` 为 `null`，而不是字段错误Map。
 
 ### 4. 业务规则失败
 
-```powershell
-$businessBody = @{
-    name = "Sato"
-    department = "Other"
-    email = "sato@example.com"
-} | ConvertTo-Json
-
-$business = Invoke-WebRequest `
-    -Uri "http://localhost:8080/employees/preview" `
-    -Method Post `
-    -ContentType "application/json" `
-    -Body $businessBody `
-    -SkipHttpErrorCheck
-
-$business.StatusCode
-$business.Content
+```json
+{
+  "name": "Sato",
+  "department": "Other",
+  "email": "sato@example.com"
+}
 ```
 
-预期状态为400，消息是 `不允许的部门：Other`，`data` 为 `null`。这证明DTO字段校验通过后，Service仍会执行独立的业务判断。
+请求参数为无，预期状态为400，消息是 `不允许的部门：Other`，`data` 为 `null`。这证明DTO字段校验通过后，Service仍会执行独立的业务判断。
 
 ### 5. 状态冲突和原接口回归
 
 继续验证：
 
-| 请求或场景 | 预期状态 | 关键结果 |
-| --- | ---: | --- |
-| 邮箱为 `used@example.com`，部门合法 | 409 | 邮箱冲突消息 |
-| `GET /employees/1001` | 200 | 员工详情成功结构 |
-| `GET /employees/9999` | 404 | 员工不存在结构 |
-| `GET /employees/abc` | 400 | 路径类型转换失败 |
-| POST预览使用 `text/plain` | 415 | 媒体类型错误 |
-| `GET /health` | 200 | `OK` |
+| HTTP方法 | URL | Params、Headers与Body | 预期状态 | 关键结果 |
+| --- | --- | --- | ---: | --- |
+| POST | `{{baseUrl}}/employees/preview` | JSON部门合法、邮箱为 `used@example.com` | 409 | 邮箱冲突消息 |
+| GET | `{{baseUrl}}/employees/1001` | 无Body | 200 | 员工详情成功结构 |
+| GET | `{{baseUrl}}/employees/9999` | 无Body | 404 | 员工不存在结构 |
+| GET | `{{baseUrl}}/employees/abc` | 无Body | 400 | 路径类型转换失败 |
+| POST | `{{baseUrl}}/employees/preview` | `Content-Type: text/plain`，raw Text为 `not-json` | 415 | 媒体类型错误 |
+| GET | `{{baseUrl}}/health` | 无Body | 200 | `OK` |
 
-验证完成后在启动窗口按 `Ctrl+C` 停止应用。
+逐条保存实际状态码和响应Body。验证完成后在Eclipse Console中停止应用，并把损坏JSON请求恢复成合法示例，避免下次误用。
 
 ## 十一、常见问题与Review
 

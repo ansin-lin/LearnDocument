@@ -15,6 +15,24 @@
 
 Spring Boot 4和MyBatis Starter 4属于另一套兼容组合。学习主线时不要只升级其中一个依赖；参与实际项目时，应以项目的依赖清单、构建结果和升级方针为准。
 
+## 本地开发与验证工具
+
+第1～18章统一采用下面的本地工作流：
+
+```text
+Eclipse编写和调试代码
+  → 从启动类运行Spring Boot并查看Console
+  → Postman验证HTTP方法、URL、参数、Body、状态、Headers和Cookie
+  → MySQL客户端核对数据库结果
+  → 整理脱敏的自测证据
+```
+
+- 第3章讲解工程导入及Eclipse启动，日常开发不要求每次通过命令行启动Spring Boot。
+- 第6章集中讲解Postman的环境、Collection、Params、Headers、Body、响应和Cookie入口，后续章节直接复用。
+- 第12章的JUnit、Mockito和MockMvc属于自动化测试，不用Postman替代。
+- Maven仍负责依赖、测试、构建和打包；第17章保留可执行JAR构建与脱离IDE运行。
+- 第18章面向Linux部署与运维，保留systemd、日志、端口和健康检查等服务器命令。
+
 ## 一、学习目标
 
 完成学习后，应能够：

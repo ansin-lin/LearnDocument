@@ -30,6 +30,10 @@ GET /auth/me            → 再次访问得到401
 
 ## 三、完整示例
 
+先在代码前分清这次要建立的关系。HTTP本身不记住用户；服务器Session保存认证状态，客户端Cookie只带会话标识。每个请求先经过Spring Security过滤链，链中的过滤器可在Controller之前检查CSRF并恢复安全上下文。登录时，`AuthController` 把用户名和密码交给 `AuthenticationManager`；`DaoAuthenticationProvider` 调用 `UserDetailsService` 取出 `UserDetails`，再用 `PasswordEncoder` 比对密码哈希。认证成功后，Controller主动执行Session ID更换并把 `SecurityContext` 存进Session；下一次请求由安全过滤链恢复它。数据库账号对象与Security的 `UserDetails` 分开，是因为前者表示表数据，后者是认证组件要求的契约。
+
+本章采用自定义JSON登录Controller，因此认证成功时由Controller显式调用 `SessionAuthenticationStrategy` 和 `SecurityContextRepository.saveContext()`，不依赖 `SessionManagementFilter` 猜测本次是否刚完成认证。CSRF令牌由 `/auth/csrf` 的响应体交给Postman，令牌Cookie保持HttpOnly；认证Cookie `JSESSIONID` 也不能为方便调试而关闭HttpOnly。读完这一条处理链后，再按“账号表与Mapper→账号加载→安全配置→登录接口→CSRF与测试”的顺序写入以下完整文件。
+
 从第14章稳定状态继续，新增安全依赖、账号表和认证代码：
 
 ```text
@@ -364,17 +368,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            SecurityContextRepository repository,
-            SessionAuthenticationStrategy sessionStrategy)
+            SecurityContextRepository repository)
             throws Exception {
         http
                 .csrf(csrf -> csrf.csrfTokenRepository(
-                        CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                        new CookieCsrfTokenRepository()))
                 .securityContext(context -> context
                         .requireExplicitSave(true)
                         .securityContextRepository(repository))
-                .sessionManagement(session -> session
-                        .sessionAuthenticationStrategy(sessionStrategy))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/auth/me").authenticated()
                         .anyRequest().permitAll())
@@ -730,11 +731,13 @@ Filter是在请求到达Controller之前执行的Servlet组件。Spring Security
 
 `SessionAuthenticationStrategy` 在认证成功时更换Session ID，防止攻击者预先固定一个会话标识。Cookie只保存随机JSESSIONID，账号信息保存在服务器Session中；客户端不能从Cookie值推算密码。
 
+由于这是自定义登录Controller，`AuthController.login()` 会主动调用这个策略；本例的 `SecurityFilterChain` 不再重复配置 `sessionManagement().sessionAuthenticationStrategy(...)`。Spring Security 6默认不依赖旧式的 `SessionManagementFilter` 自动检测新认证，官方文档也要求自定义认证机制自行执行相应策略。
+
 ## 八、CSRF为什么登录和退出也要检查
 
 浏览器会自动携带目标站点Cookie。攻击者可能诱导已登录用户的浏览器提交修改请求，因此使用Session Cookie的应用必须保留CSRF防护。登录本身也可能遭受“把受害者登录到攻击者账号”的login CSRF，退出也会改变安全状态。
 
-客户端先读取 `/auth/csrf`，再把返回token放入返回的headerName所指定请求头。`CookieCsrfTokenRepository.withHttpOnlyFalse()` 还会生成 `XSRF-TOKEN` Cookie，便于浏览器端JavaScript读取；真正的Session Cookie仍应保持HttpOnly。参考[Spring Security CSRF说明](https://docs.spring.io/spring-security/reference/6.5/servlet/exploits/csrf.html)。
+客户端先读取 `/auth/csrf`，再把响应Body中的token放入返回的headerName所指定请求头。当前课程通过接口响应交付令牌，不需要浏览器JavaScript直接读取CSRF Cookie，因此使用 `new CookieCsrfTokenRepository()` 保持该Cookie的HttpOnly保护。若将来改为由前端JavaScript直接读取Cookie，才需重新评估 `withHttpOnlyFalse()` 及对应的SPA请求处理方式；这绝不意味着可以关闭JSESSIONID的HttpOnly。参考[Spring Security CSRF说明](https://docs.spring.io/spring-security/reference/6.5/servlet/exploits/csrf.html)。
 
 ## 九、Cookie和会话边界
 
@@ -744,13 +747,66 @@ Session保存在单个应用进程内时，重启会使登录失效，多实例�
 
 ## 十、运行与验证
 
+先执行本章自动化回归：
+
 ```powershell
 .\mvnw.cmd clean test
 ```
 
-第14章累计15个测试，本章新增5个，预期20个全部通过。HTTP客户端必须启用Cookie保存；如果每次请求都新建无Cookie会话，`/auth/me` 必然返回401。
+第14章累计15个测试，本章新增5个，预期20个全部通过。自动化测试完成后，使用已配置数据库环境变量的Eclipse Run Configuration启动应用，再用Postman观察真实Cookie和Session流程；Postman不能替代上述JUnit和MockMvc回归。
 
-验证证据至少包括：取得CSRF、登录响应的Set-Cookie、同一Cookie访问me、错误密码401、缺少CSRF的403、logout 204，以及退出后me重新变为401。不要把完整Cookie或令牌粘贴到共享工单。
+### 1. 取得CSRF令牌
+
+| 项目 | 内容 |
+| --- | --- |
+| HTTP方法 | GET |
+| URL | `{{baseUrl}}/auth/csrf` |
+| 查询参数 | 无 |
+| 请求体 | 无 |
+| 预期状态码 | 200 |
+| 预期响应 | `data.headerName` 和 `data.token` 有值 |
+
+发送后Postman会在当前域名的Cookie jar中保存 `XSRF-TOKEN`。从响应Body临时复制 `headerName` 和 `token`；不要把完整令牌保存到共享文档或Git。
+
+### 2. 登录并确认Session
+
+新建登录请求：
+
+| 项目 | 内容 |
+| --- | --- |
+| HTTP方法 | POST |
+| URL | `{{baseUrl}}/auth/login` |
+| 查询参数 | 无 |
+| Headers | 使用上一步返回的 `headerName` 作为名称、`token` 作为值 |
+| Body | **raw → JSON**，见下方 |
+| 预期状态码 | 200 |
+| 预期响应 | `data.username=tanaka`，响应产生 `JSESSIONID` Cookie |
+
+```json
+{
+  "username": "tanaka",
+  "password": "TrainingPass123!"
+}
+```
+
+选择请求 **Send** 按钮下方的 **Cookies**，在Cookie管理器中确认 `localhost` 下存在 `JSESSIONID`，但不要复制其值。Postman会为同一域名自动保存并在后续请求中携带Cookie。
+
+然后发送 `GET {{baseUrl}}/auth/me`，无查询参数、无请求体，预期200且 `data.username=tanaka`。如果得到401，先检查是否仍使用同一个Postman环境、域名和Cookie jar。
+
+### 3. 验证错误密码和缺少CSRF
+
+| 场景 | HTTP方法与URL | Headers | 请求体 | 预期状态与响应 |
+| --- | --- | --- | --- | --- |
+| 错误密码 | `POST {{baseUrl}}/auth/login` | 携带有效CSRF请求头 | `{"username":"tanaka","password":"WrongPass123!"}` | 401，统一登录失败消息 |
+| 缺少CSRF | `POST {{baseUrl}}/auth/login` | 临时取消勾选CSRF请求头 | 正确账号密码JSON | 403，不进入登录Controller |
+
+两个请求都使用 **raw → JSON** 与 `Content-Type: application/json`。完成缺少CSRF场景后重新启用请求头，避免影响退出请求。
+
+### 4. 退出并确认Session失效
+
+发送 `POST {{baseUrl}}/auth/logout`，无查询参数、无请求体，携带有效CSRF请求头和Postman自动保存的Cookie，预期204且响应Body为空。随后再次发送 `GET {{baseUrl}}/auth/me`，无请求体，预期401。
+
+验证证据至少包括：取得CSRF、登录响应的Set-Cookie、同一Cookie访问me、错误密码401、缺少CSRF的403、logout 204，以及退出后me重新变为401。只记录Cookie名称和存在性，不要把完整Cookie、密码或令牌粘贴到共享工单。完成后在Postman Cookies管理器中删除本地练习Cookie，并在Eclipse中停止应用。
 
 ## 十一、常见失败
 
@@ -759,14 +815,14 @@ Session保存在单个应用进程内时，重启会使登录失效，多实例�
 | 登录200但me仍401 | 只设置SecurityContext，未保存 | 调用SecurityContextRepository保存 |
 | 正确密码也失败 | 数据库存了明文或哈希算法不匹配 | 用同一PasswordEncoder生成和matches |
 | POST总是403 | 没先取得或携带CSRF令牌 | 保留Cookie并按headerName发送token |
-| 每次请求产生新会话 | HTTP客户端没有保存Cookie | 启用Cookie jar并复用同一客户端 |
+| 每次请求产生新会话 | Postman没有保存Cookie，或请求混用了 `localhost` 与 `127.0.0.1` | 统一使用 `{{baseUrl}}` 并检查Cookies管理器 |
 | 日志出现密码或Session ID | 记录了请求体、Cookie或安全对象 | 删除敏感字段，只记录结果和请求编号 |
 | 登录后Session ID不变 | 自定义登录漏掉SessionAuthenticationStrategy | 在保存context前执行策略 |
 
 ## 十二、规格理解、影响调查与练习
 
 1. 实现并验证停用账号登录失败，响应不能暴露“账号已停用”。
-2. 用同一HTTP客户端完成csrf→login→me→logout→me，保存脱敏证据。
+2. 用同一个Postman Cookie会话完成csrf→login→me→logout→me，保存脱敏证据。
 3. Review一个把密码写进日志、用MD5保存、关闭CSRF的实现，逐项说明风险和修正。
 4. 调查“会话30分钟无操作后过期”的配置、测试、用户提示和多实例影响，先提交调查表。
 5. 为新增账号功能写规格：谁能创建、密码何时hash、重复用户名、初始enabled及不得返回passwordHash。

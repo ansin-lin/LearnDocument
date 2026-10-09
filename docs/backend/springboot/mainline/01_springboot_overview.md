@@ -49,6 +49,16 @@
 
 在这个Web应用中，浏览器通过后端访问业务数据，不直接持有数据库账号连接数据库。
 
+### 4. 后端先持续运行，才谈得上处理一次请求
+
+控制台练习通常由`main`主动调用一次查询方法；Web服务则先启动并持续运行，等待尚未到来的请求。本项目启动时，内嵌Tomcat在指定端口监听；请求到达后才交给Spring MVC匹配处理方法。处理完用户甲的请求，应用不会退出，还会等待用户乙的请求。启动成功只说明接收请求的准备已完成，不能证明员工查询成功。
+
+```text
+IDE启动应用 → Web服务器监听端口 → 请求甲到来并返回 → 继续等待 → 请求乙到来并返回
+```
+
+Tomcat负责接收和发送HTTP通信，不会自行决定查询哪张员工表。第五节会再用控制台程序作对照；现在先在这个持续运行的背景下观察一次请求。
+
 ## 三、观察一次完整的员工查询
 
 现在只看一个具体需求：
@@ -298,6 +308,16 @@ Spring Boot建立在Spring Framework之上，帮助选择常用依赖组合、�
 “Spring”经常作为这组相关项目的统称；有时文档中的“Spring”也特指Spring Framework，需要结合上下文判断。Spring Boot也能用于非Web应用，并非所有Spring Boot程序都要启动Tomcat。参阅 [Spring Framework概述](https://docs.spring.io/spring-framework/reference/overview.html)。
 
 此时可以用一句话串起来：**Tomcat接收请求，Spring MVC找到自己的处理方法，业务代码借助MyBatis访问MySQL；Spring Boot帮助应用准备并运行这些需要的能力。**
+
+| 组成部分 | 本例职责 | 不负责什么 |
+| --- | --- | --- |
+| Tomcat等Web服务器 | 监听端口、接收请求、送出响应 | 判断员工业务规则 |
+| Spring MVC | 匹配接口方法、绑定输入、组织HTTP输出 | 决定允许公开哪些员工字段 |
+| 自己编写的业务代码 | 执行员工查询、检查业务规则、选择响应数据 | 自行实现Web服务器 |
+| MyBatis | 将Mapper调用与指定SQL、结果映射连接 | 保存数据或自动设计业务SQL |
+| MySQL | 执行SQL并持久保存记录 | 决定HTTP状态码 |
+
+Spring Framework提供对象管理等基础能力，Spring MVC属于其Web能力；Spring Boot基于Spring Framework帮助组装依赖、自动配置并启动应用。三者不是相互替代的三个选项。Controller、Service、Mapper是后续章节采用的业务代码职责名称，本章只需知道它们参与上表中的业务处理，不必提前背诵分层实现。
 
 ## 八、先记住Spring Boot提供的三项帮助
 

@@ -29,7 +29,9 @@
 
 ## 二、完整示例
 
-本章不修改 `src/main` 下的Controller、Service、Mapper和XML。按本节完成全部测试文件，再从第三节开始理解每个第一次出现的测试工具。
+Postman帮助人观察一次真实请求；JUnit把前置条件、执行和断言写成可重复运行的检查。先从最小Service测试入手：准备一个Mapper替身，调用Service方法，断言结果；Mockito的 `when()` 规定替身在指定调用下返回什么，`verify()` 检查某个调用是否真的发生，替身不会执行真实SQL。随后使用 `@WebMvcTest` 只加载Web切片，通过MockMvc模拟请求与响应，不启动真实HTTP监听端口；`@MockitoBean` 把Spring测试上下文中的Service Bean替换为Mock，区别于只在普通单元测试中创建的Mockito Mock。最后才用 `@SpringBootTest`、`@AutoConfigureMockMvc`、`@ActiveProfiles("test")` 和 `@Sql` 验证真实Mapper与隔离测试库。
+
+三层测试证明的范围不同：Service Mock测试不能证明Controller映射，Web切片不能证明SQL，数据库集成测试才能检查实际读写。以IDE运行JUnit作为学习主线；Maven测试用于整套回归和构建。失败时先区分断言不符、Spring测试上下文无法建立、测试数据库初始化失败，再查看对应日志。本章不修改 `src/main` 下的Controller、Service、Mapper和XML；下方保留所有测试文件的完整最终内容。
 
 本章修改后的新增部分：
 
@@ -733,6 +735,8 @@ Integer count = jdbcTemplate.queryForObject(
 不要使用 `@TestMethodOrder` 来隐藏共享数据问题。只有规格本身要求多步过程时，才在同一测试方法中明确完成该过程。
 
 ## 十、运行、读取失败和保存证据
+
+本章验证对象是可重复执行的JUnit、Mockito和MockMvc自动化测试，因此保留Maven测试命令。Postman用于开发中的手工接口确认，不能替代这里的断言、隔离和完整回归。
 
 在包含 `pom.xml` 的项目根目录执行：
 

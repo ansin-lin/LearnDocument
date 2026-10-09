@@ -43,6 +43,10 @@ GET /employees?name=Tanaka&department=Sales&status=ACTIVE
 
 ## 二、完整示例
 
+先沿一次 `GET /employees` 的处理链读本章代码。Spring MVC用 `@ModelAttribute` 从查询字符串绑定 `EmployeeSearchRequest`，与第6章读取JSON正文的 `@RequestBody` 不同；`@Valid` 在Controller执行前检查页码和pageSize。Service整理筛选条件并计算 `offset = (page - 1) × pageSize`，只允许规定的排序字段和方向，不能把客户端任意文本拼进SQL。Mapper的列表SQL与COUNT SQL必须使用同一组筛选条件；排序追加主键作为同值时的稳定次序，避免翻页时同一记录忽前忽后。最后 `PageResponse` 同时给出items、page、pageSize、total和totalPages；空页不等于查询失败。
+
+下面是最终文件的完整代码。阅读顺序建议为“请求DTO及校验→Service计算→Mapper动态条件与白名单排序→COUNT→响应对象→测试”。pageSize设置上限是为了控制单次响应和数据库负担；EXPLAIN与索引分析放到完成正确性测试之后，不把性能优化当成输入绑定的前置要求。
+
 从第13章稳定状态继续。本章不改员工详情和写入接口，新建两个数据对象，完整替换四个业务文件，并新增独立的分页测试和测试数据：
 
 ```text

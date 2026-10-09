@@ -69,7 +69,16 @@ src/main/resources/mapper/EmployeeMapper.xml         ← 完整替换
 
 ## 二、完整示例
 
-先完成本节全部文件，再从第三节开始依次理解第一次出现的内容。只替换一部分文件会造成接口方法和XML语句暂时不对应。
+下面各文件给出四个阶段完成后的完整最终状态。先按阶段理解变更，再整体替换文件并做闭环验证；只替换一部分文件会造成接口方法和XML语句暂时不对应。
+
+| 阶段 | 先读规格与机制 | 重点核对代码 | Postman与数据库证据 |
+| --- | --- | --- | --- |
+| 1. 列表 | 第三、五节：可选部门与空列表 | Mapper列表方法/XML条件、Service结果转换、Controller GET | `GET /employees?department=Sales` 返回200及数组；数据库用相同部门条件核对记录 |
+| 2. 新增 | 第四、八节：生成主键、201与唯一约束 | INSERT的 `useGeneratedKeys`、`keyProperty`，Service再次读取，Controller的Location | `POST /employees` 携带完整JSON，返回201和新编号；数据库按新编号确认仅新增一行 |
+| 3. 修改 | 第六、八节：PUT完整更新、影响行数、邮箱冲突 | 更新DTO、UPDATE、Service对0行与重复邮箱的处理 | `PUT /employees/{id}` 携带三字段JSON，返回200；数据库按编号核对三个字段，重复邮箱返回409 |
+| 4. 删除 | 第七节：物理删除与无正文204 | DELETE、Service对0行的判断、Controller的 `noContent().build()` | `DELETE /employees/{id}` 无请求体，返回204且无正文；数据库确认目标行消失，再查返回404 |
+
+`useGeneratedKeys`要求MyBatis取得数据库生成的主键，`keyProperty="id"`指定回填到传入的Entity属性；这并不代替数据库唯一约束。Service预检查可给出友好冲突说明，但并发请求仍可能同时通过预检查，最终必须由数据库约束兜底。本章每个写操作只讨论当前接口的提交结果，尚未建立第13章的多步事务边界。
 
 ### 1. 新建EmployeeUpdateRequest.java
 
@@ -634,39 +643,33 @@ delete：单条DELETE由数据库保证单语句原子性
 
 以下操作会在本地 `employee_db` 中创建、修改并删除一行。执行前确认连接的不是共享、测试或生产数据库。
 
-### 1. 构建和启动
+### 1. 在Eclipse中启动
 
-在设置了数据库环境变量的PowerShell中执行：
-
-```powershell
-.\mvnw.cmd clean test
-.\mvnw.cmd spring-boot:run
-```
+使用第9章已经保存数据库环境变量的Eclipse Run Configuration启动应用。Console出现启动成功日志后再打开Postman；如果数据库连接失败，不要继续执行写入请求。
 
 ### 2. 新增并保存生成编号
 
-```powershell
-$createBody = @{
-    name = "Sato"
-    department = "Development"
-    email = "sato.crud@example.com"
-} | ConvertTo-Json
+在Postman中新建请求：
 
-$created = Invoke-WebRequest `
-    -Uri "http://localhost:8080/employees" `
-    -Method Post `
-    -ContentType "application/json" `
-    -Body $createBody
+| 项目 | 内容 |
+| --- | --- |
+| HTTP方法 | POST |
+| URL | `{{baseUrl}}/employees` |
+| 查询参数 | 无 |
+| Body | **raw → JSON**，见下方 |
+| 预期状态码 | 201 |
+| 预期Headers | `Location: /employees/实际编号` |
+| 预期响应 | `success=true`，`data.id` 是数据库生成编号 |
 
-$created.StatusCode
-$created.Headers.Location
-$created.Content
-
-$createdObject = $created.Content | ConvertFrom-Json
-$employeeId = $createdObject.data.id
+```json
+{
+  "name": "Sato",
+  "department": "Development",
+  "email": "sato.crud@example.com"
+}
 ```
 
-预期状态201，Location为 `/employees/实际编号`。随后在MySQL确认：
+发送后从响应Body复制 `data.id`，在Postman的 `Local` 环境中新增或更新变量 `employeeId`。之后使用 `{{employeeId}}`，不要猜测编号。随后在MySQL客户端确认：
 
 ```sql
 SELECT id, name, department, email, status, created_at, updated_at
@@ -676,22 +679,25 @@ WHERE email = 'sato.crud@example.com';
 
 ### 3. 查询和修改
 
-```powershell
-Invoke-RestMethod `
-    -Uri "http://localhost:8080/employees/$employeeId" `
-    -Method Get
+先发送 `GET {{baseUrl}}/employees/{{employeeId}}`，无查询参数、无请求体，预期200且返回刚创建的数据。
 
-$updateBody = @{
-    name = "Sato Haru"
-    department = "Support"
-    email = "sato.haru@example.com"
-} | ConvertTo-Json
+再发送修改请求：
 
-Invoke-RestMethod `
-    -Uri "http://localhost:8080/employees/$employeeId" `
-    -Method Put `
-    -ContentType "application/json" `
-    -Body $updateBody
+| 项目 | 内容 |
+| --- | --- |
+| HTTP方法 | PUT |
+| URL | `{{baseUrl}}/employees/{{employeeId}}` |
+| 查询参数 | 无 |
+| Body | **raw → JSON**，见下方 |
+| 预期状态码 | 200 |
+| 预期响应 | 姓名为 `Sato Haru`、部门为 `Support`、邮箱为 `sato.haru@example.com` |
+
+```json
+{
+  "name": "Sato Haru",
+  "department": "Support",
+  "email": "sato.haru@example.com"
+}
 ```
 
 修改后再次查询接口，并用SQL核对实际数据库值：
@@ -702,25 +708,51 @@ FROM employees
 WHERE id = /* 替换为实际编号 */ 1003;
 ```
 
-不要直接照抄1003；必须替换成 `$employeeId`显示的真实编号。
+不要直接照抄1003；必须替换成Postman响应中 `data.id` 显示的真实编号。
 
 ### 4. 重复邮箱、404和400
 
-尝试把测试员工邮箱改为 `tanaka@example.com`，预期409且原数据库值不变。再使用不存在编号执行PUT和DELETE，预期404。提交缺失姓名或非法部门，预期400且数据库没有新增或修改记录。
+在Postman继续验证：
+
+| HTTP方法 | URL | 请求参数 | 请求体 | 预期状态与数据库结果 |
+| --- | --- | --- | --- | --- |
+| PUT | `{{baseUrl}}/employees/{{employeeId}}` | 无 | 下方请求体A | 409，原数据库值不变 |
+| PUT | `{{baseUrl}}/employees/999999` | 无 | 下方请求体B | 404，无记录变化 |
+| DELETE | `{{baseUrl}}/employees/999999` | 无 | 无 | 404，无记录变化 |
+| POST | `{{baseUrl}}/employees` | 无 | 下方请求体C | 400，不新增记录 |
+| PUT | `{{baseUrl}}/employees/{{employeeId}}` | 无 | 下方请求体D | 400，不修改记录 |
+
+请求体A——重复邮箱：
+
+```json
+{"name":"Sato Haru","department":"Support","email":"tanaka@example.com"}
+```
+
+请求体B——不存在编号使用的完整合法数据：
+
+```json
+{"name":"Missing User","department":"Support","email":"missing@example.com"}
+```
+
+请求体C——缺少姓名：
+
+```json
+{"department":"Development","email":"missing-name@example.com"}
+```
+
+请求体D——非法部门：
+
+```json
+{"name":"Sato Haru","department":"Other","email":"sato.haru@example.com"}
+```
+
+所有POST和PUT请求都使用 **raw → JSON** 与 `Content-Type: application/json`。失败体也应在证据中保存实际内容，不能只写“错误数据”。
 
 每次失败后都执行SELECT确认数据库状态，不能只看HTTP响应。
 
 ### 5. 删除和清理
 
-```powershell
-$deleted = Invoke-WebRequest `
-    -Uri "http://localhost:8080/employees/$employeeId" `
-    -Method Delete
-
-$deleted.StatusCode
-```
-
-预期204且正文为空。再次GET同一编号应为404，再执行相同DELETE也应为404。最后用SQL确认行已不存在：
+在Postman发送 `DELETE {{baseUrl}}/employees/{{employeeId}}`，无查询参数、无请求体。预期204且响应Body为空。再次发送 `GET {{baseUrl}}/employees/{{employeeId}}` 应为404，再次DELETE也应为404。最后用SQL确认行已不存在：
 
 ```sql
 SELECT id, name, department, email

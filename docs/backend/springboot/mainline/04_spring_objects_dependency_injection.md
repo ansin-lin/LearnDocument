@@ -22,7 +22,7 @@ Controller需要Service
 - `GET /health` 返回状态码200和正文 `OK`；
 - 启动类位于根包 `com.example.employee`；
 - `pom.xml` 已包含 `spring-boot-starter-web`；
-- 项目可以执行 `mvnw.cmd clean test`。
+- 项目已在Eclipse中导入，并能从启动类正常启动。
 
 Employee主线新增两个文件，不修改第3章的启动类、配置文件和 `HealthController`：
 
@@ -49,9 +49,13 @@ src/main/java/com/example/employee/
 
 这一接口暂时使用固定字符串，不接收请求数据，也不访问数据库。本章的学习重点是对象创建和连接。完成后应能解释Spring怎样创建并连接Controller与Service，并能通过启动日志定位缺少Bean的问题。
 
-## 二、完整示例
+## 二、先解决对象由谁创建的问题，再看完整示例
 
-先完成两个文件并运行，再从第三节开始依次理解代码。文件名、包名和目录必须一致。
+普通Java可以先创建 `EmployeeService service = new EmployeeService();`，再用 `new EmployeeController(service)` 把它交给Controller。若Controller自己在字段里 `new EmployeeService()`，它就必须知道Service的创建细节；后续Service需要Mapper时，Controller还要跟着改。本项目改由Spring容器负责创建和连接对象：容器管理的对象叫Bean，创建控制权交给容器是IoC，通过构造方法交入所需Bean是DI。它们描述的是同一套对象管理过程，不是四个独立功能。
+
+应用启动时，启动类的组件扫描发现类上的 `@Service` 与 `@RestController`；Spring注册并创建相应Bean，解析Controller构造方法需要的 `EmployeeService`，找到唯一合适的Bean后传入。请求到达时使用已建立的对象关系，不会在每次请求里重新创建Service。Controller以 `private final` 保存依赖，表示它必须在构造时提供，之后不随意替换，也使测试时能显式传入替身。下文第三至八节将逐步核对这些阶段和失败原因。
+
+下面保留两个可直接复制的完整文件。先读懂以上运行顺序，再写入工程、启动验证；文件名、包名和目录必须一致。
 
 ### 1. 新建EmployeeService.java
 
@@ -421,59 +425,18 @@ GET /employees/sample-name
 
 启动过程解决“对象怎样创建和连接”，请求过程解决“方法怎样调用和返回”。本章不把二者混为同一个步骤。
 
-## 九、构建、运行与验证
+## 九、在Eclipse中运行并用Postman验证
 
-在PowerShell中进入包含 `pom.xml` 的项目根目录，先执行测试：
+保存代码，在Eclipse中右键 `EmployeeManagementApiApplication.java`，选择 **Run As → Java Application**。Console应显示应用成功启动；如果Controller需要的Service没有注册为Bean，应用会在建立上下文时失败，因此不能继续发送请求。
 
-```powershell
-.\mvnw.cmd clean test
-```
+应用启动后，在Postman依次发送：
 
-第3章生成的 `contextLoads()` 会尝试加载完整Spring应用。如果Controller需要的Service没有注册为Bean，应用上下文无法创建，测试就会失败。成功时应看到：
+| HTTP方法 | URL | 请求参数 | 请求体 | 预期状态码 | 预期响应体 |
+| --- | --- | --- | --- | ---: | --- |
+| GET | `http://localhost:8080/employees/sample-name` | 无 | 无 | 200 | `Suzuki` |
+| GET | `http://localhost:8080/health` | 无 | 无 | 200 | `OK` |
 
-```text
-BUILD SUCCESS
-```
-
-然后启动应用：
-
-```powershell
-.\mvnw.cmd spring-boot:run
-```
-
-另开一个PowerShell窗口，请求新接口：
-
-```powershell
-$response = Invoke-WebRequest `
-    -Uri "http://localhost:8080/employees/sample-name"
-$response.StatusCode
-$response.Content
-```
-
-预期结果：
-
-```text
-200
-Suzuki
-```
-
-再回归验证第3章接口：
-
-```powershell
-$healthResponse = Invoke-WebRequest `
-    -Uri "http://localhost:8080/health"
-$healthResponse.StatusCode
-$healthResponse.Content
-```
-
-预期结果：
-
-```text
-200
-OK
-```
-
-新接口成功只能证明新增调用可用；重新检查 `/health` 是为了确认本次修改没有破坏已有功能。验证结束后，在启动应用的窗口按 `Ctrl+C` 停止服务。
+在Postman中选择GET、填写URL并点击 **Send**，然后记录响应区域中的状态码和Body。新接口成功只能证明新增调用可用；重新检查 `/health` 是为了确认本次修改没有破坏已有功能。验证结束后，在Eclipse Console中停止当前进程。
 
 ## 十、主动制造一次注入失败
 
@@ -483,13 +446,7 @@ OK
 public class EmployeeService {
 ```
 
-再次执行：
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-此时Java类仍然存在，但Spring组件扫描失去了把它注册为Bean的依据。创建 `EmployeeController` 时，容器找不到构造参数需要的 `EmployeeService` Bean，因此应用上下文加载失败。
+保存后在Eclipse中重新启动应用。此时Java类仍然存在，但Spring组件扫描失去了把它注册为Bean的依据。创建 `EmployeeController` 时，容器找不到构造参数需要的 `EmployeeService` Bean，因此应用会启动失败，原因显示在Console中。
 
 阅读错误时按下面顺序定位：
 
@@ -498,7 +455,7 @@ public class EmployeeService {
 3. 确认所需类型是否带有正确组件注解；
 4. 确认类是否位于启动类根包的子包中。
 
-记录失败现象后，必须恢复 `@Service`，重新执行 `clean test` 并确认 `BUILD SUCCESS`。不要把故障状态留给下一章。
+记录失败现象后，必须恢复 `@Service`，重新启动并确认Console出现启动成功日志，再用Postman回归两个接口。不要把故障状态留给下一章。
 
 ## 十一、同一类型出现多个Bean时怎么办
 
@@ -532,7 +489,7 @@ Review这两个文件时，不要只确认“注解是否存在”。还要沿�
 
 ## 十三、操作练习
 
-练习按顺序完成。每次修改后都要先构建，再启动并请求接口。
+练习按顺序完成。每次修改后都要保存代码、在Eclipse重新启动，再用Postman请求接口。
 
 ### 练习1：修改Service返回值
 
@@ -588,7 +545,7 @@ controller/EmployeeController.java
 1. 创建失败的对象；
 2. 无法满足的构造参数类型；
 3. 恢复的文件和注解；
-4. 恢复后 `clean test` 的结果。
+4. 恢复后Eclipse启动成功及接口回归结果。
 
 这项练习考查的不是记忆错误全文，而是能否沿依赖关系找到缺少的Bean。
 

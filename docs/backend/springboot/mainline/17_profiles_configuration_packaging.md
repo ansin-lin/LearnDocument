@@ -57,6 +57,12 @@ deploy/
 
 ## 三、完整示例
 
+先理解配置的读取顺序，再看完整YAML。`application.yml` 提供公共值，激活 `dev`、`test` 或 `prod` 后，对应 `application-{profile}.yml` 叠加同名配置；环境变量和外部配置还可能覆盖打进JAR的值，因此不能只看源码中的YAML猜测实际运行值。Profile选择的是配置集合，不会自动切换业务代码，也不负责保密。像数据库密码这样的秘密应由受控环境提供，不提交Git、不写入打包资源。
+
+本章自己的 `deployment.*` 配置成组出现，因此用 `@ConfigurationProperties` 绑定为一个对象，比为每个字段散写一个 `@Value` 更容易集中校验；启动类上的 `@ConfigurationPropertiesScan` 负责找到该类，类上的 `@Validated` 让约束在绑定时生效。关键配置缺失应在启动阶段失败，而不是等第一次请求才出错。`ApplicationRunner` 在应用上下文建立后运行，用于输出允许公开的启动确认信息；它不替代 `main` 启动Spring Boot，也不能输出秘密。最后按“测试→构建→检查JAR→脱离IDE运行”交付，确保运行的是刚构建的产物。
+
+下面保留各配置文件和Java类的完整最终状态，阅读时按上述顺序逐项核对实际覆盖来源。
+
 ### 1. 完整替换application.yml
 
 文件位置：`src/main/resources/application.yml`
@@ -470,6 +476,8 @@ app.deployment.release-id       → setReleaseId(...)
 
 ## 十、先测试，再生成可执行JAR
 
+本章的命令行操作用于构建、检查和运行交付JAR，不是日常IDE启动方式，也不是用命令行代替Postman发送接口请求。
+
 在Windows PowerShell中进入包含 `pom.xml` 的项目根目录，确认环境：
 
 ```powershell
@@ -567,7 +575,14 @@ java -jar target\employee-management-api-0.0.1-SNAPSHOT.jar
 - 日志显示激活dev Profile。
 - 启动配置日志显示 `releaseId=chapter17-check`。
 - Tomcat监听8080。
-- 使用第15章流程登录后，第16章权限测试对应的HTTP请求结果不变。
+- 使用Postman验证下表中的请求，第16章权限规则不因打包而变化。
+
+| HTTP方法 | URL | Params | Headers与请求体 | 预期状态与响应 |
+| --- | --- | --- | --- | --- |
+| GET | `{{baseUrl}}/health` | 无 | 无Body | 200，正文 `OK` |
+| GET | `{{baseUrl}}/auth/csrf` | 无 | 无Body | 200，返回CSRF信息并保存Cookie |
+| POST | `{{baseUrl}}/auth/login` | 无 | 有效CSRF请求头；`{"username":"tanaka","password":"TrainingPass123!"}` | 200，登录成功并建立Session |
+| GET | `{{baseUrl}}/employees/1001` | 无 | Postman自动携带当前Cookie，无Body | 200，本人数据 |
 
 验证结束后按 `Ctrl+C` 正常停止。然后只清理本次PowerShell会话中的练习变量：
 
@@ -617,7 +632,7 @@ Set-Location delivery
 java -jar .\employee-management-api-0.0.1-SNAPSHOT.jar
 ```
 
-看到8081监听和正确环境名后完成接口验证，按 `Ctrl+C` 停止，再回到项目根目录：
+看到8081监听和正确环境名后，使用Postman把 `baseUrl` 临时改为 `http://localhost:8081`，发送 `GET {{baseUrl}}/health`；无查询参数、无请求体，预期状态200、正文 `OK`。验证后恢复 `baseUrl`，按 `Ctrl+C` 停止JAR，再回到项目根目录：
 
 仍在 `delivery` 目录时，也可以用命令行临时覆盖非敏感配置：
 
@@ -627,7 +642,7 @@ java -jar .\employee-management-api-0.0.1-SNAPSHOT.jar `
     --server.port=8082
 ```
 
-验证完8082后再次按 `Ctrl+C` 停止，然后回到项目根目录并清理本次模拟变量：
+临时把Postman的 `baseUrl` 改为 `http://localhost:8082`，再次发送无参数、无请求体的 `GET {{baseUrl}}/health`，预期200和 `OK`。验证后恢复 `baseUrl`，按 `Ctrl+C` 停止，然后回到项目根目录并清理本次模拟变量：
 
 ```powershell
 Set-Location ..

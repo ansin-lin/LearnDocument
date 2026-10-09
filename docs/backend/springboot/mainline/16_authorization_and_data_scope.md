@@ -47,6 +47,10 @@ Controller → Service → Mapper → 数据库
 
 ## 三、完整示例
 
+先把矩阵中的规则按执行层次读一遍：安全过滤链在Controller之前按HTTP方法、路径和角色拒绝操作，例如USER不能DELETE；只有通过URL规则的详情请求才会进入Service，方法安全代理在调用 `findById(id)` 前执行 `@PreAuthorize`，比较可信的当前 `authentication` 与方法参数 `id`。`@EnableMethodSecurity` 在配置类上启用这一代理检查；表达式中的 `@employeeAccess` 是Spring Bean名称，`#p0` 是第一个方法参数。客户端提交的角色、用户名或“这是我的记录”不能替代服务器Session中的认证信息和数据库账号关联。
+
+未登录而需要认证时由 `RestAuthenticationEntryPoint` 写401；已有身份但被URL或方法规则拒绝时由 `RestAccessDeniedHandler` 写403；通过授权却找不到员工时仍由业务异常处理器写404。过滤链中发生的401/403通常没有进入Controller，不能指望普通 `@RestControllerAdvice` 统一捕获。`authorizeHttpRequests` 按声明顺序寻找首个匹配规则，因此具体路径与方法规则必须在兜底 `denyAll` 前。下方完整代码保留匿名、USER本人、USER他人和ADMIN的测试；CORS只作为跨域部署扩展阅读，不参与本地同源授权判断。
+
 从第15章稳定状态继续。本章不改数据库表结构和业务字段，只增加授权代码、测试账号和授权测试：
 
 ```text
@@ -279,18 +283,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             SecurityContextRepository repository,
-            SessionAuthenticationStrategy sessionStrategy,
             RestAuthenticationEntryPoint authenticationEntryPoint,
             RestAccessDeniedHandler accessDeniedHandler)
             throws Exception {
         http
                 .csrf(csrf -> csrf.csrfTokenRepository(
-                        CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                        new CookieCsrfTokenRepository()))
                 .securityContext(context -> context
                         .requireExplicitSave(true)
                         .securityContextRepository(repository))
-                .sessionManagement(session -> session
-                        .sessionAuthenticationStrategy(sessionStrategy))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/health", "/error",
@@ -738,13 +739,13 @@ Spring Security需要在认证授权前处理CORS，因为OPTIONS预检通常没
 | 授权 | 这个身份能否操作该资源 | 403 |
 | CSRF | 携带用户凭据的写请求是否来自预期页面操作 | 403或CSRF错误 |
 
-CORS只决定浏览器是否允许某个来源读取响应，不证明用户身份，也不授予USER管理员权限。命令行客户端不受浏览器同源限制，但仍会受到后端认证、授权和CSRF规则约束。
+CORS只决定浏览器是否允许某个来源读取响应，不证明用户身份，也不授予USER管理员权限。Postman不受浏览器同源限制，但仍会受到后端认证、授权和CSRF规则约束；因此Postman成功不能证明浏览器跨域配置一定正确。
 
 实验时先发送OPTIONS预检，确认允许来源不是 `*`、方法和请求头正确；再分别验证未登录401、USER越权403、ADMIN成功以及写请求仍需要CSRF令牌。完成后删除 `CorsConfig` 和 `http.cors(...)` 增量，重跑本章测试，恢复同源稳定状态。官方配置边界可对照[Spring MVC CORS](https://docs.spring.io/spring-framework/reference/web/webmvc-cors.html)和[Spring Security CORS集成](https://docs.spring.io/spring-security/reference/servlet/integrations/cors.html)。
 
 ## 九、运行与验证
 
-在项目根目录执行：
+先执行完整自动化回归：
 
 ```powershell
 .\mvnw.cmd clean test
@@ -752,16 +753,64 @@ CORS只决定浏览器是否允许某个来源读取响应，不证明用户身�
 
 除了第15章已有登录测试，本章新增8个授权场景。必须确认所有旧测试和新测试都通过；只运行新测试不能证明加入权限后没有破坏CRUD、事务和分页。
 
-手工验证时使用两个独立的Cookie会话分别登录 `tanaka` 和 `admin`，不要混用Cookie。证据至少包含：
+自动化测试完成后，在数据库客户端确认个人MySQL练习库的 `app_users` 中存在 `tanaka` 和 `admin`；测试目录中的H2数据不会自动写入MySQL：
 
-1. 未登录读取员工返回401和统一JSON。
-2. tanaka读取1001返回200。
-3. tanaka读取1002返回403。
-4. tanaka查询列表或修改1001返回403。
-5. admin查询列表、读取1002和修改员工成功。
-6. logout后不再携带旧会话，再访问受保护接口返回401。
+```sql
+SELECT username, role, enabled
+FROM app_users
+WHERE username IN ('tanaka', 'admin');
+```
 
-测试证据记录请求方法、脱敏路径、预期状态、实际状态和测试时间即可。不要粘贴JSESSIONID、CSRF令牌、密码或完整安全日志。
+缺少admin时，只在个人练习库执行下面的课程数据；若SELECT已经查到admin，不要重复INSERT：
+
+```sql
+INSERT INTO app_users (
+    username, password_hash, employee_id, role, enabled
+) VALUES (
+    'admin',
+    '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
+    NULL,
+    'ADMIN',
+    TRUE
+);
+```
+
+该哈希只对应课程练习密码，不能复制到真实环境或替换真实账号数据。
+
+使用Eclipse Run Configuration启动应用。手工验证在Postman中顺序建立两个独立会话：验证完tanaka后先logout并清除 `localhost` 的练习Cookie，再登录admin；不要让两个身份共用同一个 `JSESSIONID`。
+
+### 1. 未登录和tanaka会话
+
+先清除Postman中 `localhost` 的Cookie，再发送：
+
+| 身份 | HTTP方法 | URL | Params | 请求体 | 预期状态与响应 |
+| --- | --- | --- | --- | --- | --- |
+| 未登录 | GET | `{{baseUrl}}/employees/1001` | 无 | 无 | 401，统一JSON |
+
+按照第15章流程发送 `GET {{baseUrl}}/auth/csrf`，再用正确账号密码发送 `POST {{baseUrl}}/auth/login` 登录 `tanaka`。保留Postman自动保存的Cookie和CSRF请求头，然后验证：
+
+| 身份 | HTTP方法 | URL | Params | 请求体 | 预期状态与响应 |
+| --- | --- | --- | --- | --- | --- |
+| tanaka | GET | `{{baseUrl}}/employees/1001` | 无 | 无 | 200，本人员工详情 |
+| tanaka | GET | `{{baseUrl}}/employees/1002` | 无 | 无 | 403，统一权限不足响应 |
+| tanaka | GET | `{{baseUrl}}/employees` | `department=Sales` | 无 | 403，USER不能查询列表 |
+| tanaka | PUT | `{{baseUrl}}/employees/1001` | 无 | `{"name":"Tanaka","department":"Sales","email":"tanaka@example.com"}` | 403，数据库不变 |
+
+PUT请求使用 **raw → JSON**，同时携带有效CSRF请求头。验证后发送 `POST {{baseUrl}}/auth/logout`，无查询参数、无请求体，携带CSRF请求头，预期204；再访问员工详情应返回401。
+
+### 2. admin会话
+
+在Postman Cookies管理器确认旧 `JSESSIONID` 已删除；重新取得CSRF令牌，使用 `admin` 和课程练习密码登录。然后验证：
+
+| 身份 | HTTP方法 | URL | Params | 请求体 | 预期状态与响应 |
+| --- | --- | --- | --- | --- | --- |
+| admin | GET | `{{baseUrl}}/employees` | `department=Sales` | 无 | 200，返回列表结构 |
+| admin | GET | `{{baseUrl}}/employees/1002` | 无 | 无 | 200，返回1002详情 |
+| admin | PUT | `{{baseUrl}}/employees/1002` | 无 | `{"name":"Sato","department":"Development","email":"sato@example.com"}` | 200，修改成功结构 |
+
+PUT请求必须携带当前admin会话的Cookie和有效CSRF请求头。完成后logout、清除练习Cookie，并在Eclipse中停止应用。
+
+测试证据记录请求方法、脱敏路径、请求数据类别、预期状态、实际状态和测试时间即可。不要粘贴JSESSIONID、CSRF令牌、密码或完整安全日志。
 
 ## 十、常见失败与定位顺序
 

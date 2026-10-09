@@ -53,6 +53,12 @@ systemd管理的后台服务
 
 ## 三、完整部署示例
 
+在执行手顺前，先识别服务器上的五类对象：版本目录中的JAR是已测试的程序；`/etc/employee-api` 中的配置和秘密决定运行环境；独立服务账号限制进程权限；systemd负责启动、监视和停止Java进程；`/var/log/employee-api` 保存可调查的应用日志。Spring Boot只运行自己的应用，不负责管理systemd。服务器不用IDE长期启动服务，因为进程应在无人登录时仍可按受控方式启停和恢复。
+
+每次发布把JAR放进独立的 `releases/<发布编号>`，`current` 软链接只指向当前版本，使切换或回退JAR有明确目标。服务账号只获得运行所需目录与配置的最小读取权限，秘密文件不能对所有用户可读。systemd单元中的 `User` 指定运行身份，`WorkingDirectory` 决定相对路径基准，`EnvironmentFile` 提供受保护变量，`ExecStart` 启动当前JAR，`Restart` 定义异常退出后的重启策略。先理解这些作用，再照下方完整配置和命令执行。
+
+手顺按“只读前检→接收并校验JAR摘要→受控安装→前台启动→systemd启动→进程/端口/HTTP/业务四层检查”推进。第18章的 `curl` 是Linux服务器本地健康检查，不是重新引入Windows开发机的命令行接口测试。回滚 `current` 只回退程序版本，不会自动回退数据库变更；若数据结构已经不兼容，必须停止自行回滚并按发布预案升级处理。
+
 ### 1. 最终目录结构
 
 ```text
@@ -267,20 +273,24 @@ namei -l /var/log/employee-api
 
 ### 8. 前台运行新版本
 
-升级时不要先替换current。使用新发布目录和临时端口18080进行前台验证：
+本节在Ubuntu服务器上保留 `curl`，用于发布手顺中的本机健康检查和退出状态判断；它不替代第6章开始使用的Postman本地接口验证流程。
+
+升级时不要先替换current。使用新发布目录和临时端口18080进行终端附着的临时服务验证。环境文件由systemd按 `EnvironmentFile` 语法读取，不能用Bash的 `source` 读取：本例数据库URL含 `&`，Shell会把它解释为控制运算符；真实密码也可能含Shell特殊字符。临时运行不修改正式 `employee-api.service` 或 `current`：
 
 ```bash
-sudo -u employee-api -- /bin/bash -c '
-set -a
-source /etc/employee-api/employee-api.env
-set +a
-SERVER_PORT=18080 exec /usr/bin/java \
-  -jar /opt/employee-api/releases/20260915-01/employee-api.jar \
-  --spring.config.additional-location=file:/etc/employee-api/
-'
+sudo systemd-run \
+  --unit=employee-api-smoke-20260915-01 \
+  --uid=employee-api --gid=employee-api \
+  --pty --wait --collect \
+  --property=EnvironmentFile=/etc/employee-api/employee-api.env \
+  --property=WorkingDirectory=/opt/employee-api/releases/20260915-01 \
+  /usr/bin/java -jar \
+  /opt/employee-api/releases/20260915-01/employee-api.jar \
+  --spring.config.additional-location=file:/etc/employee-api/ \
+  --server.port=18080
 ```
 
-只允许source由root管理且内容限定为本章 `KEY=value` 格式的文件。不要把外部用户可写文件当作shell脚本执行。
+`--pty --wait` 把输出附着到当前终端并等待进程结束；`--collect` 在退出后清理临时单元。命令行的 `--server.port=18080` 只覆盖本次临时进程的端口，不改环境文件中的正式8080。运行账号、环境文件和工作目录仍与正式单元一致；临时单元不代替第9步的正式单元校验。
 
 在另一个终端检查：
 
@@ -290,7 +300,7 @@ curl --fail --silent --show-error --max-time 5 \
 printf '\nexit_status=%s\n' "$?"
 ```
 
-预期正文为 `OK`、退出状态为0。临时端口只用于确认新JAR、外部配置和基本HTTP启动，不在这里做正式Session业务验收：prod Cookie带有Secure属性，业务验收要等服务切换后从正式HTTPS入口执行。完成前台确认后回到运行JAR的终端按 `Ctrl+C`，确认优雅停止日志并检查18080不再监听。
+预期正文为 `OK`、退出状态为0。临时端口只用于确认新JAR、外部配置和基本HTTP启动，不在这里做正式Session业务验收：prod Cookie带有Secure属性，业务验收要等服务切换后从正式HTTPS入口执行。完成后回到附着终端按 `Ctrl+C`；若临时单元仍在运行，由发布人员执行 `sudo systemctl stop employee-api-smoke-20260915-01.service`。确认停止日志并检查18080不再监听，才继续切换正式服务。
 
 ### 9. 校验并加载systemd单元
 
@@ -471,16 +481,16 @@ sudo systemctl start employee-api.service
 
 `ln -sfnT 新版本 current` 创建符号链接并把current作为一个链接目标替换：`-s` 创建符号链接，`-f` 允许替换既有目标，`-n` 不跟随既有目录链接，`-T` 明确把current当成普通目标而不是目录。执行前必须记录旧目标，执行后必须用 `readlink -f` 核对实际指向。
 
-## 七、前台运行为什么在systemd之前
+## 七、为什么先做终端附着的临时运行检查
 
-前台运行能直接观察启动错误，并把“应用本身是否能启动”和“systemd单元是否正确”分开：
+临时单元附着终端，可以直接观察启动错误，并把“应用本身在目标账号、目标配置下是否能启动”和“正式systemd单元是否正确”分开：
 
 ```text
-前台也失败 → 先查JAR、Profile、配置、权限、端口、数据库
-前台成功而服务失败 → 再查systemd用户、路径、EnvironmentFile和单元
+临时运行也失败 → 先查JAR、Profile、配置、权限、端口、数据库
+临时运行成功而正式服务失败 → 再查正式单元的用户、路径、EnvironmentFile和启动配置
 ```
 
-`sudo -u employee-api` 以服务账号执行，能提前发现日志目录和配置读取权限问题。`set -a` 让随后source得到的变量自动导出给Java子进程，`set +a` 关闭该行为，`exec` 用Java进程替换当前Bash进程。
+`systemd-run` 创建一次性临时服务；`--uid`、`--gid` 指定服务账号，`--property=EnvironmentFile=...` 让systemd直接解析受控环境文件，`--property=WorkingDirectory=...` 指定工作目录。这里绝不把systemd环境文件当Bash脚本执行。若临时单元名已存在，应先确认是否遗留旧检查，不能盲目并行启动第二份。
 
 临时使用18080避免升级时和现有8080服务冲突。`curl` 参数含义：
 

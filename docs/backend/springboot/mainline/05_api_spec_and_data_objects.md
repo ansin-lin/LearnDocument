@@ -105,7 +105,9 @@ src/main/java/com/example/employee/dto/
 
 ## 四、完整示例
 
-按照前面的规格新建下面三个文件。先完成全部代码，再从第五节开始逐个解释第一次出现的内容。
+先用第三节的字段表做一次边界判断：客户端只能提交 `name`、`department`、`email`；`id` 由系统生成，只能进入输出；列表没有展示邮箱的需要，因此不能把详情对象直接当列表项返回。即使未来数据库表增加密码哈希、内部备注或删除标记，也不能把数据库对象原样作为公开JSON返回。请求DTO、详情响应、列表响应分别代表不同方向和用途，字段相似不等于可共用一个类。
+
+下面按“请求→详情→列表”新建三个完整文件。请求类保留无参数构造方法和可写属性，是为了第6章让Jackson创建对象并填入JSON字段；响应类由业务代码构造完整结果，再由Jackson通过getter读取属性。这里解释的是框架绑定需要的对象形状，不重新教授构造方法或getter、setter的Java语法。第6章会在真实HTTP请求中观察转换过程。
 
 ### 1. 新建EmployeeCreateRequest.java
 
@@ -467,11 +469,7 @@ response/EmployeeResponse.java
 
 ## 十二、构建并检查结果
 
-在项目根目录执行：
-
-```powershell
-.\mvnw.cmd clean test
-```
+在Eclipse的Package Explorer中右键项目，选择 **Run As → Maven build...**，Goals填写 `clean test` 后运行。
 
 预期结果：
 

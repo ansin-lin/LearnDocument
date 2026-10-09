@@ -6,31 +6,38 @@
 
 ## 一、开始状态与完成结果
 
+先预览将要得到的最小工程，再到生成器填写选项。`pom.xml`记录依赖与构建方式；根包下的启动类负责启动应用；`application.properties`保存默认配置；`controller`是本章稍后自己创建的包，不是生成器预先写好的业务功能。测试目录由生成器创建，Maven Wrapper让工程携带约定的Maven启动脚本。
+
+```text
+employee-management-api/
+├── pom.xml
+├── mvnw、mvnw.cmd、.mvn/wrapper/
+└── src/
+    ├── main/java/com/example/employee/EmployeeManagementApiApplication.java
+    ├── main/resources/application.properties
+    └── test/java/com/example/employee/EmployeeManagementApiApplicationTests.java
+```
+
 开始前准备：
 
 - 已安装JDK 17。
 - 可以访问Spring Initializr。
-- 准备好IntelliJ IDEA、Eclipse或其他支持Maven的Java IDE。
+- 准备好Eclipse；使用IntelliJ IDEA时可以采用等价的项目导入和运行操作。
+- 已从[Postman官方下载页](https://www.postman.com/downloads/)安装Postman Desktop，用于本地主线的HTTP接口验证。
 - 准备一个保存练习项目的目录，例如 `D:\workspace`。
 
 完成本章后，项目应满足：
 
 - Maven能够完成构建。
 - Spring Boot能够在本机8080端口启动。
-- 浏览器访问 `GET /health` 返回 `OK`。
+- 使用Postman请求 `GET /health`，确认状态码200和响应正文 `OK`。
 - 项目根包为 `com.example.employee`，Controller、Service和Mapper都放在它的子包中。
 
 本章先按步骤生成并导入工程，再依次给出 `pom.xml`、启动类、YAML配置和Controller的完整最终内容。每个完整文件后紧接着解释其中第一次出现的依赖、注解、方法和配置，最后统一进行构建、启动和请求验证。第一次学习时不要跳过空工程启动，它可以把环境问题与代码问题分开。
 
-先分清本章使用的三个工具：JDK负责把Java源码编译为字节码并运行程序；Maven负责读取 `pom.xml`、下载依赖、执行测试和构建；IDE用于编辑、浏览和启动工程，但不能代替JDK和Maven。Spring Initializr则负责生成工程骨架。
+先分清本章使用的三个工具：JDK负责把Java源码编译为字节码并运行程序；Maven负责读取 `pom.xml`、下载依赖、执行测试和构建；IDE用于编辑、浏览、启动和调试工程，但不能代替JDK和Maven。Spring Initializr则负责生成工程骨架。
 
-先在PowerShell确认当前终端使用的Java版本：
-
-```powershell
-java -version
-```
-
-主版本必须是17。如果IDE使用另一套JDK，还需要在IDE的项目设置中把项目SDK和Maven运行JDK都改为17。
+在Eclipse中打开 **Window → Preferences → Java → Installed JREs**，确认选中的JDK主版本为17；再打开项目的 **Properties → Java Compiler**，确认编译级别为17。IDE使用错误JDK时，即使电脑已经安装JDK 17，项目仍可能编译失败。
 
 ## 二、使用Spring Initializr生成工程
 
@@ -122,7 +129,7 @@ employee-management-api\employee-management-api\pom.xml
 3. 在 **Project Structure → Project SDK** 中选择JDK 17。
 4. 在Maven设置中确认Runner使用项目JDK 17，然后等待依赖下载完成。
 
-无论使用哪个IDE，都应以 `java -version`、Maven构建结果和启动日志为判断依据。IDE没有红线不能代替实际构建成功。
+无论使用哪个IDE，都应核对IDE实际选择的JDK、Maven构建结果和启动日志。编辑器没有红线不能代替实际构建成功。
 
 ## 四、认识生成后的工程
 
@@ -210,7 +217,7 @@ employee-management-api/
 - `dependencies` 保存项目直接使用的依赖。
 - `spring-boot-starter-web` 是Web起步依赖，会带入Spring MVC、JSON转换和内置Tomcat等相互兼容的组件。
 - `spring-boot-starter-test` 提供测试所需组件；`scope` 为 `test` 表示只在编译和运行测试时使用，不作为应用正式运行代码的依赖。
-- `spring-boot-maven-plugin` 为Maven增加Spring Boot构建和运行能力。本章稍后使用的 `spring-boot:run` 就由它支持。
+- `spring-boot-maven-plugin` 为Maven增加Spring Boot构建、打包和运行能力。第17章会使用它生成可执行JAR；Maven也提供 `spring-boot:run` 目标，但本地主线日常启动统一使用Eclipse。
 
 Starter是经过组合的依赖入口，不是一个替你生成接口代码的工具。不要从网络文章复制一批带独立版本号的Spring JAR覆盖父项目管理的版本。
 
@@ -235,30 +242,29 @@ class EmployeeManagementApiApplicationTests {
 
 当前只需要保留这个生成文件，并知道它用于检查Spring应用环境能否建立。`@Test` 标记测试方法，`@SpringBootTest` 会在测试时准备Spring Boot应用环境；测试范围、运行方式和适用场景统一放到第12章讲解。本章不要求现在记忆测试注解。
 
-## 五、先构建并运行生成的空工程
+## 五、先在Eclipse构建并运行空工程
 
-第一次构建和启动使用生成后的原始状态，用来验证JDK、Maven Wrapper和Spring Boot启动链路是否正常。打开PowerShell，进入包含 `pom.xml` 的项目根目录：
+第一次启动前，先打开 `src/main/java/com/example/employee/EmployeeManagementApiApplication.java`。类上的 `@SpringBootApplication` 告诉Spring Boot以此为配置入口，启用自动配置，并从所在根包向下扫描组件；`main`中的 `SpringApplication.run(EmployeeManagementApiApplication.class, args)` 创建应用上下文并启动应用。此时还没有自定义Controller，启动的是一个具备Web处理能力的空工程。下一节给出完整文件并拆解三个组成注解，不要求现在先掌握内部细节。
 
-```powershell
-cd D:\workspace\employee-management-api
-.\mvnw.cmd clean test
-.\mvnw.cmd spring-boot:run
-```
+第一次构建和启动使用生成后的原始状态，用来分别确认Maven构建和Spring Boot启动链路。构建是本章首次环境验收步骤，不是以后每次用Postman验证前都必须执行的操作。
 
-`cd` 把当前工作目录切换到项目根目录；路径应改成自己实际的解压位置。`.\mvnw.cmd` 运行当前目录中的Windows Maven Wrapper脚本，因此不必先单独安装Maven。Wrapper第一次运行时会下载工程指定的Maven版本，随后Maven还会下载 `pom.xml` 中声明的依赖，需要能够访问对应仓库。
+先在Eclipse的Package Explorer中右键项目，选择 **Run As → Maven build...**，在Goals中填写 `clean test`，然后选择 **Run**。`clean` 删除上一次构建产生的 `target` 目录，`test` 重新编译并执行测试。第一次运行时Maven会下载工程指定的依赖，需要能够访问对应仓库。成功时Console末尾应出现 `BUILD SUCCESS`；失败时先处理错误，不继续启动。
 
-`clean test` 包含两个Maven目标：`clean` 删除上一次构建产生的 `target` 目录，`test` 重新编译并执行测试。命令成功时末尾应出现 `BUILD SUCCESS`；失败时先处理错误，不继续启动。
+然后展开 `src/main/java`，找到 `EmployeeManagementApiApplication.java`：
 
-`spring-boot:run` 中，`spring-boot` 是插件前缀，`run` 是运行目标。它启动当前Spring Boot应用，并保持进程运行以等待HTTP请求，不会在显示启动成功后自动结束。
+1. 右键该文件；
+2. 选择 **Run As → Java Application**；
+3. 如果安装了Spring Tools，也可以选择 **Run As → Spring Boot App**；
+4. 打开 **Window → Show View → Console** 查看启动日志。
 
-也可以在IDE中运行 `EmployeeManagementApiApplication` 的 `main` 方法。无论使用哪种方式，成功日志中应看到类似信息：
+成功日志中应看到类似信息：
 
 ```text
 Tomcat started on port 8080
 Started EmployeeManagementApiApplication
 ```
 
-日志中的耗时和其他细节会因版本与电脑而不同。看到应用启动完成后，使用 `Ctrl+C` 可以停止终端中的服务。
+日志中的耗时和其他细节会因版本与电脑而不同。看到应用启动完成后，Eclipse工具栏会显示正在运行的进程；验证结束时在Console中选择该进程并点击红色停止按钮。
 
 此时访问 `http://localhost:8080/` 可能返回404。这不代表启动失败，只表示项目还没有定义根路径接口。
 
@@ -423,57 +429,30 @@ public class HealthController {
 
 `health()` 是项目自己定义的方法，不是框架库中的方法。它不接收参数，返回类型是Java的 `String`；执行 `return "OK"` 后，Spring把字符串 `OK` 写入响应体。因为方法正常完成且没有另设状态，所以本例响应状态是200。
 
-重新启动项目。PowerShell方式仍然是：
+保存代码后，在Eclipse中停止原进程，再次右键启动类并选择 **Run As → Java Application**。确认Console没有编译错误，并重新出现 `Started EmployeeManagementApiApplication`。如果只修改方法内部代码，Eclipse通常会自动编译；是否自动重启取决于开发工具配置，本课程统一要求明确停止并重新启动后再验证。
 
-```powershell
-.\mvnw.cmd clean test
-.\mvnw.cmd spring-boot:run
-```
+## 九、使用Postman验证HTTP响应
 
-先再次看到 `BUILD SUCCESS`，再确认应用能够启动。这样可以证明加入Controller和YAML后，完整工程仍能通过构建和最小测试。
+保持Eclipse中的应用继续运行，打开Postman并新建请求：
 
-## 九、验证HTTP响应
+| 项目 | 设置或预期 |
+| --- | --- |
+| HTTP方法 | `GET` |
+| URL | `http://localhost:8080/health` |
+| 查询参数 | 无 |
+| 请求体 | 无 |
+| 预期状态码 | `200 OK` |
+| 预期响应体 | `OK` |
 
-### 浏览器验证
+点击 **Send**。在响应区域确认状态为 `200 OK`，Body中显示 `OK`。本章只使用Postman完成最小请求；Params、Headers、JSON Body、错误响应和证据保存会在第6章集中讲解。
 
-访问：
-
-```text
-http://localhost:8080/health
-```
-
-页面应显示：
-
-```text
-OK
-```
-
-### PowerShell验证
-
-保持启动服务的终端窗口不要关闭，另外打开一个PowerShell窗口执行：
-
-```powershell
-$response = Invoke-WebRequest -Uri "http://localhost:8080/health"
-$response.StatusCode
-$response.Content
-```
-
-`Invoke-WebRequest` 是PowerShell发送Web请求的命令。`-Uri` 是必填的目标地址，本例接受完整的HTTP URL；未写 `-Method` 时默认发送GET。命令把响应对象保存到变量 `$response`，`StatusCode` 属性是状态码，`Content` 属性是响应正文。
-
-预期可观察结果：
-
-```text
-200
-OK
-```
-
-浏览器只显示响应内容；PowerShell还可以确认HTTP状态码为200。完成验证后回到启动服务的终端按 `Ctrl+C` 停止程序。
+完成验证后回到Eclipse的Console，选择当前Spring Boot进程并点击红色停止按钮。
 
 ## 十、常见失败与定位
 
 | 现象 | 定位方法 | 原因 | 处理 |
 | --- | --- | --- | --- |
-| `java`命令找不到 | 执行 `java -version` | JDK未安装或PATH错误 | 安装JDK 17并修正环境变量 |
+| Eclipse找不到可用JDK | 检查Installed JREs | JDK未安装，或Eclipse只配置了JRE/旧JDK | 安装JDK 17并在Eclipse中选中它 |
 | `release version 17 not supported` | 检查IDE和Maven使用的JDK | 构建实际使用了旧JDK | 把项目SDK和Maven JDK都改为17 |
 | Wrapper下载失败 | 查看命令中的下载地址和网络错误 | 无法访问Maven分发或依赖仓库 | 检查代理、网络和企业仓库配置后重试 |
 | 8080端口被占用 | 启动日志出现 `Port 8080 was already in use` | 其他程序正在监听8080 | 停止占用程序，或临时修改 `server.port` |

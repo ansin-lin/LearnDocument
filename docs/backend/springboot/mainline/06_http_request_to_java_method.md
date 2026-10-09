@@ -51,9 +51,11 @@ service/EmployeeService.java          ← 完整替换
 
 `POST /employees/preview` 只用于确认JSON绑定结果，不保存数据，也不代表第5章的真实新增接口已经完成。真实新增需要数据库写入和201响应，后续章节再实现。
 
-## 二、完整示例
+## 二、先看请求怎样找到方法，再使用完整示例
 
-先完整替换Service和Controller，运行成功后再从第三节开始逐项理解本章第一次出现的注解、参数和框架对象。
+Spring MVC先按HTTP方法和路径选择Controller方法，再解析该方法需要的参数；参数准备成功后才调用Controller。`@GetMapping`等映射在应用启动时登记，`@PathVariable`从匹配的路径段取值并转换类型，`@RequestParam`从查询字符串取值；`@RequestBody`交给消息转换器，JSON由Jackson读成DTO。方法返回后，`@RestController`使返回值进入响应体处理，Java对象可由Jackson写成JSON。路由找不到、类型转换失败、JSON无法读取都可能发生在Controller方法执行之前。
+
+学习时按三个小阶段读下方完整文件，不必一次记住全部注解：先只看 `GET /employees/{id}` 并完成第十四节路径参数验证；再看 `GET /employees?department=...`，核对缺少参数时的默认值；最后看 `POST /employees/preview`，核对JSON请求体。每一步都在Eclipse保持服务运行，用Postman分别检查方法、URL、参数或Body、状态码和响应。下面的完整文件是三个阶段完成后的最终状态，复制时要整体替换，不能把中间阶段与最终状态混用。
 
 ### 1. 完整替换EmployeeService.java
 
@@ -548,30 +550,55 @@ Spring的singleton描述Bean在容器中的复用范围，不等于要求开发�
 
 这些输入各自还有必填规则、媒体类型、大小限制和安全边界，不适合与三种基础输入同时展开。需要实现相关功能时，使用附录[Header、Cookie与文件上传](../appendix/A08_http_headers_cookies_file_upload.md)完成独立实验。
 
-## 十三、构建、运行与成功验证
+## 十三、用Eclipse启动并认识Postman
 
-在项目根目录执行：
+保存代码，在Eclipse中右键启动类，选择 **Run As → Java Application**。Console出现 `Started EmployeeManagementApiApplication` 后保持应用运行，再打开Postman。
 
-```powershell
-.\mvnw.cmd clean test
-.\mvnw.cmd spring-boot:run
-```
+### 1. 建立本地环境和Collection
 
-保持启动窗口运行，在另一个PowerShell窗口依次验证。
+在Postman中新建环境 `Local`，增加变量：
+
+| 变量 | Value | 作用 |
+| --- | --- | --- |
+| `baseUrl` | `http://localhost:8080` | 统一保存本地服务地址 |
+
+选择 `Local` 环境后，请求URL可以写成 `{{baseUrl}}/health`。以后端口变化时只修改环境变量，不需要逐条修改请求。当前Postman版本的环境编辑器使用本地 `Value` 发送请求，并可选择是否共享该值；本课程的本地地址和后续敏感值不需要同步到团队空间。再新建Collection `Employee API`，把本章请求保存进去；保存请求不是自动化测试，只是避免重复填写。
+
+### 2. Postman请求区域分别做什么
+
+| 区域 | 本章用途 | 操作结果 |
+| --- | --- | --- |
+| HTTP方法下拉框 | 选择GET、POST、PUT、DELETE等方法 | 决定请求动作 |
+| URL | 填写完整路径或使用 `{{baseUrl}}` | 决定请求目标 |
+| Params | 填写查询参数键和值 | Postman自动拼入URL查询字符串 |
+| Headers | 填写 `Accept`、`Content-Type` 等请求头 | 决定期望响应格式和请求体媒体类型 |
+| Body | 选择raw及JSON或Text，填写请求体 | 发送JSON或文本数据 |
+| Send | 发送当前请求 | 下方显示响应 |
+| Response Status | 显示200、400等状态 | 判断HTTP层结果 |
+| Response Body | 显示返回文本或JSON | 核对业务数据 |
+| Response Headers | 查看 `Content-Type` 等响应头 | 核对响应元数据 |
+| Cookies | 查看当前域名保存的Cookie | 第15章用于观察Session；不要把会话值写入共享证据 |
+
+选择Body的 **raw → JSON** 时，Postman通常会自动加入 `Content-Type: application/json`；仍要到Headers中确认实际发送值。Postman界面版本可能略有不同，但方法、URL、Params、Headers、Body和响应区的职责不变。
+
+界面变化时可对照Postman官方的[创建并发送请求](https://learning.postman.com/docs/use/send-requests/create-requests/create-requests)、[请求参数与Body](https://learning.postman.com/docs/sending-requests/create-requests/parameters/)和[环境变量](https://learning.postman.com/docs/use/send-requests/variables/environment-variables)说明。
+
+## 十四、用Postman验证成功和失败请求
 
 ### 1. 路径参数
 
-```powershell
-$detail = Invoke-WebRequest `
-    -Uri "http://localhost:8080/employees/1001" `
-    -Method Get `
-    -Headers @{ Accept = "application/json" }
+在Postman发送：
 
-$detail.StatusCode
-$detail.Content
-```
+| 项目 | 内容 |
+| --- | --- |
+| HTTP方法 | GET |
+| URL | `{{baseUrl}}/employees/1001` |
+| 查询参数 | 无 |
+| 请求头 | `Accept: application/json` |
+| 请求体 | 无 |
+| 预期状态码 | 200 |
 
-预期状态为200，正文内容等价于：
+预期响应体等价于：
 
 ```json
 {
@@ -584,96 +611,54 @@ $detail.Content
 
 ### 2. 查询参数和默认值
 
-```powershell
-$filtered = Invoke-RestMethod `
-    -Uri "http://localhost:8080/employees?department=Development" `
-    -Method Get
+第一条请求在Params中增加 `department=Development`；第二条请求不填写Params：
 
-$filtered[0].department
-```
+| HTTP方法 | URL | Params | 请求体 | 预期状态码 | 预期结果 |
+| --- | --- | --- | --- | ---: | --- |
+| GET | `{{baseUrl}}/employees` | `department=Development` | 无 | 200 | 第一项的 `department` 为 `Development` |
+| GET | `{{baseUrl}}/employees` | 无 | 无 | 200 | 第一项的 `department` 为默认值 `Sales` |
 
-预期输出：
-
-```text
-Development
-```
-
-省略查询参数：
-
-```powershell
-$defaultList = Invoke-RestMethod `
-    -Uri "http://localhost:8080/employees" `
-    -Method Get
-
-$defaultList[0].department
-```
-
-预期输出：
-
-```text
-Sales
-```
+发送后可以在Postman自动生成的URL中看到查询字符串。删除Params中的参数后再发送，才能验证默认值；仅取消勾选也要确认最终URL中确实没有该参数。
 
 ### 3. JSON请求体
 
-```powershell
-$body = @{
-    name = "Sato"
-    department = "Development"
-    email = "sato@example.com"
-} | ConvertTo-Json
+新建请求并设置：
 
-$preview = Invoke-WebRequest `
-    -Uri "http://localhost:8080/employees/preview" `
-    -Method Post `
-    -ContentType "application/json" `
-    -Body $body
+| 项目 | 内容 |
+| --- | --- |
+| HTTP方法 | POST |
+| URL | `{{baseUrl}}/employees/preview` |
+| 查询参数 | 无 |
+| Body | **raw → JSON** |
+| 预期状态码 | 200 |
+| 预期响应体 | `Sato / Development / sato@example.com` |
 
-$preview.StatusCode
-$preview.Content
+Body内容：
+
+```json
+{
+  "name": "Sato",
+  "department": "Development",
+  "email": "sato@example.com"
+}
 ```
 
-`@{...}` 创建PowerShell哈希表；`ConvertTo-Json` 把它转换为JSON字符串。`-ContentType` 设置请求体媒体类型，`-Body` 传入实际请求体。
+发送前确认Headers中存在 `Content-Type: application/json`。最后发送 `GET {{baseUrl}}/health`，无参数、无请求体，预期200和 `OK`，确认本章修改没有破坏原接口。
 
-预期结果：
+### 4. 主动观察四类请求失败
 
-```text
-200
-Sato / Development / sato@example.com
-```
+下面请求都不修改数据库：
 
-最后回归请求 `/health`，确认仍返回200和 `OK`。验证完成后在启动窗口按 `Ctrl+C` 停止应用。
+| HTTP方法 | URL | Params | Headers与Body | 预期状态 | 发生阶段 |
+| --- | --- | --- | --- | ---: | --- |
+| GET | `{{baseUrl}}/employee/1001` | 无 | 无Body | 404 | 没有匹配的请求路径 |
+| DELETE | `{{baseUrl}}/employees` | 无 | 无Body | 405 | 路径存在，但没有匹配的HTTP方法 |
+| GET | `{{baseUrl}}/employees/abc` | 无 | 无Body | 400 | 路径文本不能转换为 `Long` |
+| POST | `{{baseUrl}}/employees/preview` | 无 | `Content-Type: text/plain`，raw Text正文为 `not-json` | 415 | 请求体媒体类型不受当前参数支持 |
 
-## 十四、主动观察四类请求失败
+第四条请求要把Body类型改成 **raw → Text**，并在Headers中确认 `Content-Type` 是 `text/plain`，否则实际发出的JSON请求不能证明415场景。每次发送后记录请求方法、最终URL、关键Header、请求体、实际状态码和响应Body。
 
-下面的请求都只读取当前服务状态，不修改数据库：
-
-| 操作 | 预期状态 | 发生阶段 |
-| --- | ---: | --- |
-| `GET /employee/1001` | 404 | 没有匹配的请求路径 |
-| `DELETE /employees` | 405 | 路径存在，但没有匹配的HTTP方法 |
-| `GET /employees/abc` | 400 | 路径文本不能转换为 `Long` |
-| `POST /employees/preview` 使用 `text/plain` | 415 | 请求体媒体类型不受当前参数支持 |
-
-可以用 `curl.exe` 查看完整响应状态行：
-
-```powershell
-curl.exe -i "http://localhost:8080/employee/1001"
-
-curl.exe -i `
-    -X DELETE "http://localhost:8080/employees"
-
-curl.exe -i "http://localhost:8080/employees/abc"
-
-curl.exe -i `
-    -X POST "http://localhost:8080/employees/preview" `
-    -H "Content-Type: text/plain" `
-    --data-binary "not-json"
-```
-
-`curl.exe -i` 会同时显示响应头和正文；`-X` 指定HTTP方法，`-H` 添加请求头，`--data-binary` 原样发送请求体。这里没有使用Linux续行符，反引号是PowerShell续行符。
-
-出现错误时先判断发生阶段，不要立即修改Service或数据库：路径和请求方法尚未匹配时，业务方法根本没有执行。
+出现错误时先判断发生阶段，不要立即修改Service或数据库：路径和请求方法尚未匹配时，业务方法根本没有执行。验证完成后在Eclipse Console中停止应用。
 
 ## 十五、常见问题与Review
 

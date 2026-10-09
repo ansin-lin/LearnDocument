@@ -34,7 +34,11 @@ SLF4J API和默认Logback实现已经由Spring Boot Web Starter提供，本章�
 
 ## 二、完整示例
 
-先阅读 `application.yml` 及其紧随其后的日志配置说明，再完成本节其他文件。这样在阅读Java日志代码前，已经知道日志会不会输出、输出到哪里，以及旧文件怎样滚动归档。
+先设想Postman只显示500和“服务器内部错误”：这对调用方是安全的，但开发者还不知道是哪一次请求、哪个业务步骤失败。服务端日志至少要能用同一个requestId串起请求入口、Service关键判断和最终状态；异常堆栈应由约定的一层记录一次，不应每层都打印ERROR。
+
+本项目业务代码面向SLF4J的 `Logger` API写日志，由Spring Boot Web Starter默认带入的Logback实现输出。INFO记录预期业务进展，WARN记录可处理的异常状态，ERROR记录需要调查的系统故障；级别不是“越高越好”，也不能把404等可预期结果全部打印成ERROR。先看Service日志为什么记录业务事实，再理解横跨Controller与Service的请求关联：`RequestLoggingFilter` 在Controller前后运行，`FilterChain.doFilter()`放行请求并把控制权交给后续过滤器；MDC保存当前执行线程的requestId，必须在 `finally` 中清理，避免线程复用后串到下一次请求。`@Order`决定该过滤器在同类过滤器中的相对顺序，不保证它越过Spring Security等所有过滤器。
+
+下方先展示最终配置及逐项说明，再给出Filter、Service和Advice完整代码。阅读时先掌握上述诊断目标，再看 `application.yml` 决定哪些日志能输出、写到哪里和如何滚动；不要把滚动配置当成故障定位本身。
 
 ### 1. 完整替换application.yml
 
@@ -125,19 +129,9 @@ TRACE < DEBUG < INFO < WARN < ERROR
 
 Logger名称通常是类的完整包名。多个配置同时匹配时，范围更具体的配置生效。因此把 `EmployeeServiceImpl` 调成DEBUG不会把整个项目或Mapper一起调成DEBUG。
 
-`${APP_SERVICE_LOG_LEVEL:INFO}` 是Spring Boot占位符：先读取环境变量 `APP_SERVICE_LOG_LEVEL`，没有设置时使用冒号后的默认值 `INFO`。本地需要查看Service调试日志时，在启动应用的同一个PowerShell窗口执行：
+`${APP_SERVICE_LOG_LEVEL:INFO}` 是Spring Boot占位符：先读取环境变量 `APP_SERVICE_LOG_LEVEL`，没有设置时使用冒号后的默认值 `INFO`。本地需要查看Service调试日志时，打开Eclipse的 **Run → Run Configurations... → Environment**，在当前启动配置中增加 `APP_SERVICE_LOG_LEVEL=DEBUG`，点击 **Apply** 后重新启动应用。
 
-```powershell
-$env:APP_SERVICE_LOG_LEVEL = "DEBUG"
-.\mvnw.cmd spring-boot:run
-```
-
-验证结束后停止应用，删除当前PowerShell进程中的变量，再重新启动：
-
-```powershell
-Remove-Item Env:APP_SERVICE_LOG_LEVEL
-.\mvnw.cmd spring-boot:run
-```
+验证结束后停止应用，从同一个运行配置中删除该变量或把值恢复为 `INFO`，再重新启动。环境变量在进程启动时读取；只修改配置但不重启，不会改变已经运行的Logger等级。
 
 MyBatis通常使用Mapper接口名或XML的namespace作为Logger名称。Mapper达到DEBUG时可能输出SQL，进一步提高到TRACE时还可能出现更细的结果信息。因此不能为了查看一条Service调试日志而把 `root` 或整个项目包长期改成DEBUG。
 
@@ -862,13 +856,28 @@ log.error(
 
 同一个异常也不要在Mapper、Service和全局处理器连续记录。Service负责转换已知业务含义，最终处理器负责记录一次；否则一次故障会产生多条相似ERROR，让排查人员误以为故障发生了多次。
 
-## 三、运行并读取日志
+## 三、在Eclipse运行、用Postman请求并读取日志
 
-设置数据库环境变量并启动应用，完成一次详情查询、一次不存在查询和一次新增：
+确认Eclipse Run Configuration中已有数据库环境变量，然后从启动类运行应用。使用Postman依次发送：
 
-```powershell
-.\mvnw.cmd spring-boot:run
+| HTTP方法 | URL | Params | 请求体 | 预期状态与响应 |
+| --- | --- | --- | --- | --- |
+| GET | `{{baseUrl}}/employees/1001` | 无 | 无 | 200，员工详情 |
+| GET | `{{baseUrl}}/employees/999999` | 无 | 无 | 404，员工不存在响应 |
+| POST | `{{baseUrl}}/employees` | 无 | `{"name":"Log Sample","department":"Support","email":"log.sample@example.com"}` | 201，返回新增员工 |
+
+POST请求的Body选择 **raw → JSON**，确认 `Content-Type: application/json`。记录响应Headers中的 `X-Request-Id`。完成日志观察后，在数据库客户端先按邮箱确认目标，再只删除本次新增记录：
+
+```sql
+SELECT id, email
+FROM employees
+WHERE email = 'log.sample@example.com';
+
+DELETE FROM employees
+WHERE email = 'log.sample@example.com';
 ```
+
+确认连接的是个人练习库，并且SELECT只返回本次创建的目标后才能执行DELETE。
 
 响应头中应出现 `X-Request-Id`。下面是格式示例，时间、线程、UUID、耗时和员工编号以实际结果为准：
 
@@ -878,21 +887,9 @@ log.error(
 2026-09-14T10:20:35.457+09:00 INFO  [http-nio-8080-exec-2] [a1...9d] c.e.e.c.RequestLoggingFilter - request_complete method=GET path=/employees/999999 status=404 elapsedMs=7
 ```
 
-读取文件最后100行：
+Eclipse Console可以直接观察当前运行日志。需要查看文件日志时，在Project Explorer中刷新项目，打开 `logs/employee-api.log`；如果日志目录没有显示，确认Eclipse工作目录和 `logging.file.name` 的相对路径。使用编辑器的 **Find** 查找 `employeeId=1001`、`status=500` 或记录下来的requestId。
 
-```powershell
-Get-Content -LiteralPath ".\logs\employee-api.log" -Tail 100
-```
-
-按员工编号、状态或请求编号检索：
-
-```powershell
-Select-String `
-    -LiteralPath ".\logs\employee-api.log" `
-    -Pattern "employeeId=1001", "status=500", "7f...c2"
-```
-
-查找时先缩小时间范围，再用requestId串起同一次请求，最后沿类名和异常原因进入代码。不要只看到最后一条500就猜测原因。
+查找时先缩小时间范围，再用requestId串起同一次请求，最后沿类名和异常原因进入代码。不要只看到最后一条500就猜测原因。日志文件较大时可以使用IDE支持的日志查看插件，但课程主线只要求Console、文件和文本查找。
 
 ## 四、四类故障的排查起点
 
@@ -910,7 +907,7 @@ Select-String `
 | 现象 | 先检查 | 常见原因 | 修正方向 |
 | --- | --- | --- | --- |
 | 找不到日志文件 | 启动工作目录、`logging.file.name` | 相对路径基准与预想不同 | 确认启动目录；部署时使用受控绝对路径 |
-| Service debug不出现 | `APP_SERVICE_LOG_LEVEL`和重启后的配置 | 变量设在其他终端，或修改后没有重启 | 在启动进程所在终端设置并重新启动 |
+| Service debug不出现 | `APP_SERVICE_LOG_LEVEL`和重启后的配置 | 变量未加入当前Eclipse运行配置，或修改后没有重启 | 修改当前Run Configuration并重新启动 |
 | SQL也大量输出 | Mapper Logger最终级别 | 打开了整个项目包或Mapper DEBUG | 保持Mapper为INFO，只打开目标Service |
 | 同一异常出现多次 | Service与异常处理器 | 多层重复记录同一异常 | 确定一个最终记录位置 |
 | 启动日志显示no-request | 日志发生时机 | 启动阶段没有HTTP请求上下文 | 属于正常现象，不伪造requestId |
@@ -922,14 +919,14 @@ Select-String `
 
 ### 1. 区分启动故障和请求期间故障
 
-先做启动故障实验：停止应用，把当前PowerShell中的 `DB_PASSWORD` 临时改成错误值并重启。数据库连接池可能在启动阶段确认连接，也可能在第一次访问数据库时才取连接；因此先观察应用是否成功启动，不预先假定一定能取得HTTP响应。
+先做启动故障实验：停止应用，在当前Eclipse Run Configuration中把 `DB_PASSWORD` 临时改成错误值并重启。数据库连接池可能在启动阶段确认连接，也可能在第一次访问数据库时才取连接；因此先观察应用是否成功启动，不预先假定一定能取得HTTP响应。
 
 - 如果应用启动失败：保存启动日志中的最底层数据库认证原因，不发送接口请求。
-- 如果应用能够启动：只调用一次详情接口，记录状态、`X-Request-Id`和同一requestId下的数据库异常。
+- 如果应用能够启动：只在Postman调用一次 `GET {{baseUrl}}/employees/1001`，无参数、无请求体；记录实际状态、`X-Request-Id`和同一requestId下的数据库异常。
 
 随后恢复正确环境变量并重启，确认应用正常启动且详情接口返回200。不要反复猜密码，也不要把错误或正确密码写进证据。
 
-再做一次能够稳定产生requestId的运行时SQL故障实验：在个人练习分支中，把 `EmployeeMapper.xml` 的 `findById` 查询表名临时改为不存在的 `employees_log_lab_missing`，重启后调用 `GET /employees/1001`。预期得到500、`X-Request-Id`以及同一requestId下的 `database_access_error`和数据库“表不存在”原因。完成后立即恢复表名、重启，并确认同一请求重新返回200。不得在共享环境修改Mapper，也不要把错误表名保留到后续章节。
+再做一次能够稳定产生requestId的运行时SQL故障实验：在个人练习分支中，把 `EmployeeMapper.xml` 的 `findById` 查询表名临时改为不存在的 `employees_log_lab_missing`，从Eclipse重启后在Postman调用 `GET {{baseUrl}}/employees/1001`，无参数、无请求体。预期得到500、`X-Request-Id`以及同一requestId下的 `database_access_error`和数据库“表不存在”原因。完成后立即恢复表名、重启，并确认同一请求重新返回200。不得在共享环境修改Mapper，也不要把错误表名保留到后续章节。
 
 ### 2. 问题记录必须形成闭环
 

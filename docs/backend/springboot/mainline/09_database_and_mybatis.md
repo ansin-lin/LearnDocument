@@ -38,7 +38,9 @@ MySQL一行数据
 
 ## 二、完整示例
 
-先完成本节全部文件，再从第三节开始逐项理解第一次出现的数据库、配置、对象和方法。
+第8章的固定样例只能演示流程：查询编号1002不应由代码凭空编造结果。接入真实数据时，运行方向是 `HTTP → Controller → EmployeeService接口 → EmployeeServiceImpl → EmployeeMapper代理 → MyBatis → DataSource → MySQL`，查询结果再经Entity、响应DTO返回。Spring Boot依据 `spring.datasource` 配置准备 `DataSource`；MyBatis Starter利用它建立SQL会话并注册Mapper代理。Starter负责Spring与MyBatis的整合，MySQL JDBC Driver负责与MySQL通信，两种依赖不能互相替代。
+
+下面先准备数据库，再配置依赖与连接，接着把Entity、Mapper接口和同名XML放在一起核对，最后将Service改为接口与实现类。`@Mapper`使MyBatis把接口注册为可注入的代理对象，无需手写Mapper实现；`@Service`让Spring管理实现类。Controller构造方法仍要求 `EmployeeService`，Spring按接口类型找到 `EmployeeServiceImpl`，所以Controller不必随实现方式改变。下文完整代码是本章最终状态；学习时按这条链逐段检查，不把MyBatis XML基础语法重复当作新知识。
 
 ### 1. 建立数据库、账号、表和样例数据
 
@@ -199,20 +201,15 @@ mybatis:
 
 `map-underscore-to-camel-case: true` 允许自动映射时把 `created_at` 对应到 `createdAt`。当前 `EmployeeMapper.xml` 使用了明确的 `resultMap`，所以即使开启该设置，仍以 `resultMap` 中写出的 `column` 和 `property` 为准。`default-statement-timeout: 10` 把未单独指定超时的SQL默认等待时间设为10秒；它用于限制等待时间，不保证SQL一定在10秒内完成，具体终止行为还受JDBC驱动和数据库影响。
 
-在将要启动应用的PowerShell窗口中设置本地环境变量：
+在Eclipse中打开 **Run → Run Configurations...**，选择当前启动类对应的Java Application或Spring Boot App运行配置，在 **Environment** 页添加：
 
-```powershell
-$env:DB_USERNAME = "employee_app"
-$env:DB_PASSWORD = "填写本机练习账号的密码"
-```
+| Name | Value | 是否必需 |
+| --- | --- | --- |
+| `DB_USERNAME` | `employee_app` | 是 |
+| `DB_PASSWORD` | 本机练习账号密码 | 是，不写入文档或Git |
+| `DB_URL` | `jdbc:mysql://localhost:3306/employee_db?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Tokyo` | 数据库不在默认地址时设置 |
 
-只有数据库不在本机默认地址时才需要设置 `DB_URL`：
-
-```powershell
-$env:DB_URL = "jdbc:mysql://localhost:3306/employee_db?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Tokyo"
-```
-
-这些变量只对当前PowerShell及其启动的子进程有效。关闭窗口后不会永久保存。
+点击 **Apply** 保存到本机Eclipse运行配置，再用该配置启动应用。环境变量只提供给这个运行进程；不要把真实密码写进 `application.yml`、截图、测试证据或提交文件。更换电脑或Eclipse工作区后需要重新配置。
 
 ### 4. 新建Employee.java
 
@@ -377,6 +374,7 @@ import com.example.employee.dto.request.EmployeeCreateRequest;
 import com.example.employee.dto.response.EmployeeListItemResponse;
 import com.example.employee.dto.response.EmployeeResponse;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public interface EmployeeService {
@@ -420,6 +418,13 @@ import java.util.List;
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
 
+    private static final List<EmployeeResponse> SAMPLE_EMPLOYEES = List.of(
+            new EmployeeResponse(
+                    1001L,
+                    "Tanaka",
+                    "Sales",
+                    "tanaka@example.com"));
+
     private final EmployeeMapper employeeMapper;
 
     public EmployeeServiceImpl(EmployeeMapper employeeMapper) {
@@ -439,14 +444,16 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public List<EmployeeListItemResponse> findList(String department) {
-        if ("Unknown".equals(department)) {
-            return List.of();
+        List<EmployeeListItemResponse> results = new ArrayList<>();
+        for (EmployeeResponse employee : SAMPLE_EMPLOYEES) {
+            if (employee.getDepartment().equals(department)) {
+                results.add(new EmployeeListItemResponse(
+                        employee.getId(),
+                        employee.getName(),
+                        employee.getDepartment()));
+            }
         }
-
-        return List.of(new EmployeeListItemResponse(
-                1001L,
-                "Tanaka",
-                department));
+        return results;
     }
 
     @Override
@@ -481,7 +488,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 }
 ```
 
-`findList()` 和 `previewCreate()` 保留第8章的临时实现，确保既有列表、校验和异常练习仍然可以执行。只有 `findById()` 在本章改为读取数据库。
+`findList()` 继续按固定样例筛选，`previewCreate()` 继续使用第8章的临时实现，确保既有列表、校验和异常练习仍然可以执行。此时只有 `findById()` 读取数据库；本章列表结果不反映数据库中的所有记录，第10章才将列表接入Mapper。不要把固定列表响应当成数据库查询证据。
 
 ## 三、先读懂表定义和数据字典
 
@@ -722,31 +729,24 @@ WHERE id = 1001;
 
 确认能查到目标记录。如果实际编号不是1001，记下真实编号。
 
-### 2. 构建和启动
+### 2. 在Eclipse中启动
 
-在已经设置 `DB_USERNAME` 和 `DB_PASSWORD` 的同一个PowerShell中，从含有 `pom.xml` 的项目根目录执行：
-
-```powershell
-.\mvnw.cmd clean test
-.\mvnw.cmd spring-boot:run
-```
-
-若生成工程没有Wrapper，可使用本机Maven执行等价的 `mvn.cmd clean test` 和 `mvn.cmd spring-boot:run`。
+确认Eclipse运行配置已经包含 `DB_USERNAME` 和 `DB_PASSWORD`，保存代码后从该运行配置启动应用。Console中应先出现数据库连接池和Spring Boot启动成功信息；如果密码、URL或驱动错误，应先修复启动问题，不继续发送接口请求。
 
 ### 3. 请求详情
 
-另开PowerShell，把编号替换为数据库中实际存在的值：
+在Postman中把编号替换为数据库中实际存在的值：
 
-```powershell
-$response = Invoke-WebRequest `
-    -Uri "http://localhost:8080/employees/1001" `
-    -Method Get
+| 项目 | 内容 |
+| --- | --- |
+| HTTP方法 | GET |
+| URL | `{{baseUrl}}/employees/1001` |
+| 查询参数 | 无 |
+| 请求体 | 无 |
+| 预期状态码 | 200 |
+| 预期响应 | `data`中的姓名、部门和邮箱与数据库记录一致 |
 
-$response.StatusCode
-$response.Content
-```
-
-预期返回200，`data`中的姓名、部门和邮箱与数据库记录一致。随后临时修改这行员工的姓名：
+随后在数据库客户端临时修改这行员工的姓名：
 
 ```sql
 UPDATE employees
@@ -754,7 +754,7 @@ SET name = 'Tanaka Taro'
 WHERE id = 1001;
 ```
 
-再次请求接口，响应姓名也应改变。这证明详情不再来自Service中的固定文本。完成验证后恢复样例值：
+再次在Postman点击 **Send**，响应姓名也应改变。这证明详情不再来自Service中的固定文本。完成验证后在数据库客户端恢复样例值：
 
 ```sql
 UPDATE employees
@@ -764,25 +764,18 @@ WHERE id = 1001;
 
 ### 4. 验证不存在记录和既有接口
 
-请求一个数据库中不存在的编号：
+在Postman完成不存在记录和既有接口回归：
 
-```powershell
-try {
-    Invoke-WebRequest `
-        -Uri "http://localhost:8080/employees/999999" `
-        -Method Get
-} catch {
-    $_.Exception.Response.StatusCode.value__
-}
-```
+| HTTP方法 | URL | Params | 请求体 | 预期状态与响应 |
+| --- | --- | --- | --- | --- |
+| GET | `{{baseUrl}}/employees/999999` | 无 | 无 | 404，员工不存在结构 |
+| GET | `{{baseUrl}}/employees` | `department=Sales` | 无 | 200，列表数据来自数据库 |
+| POST | `{{baseUrl}}/employees/preview` | 无 | `{"name":"Sato","department":"Development","email":"sato@example.com"}` | 200，预览成功 |
+| POST | `{{baseUrl}}/employees/preview` | 无 | `{"name":"Sato","department":"Other","email":"sato@example.com"}` | 400，非法部门消息 |
+| POST | `{{baseUrl}}/employees/preview` | 无 | `{"name":"Sato","department":"Development","email":"used@example.com"}` | 409，邮箱冲突消息 |
+| GET | `{{baseUrl}}/health` | 无 | 无 | 200，正文 `OK` |
 
-预期返回404。还应回归验证：
-
-- `GET /employees?department=Sales` 仍返回200；
-- 合法的 `POST /employees/preview` 仍返回200；
-- 非法部门仍返回400；
-- 重复测试邮箱仍返回409；
-- `GET /health` 仍返回200和 `OK`。
+三个POST请求的Body均选择 **raw → JSON**，并确认 `Content-Type: application/json`。
 
 完成这一步后，数据库记录到HTTP响应的主线已经实际运行。下面两节补充项目命名和当前时间字段边界，不再阻塞本章核心验证。
 
@@ -808,7 +801,7 @@ Employee表的 `created_at`、`updated_at` 使用MySQL `DATETIME`，Entity使用
 
 | 现象 | 所在阶段 | 常见原因 | 检查和修正 |
 | --- | --- | --- | --- |
-| 提示无法解析 `DB_PASSWORD` | 配置读取 | 环境变量未设置 | 在启动应用的同一PowerShell设置变量 |
+| 提示无法解析 `DB_PASSWORD` | 配置读取 | Eclipse运行配置中未设置环境变量 | 在当前启动类的Run Configuration中添加变量并重启 |
 | 提示找不到MyBatis核心配置 | 配置读取 | `config-location` 路径错误，且启用了存在检查 | 核对 `src/main/resources` 下的位置和 `classpath:` 路径 |
 | 创建 `SqlSessionFactory` 时提示两种配置并存 | MyBatis自动配置 | 同时写了 `config-location` 和 `configuration` | 二选一，删除另一套核心设置来源 |
 | `Access denied for user` | 数据库认证 | 账号、密码、主机范围或权限错误 | 用应用账号单独登录并检查授权，不改用root绕过 |
