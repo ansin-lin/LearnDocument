@@ -20,6 +20,15 @@ Controller → Service → Mapper → 数据库
 
 前端隐藏“删除”按钮只能改善画面体验。用户仍可直接发送HTTP请求，所以决定是否放行的规则必须在后端执行。
 
+| 请求场景 | 认证：是谁 | 功能授权：能否调用API | 数据范围：能否访问该记录 |
+| --- | --- | --- | --- |
+| 未登录查询1001 | 无有效身份，拒绝 | 不继续判断 | 不继续判断 |
+| tanaka查询本人1001 | USER身份有效 | 详情GET允许 | `app_users.employee_id=1001`，允许 |
+| tanaka查询他人1002 | USER身份有效 | 详情GET允许 | `1001 ≠ 1002`，拒绝 |
+| admin查询1002 | ADMIN身份有效 | 详情GET允许 | 管理员按本章规格可查看全部 |
+
+登录成功并不自动获得所有API权限；能够调用某个详情API，也不表示能读取任意编号的数据。前端发送的路径id是“目标记录”，不是“当前用户身份”。
+
 ## 二、先把权限规格写成矩阵
 
 本章先固定规格，再写代码。`USER` 表示普通用户，`ADMIN` 表示管理员：
@@ -45,13 +54,181 @@ Controller → Service → Mapper → 数据库
 
 401表示当前请求没有可用的登录身份；403表示身份已经确认，但权限不足。找不到员工仍由第7章的统一异常处理返回404。
 
-## 三、完整示例
+本章对列表采取“仅ADMIN可查询”的明确规格，所以普通用户连列表入口都不能通过，暂时不需要给分页SQL增加按用户过滤。若将来允许USER按部门或本人查看列表，必须从可信账号关系取得范围，并把同一范围条件同时传给第14章列表SQL和COUNT SQL；只在返回一页后用Java过滤会泄露错误的 `total`，也可能漏掉其他页。届时需先评审部门变更、排序和分页边界，再修改Mapper与测试，不能仅把URL规则从 `hasRole("ADMIN")` 改为 `authenticated()`。
+
+详情数据范围也有两种常见实现：先取得可信身份与目标id、在Service执行查询前判断归属（本章方案），或把允许范围作为Mapper查询条件，例如 `WHERE id = ? AND owner_employee_id = ?`（需要对应数据模型及业务规格）。前者适合当前账号表已有 `employee_id` 且只需单条本人详情；后者适合大量记录或复杂范围，但列表与COUNT必须共用同一条件。不要先读取他人详细资料并写入日志/响应，最后才补一个拒绝判断。
+
+## 三、按案例建立授权规则
+
+从第15章稳定工程继续。四个案例依次增加URL角色、可信账号关联、本人数据检查和统一拒绝响应；每一步只修改已点名的文件。第15章的Session登录、CSRF、事务和员工CRUD不删除。后面的完整文件清单用于最后核对，不要求先跳过去拼出第一个案例。
+
+### 案例16-01：先用URL规则限制角色
+
+在第15章 `SecurityConfig.java` 的 `securityFilterChain(...)` 中，仅把原 `.authorizeHttpRequests(...)` 整块替换为以下代码，并新增 `import org.springframework.http.HttpMethod;`；其余CSRF、Session、认证和logout配置保留。此阶段详情GET只检查是否登录，下一案例才加入本人范围。
+
+```java
+.authorizeHttpRequests(authorize -> authorize
+    .requestMatchers("/health", "/error", "/auth/csrf", "/auth/login")
+        .permitAll()
+    .requestMatchers("/auth/me").authenticated()
+    .requestMatchers(HttpMethod.GET, "/employees").hasRole("ADMIN")
+    .requestMatchers(HttpMethod.GET, "/employees/*").authenticated()
+    .requestMatchers(HttpMethod.POST, "/employees").hasRole("ADMIN")
+    .requestMatchers(HttpMethod.PUT, "/employees/*").hasRole("ADMIN")
+    .requestMatchers(HttpMethod.DELETE, "/employees/*").hasRole("ADMIN")
+    .anyRequest().denyAll())
+```
+
+`requestMatchers` 按顺序匹配HTTP方法与路径，`hasRole("ADMIN")` 查找 `ROLE_ADMIN`，不要传入 `ROLE_` 前缀；`hasAuthority("ROLE_ADMIN")` 则要写完整权限字符串。本章账号加载代码把数据库 `ADMIN` 经 `.roles(...)` 转成 `ROLE_ADMIN`。`authenticated()` 只要求有身份，不限制角色；`denyAll()` 拒绝未列明请求。匿名GET员工详情应为401，USER GET列表应为403，ADMIN GET列表应为200。此时USER仍可读任意详情是**临时阶段状态**，不要作为交付状态，也不要把数据范围测试当作已通过。
+
+### 案例16-02：把登录身份关联到员工
+
+第15章的 `app_users.employee_id` 已存在，无需再改表结构。只在个人练习库或专用H2 `test-data.sql` 中，为现有1001、1002员工准备两个USER账号和一个ADMIN账号。H2完整初始化脚本在下方；如果从第15章脚本增量修改，保留原有 `tanaka` 行，再追加这两行：
+
+```sql
+INSERT INTO app_users (id, username, password_hash, employee_id, role, enabled)
+VALUES
+    (2, 'sato',
+     '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
+     1002, 'USER', TRUE),
+    (3, 'admin',
+     '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
+     NULL, 'ADMIN', TRUE);
+```
+
+此哈希只用于本地教学，两个USER分别关联1001/1002；ADMIN不绑定员工。不要把账号表中 `role` 或 `employee_id` 交给客户端声明。用数据库客户端确认用户名唯一、两个关联各有一行；分别真实登录后 `/auth/me` 返回各自用户名，此阶段角色URL规则已能区分USER列表403与ADMIN列表200。若已按下方完整 `test-data.sql` 替换，就**不要再次执行**这段INSERT。
+
+### 案例16-03：只允许USER读取本人详情
+
+URL只能识别 `/employees/1002`，无法知道它是否属于当前账号。在 `SecurityConfig.java` 类上新增 `@EnableMethodSecurity`，导入 `org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity`；Spring Boot的Security Starter不会自动启用方法授权。`@PreAuthorize` 在目标Service方法执行前检查表达式，必须通过Spring管理的Service Bean调用才生效。
+
+新建 `src/main/java/com/example/employee/security/EmployeeAccess.java`，完整内容如下：
+
+```java
+package com.example.employee.security;
+
+import com.example.employee.entity.AppUser;
+import com.example.employee.mapper.AppUserMapper;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
+
+@Component("employeeAccess")
+public class EmployeeAccess {
+    private final AppUserMapper appUserMapper;
+    public EmployeeAccess(AppUserMapper appUserMapper) {
+        this.appUserMapper = appUserMapper;
+    }
+    public boolean canRead(Authentication authentication, Long employeeId) {
+        if (authentication == null || !authentication.isAuthenticated()
+                || employeeId == null) {
+            return false;
+        }
+        boolean admin = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (admin) {
+            return true;
+        }
+        AppUser current = appUserMapper.findByUsername(authentication.getName());
+        return current != null
+                && employeeId.equals(current.getEmployeeId());
+    }
+}
+```
+
+`@Component("employeeAccess")` 注册Bean供表达式引用；`authentication.getName()` 是第15章验证过的用户名，`employeeId` 是Service方法的目标参数。管理员按角色通过，USER用数据库中可信的 `employee_id` 比较，不从请求体取“我的编号”。接着在原 `EmployeeService.java` 增加 `import org.springframework.security.access.prepost.PreAuthorize;`，只给原有 `findById(Long id)` 声明加注解，其余方法与实现不变：
+
+```java
+@PreAuthorize("@employeeAccess.canRead(authentication, #p0)")
+EmployeeResponse findById(Long id);
+```
+
+`#p0` 是第一个方法参数id；检查失败时方法主体不会执行。此阶段通过Spring上下文测试或真实登录请求验证：tanaka读1001为200，读1002为403，admin读任一记录为200。直接 `new EmployeeServiceImpl(...)` 的单元测试不经过安全代理，不能用来证明此规则。前一案例的“USER可读任意详情”到此结束。
+
+### 案例16-04：统一401/403并完成测试
+
+过滤链的拒绝可能发生在Controller之前，第7章的 `@RestControllerAdvice` 不能处理这些路径。新建下方两个完整文件；它们只写统一JSON，不暴露账号关联或表达式细节。
+
+`src/main/java/com/example/employee/exception/RestAuthenticationEntryPoint.java`：
+
+```java
+package com.example.employee.exception;
+import com.example.employee.common.ApiResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.stereotype.Component;
+
+@Component
+public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
+    private final ObjectMapper objectMapper;
+    public RestAuthenticationEntryPoint(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response,
+            AuthenticationException exception) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        objectMapper.writeValue(response.getOutputStream(),
+                ApiResponse.failure("请先登录"));
+    }
+}
+```
+
+`src/main/java/com/example/employee/exception/RestAccessDeniedHandler.java`：
+
+```java
+package com.example.employee.exception;
+import com.example.employee.common.ApiResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.stereotype.Component;
+
+@Component
+public class RestAccessDeniedHandler implements AccessDeniedHandler {
+    private final ObjectMapper objectMapper;
+    public RestAccessDeniedHandler(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+    @Override
+    public void handle(HttpServletRequest request, HttpServletResponse response,
+            AccessDeniedException exception) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        objectMapper.writeValue(response.getOutputStream(),
+                ApiResponse.failure("没有该操作的权限"));
+    }
+}
+```
+
+在 `SecurityConfig.java` 的 `securityFilterChain(...)` 方法参数中增加 `RestAuthenticationEntryPoint authenticationEntryPoint` 与 `RestAccessDeniedHandler accessDeniedHandler`，导入这两个类；把原 `.exceptionHandling(...)` 整块替换为：
+
+```java
+.exceptionHandling(exceptions -> exceptions
+    .authenticationEntryPoint(authenticationEntryPoint)
+    .accessDeniedHandler(accessDeniedHandler))
+```
+
+不要改变案例16-01的URL规则、案例16-03的 `@EnableMethodSecurity`、第15章的CSRF和Session配置。此时匿名401、USER越权403、ADMIN成功响应都应具有规定格式。下方测试使用 `user(...)` 注入当前请求身份以隔离授权规则；第15章真实账号密码与Session恢复由 `SessionLoginTest` 单独验证。测试写接口时**同时加 `.with(csrf())`**，否则403可能仅来自CSRF，不能证明角色拒绝。对USER的PUT还要查询数据库确认姓名未改变；ADMIN同一写接口携带CSRF应成功，以排除接口本身损坏。
+
+### 最终文件与完整实现核对
 
 先把矩阵中的规则按执行层次读一遍：安全过滤链在Controller之前按HTTP方法、路径和角色拒绝操作，例如USER不能DELETE；只有通过URL规则的详情请求才会进入Service，方法安全代理在调用 `findById(id)` 前执行 `@PreAuthorize`，比较可信的当前 `authentication` 与方法参数 `id`。`@EnableMethodSecurity` 在配置类上启用这一代理检查；表达式中的 `@employeeAccess` 是Spring Bean名称，`#p0` 是第一个方法参数。客户端提交的角色、用户名或“这是我的记录”不能替代服务器Session中的认证信息和数据库账号关联。
 
 未登录而需要认证时由 `RestAuthenticationEntryPoint` 写401；已有身份但被URL或方法规则拒绝时由 `RestAccessDeniedHandler` 写403；通过授权却找不到员工时仍由业务异常处理器写404。过滤链中发生的401/403通常没有进入Controller，不能指望普通 `@RestControllerAdvice` 统一捕获。`authorizeHttpRequests` 按声明顺序寻找首个匹配规则，因此具体路径与方法规则必须在兜底 `denyAll` 前。下方完整代码保留匿名、USER本人、USER他人和ADMIN的测试；CORS只作为跨域部署扩展阅读，不参与本地同源授权判断。
 
-从第15章稳定状态继续。本章不改数据库表结构和业务字段，只增加授权代码、测试账号和授权测试：
+下面是完成四个案例后的最终文件清单；已在案例中创建的文件不要重复新建，按这里的完整版本核对导入和未列出的配置。本章不改数据库表结构和业务字段：
 
 ```text
 src/main/java/com/example/employee/
@@ -339,10 +516,13 @@ DROP TABLE IF EXISTS employees;
 
 CREATE TABLE employees (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    department VARCHAR(100) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    status VARCHAR(20) NOT NULL
+    name VARCHAR(50) NOT NULL,
+    department VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_employees_email UNIQUE (email)
 );
 
 CREATE TABLE employee_change_logs (
@@ -419,6 +599,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
@@ -429,6 +610,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -443,6 +625,9 @@ class AuthorizationIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Test
     void anonymousCannotReadEmployee() throws Exception {
@@ -490,6 +675,7 @@ class AuthorizationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isForbidden());
+        assertThat(employeeName(1001L)).isEqualTo("Tanaka");
     }
 
     @Test
@@ -508,6 +694,57 @@ class AuthorizationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isForbidden());
+        assertThat(employeeName(1002L)).isEqualTo("Sato");
+    }
+
+    @Test
+    void csrfFailureIsNotEvidenceOfRoleDenial() throws Exception {
+        mockMvc.perform(delete("/employees/{id}", 1002)
+                        .with(user("admin").roles("ADMIN")))
+                .andExpect(status().isForbidden());
+        assertThat(employeeName(1002L)).isEqualTo("Sato");
+    }
+
+    @Test
+    void adminCanDeleteWithCsrf() throws Exception {
+        mockMvc.perform(delete("/employees/{id}", 1002)
+                        .with(user("admin").roles("ADMIN"))
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+        Integer remaining = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM employees WHERE id = ?",
+                Integer.class, 1002L);
+        assertThat(remaining).isZero();
+    }
+
+    @Test
+    void adminCanCreateAndUpdateWithCsrf() throws Exception {
+        String createBody = """
+                {"name":"New Employee","department":"Sales",
+                 "email":"admin-created@example.com"}
+                """;
+        mockMvc.perform(post("/employees")
+                        .with(user("admin").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody))
+                .andExpect(status().isCreated());
+        Integer created = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM employees WHERE email = ?",
+                Integer.class, "admin-created@example.com");
+        assertThat(created).isEqualTo(1);
+
+        String updateBody = """
+                {"name":"Tanaka Admin Updated","department":"Sales",
+                 "email":"tanaka@example.com"}
+                """;
+        mockMvc.perform(put("/employees/{id}", 1001)
+                        .with(user("admin").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk());
+        assertThat(employeeName(1001L)).isEqualTo("Tanaka Admin Updated");
     }
 
     @Test
@@ -542,12 +779,18 @@ class AuthorizationIntegrationTest {
         mockMvc.perform(get("/employees/{id}", 1001))
                 .andExpect(status().isUnauthorized());
     }
+
+    private String employeeName(Long id) {
+        return jdbcTemplate.queryForObject(
+                "SELECT name FROM employees WHERE id = ?",
+                String.class, id);
+    }
 }
 ```
 
 `user("tanaka").roles("USER")` 是Spring Security测试库提供的请求处理器，只为当前MockMvc请求建立测试身份；它不提交密码，也不执行第15章登录流程。这里用它隔离验证权限规则，而真实账号密码和Session仍由 `SessionLoginTest` 负责。`roles("USER")` 会建立 `ROLE_USER`，不要写成 `roles("ROLE_USER")`。
 
-本章的 `EmployeeAccess` 还会按测试用户名查询 `app_users`，所以tanaka和sato必须存在于 `test-data.sql`。ADMIN在检查authority后直接通过，不依赖某一个employeeId。`.andExpect(...)` 延续第12章写法，分别断言HTTP状态和统一JSON字段。
+本章的 `EmployeeAccess` 还会按测试用户名查询 `app_users`，所以tanaka和sato必须存在于 `test-data.sql`。ADMIN在检查authority后直接通过，不依赖某一个employeeId。`.andExpect(...)` 延续第12章写法，分别断言HTTP状态和统一JSON字段。越权PUT再用 `JdbcTemplate` 核对原姓名未改变；缺CSRF的ADMIN删除也会403，带有效CSRF的ADMIN删除才应204且数据库记录消失。这两种403原因不同，不能只凭状态码判断角色规则是否正确。
 
 ## 四、URL级规则怎样工作
 
@@ -586,7 +829,7 @@ EmployeeService.findById(1002)
 
 `@PreAuthorize` 来自 `org.springframework.security.access.prepost`，可写在Spring管理的类、接口或方法上，在目标方法执行前计算表达式。`@employeeAccess` 引用名称为 `employeeAccess` 的Bean，`authentication` 是当前认证对象，`#p0` 是被调用方法的第一个参数，也就是 `id`。
 
-方法检查依赖Spring代理，只有通过容器中的 `EmployeeService` Bean调用才会触发；在测试中直接 `new EmployeeServiceImpl(...)` 不会经过代理。因此第12章纯单元测试不能代替本章的Spring集成测试。方法授权的启用方式和接口注解支持可参考[Spring Security方法级授权](https://docs.spring.io/spring-security/reference/6.5/servlet/authorization/method-security.html)。
+方法检查依赖Spring代理，只有通过容器中的 `EmployeeService` Bean调用才会触发；在测试中直接 `new EmployeeServiceImpl(...)` 不会经过代理，同一对象内部的 `this.findById(...)` 自调用通常也绕过代理。本章详情请求经Controller注入的Service代理进入；新增、修改方法内部再次读取结果虽可能调用同名方法，但只有ADMIN能到达这些写接口，不能把内部自调用当作USER详情授权的保障。以后若新增其他Service入口调用详情方法，必须重新审查边界。因此第12章纯单元测试不能代替本章的Spring集成测试。方法授权的启用方式和接口注解支持可参考[Spring Security方法级授权](https://docs.spring.io/spring-security/reference/6.5/servlet/authorization/method-security.html)。
 
 ## 六、当前用户信息必须来自可信位置
 
@@ -596,6 +839,10 @@ EmployeeService.findById(1002)
 - `employeeId` 来自当前即将访问的Service方法参数。
 
 方法再根据认证用户名查询 `app_users.employee_id`。不能让客户端提交下面这样的字段并直接相信它们：
+
+第15章的 `AppUserDetailsService` 从 `app_users` 读出账号、密码哈希、`role`、`employee_id`，但当前构造的Spring Security `UserDetails` 只携带用户名、密码和角色权限，并没有把 `employee_id` 塞进Principal。因此本章不假设“用户名就是员工编号”，而是在 `EmployeeAccess` 中用已认证用户名再次查询账号表取得可信关联。第15章调用 `User.withUsername(...).roles(appUser.getRole())`：表中存 `USER`/`ADMIN`，框架形成 `ROLE_USER`/`ROLE_ADMIN` 这样的 `GrantedAuthority`。`hasRole("ADMIN")` 会检查 `ROLE_ADMIN`；`hasAuthority("ROLE_ADMIN")` 则要求传入完整权限字符串。两者不可随意互换或把数据库值存成重复前缀。
+
+当前角色权限保存在Session认证信息中；管理员若在数据库改了某账号角色，旧Session不保证立刻刷新，通常需重新登录或采用项目明确的失效机制。员工归属由本章每次查询账号表确认。不要把这种状态差异误认为客户端可自行声明角色。
 
 ```json
 {
@@ -751,7 +998,7 @@ CORS只决定浏览器是否允许某个来源读取响应，不证明用户身�
 .\mvnw.cmd clean test
 ```
 
-除了第15章已有登录测试，本章新增8个授权场景。必须确认所有旧测试和新测试都通过；只运行新测试不能证明加入权限后没有破坏CRUD、事务和分页。
+除了第15章已有登录测试，本章新增11个授权及CSRF对照场景。必须确认所有旧测试和新测试都通过；只运行新测试不能证明加入权限后没有破坏CRUD、事务和分页。
 
 自动化测试完成后，在数据库客户端确认个人MySQL练习库的 `app_users` 中存在 `tanaka` 和 `admin`；测试目录中的H2数据不会自动写入MySQL：
 

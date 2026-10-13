@@ -8,20 +8,20 @@
 | 2 | Lost Update案例 | 第13章 | 完成 | 使用department与email完整PUT，不再出现phone |
 | 3 | 并发实验定位 | 第13章 | 完成 | 标记为设计识读与SQL机制实验，列明缺少的完整实现 |
 | 4 | CORS auth范围 | 第16章 | 完成 | 同时覆盖`/auth/**`与`/employees/**`及完整Session流程 |
-| 5 | External API | Appendix A | 完成 | RestClient、GET/POST、超时、错误分类、日志和Review |
-| 6 | 既存项目阅读 | Appendix B | 完成 | README、构建、启动、配置、纵向业务链、横向机制与测试 |
-| 7 | 老项目识读 | Appendix C | 完成 | Boot 2/3、javax/jakarta、JAR/WAR、ServletInitializer和XML |
-| 8 | Lombok/JPA | Appendix D | 完成 | 构造器注入、Builder、Entity、Repository与MyBatis对比 |
-| 9 | Annotation Reference | Appendix E | 完成 | Bean、MVC、Validation、Persistence、Security、JSON、Testing等速查 |
+| 5 | External API | A01 | 完成 | RestClient、GET/POST、超时、错误分类、日志和Review |
+| 6 | 既存项目阅读 | A02 | 完成 | README、构建、启动、配置、纵向业务链、横向机制与测试 |
+| 7 | 老项目识读 | A03 | 完成 | Boot 2/3、javax/jakarta、JAR/WAR、ServletInitializer和XML |
+| 8 | Lombok/JPA | A04 | 完成 | 构造器注入、Builder、Entity、Repository与MyBatis对比 |
+| 9 | Annotation Reference | A05 | 完成 | Bean、MVC、Validation、Persistence、Security、JSON、Testing等速查 |
 | 10 | Cross-File Review | 01～20章与Appendix | 完成 | 字段、API、版本、实验恢复、链接和导航一致性检查通过 |
 
 ## 二、修改过的文件
 
 - `mainline/13_transaction_and_consistency.md`
 - `mainline/16_authorization_and_data_scope.md`
-- `appendix/external_api_restclient.md`
-- `appendix/existing_project_reading.md`
-- `appendix/spring_annotation_reference.md`
+- `appendix/A01_external_api_restclient.md`
+- `appendix/A02_existing_project_reading.md`
+- `appendix/A05_spring_annotation_reference.md`
 - `index.md`
 - `SECOND_ROUND_CHANGE_REPORT.md`：补充第三轮文件迁移历史说明
 - 仓库根目录 `mkdocs.yml`
@@ -34,11 +34,11 @@
 - `appendix/A04_lombok_jpa_reading.md`
 - `THIRD_ROUND_CHANGE_REPORT.md`
 
-原 `appendix/lombok_existing_project.md` 与 `appendix/jpa_for_mybatis_learners.md` 的有效内容已经合并到Appendix D，旧文件已移除，避免同一知识维护两份正文。
+原 `appendix/lombok_existing_project.md` 与 `appendix/jpa_for_mybatis_learners.md` 的有效内容已经合并到A04，旧文件已移除，避免同一知识维护两份正文。
 
 ## 四、有意未修改的文件
 
-主线第1～12章、第14～15章、第17～20章没有继续扩展大型内容。`appendix/operations_components_reading.md` 与 `appendix/troubleshooting_review_index.md` 内容保持不变，只加入新的Appendix入口导航。Employee业务、MyBatis主线、Session/Spring Security方案、EMP-241、部署和最终交付状态均未更换。
+主线第1～12章、第14～15章、第17～20章没有继续扩展大型内容。`appendix/A18_operations_components_reading.md` 与 `appendix/A19_troubleshooting_review_index.md` 内容保持不变，只加入新的Appendix入口导航。Employee业务、MyBatis主线、Session/Spring Security方案、EMP-241、部署和最终交付状态均未更换。
 
 ## 五、发现并修复的跨章节问题
 
@@ -47,8 +47,8 @@
 3. Lost Update使用主线不存在的phone，已改成“B修改email但完整PUT覆盖A的department”。
 4. 并发示例原表述容易让学员误以为片段可直接运行，现已声明它不包含完整DTO、Entity、Mapper、Controller、Advice和集成测试。
 5. 第16章CORS只覆盖员工路径，无法完成跨域登录；现已补充auth路径、CSRF、登录、Session Cookie、权限和退出流程。
-6. 第二轮旧项目识读与Lombok/JPA文件边界分散；现拆出Appendix C、合并Appendix D，并建立A01～A05统一入口。
-7. 原JPA识读示例使用 `employee_name/employeeName`，Appendix D已统一为主线表字段和Java字段 `name`。
+6. 第二轮旧项目识读与Lombok/JPA文件边界分散；现拆出A03、合并A04，并建立A01～A05统一入口。
+7. 原JPA识读示例使用 `employee_name/employeeName`，A04已统一为主线表字段和Java字段 `name`。
 8. 注解速查缺少Testing分类，现已补充JUnit、Boot Test、Spring Test和Security Test常见注解。
 
 第5章的 `employeeName/employee_name` 明确标记为不加入主线的Jackson独立映射示例；第8章phone明确标记为临时Validation练习并要求完成后删除。两者不会成为后续Employee稳定字段。

@@ -1,4 +1,4 @@
-# Appendix B：如何阅读一个陌生的Spring项目
+# A02 如何阅读一个陌生的Spring项目
 
 从零写过员工管理API，不代表拿到已有仓库就能安全改修。既存项目阅读的目标不是尽快看完所有文件，而是先确定技术基线和运行方式，再沿一个业务用例纵向追踪，最后调查会影响全局的共通机制。
 
@@ -47,7 +47,7 @@ public class Application {
 }
 ```
 
-确认启动类所在包，因为默认组件扫描从该包向下进行。若找不到main方法，继续按[Appendix C：日本既存Spring项目的新旧结构识读](A03_legacy_spring_project_reading.md)检查WAR、ServletInitializer、XML和外部Tomcat。不要因此断言项目“不能启动”。
+确认启动类所在包，因为默认组件扫描从该包向下进行。若找不到main方法，继续按[A03：日本既存Spring项目的新旧结构识读](A03_legacy_spring_project_reading.md)检查WAR、ServletInitializer、XML和外部Tomcat。不要因此断言项目“不能启动”。
 
 ## 五、Step 4：确认配置从哪里来
 

@@ -1,4 +1,4 @@
-# Appendix A：Spring Boot调用外部REST API
+# A01 Spring Boot调用外部REST API
 
 > 本专题目标：理解Service除了Mapper还可能依赖外部系统，并使用Spring Framework 6.2的 `RestClient` 完成同步GET、POST、Header、JSON、超时和分层异常处理。
 
@@ -15,7 +15,7 @@ EmployeeController
 
 Service后面不一定只有Mapper。`HrApiClient` 负责HTTP通信和外部错误转换，Service负责决定“查不到HR状态时当前业务怎样处理”。Controller不直接拼外部URL，也不接触HR Token。
 
-本附录是独立识读与实验，不要求把HrApiClient永久加入第20章的Employee主线。真实项目常见目录可能是：
+本附录是独立识读与实验，不要求把HrApiClient永久加入第18章的Employee主线。真实项目常见目录可能是：
 
 ```text
 service/EmployeeService.java

@@ -31,7 +31,7 @@ Eclipse编写和调试代码
 - 第6章集中讲解Postman的环境、Collection、Params、Headers、Body、响应和Cookie入口，后续章节直接复用。
 - 第12章的JUnit、Mockito和MockMvc属于自动化测试，不用Postman替代。
 - Maven仍负责依赖、测试、构建和打包；第17章保留可执行JAR构建与脱离IDE运行。
-- 第18章面向Linux部署与运维，保留systemd、日志、端口和健康检查等服务器命令。
+- 第18章建立部署、systemd、日志、健康检查、发布和回滚的基本认识；复杂服务器操作放入附录。
 
 ## 一、学习目标
 
@@ -48,8 +48,8 @@ Eclipse编写和调试代码
 - 实现登录与权限基础
 - 编写基础单元测试和接口测试
 - 打包并在 Linux 环境运行后端服务
-- 按改修票完成影响调查、实现、Review和回归测试
-- 整理可重建、可验收、可部署和可回退的交付包
+- 根据前端规格实现可联调的后台API
+- 按改修票完成影响调查、实现、Review、回归测试和交付
 
 ## 二、贯穿项目
 
@@ -90,22 +90,20 @@ Eclipse编写和调试代码
 | 14 | [让员工列表支持条件查询与分页](mainline/14_search_sort_pagination.md) | 实现筛选、稳定排序和分页，验证总件数、空页与非法参数 |
 | 15 | [用Session识别当前登录用户](mainline/15_session_login.md) | 使用数据库账号和BCrypt登录，通过Session完成当前用户识别与安全退出 |
 | 16 | [权限与访问范围](mainline/16_authorization_and_data_scope.md) | 用权限矩阵、URL规则和Service方法检查限制角色操作与本人数据范围 |
-| 17 | [多环境配置与打包](mainline/17_profiles_configuration_packaging.md) | 拆分dev/test/prod配置，校验配置并生成可脱离IDE运行的可执行JAR |
-| 18 | [部署与运行检查](mainline/18_deployment_operations_check.md) | 在Ubuntu上受控部署JAR，用systemd管理服务并完成四层检查与回滚 |
-| 19 | [按改修票完成一次日本项目变更](mainline/19_japanese_project_change_practice.md) | 按确定规格完成影响调查、多选查询改修、Review、回归测试和改修报告 |
-| 20 | [综合验收与交付](mainline/20_acceptance_and_delivery.md) | 从干净环境重建、验收、部署并交付可追踪的完整成果 |
-| 21 | [结业综合练习：为Vue有給休暇系统实现后台API](mainline/21_paid_leave_vue_backend_practice.md) | 用Spring Boot与MyBatis替换参考后台，并与既有Vue完成联调 |
+| 17 | [多环境配置与打包](mainline/17_profiles_configuration_packaging.md) | 理解Profile与环境变量，用Maven生成并在本机运行可执行JAR |
+| 18 | [部署与运行检查](mainline/18_deployment_operations_check.md) | 理解服务器运行、systemd、四层检查、日志调查、发布与回滚 |
+| 19 | [为Vue有給休暇系统实现后台API](mainline/19_paid_leave_vue_backend_practice.md) | 实现与Vue第22章一致的后台，并按第23章改修日期筛选，完成测试、联调和交付 |
 
-完成第20章后，先使用第21章独立完成一次前后端联调综合练习，再按需要使用附录补足进入既存项目时的代码识读能力。第21章和附录都不会改变Employee主线最终状态：
+完成第18章后，使用第19章独立完成一次前后端联调综合练习。需要缓存、批量任务或账票交付时，再进入[Spring Boot 企业扩展](extensions/index.md)：先学[Redis](extensions/redis.md)、[Spring Batch](extensions/spring-batch.md)与[账票处理](extensions/reporting.md)，最后完成[月度员工变更账票项目](extensions/monthly-report-project.md)。企业扩展从第18章员工管理稳定成果的独立副本开始，不改变主线最终状态。进入既存项目时可按需要使用附录补足代码识读能力：
 
 | 附录 | 学习成果 |
 | --- | --- |
-| [Appendix学习入口](appendix/index.md) | 按A01～A13选择实际开发、既存项目识读或单主题扩展 |
-| [Spring Boot调用外部REST API](appendix/external_api_restclient.md) | 用RestClient识别GET、POST、超时和外部异常转换 |
-| [如何阅读一个陌生的Spring项目](appendix/existing_project_reading.md) | 从构建、启动、配置、业务链到共通机制完成调查 |
+| [Appendix学习入口](appendix/index.md) | 按A01～A17选择实际开发、既存项目识读或单主题扩展 |
+| [Spring Boot调用外部REST API](appendix/A01_external_api_restclient.md) | 用RestClient识别GET、POST、超时和外部异常转换 |
+| [如何阅读一个陌生的Spring项目](appendix/A02_existing_project_reading.md) | 从构建、启动、配置、业务链到共通机制完成调查 |
 | [日本既存Spring项目的新旧结构识读](appendix/A03_legacy_spring_project_reading.md) | 识别Boot 2/3、JAR/WAR、外部Tomcat和XML配置 |
 | [Lombok与Spring Data JPA识读](appendix/A04_lombok_jpa_reading.md) | 识别编译期生成代码、Entity和Repository |
-| [Spring项目常见注解速查](appendix/spring_annotation_reference.md) | 按框架、位置、处理时机和课程场景理解注解 |
+| [Spring项目常见注解速查](appendix/A05_spring_annotation_reference.md) | 按框架、位置、处理时机和课程场景理解注解 |
 | [多个Bean候选的选择与排错](appendix/A06_multiple_bean_candidates.md) | 处理同一接口多个实现时的选择规则与启动失败 |
 | [Jackson字段映射与输出规则](appendix/A07_jackson_json_mapping.md) | 在理解序列化后学习字段改名、忽略、空值和日期格式 |
 | [Header、Cookie与文件上传](appendix/A08_http_headers_cookies_file_upload.md) | 在三种基础输入之后扩展请求头、Cookie和multipart |
@@ -114,10 +112,14 @@ Eclipse编写和调试代码
 | [Java Web项目中的日期时间与时区](appendix/A11_java_web_datetime.md) | 区分本地时间、UTC瞬间、区域时区和MySQL时间列 |
 | [Spring Boot怎样读取独立MyBatis配置](appendix/A12_springboot_mybatis_config.md) | 在可恢复实验中切换YAML与mybatis-config.xml |
 | [Spring共通处理机制](appendix/A13_spring_common_processing_mechanisms.md) | 区分Filter、Interceptor、Controller Advice与AOP的执行位置和责任 |
-| [常见运行与数据库迁移组件识读](appendix/operations_components_reading.md) | 初步识别Actuator、Flyway和Liquibase |
-| [常见问题与排查索引](appendix/troubleshooting_review_index.md) | 按失败阶段回到对应内容查找原因 |
+| [Spring Boot日志配置进阶](appendix/A14_logging_configuration_advanced.md) | 解释滚动日志、归档清理与日志格式，并完成可恢复的配置验证 |
+| [常用测试断言库与断言方法](appendix/A15_testing_assertions_reference.md) | 按检查对象选择JUnit、AssertJ、Hamcrest与MockMvc断言 |
+| [配置、构建与交付进阶](appendix/A16_configuration_build_delivery_advanced.md) | 调查配置覆盖、构建产物与正式交付检查项 |
+| [Linux部署与运维手顺参考](appendix/A17_linux_deployment_operations_reference.md) | 查阅systemd Unit、更新、切り戻し和运维记录 |
+| [常见运行与数据库迁移组件识读](appendix/A18_operations_components_reading.md) | 初步识别Actuator、Flyway和Liquibase |
+| [常见问题与排查索引](appendix/A19_troubleshooting_review_index.md) | 按失败阶段回到对应内容查找原因 |
 
-基础主线现已形成从系统认识、工程实现、测试改修到验收交付的完整学习顺序。附录建议按当前项目实际使用的技术选择阅读，不要求一次背完。
+基础主线现已形成从系统认识、工程实现、部署基础到前后端联调综合任务的完整学习顺序。附录建议按当前项目实际使用的技术选择阅读，不要求一次背完。
 
 ## 四、推荐前置知识
 

@@ -1,50 +1,38 @@
 # 第9章 数据库记录怎样成为接口响应
 
-> 本章目标：为员工详情接口接入MySQL 8.0和MyBatis，使 `GET /employees/{id}` 返回真实数据库记录，并能解释表、Entity、Mapper、Service和响应对象之间的数据转换。
+> 本章目标：通过“数据库记录变成员工详情JSON”的连续案例，理解Spring Boot、DataSource、MyBatis、Mapper代理、Service和DTO转换怎样共同工作。
 
-第8章结束时，Controller、DTO校验、业务规则和统一异常响应已经能够工作，但员工详情仍由Service写死返回。数据库中的一行记录不会自动成为JSON；程序需要建立下面这条链：
+前几章的员工详情来自Service中的固定对象。本章只把 `GET /employees/{id}` 接入MySQL；列表和预览接口暂时保持第8章状态，第10章再完成全部CRUD。
+
+## 一、开始状态与最终调用链
+
+阅读与操作顺序：按案例建立表、配置连接、创建Entity与Mapper，直到详情接口真正从数据库返回数据；每一步先验证，再进入下一步。“章末完整代码”用于最后核对最终文件，不是案例9-01的起始工程，不要提前整体替换。
+
+本章开始时，Controller已经依赖 `EmployeeService`，404和统一响应也已存在。完成后，详情请求沿下面的路线执行：
 
 ```text
-MySQL一行数据
-  → Employee Entity
-  → EmployeeMapper
+Postman
+  → EmployeeController
+  → EmployeeService接口
   → EmployeeServiceImpl
-  → EmployeeResponse
-  → Controller与HTTP响应
+  → EmployeeMapper代理
+  → MyBatis读取EmployeeMapper.xml
+  → DataSource取得数据库连接
+  → MySQL执行SQL
+  → Employee Entity
+  → EmployeeResponse DTO
+  → ApiResponse和HTTP 200或404
 ```
 
-本章只把“按编号查询详情”接入数据库。列表和新增预览继续保持第8章实现；新增、修改和删除将在下一章接入数据库。
+本章新增或替换的文件包括数据库脚本、Maven依赖、`application.yml`、Entity、Mapper接口、Mapper XML、Service接口和实现类。下面按数据库、连接配置、Entity、Mapper、Service、HTTP响应的顺序逐步建立；每一步说明当前能够验证的范围。
 
-## 一、开始状态与本章改动
+## 二、案例9-01：建立员工表与样例数据
 
-开始前应完成第8章，并保留其中的Controller、DTO、响应包装和异常处理。本章需要：
+第8章工程中的接口仍使用固定样例。本案例只在本地MySQL建立数据库、受限应用账号、员工表和两条样例数据；Java代码暂不修改。
 
-```text
-项目根目录/
-├── pom.xml                                           ← 完整替换
-└── src/main/
-    ├── java/com/example/employee/
-    │   ├── entity/Employee.java                     ← 新建
-    │   ├── mapper/EmployeeMapper.java                ← 新建
-    │   └── service/
-    │       ├── EmployeeService.java                  ← 由类改为接口
-    │       └── impl/EmployeeServiceImpl.java         ← 新建实现类
-    └── resources/
-        ├── application.yml                           ← 完整替换
-        └── mapper/EmployeeMapper.xml                 ← 新建
-```
+### 建立数据库、账号、表和样例数据
 
-`EmployeeController` 不需要修改。它仍然依赖 `EmployeeService`，只是从本章开始，Spring注入的实际对象变为 `EmployeeServiceImpl`。
-
-## 二、完整示例
-
-第8章的固定样例只能演示流程：查询编号1002不应由代码凭空编造结果。接入真实数据时，运行方向是 `HTTP → Controller → EmployeeService接口 → EmployeeServiceImpl → EmployeeMapper代理 → MyBatis → DataSource → MySQL`，查询结果再经Entity、响应DTO返回。Spring Boot依据 `spring.datasource` 配置准备 `DataSource`；MyBatis Starter利用它建立SQL会话并注册Mapper代理。Starter负责Spring与MyBatis的整合，MySQL JDBC Driver负责与MySQL通信，两种依赖不能互相替代。
-
-下面先准备数据库，再配置依赖与连接，接着把Entity、Mapper接口和同名XML放在一起核对，最后将Service改为接口与实现类。`@Mapper`使MyBatis把接口注册为可注入的代理对象，无需手写Mapper实现；`@Service`让Spring管理实现类。Controller构造方法仍要求 `EmployeeService`，Spring按接口类型找到 `EmployeeServiceImpl`，所以Controller不必随实现方式改变。下文完整代码是本章最终状态；学习时按这条链逐段检查，不把MyBatis XML基础语法重复当作新知识。
-
-### 1. 建立数据库、账号、表和样例数据
-
-以下脚本只适用于MySQL 8.0.16及以上版本的本地练习环境。先使用拥有建库和创建用户权限的管理账号，在MySQL Workbench或命令行客户端中执行：
+以下脚本只适用于MySQL 8.0.16及以上版本的本地练习环境。先使用拥有建库和创建用户权限的管理账号，在MySQL Workbench等数据库客户端中执行：
 
 ```sql
 CREATE DATABASE IF NOT EXISTS employee_db
@@ -52,9 +40,6 @@ CREATE DATABASE IF NOT EXISTS employee_db
     COLLATE utf8mb4_0900_ai_ci;
 
 CREATE USER IF NOT EXISTS 'employee_app'@'localhost'
-    IDENTIFIED BY 'replace_with_local_password';
-
-ALTER USER 'employee_app'@'localhost'
     IDENTIFIED BY 'replace_with_local_password';
 
 GRANT SELECT, INSERT, UPDATE, DELETE
@@ -84,7 +69,688 @@ VALUES
     ('Suzuki', 'Development', 'suzuki@example.com');
 ```
 
-把 `replace_with_local_password` 换成本机练习账号的密码，不要把真实密码写入项目文件或提交记录。应用账号只获得当前数据库的查询和增删改权限，不使用MySQL管理员账号运行应用。
+把 `replace_with_local_password` 换成本机练习账号的密码，不要把真实密码写入项目文件或提交记录。`CREATE USER IF NOT EXISTS` 遇到同名既有账号不会重设它的密码；若账号已存在，先由有权限人员确认它的来源和凭据，不能直接覆盖。应用账号只获得当前数据库的查询和增删改权限，不使用MySQL管理员账号运行应用。
+
+如果 `employees` 表已经存在，`CREATE TABLE` 会失败。这是在阻止脚本意外覆盖已有表。不要为了省事在共享数据库执行 `DROP TABLE`；需要重做本地练习时，先确认表中数据可以丢弃并自行备份。
+
+执行下面的查询，确认表和数据已经建立：
+
+```sql
+SELECT id, name, department, email, status, created_at, updated_at
+FROM employees
+ORDER BY id;
+```
+
+首次创建时，前两条记录的编号应为1001和1002。如果数据库以前已经使用过该表，应以后续查询得到的实际编号为准。
+
+### 表结构与字段说明
+
+#### 1. 为什么先查数据库
+
+Postman只能证明接口对外返回了什么；数据库客户端可以证明底层真实数据是什么。先创建 `employee_db.employees` 和应用账号，再使用应用账号执行：
+
+```sql
+SELECT id, name, department, email
+FROM employees
+WHERE id = 1001;
+```
+
+预期得到一行Tanaka员工。后面的接口响应必须与这行记录一致，才足以证明数据不是Service中的固定文本。
+
+#### 2. 表字段与Java对象的边界
+
+| 数据库列 | MySQL类型 | Java属性 | 用途 |
+| --- | --- | --- | --- |
+| `id` | `BIGINT` | `Long id` | 主键 |
+| `name` | `VARCHAR(50)` | `String name` | 姓名 |
+| `department` | `VARCHAR(50)` | `String department` | 部门 |
+| `email` | `VARCHAR(100)` | `String email` | 唯一邮箱 |
+| `status` | `VARCHAR(20)` | `String status` | 状态 |
+| `created_at` | `DATETIME` | `LocalDateTime createdAt` | 创建时间 |
+| `updated_at` | `DATETIME` | `LocalDateTime updatedAt` | 更新时间 |
+
+主键保证每行身份唯一，`UNIQUE` 约束保护邮箱不重复，`NOT NULL` 保护必要字段。应用层的友好校验不能替代数据库约束，数据库约束也不能替代接口层的清楚错误消息。
+
+数据库账号只授予当前数据库需要的权限，不在应用中使用root。密码通过Eclipse运行配置中的环境变量传入，不写进Java类或提交到仓库。
+
+
+部门列上限为50字符，与第8章DTO一致；允许值暂按现有Service的 `Sales`、`Development`、`Support`，正式业务规格待确认。数据库此时只限制长度，并没有部门枚举约束；业务允许值仍由Service判断。
+
+验证：在数据库客户端使用应用账号查询编号1001和1002，分别核对 `Tanaka/Sales` 与 `Suzuki/Development`。如果本地表原先存在，以实际查询编号为准，不覆盖既有数据。
+
+## 三、案例9-02：配置DataSource与MyBatis整合
+
+在案例9-01基础上，在 `pom.xml` 的 `<dependencies>` 中追加MyBatis Starter和MySQL驱动；完整替换 `src/main/resources/application.yml`。其他Web与Validation依赖保留。当前还没有Mapper，故本案例只检查配置和应用启动，不能用员工详情响应证明数据库查询。
+
+~~~xml
+<dependency>
+    <groupId>org.mybatis.spring.boot</groupId>
+    <artifactId>mybatis-spring-boot-starter</artifactId>
+    <version>3.0.5</version>
+</dependency>
+<dependency>
+    <groupId>com.mysql</groupId>
+    <artifactId>mysql-connector-j</artifactId>
+    <scope>runtime</scope>
+</dependency>
+~~~
+
+### 完整替换application.yml
+
+文件位置：
+
+```text
+src/main/resources/application.yml
+```
+
+完整内容：
+
+```yaml
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/employee_db?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Tokyo}
+    username: ${DB_USERNAME:employee_app}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.employee.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    default-statement-timeout: 10
+```
+
+在Eclipse中打开 **Run → Run Configurations...**，选择当前启动类对应的Java Application或Spring Boot App运行配置，在 **Environment** 页添加：
+
+| Name | Value | 是否必需 |
+| --- | --- | --- |
+| `DB_USERNAME` | `employee_app` | 否；实际账号不同则必须设置 |
+| `DB_PASSWORD` | 本机练习账号密码 | 是；无默认值，不写入文档或Git |
+| `DB_URL` | `jdbc:mysql://localhost:3306/employee_db?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Tokyo` | 否；实际地址不同则必须设置 |
+
+`DB_USERNAME` 和 `DB_URL` 的“否”仅表示本章配置有本地默认值，不保证其他数据库环境也适用；若实际账号或地址不同，就要显式设置。`DB_PASSWORD` 没有默认值，必须由本机运行配置提供。点击 **Apply** 保存到本机Eclipse运行配置，再用该配置启动应用。环境变量只提供给这个运行进程；不要把真实密码写进 `application.yml`、截图、测试证据或提交文件。更换电脑或Eclipse工作区后需要重新配置。
+
+### 配置和数据源说明
+
+#### 1. 三个依赖分别负责什么
+
+- Spring Boot Web Starter继续提供Web应用和Spring容器；
+- MyBatis Spring Boot Starter把MyBatis接入Spring Boot，创建会话相关对象并扫描Mapper；
+- MySQL Connector/J是JDBC驱动，把标准JDBC调用转换为MySQL通信。
+
+这些依赖不能互相替代。Starter不包含数据库服务器，驱动也不会替代MyBatis的SQL映射。
+
+先抓住本案例必须理解的两组配置：`spring.datasource.*` 告诉Spring Boot连接哪个数据库、使用什么账号；`mybatis.mapper-locations` 告诉MyBatis到哪里查找XML。其他配置项的读取者与作用在第一次详情查询成功后再一起回看。
+
+`${DB_PASSWORD}` 没有默认值，缺失时配置读取应失败。`${DB_URL:...}` 和 `${DB_USERNAME:employee_app}` 都表示变量不存在时使用冒号后的本地默认值；实际数据库地址或账号不同就必须设置对应变量。凭据不应硬编码在Java类中，因为环境不同、权限不同，而且源码可能被多人读取。
+
+“创建DataSource对象”和“成功连接数据库”不是同一个检查点。缺少环境变量通常在配置阶段阻止启动；地址或账号问题可能在启动阶段出现，也可能在首次借用连接时出现。因此必须同时验证应用启动、数据库客户端连接和详情请求。
+
+
+验证：先用数据库客户端确认应用账号能登录，再在Eclipse运行配置中设置 `DB_PASSWORD` 并启动应用。若启动阶段没有实际借用连接，启动成功只能证明配置已被读取；真实SQL连接要在后面的详情查询中确认。故意使用错误密码观察认证错误后，立即恢复正确密码。
+
+## 四、案例9-03：建立Employee Entity
+
+新建 `src/main/java/com/example/employee/entity/Employee.java`，其他文件保持上一案例状态。
+
+### 新建Employee.java
+
+文件位置：
+
+```text
+src/main/java/com/example/employee/entity/Employee.java
+```
+
+完整内容：
+
+```java
+package com.example.employee.entity;
+
+import java.time.LocalDateTime;
+
+public class Employee {
+
+    private Long id;
+    private String name;
+    private String department;
+    private String email;
+    private String status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+}
+```
+
+### Employee Entity的职责
+
+`Employee` 表示数据库中的员工记录，因此包含表中的状态和审计时间。它不是请求DTO，也不是最终响应DTO。
+
+```java
+public class Employee {
+    private Long id;
+    private String name;
+    private String department;
+    private String email;
+    private String status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    // getter和setter见上方完整文件
+}
+```
+
+MyBatis读取结果后通过setter写入属性。Entity保留无参数构造能力。不要让Controller直接返回Entity，否则以后新增内部备注、删除标志或审计字段时可能意外公开。
+
+
+`BIGINT` 对应Java `Long`，`DATETIME` 对应 `LocalDateTime`；Entity保留内部的 `status` 与审计时间，API响应DTO只公开接口规格允许的字段。此时尚未有Mapper结果，先在Eclipse检查类和导入可编译；数据库映射效果留到后续案例确认。
+
+## 五、案例9-04：用Mapper接口和XML查询编号
+
+在已有Entity和配置上，新建Mapper接口与XML。下面两个完整文件必须一起建立；`namespace`、方法名、参数名、结果映射要对应。
+
+### 新建EmployeeMapper.java
+
+文件位置：
+
+```text
+src/main/java/com/example/employee/mapper/EmployeeMapper.java
+```
+
+完整内容：
+
+```java
+package com.example.employee.mapper;
+
+import com.example.employee.entity.Employee;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+@Mapper
+public interface EmployeeMapper {
+
+    Employee findById(@Param("id") Long id);
+}
+```
+
+### 新建EmployeeMapper.xml
+
+文件位置：
+
+```text
+src/main/resources/mapper/EmployeeMapper.xml
+```
+
+完整内容：
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.employee.mapper.EmployeeMapper">
+
+    <resultMap id="employeeResultMap" type="Employee">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="department" column="department"/>
+        <result property="email" column="email"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findById"
+            parameterType="long"
+            resultMap="employeeResultMap">
+        SELECT
+            id,
+            name,
+            department,
+            email,
+            status,
+            created_at,
+            updated_at
+        FROM employees
+        WHERE id = #{id}
+    </select>
+
+</mapper>
+```
+
+### Mapper接口与XML如何对应
+
+Java接口：
+
+```java
+@Mapper
+public interface EmployeeMapper {
+    Employee findById(@Param("id") Long id);
+}
+```
+
+对应XML片段：
+
+```xml
+<mapper namespace="com.example.employee.mapper.EmployeeMapper">
+    <select id="findById" resultMap="employeeResultMap">
+        SELECT id, name, department, email, status, created_at, updated_at
+        FROM employees
+        WHERE id = #{id}
+    </select>
+</mapper>
+```
+
+上面的XML是教学片段，完整文件还必须包含 `employeeResultMap` 和DOCTYPE。对应关系是：
+
+| Java/XML位置 | 必须对应 |
+| --- | --- |
+| 接口完整类名 | `<mapper namespace>` |
+| `findById` 方法名 | `<select id>` |
+| `@Param("id")` | `#{id}` |
+| `Employee` 返回类型 | `employeeResultMap`映射结果 |
+
+`@Mapper` 来自MyBatis。应用启动时，MyBatis扫描接口并创建运行时代理，再把代理注册为Spring Bean。`@Param("id")` 为SQL参数提供稳定名称。
+
+`#{id}` 使用预编译参数绑定，形成类似 `WHERE id = ?` 的SQL；不要改成 `${id}`。后者直接插入文本，接收用户输入时可能改变SQL结构并造成SQL注入。
+
+### Mapper代理如何产生
+
+调用 `employeeMapper.findById(id)` 时，对象是MyBatis生成的代理：
+
+```text
+接口完整名和方法名
+  → 找到namespace和select id
+  → 绑定#{id}
+  → 执行SQL
+  → 按resultMap创建Employee
+```
+
+因此开发者不写Mapper实现类。这个代理对象仍是Spring Bean，所以可以通过构造器注入Service。它只负责数据访问，不判断“员工不存在应返回404”。
+
+
+验证：在Eclipse重新启动应用，检查XML解析和Mapper Bean创建没有错误；此时Service尚未调用Mapper，不能把原有详情响应当成数据库查询证据。下一案例接通Service后再验证SQL结果。
+
+## 六、案例9-05：把Service具体类改为接口和实现类
+
+第8章的 `EmployeeService.java` 是带 `@Service` 的具体类，本案例必须完整替换同一路径文件为接口，再新建 `service/impl/EmployeeServiceImpl.java`。不要同时保留旧类和新接口。Controller原来依赖 `EmployeeService`，其构造器和接口路径不变。
+
+### 完整替换EmployeeService.java
+
+第8章的 `EmployeeService` 是一个具体类。本章把同一路径的文件完整替换为接口：
+
+```java
+package com.example.employee.service;
+
+import com.example.employee.dto.request.EmployeeCreateRequest;
+import com.example.employee.dto.response.EmployeeListItemResponse;
+import com.example.employee.dto.response.EmployeeResponse;
+
+import java.util.List;
+
+public interface EmployeeService {
+
+    EmployeeResponse findById(Long id);
+
+    List<EmployeeListItemResponse> findList(String department);
+
+    String previewCreate(EmployeeCreateRequest request);
+}
+```
+
+### 新建EmployeeServiceImpl.java
+
+文件位置：
+
+```text
+src/main/java/com/example/employee/service/impl/EmployeeServiceImpl.java
+```
+
+完整内容：
+
+```java
+package com.example.employee.service.impl;
+
+import com.example.employee.dto.request.EmployeeCreateRequest;
+import com.example.employee.dto.response.EmployeeListItemResponse;
+import com.example.employee.dto.response.EmployeeResponse;
+import com.example.employee.entity.Employee;
+import com.example.employee.exception.DuplicateEmailException;
+import com.example.employee.exception.EmployeeNotFoundException;
+import com.example.employee.exception.InvalidDepartmentException;
+import com.example.employee.mapper.EmployeeMapper;
+import com.example.employee.service.EmployeeService;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class EmployeeServiceImpl implements EmployeeService {
+
+    private static final List<EmployeeResponse> SAMPLE_EMPLOYEES = List.of(
+            new EmployeeResponse(
+                    1001L,
+                    "Tanaka",
+                    "Sales",
+                    "tanaka@example.com"));
+
+    private final EmployeeMapper employeeMapper;
+
+    public EmployeeServiceImpl(EmployeeMapper employeeMapper) {
+        this.employeeMapper = employeeMapper;
+    }
+
+    @Override
+    public EmployeeResponse findById(Long id) {
+        Employee employee = employeeMapper.findById(id);
+
+        if (employee == null) {
+            throw new EmployeeNotFoundException(id);
+        }
+
+        return toResponse(employee);
+    }
+
+    @Override
+    public List<EmployeeListItemResponse> findList(String department) {
+        List<EmployeeListItemResponse> results = new ArrayList<>();
+        for (EmployeeResponse employee : SAMPLE_EMPLOYEES) {
+            if (employee.getDepartment().equals(department)) {
+                results.add(new EmployeeListItemResponse(
+                        employee.getId(),
+                        employee.getName(),
+                        employee.getDepartment()));
+            }
+        }
+        return results;
+    }
+
+    @Override
+    public String previewCreate(EmployeeCreateRequest request) {
+        if (!isAllowedDepartment(request.getDepartment())) {
+            throw new InvalidDepartmentException(
+                    request.getDepartment());
+        }
+
+        if ("used@example.com".equals(request.getEmail())) {
+            throw new DuplicateEmailException(request.getEmail());
+        }
+
+        return request.getName()
+                + " / " + request.getDepartment()
+                + " / " + request.getEmail();
+    }
+
+    private EmployeeResponse toResponse(Employee employee) {
+        return new EmployeeResponse(
+                employee.getId(),
+                employee.getName(),
+                employee.getDepartment(),
+                employee.getEmail());
+    }
+
+    private boolean isAllowedDepartment(String department) {
+        return "Sales".equals(department)
+                || "Development".equals(department)
+                || "Support".equals(department);
+    }
+}
+```
+
+`findList()` 继续按固定样例筛选，`previewCreate()` 继续使用第8章的临时实现，确保既有列表、校验和异常练习仍然可以执行。此时只有 `findById()` 读取数据库；本章列表结果不反映数据库中的所有记录，第10章才将列表接入Mapper。不要把固定列表响应当成数据库查询证据。
+
+### Service结构与注入说明
+
+#### 1. Service为什么改为接口和实现类
+
+第8章的 `EmployeeService` 是具体类。本章改为：
+
+```text
+EmployeeService       → 接口，声明业务能力
+EmployeeServiceImpl   → 实现类，组织Mapper、业务判断和DTO转换
+```
+
+接口片段：
+
+```java
+public interface EmployeeService {
+    EmployeeResponse findById(Long id);
+    List<EmployeeListItemResponse> findList(String department);
+    String previewCreate(EmployeeCreateRequest request);
+}
+```
+
+实现类使用构造器注入：
+
+```java
+@Service
+public class EmployeeServiceImpl implements EmployeeService {
+
+    private final EmployeeMapper employeeMapper;
+
+    public EmployeeServiceImpl(EmployeeMapper employeeMapper) {
+        this.employeeMapper = employeeMapper;
+    }
+}
+```
+
+`@Service` 由Spring处理，使实现类成为Bean。`implements` 要求实现接口方法，`@Override` 帮助编译器核对签名。Controller仍依赖 `EmployeeService` 接口；容器发现只有一个实现Bean时，会把它注入原来的构造器，所以Controller无需因实现方式变化而修改。
+
+这种结构便于后续测试或替换实现，但不是所有Spring项目都必须机械建立“接口＋Impl”。
+
+#### 2. 查询不到时仍沿用第7章404
+
+```java
+Employee employee = employeeMapper.findById(id);
+if (employee == null) {
+    throw new EmployeeNotFoundException(id);
+}
+```
+
+Mapper用 `null` 表示没有记录，Service把它转换为具有业务意义的异常。第7章的全局异常处理器继续把异常转换为404，Mapper不需要理解HTTP。
+
+
+调用关系为 `Controller → EmployeeService接口 → EmployeeServiceImpl → EmployeeMapper → MySQL`。`@Service` 只标注实现类；Spring找到唯一实现Bean后通过Controller构造器注入。实现类的 `findList` 和 `previewCreate` 仍保留第8章行为。
+
+验证：重启应用，用Postman发送 `GET {{baseUrl}}/employees/1001`（无参数和Body）应返回200；请求不存在编号 `999999` 应返回404。此时详情已经接入数据库，列表和预览还未接入。
+
+## 七、案例9-06：观察完整数据库调用链与DTO转换（不新增代码）
+
+本案例不新增或修改Java文件，继续使用案例9-05完成的工程。通过Postman请求、Eclipse断点和代码追踪，观察数据库记录怎样成为HTTP响应。请在上个案例的 `EmployeeServiceImpl.findById` 与 `toResponse` 中定位下面两段，不要重复复制Service代码：
+
+~~~java
+Employee employee = employeeMapper.findById(id);
+if (employee == null) {
+    throw new EmployeeNotFoundException(id);
+}
+return toResponse(employee);
+~~~
+
+~~~java
+private EmployeeResponse toResponse(Employee employee) {
+    return new EmployeeResponse(
+            employee.getId(), employee.getName(),
+            employee.getDepartment(), employee.getEmail());
+}
+~~~
+
+### Entity到响应DTO的说明
+
+查询成功后，Service显式选择允许公开的字段：
+
+```java
+private EmployeeResponse toResponse(Employee employee) {
+    return new EmployeeResponse(
+            employee.getId(),
+            employee.getName(),
+            employee.getDepartment(),
+            employee.getEmail());
+}
+```
+
+`Employee` 表示数据库记录；`EmployeeResponse` 表示API契约。当前响应不公开 `status`、`createdAt` 和 `updatedAt`。这样数据库表增加内部字段时，不会自动改变接口响应。
+
+转换通常放在Service或专门的转换组件中。本章规模较小，放在Service私有方法即可：
+
+```text
+Postman请求
+  → EmployeeController.findById() 调用EmployeeService接口
+  → Spring注入的EmployeeServiceImpl.findById()
+  → EmployeeMapper代理调用MyBatis
+  → DataSource提供连接，MyBatis执行SQL，MySQL返回数据行
+  → MyBatis映射为Employee Entity
+  → Service的toResponse()转换为EmployeeResponse
+  → Controller包装为ApiResponse
+  → HTTP 200
+```
+
+若MySQL没有该编号，Mapper返回 `null`，Service抛出 `EmployeeNotFoundException`，`GlobalExceptionHandler` 将它转换为HTTP 404。Mapper只负责数据访问，不决定HTTP状态。可在Eclipse给Controller、Service的 `findById()` 和 `toResponse()` 设置断点，观察正常与不存在编号各经过哪些位置。
+
+Postman发送 `GET {{baseUrl}}/employees/1001`，预期200、`data.name=Tanaka`、`data.department=Sales`；响应不应出现 `status`、`createdAt`、`updatedAt`。再请求 `999999`，预期404。这条链的各层职责是：Mapper返回Entity或null，Service转换DTO或抛业务异常，Controller包装 `ApiResponse`，第7章Advice处理404。
+
+### 第一次SQL成功后回看DataSource与配置
+
+现在沿已运行的请求回看基础设施：`DataSource` 是 `javax.sql.DataSource` 接口，负责提供数据库连接。Spring Boot根据 `spring.datasource.*` 创建实现对象；本项目依赖环境下默认使用HikariCP连接池复用连接。
+
+```text
+application.yml
+  → Spring Boot创建DataSource
+  → MyBatis Starter创建SqlSessionFactory和SqlSessionTemplate
+  → Mapper代理通过DataSource取得连接
+  → JDBC Driver与MySQL通信
+```
+
+业务代码不需要手动调用 `DriverManager`，也不手动 `openSession()`、`commit()` 或 `close()`。本章还没有建立显式 `@Transactional` 事务边界；事务将在第13章处理。
+
+| 配置项 | 读取者 | 当前作用 |
+| --- | --- | --- |
+| `spring.datasource.url` | Spring Boot | 指定JDBC地址和数据库 |
+| `username`、`password` | Spring Boot | 提供数据库身份 |
+| `driver-class-name` | Spring Boot | 指定MySQL JDBC驱动类 |
+| `mybatis.mapper-locations` | MyBatis Starter | 查找Mapper XML |
+| `mybatis.type-aliases-package` | MyBatis Starter | 扫描类型别名 |
+| `map-underscore-to-camel-case` | MyBatis | 支持下划线列名与驼峰属性名 |
+| `default-statement-timeout` | MyBatis | 为SQL提供默认超时秒数 |
+
+`mybatis` 下的 `mapper-locations`、`type-aliases-package` 是Starter整合配置；`configuration` 下的值写入MyBatis核心 `Configuration` 对象。`map-underscore-to-camel-case: true` 支持自动映射时把 `created_at` 对应到 `createdAt`，但本章XML明确使用 `resultMap`，因此以其中写出的 `column` 和 `property` 为准。`default-statement-timeout: 10` 是SQL默认等待上限，不保证数据库一定在10秒内完成终止处理。
+
+## 八、案例9-07：修改数据库并观察接口响应
+
+1. 在数据库客户端读取并记录编号1001的原始姓名，同时在Postman发送 `GET {{baseUrl}}/employees/1001`，预期200；
+2. 在数据库客户端把1001的姓名临时改为 `Tanaka Taro`；
+3. 再次发送相同请求，响应姓名也应改变；
+4. 把数据库姓名恢复为 `Tanaka`；
+5. 请求不存在的 `999999`，预期404。
+
+这个案例用两种证据相互确认：
+
+- 数据库查询证明底层记录状态；
+- Postman响应证明Controller、Service、Mapper、DataSource和MySQL组成的外部调用链。
+
+本章列表接口仍返回固定样例，不能用它证明列表已经接入数据库。第10章才会替换列表、新增、修改和删除逻辑。
+
+## 九、章末完整代码
+
+以下文件是七个案例完成后的最终状态，用于逐文件核对。已经按案例完成的文件无需再次覆盖；不要让第8章的Service具体类与本章接口同时存在。
+
+### 1. 建立数据库、账号、表和样例数据
+
+以下脚本只适用于MySQL 8.0.16及以上版本的本地练习环境。先使用拥有建库和创建用户权限的管理账号，在MySQL Workbench或命令行客户端中执行：
+
+```sql
+CREATE DATABASE IF NOT EXISTS employee_db
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_0900_ai_ci;
+
+CREATE USER IF NOT EXISTS 'employee_app'@'localhost'
+    IDENTIFIED BY 'replace_with_local_password';
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON employee_db.*
+TO 'employee_app'@'localhost';
+
+USE employee_db;
+
+CREATE TABLE employees (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    department VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT pk_employees PRIMARY KEY (id),
+    CONSTRAINT uk_employees_email UNIQUE (email),
+    CONSTRAINT ck_employees_status
+        CHECK (status IN ('ACTIVE', 'INACTIVE'))
+) AUTO_INCREMENT = 1001;
+
+INSERT INTO employees (name, department, email)
+VALUES
+    ('Tanaka', 'Sales', 'tanaka@example.com'),
+    ('Suzuki', 'Development', 'suzuki@example.com');
+```
+
+把 `replace_with_local_password` 换成本机练习账号的密码，不要把真实密码写入项目文件或提交记录。`CREATE USER IF NOT EXISTS` 遇到同名既有账号不会重设它的密码；若账号已存在，先由有权限人员确认它的来源和凭据，不能直接覆盖。应用账号只获得当前数据库的查询和增删改权限，不使用MySQL管理员账号运行应用。
 
 如果 `employees` 表已经存在，`CREATE TABLE` 会失败。这是在阻止脚本意外覆盖已有表。不要为了省事在共享数据库执行 `DROP TABLE`；需要重做本地练习时，先确认表中数据可以丢弃并自行备份。
 
@@ -194,20 +860,13 @@ mybatis:
     default-statement-timeout: 10
 ```
 
-`mybatis` 下的配置分成两类：
-
-- `mapper-locations`、`type-aliases-package` 是MyBatis Spring Boot Starter提供的集成配置，负责告诉Starter去哪里找Mapper XML和类型别名；
-- `configuration` 下面是MyBatis核心运行设置，Starter会把这些值写入MyBatis的 `Configuration` 对象。
-
-`map-underscore-to-camel-case: true` 允许自动映射时把 `created_at` 对应到 `createdAt`。当前 `EmployeeMapper.xml` 使用了明确的 `resultMap`，所以即使开启该设置，仍以 `resultMap` 中写出的 `column` 和 `property` 为准。`default-statement-timeout: 10` 把未单独指定超时的SQL默认等待时间设为10秒；它用于限制等待时间，不保证SQL一定在10秒内完成，具体终止行为还受JDBC驱动和数据库影响。
-
 在Eclipse中打开 **Run → Run Configurations...**，选择当前启动类对应的Java Application或Spring Boot App运行配置，在 **Environment** 页添加：
 
 | Name | Value | 是否必需 |
 | --- | --- | --- |
-| `DB_USERNAME` | `employee_app` | 是 |
-| `DB_PASSWORD` | 本机练习账号密码 | 是，不写入文档或Git |
-| `DB_URL` | `jdbc:mysql://localhost:3306/employee_db?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Tokyo` | 数据库不在默认地址时设置 |
+| `DB_USERNAME` | `employee_app` | 否；实际账号不同则必须设置 |
+| `DB_PASSWORD` | 本机练习账号密码 | 是；无默认值，不写入文档或Git |
+| `DB_URL` | `jdbc:mysql://localhost:3306/employee_db?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Tokyo` | 否；实际地址不同则必须设置 |
 
 点击 **Apply** 保存到本机Eclipse运行配置，再用该配置启动应用。环境变量只提供给这个运行进程；不要把真实密码写进 `application.yml`、截图、测试证据或提交文件。更换电脑或Eclipse工作区后需要重新配置。
 
@@ -374,7 +1033,6 @@ import com.example.employee.dto.request.EmployeeCreateRequest;
 import com.example.employee.dto.response.EmployeeListItemResponse;
 import com.example.employee.dto.response.EmployeeResponse;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public interface EmployeeService {
@@ -386,8 +1044,6 @@ public interface EmployeeService {
     String previewCreate(EmployeeCreateRequest request);
 }
 ```
-
-接口上不再写 `@Service`，因为接口本身没有业务方法体。真正需要注册为Spring Bean的是下面的实现类。
 
 ### 8. 新建EmployeeServiceImpl.java
 
@@ -413,6 +1069,7 @@ import com.example.employee.mapper.EmployeeMapper;
 import com.example.employee.service.EmployeeService;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -490,232 +1147,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
 `findList()` 继续按固定样例筛选，`previewCreate()` 继续使用第8章的临时实现，确保既有列表、校验和异常练习仍然可以执行。此时只有 `findById()` 读取数据库；本章列表结果不反映数据库中的所有记录，第10章才将列表接入Mapper。不要把固定列表响应当成数据库查询证据。
 
-## 三、先读懂表定义和数据字典
-
-关系数据库把同一种业务记录保存在表中。`employees` 是表，每一行表示一名员工，每一列表示一个固定含义的字段。数据库中的 `NULL` 表示没有值，不等于空字符串。
-
-### 1. 本章用到的DDL、DML和查询
-
-- `CREATE DATABASE`、`CREATE TABLE`、`CREATE USER`和 `GRANT` 用于定义数据库结构或权限，属于DDL或管理操作。
-- `INSERT` 用于写入记录，属于DML。
-- `SELECT` 用于读取记录，本章应用只实现这一种SQL调用。
-
-`IF NOT EXISTS` 只用于数据库和账号；表故意不使用它，因为表已存在但结构错误时，安静跳过会让问题更难发现。
-
-### 2. 字段数据字典
-
-| 数据库列 | MySQL类型与约束 | Java属性 | 生成或填写者 | 业务含义 | API范围 |
-| --- | --- | --- | --- | --- | --- |
-| `id` | `BIGINT`、主键、自增、非空 | `Long id` | MySQL | 员工唯一编号 | 路径参数、列表和详情响应 |
-| `name` | `VARCHAR(50)`、非空 | `String name` | 客户端输入 | 员工姓名 | 请求、列表和详情 |
-| `department` | `VARCHAR(50)`、非空 | `String department` | 客户端输入 | 部门名称 | 请求、列表和详情 |
-| `email` | `VARCHAR(100)`、非空、唯一 | `String email` | 客户端输入 | 联系邮箱，不允许重复 | 请求和详情；列表不公开 |
-| `status` | `VARCHAR(20)`、非空、默认 `ACTIVE`、值域检查 | `String status` | MySQL默认值或系统 | 当前状态 | 当前接口不公开 |
-| `created_at` | `DATETIME`、非空、默认当前时间 | `LocalDateTime createdAt` | MySQL | 创建时间 | 当前接口不公开 |
-| `updated_at` | `DATETIME`、非空、默认当前时间、更新时刷新 | `LocalDateTime updatedAt` | MySQL | 最后更新时间 | 当前接口不公开 |
-
-接口校验和数据库约束保护的入口不同。第8章的 `@Size(max = 100)` 能在HTTP入口尽早拒绝过长邮箱；数据库 `VARCHAR(100)` 保护所有写入来源；唯一约束还能防止并发请求同时通过“是否重复”的事前查询。下一章处理写入时会把数据库约束失败转换为接口规定的响应。
-
-### 3. 主键、默认值和约束
-
-- `PRIMARY KEY` 保证每一行有唯一身份；`AUTO_INCREMENT` 让MySQL在插入时生成编号。
-- `NOT NULL` 禁止SQL `NULL`，但不会自动禁止空字符串。
-- `DEFAULT` 只在INSERT省略该列时使用；主动传入 `NULL` 仍会违反非空约束。
-- `UNIQUE (email)` 保证表内邮箱不重复。
-- `CHECK` 限制状态只能是 `ACTIVE` 或 `INACTIVE`。本章以MySQL 8.0.16及以上版本为基线；更早版本可能接受语法却不实际执行约束，不能照搬本章结论。
-
-## 四、JDBC、DataSource、连接池和MyBatis分别做什么
-
-数据库依赖加入后，应用中同时出现几组名称。它们不是同一个东西：
-
-```text
-EmployeeMapper方法
-  → MyBatis生成并执行SQL调用
-  → JDBC标准接口
-  → MySQL Connector/J驱动
-  → 数据库连接
-  → MySQL 8.0
-```
-
-| 名称 | 类型或来源 | 本章职责 |
-| --- | --- | --- |
-| JDBC | Java访问关系数据库的标准API | 规定连接、预编译语句和结果读取等接口 |
-| MySQL Connector/J | MySQL提供的JDBC驱动 | 把JDBC调用转换为MySQL通信 |
-| `DataSource` | `javax.sql.DataSource` 接口 | 提供数据库连接；Spring Boot根据配置创建实现对象 |
-| HikariCP | 默认连接池实现 | 保存并复用一定数量的数据库连接，避免每次请求都重新建立物理连接 |
-| MyBatis | 数据访问框架 | 把Mapper方法、SQL参数、XML语句和Java结果对象连接起来 |
-| MyBatis Starter | Spring Boot集成依赖 | 自动准备MyBatis与Spring协作所需的基础对象和Mapper代理 |
-
-`mybatis-spring-boot-starter` 3.0系列支持Spring Boot 3.2～3.5和Java 17以上，本项目固定使用3.0.5。`mysql-connector-j` 的具体兼容版本由Spring Boot父项目管理，因此依赖中不单独填写版本。兼容范围可在[MyBatis Spring Boot Starter官方要求](https://mybatis.org/spring-boot-starter/mybatis-spring-boot-autoconfigure/)中核对。
-
-连接池复用连接，不等于所有请求共用一个正在执行SQL的连接。借出、归还和事务绑定由框架管理，业务代码不手动关闭连接池中的物理连接。
-
-## 五、Spring Boot怎样读取数据库和MyBatis配置
-
-### 1. 两组配置分别由谁处理
-
-`spring.datasource` 是Spring Boot配置前缀，不是Java包。启动时，Spring Boot读取URL、账号、密码和驱动，创建 `DataSource`；MyBatis再通过它取得连接。Spring Boot的数据源属性和连接池选择可参考[Spring Boot 3.5 SQL数据库说明](https://docs.spring.io/spring-boot/3.5/reference/data/sql.html)。
-
-`mybatis` 是MyBatis Spring Boot Starter使用的配置前缀。应用启动时，两组配置按照下面的方向生效：
-
-```text
-application.yml
-  ├─ spring.datasource.*
-  │    → Spring Boot创建DataSource
-  └─ mybatis.*
-       → Starter读取并绑定MyBatis配置
-       → 创建SqlSessionFactory
-       → 创建SqlSessionTemplate
-       → 加载Mapper XML并注册@Mapper代理对象
-```
-
-业务代码不需要自己读取YAML，也不需要手动使用 `SqlSessionFactoryBuilder`。Starter检测到 `DataSource` 后，把它交给自动创建的 `SqlSessionFactory`，再让Mapper代理通过Spring管理的 `SqlSessionTemplate` 执行SQL。这个流程与普通Java项目手动读取 `mybatis-config.xml`、手动构建工厂的方式不同。
-
-### 2. 本章application.yml中的主要配置
-
-| 配置项 | 可接受的值 | 默认值或必填性 | 当前作用 |
-| --- | --- | --- | --- |
-| `spring.datasource.url` | 有效JDBC URL | 默认连接本机3306端口的 `employee_db` | 指定数据库地址和连接参数 |
-| `username` | 有权限的MySQL账号 | 默认 `employee_app` | 指定应用身份 |
-| `password` | 账号密码 | 必填，无默认值 | 从环境变量读取凭据 |
-| `driver-class-name` | 可加载的JDBC驱动类 | 本章固定MySQL驱动 | 明确使用Connector/J |
-| `mybatis.mapper-locations` | 一个或多个Spring资源路径或通配模式 | Starter没有自动填写本项目路径，本章明确设置 | 查找并加载Mapper XML |
-| `mybatis.type-aliases-package` | 一个或多个Java包名 | 默认不扫描指定别名包，本章固定Entity包 | 允许XML用 `Employee` 代替完整类名 |
-| `mybatis.configuration.map-underscore-to-camel-case` | `true`、`false` | MyBatis默认 `false`，本章设置 `true` | 自动映射时把下划线列名转换为驼峰属性名 |
-| `mybatis.configuration.default-statement-timeout` | 正整数秒数 | MyBatis默认不设置统一值，本章设置10秒 | 为没有单独配置超时的SQL提供默认等待上限 |
-
-`${DB_URL:默认值}` 表示优先读取环境变量，变量不存在时使用冒号后的默认值；`${DB_PASSWORD}` 没有默认值，缺失时应用应启动失败。生产环境应使用部署平台的密钥管理或受控环境变量，并为不同环境使用不同账号。
-
-JDBC URL中的 `connectionTimeZone=Asia/Tokyo` 设置连接解释时间值时使用的时区。数据库列使用 `DATETIME`，Java使用不携带时区的 `LocalDateTime`；这表示业务上的本地日期时间，不代表UTC瞬间。具体转换边界可参考[MySQL Connector/J日期时间说明](https://dev.mysql.com/doc/connector-j/en/connector-j-time-instants.html)。
-
-YAML使用短横线命名，例如 `map-underscore-to-camel-case`；对应的MyBatis核心设置名称是 `mapUnderscoreToCamelCase`。Spring Boot的配置绑定会完成这种命名转换。
-
-本章没有设置下面这些选项：
-
-- 不设置 `log-impl: STDOUT_LOGGING`，因为项目使用Spring Boot的SLF4J日志体系，第11章统一配置SQL日志；
-- 不为了展示而启用懒加载或二级缓存，这些行为会改变对象加载和数据一致性判断；
-- 不把 `default-fetch-size` 当成查询行数限制，它只是给JDBC驱动的抓取提示，不能替代SQL中的分页或 `LIMIT`。
-
-MyBatis全部核心设置及默认值应以[MyBatis官方Configuration说明](https://mybatis.org/mybatis-3/configuration)为准，不应把所有设置复制进项目。
-
-### 3. 项目使用独立mybatis-config.xml时怎样读取
-
-有些既存项目把MyBatis核心设置放在 `mybatis-config.xml` 中。Spring Boot不会仅凭文件名自动读取它，必须通过 `mybatis.config-location` 指定资源位置。`mybatis.configuration.*` 和 `mybatis.config-location` 是两种核心设置来源，不能同时使用；`mapper-locations` 和 `type-aliases-package` 仍可保留在 `application.yml` 中。
-
-当前主线继续使用结构更直观的 `mybatis.configuration.*`。独立XML的完整文件、配置切换、`<environments>`差异、故障观察和恢复步骤见附录[Spring Boot怎样读取独立MyBatis配置](../appendix/A12_springboot_mybatis_config.md)。
-
-## 六、Employee为什么不是请求或响应对象
-
-`Employee` 是项目创建的持久化对象，用于承接一行 `employees` 查询结果。它包含表查询需要的状态和时间字段；请求DTO表示客户端允许提交的字段，响应对象表示接口允许公开的字段。
-
-```text
-EmployeeCreateRequest：客户端可以提交什么
-Employee：数据库一行包含什么
-EmployeeResponse：详情接口允许返回什么
-```
-
-因此不能为了少写一个类就让Controller直接返回Entity。否则以后给表增加内部备注、删除标志或审计字段时，接口可能意外公开这些字段。
-
-`LocalDateTime` 来自JDK的 `java.time` 包。MySQL `DATETIME` 与它都不携带时区。MyBatis读取结果后调用setter写入属性，所以Entity保留无参数构造能力和各字段setter。
-
-## 七、Mapper接口和XML怎样对应
-
-### 1. Java接口
-
-`@Mapper` 和 `@Param` 都来自 `org.apache.ibatis.annotations`：
-
-- `@Mapper` 写在接口上，无参数。启动时MyBatis发现该接口并创建Mapper代理，再把代理注册为Spring Bean。
-- `@Param("id")` 写在方法参数上，字符串不能为空。本例让XML中的 `#{id}` 稳定对应Java参数，不依赖编译器是否保留参数名。
-- `findById()` 接收 `Long` 编号，查询到一行时返回 `Employee`，没有记录时返回 `null`。
-
-### 2. XML对应关系
-
-| XML位置 | 必须对应什么 | 本章值 |
-| --- | --- | --- |
-| `namespace` | Mapper接口完整类名 | `com.example.employee.mapper.EmployeeMapper` |
-| `<select id>` | 接口方法名 | `findById` |
-| `parameterType` | 方法输入类型 | `long`类型别名 |
-| `resultMap` | 当前XML中的结果映射id | `employeeResultMap` |
-| `#{id}` | `@Param`指定的参数名 | `id` |
-
-DOCTYPE告诉编辑器和解析器该XML遵循MyBatis Mapper 3格式。`resultMap` 明确写出“数据库列→Java属性”的关系；其中 `<id>` 用于主键映射，`<result>` 用于普通列映射。
-
-简单查询也可以使用列别名和 `resultType`：
-
-```xml
-<select id="findById" resultType="Employee">
-    SELECT created_at AS createdAt
-    FROM employees
-    WHERE id = #{id}
-</select>
-```
-
-这是对比片段，表示用它**替换**当前 `findById` 的 `<select>`；不能直接追加到同一个 `<mapper>`，否则相同的 `namespace + id` 会重复。列别名适合简单且字段较少的结果；可复用的完整记录映射使用 `resultMap` 更容易集中核对。本章主线只采用一个明确的 `resultMap`，不同时维护两套正式映射。
-
-### 3. `#{}`和`${}`不是两种随意替换的写法
-
-`#{id}` 会生成类似 `WHERE id = ?` 的预编译SQL，再通过JDBC单独绑定 `Long` 值。它能处理类型并防止参数内容改变SQL结构。
-
-`${id}` 是把文本直接插入SQL。用户输入如果包含SQL片段，可能改变语句结构并造成SQL注入。本课程的请求参数一律不使用 `${}`。只有列名、排序方向等无法作为预编译值绑定的受控标识符场景才可能使用它，而且必须从服务器固定白名单选择，不能直接接收用户文本。
-
-## 八、为什么Mapper接口没有Impl类
-
-调用 `employeeMapper.findById(id)` 时，实际对象不是开发者编写的 `EmployeeMapperImpl`，而是MyBatis运行时生成的代理对象：
-
-```text
-接口完整名 + 方法名
-  → 找到XML的namespace + id
-  → 取得SQL和resultMap
-  → 绑定参数并执行
-  → 把结果映射为Employee
-```
-
-Starter还会自动配置 `SqlSessionFactory` 和 `SqlSessionTemplate`。前者保存解析后的MyBatis配置并创建会话，后者是MyBatis-Spring提供的线程安全调用入口，负责让Mapper调用在已有Spring事务中共用会话。业务代码不手动调用 `openSession()`、`commit()`或 `close()`。
-
-这里的“支持Spring事务”不等于所有Service方法已经自动具有事务边界。当前还没有使用 `@Transactional`；发生在Spring事务之外的每次Mapper调用会各自提交。第10章先完成CRUD功能闭环，第13章再为多步写入建立共同提交或回滚的事务边界。
-
-Mapper代理只负责把接口调用连接到数据访问过程，不包含“员工不存在应返回404”这种接口业务判断。
-
-## 九、Service接口与实现类是什么关系
-
-本章的Service有两份Java类型：
-
-```text
-EmployeeService       接口：声明员工业务可以做什么
-EmployeeServiceImpl   实现类：写出当前业务怎样完成
-```
-
-`implements EmployeeService` 表示实现类承诺实现接口中的全部方法；`@Override` 让编译器检查方法签名是否真的对应接口。`@Service` 写在实现类上，Spring创建的是实现类对象。Controller构造器虽然要求 `EmployeeService` 接口，容器仍能找到唯一的实现对象并注入。
-
-Service并非任何规模的项目都必须创建“接口＋Impl”。本课程从数据库接入阶段采用这种组织，是为了让学员能够阅读企业项目中常见的接口边界，并在后续测试或替换实现时有清楚的依赖方向。如果一个项目明确只使用具体Service类，也不代表违反Spring规则。
-
-Service接口与Mapper接口的关键区别是：
-
-| 对比 | Service接口 | Mapper接口 |
-| --- | --- | --- |
-| 实现来源 | 项目编写 `EmployeeServiceImpl` | MyBatis运行时生成代理 |
-| 主要职责 | 组织业务判断、转换和数据访问调用 | 把Java方法连接到SQL执行 |
-| Spring Bean来源 | 实现类上的 `@Service` | MyBatis扫描 `@Mapper`后注册代理 |
-| 是否应写业务规则 | 应写与用例有关的规则 | 不应承担HTTP或业务流程判断 |
-
-## 十、Entity怎样转换成响应对象
-
-`findById()` 按下面的顺序执行：
-
-```text
-1. Service调用employeeMapper.findById(id)
-2. Mapper返回Employee或null
-3. null时抛出EmployeeNotFoundException
-4. 有记录时调用toResponse(employee)
-5. 只选择id、name、department、email创建EmployeeResponse
-6. 第7章的Controller和ApiResponse返回HTTP 200
-```
-
-转换代码逐字段选择接口允许公开的数据。`status`、`createdAt`和 `updatedAt` 留在Entity内，不进入当前详情响应。这种显式转换虽然多几行代码，但Review时可以直接核对数据库字段和接口字段的边界。
-
-第8章的DTO校验仍然保护新增预览入口，但按编号查询没有请求DTO；路径文本转换为 `Long` 的400处理仍由Spring MVC负责。查询不到记录不是格式错误，Service继续抛出 `EmployeeNotFoundException`，全局异常处理器把它变成404。
-
-## 十一、启动并验证完整调用链
+## 十、本章综合验证
 
 ### 1. 先验证数据库
 
@@ -731,9 +1163,9 @@ WHERE id = 1001;
 
 ### 2. 在Eclipse中启动
 
-确认Eclipse运行配置已经包含 `DB_USERNAME` 和 `DB_PASSWORD`，保存代码后从该运行配置启动应用。Console中应先出现数据库连接池和Spring Boot启动成功信息；如果密码、URL或驱动错误，应先修复启动问题，不继续发送接口请求。
+确认Eclipse运行配置包含必需的 `DB_PASSWORD`；仅当实际账号或地址不同于本地默认值时添加 `DB_USERNAME` 或 `DB_URL`。保存代码后从该运行配置启动应用。先确认Console中出现Spring Boot启动成功信息；连接池是否立即建立连接取决于实际初始化时机，不能把某一条连接池日志当成唯一通过条件。若启动时报配置或驱动错误，先修复再发请求；若启动成功但详情请求报连接错误，则按第十一节检查数据库服务、URL和账号。
 
-### 3. 请求详情
+### 3. 请求数据库详情
 
 在Postman中把编号替换为数据库中实际存在的值：
 
@@ -769,7 +1201,7 @@ WHERE id = 1001;
 | HTTP方法 | URL | Params | 请求体 | 预期状态与响应 |
 | --- | --- | --- | --- | --- |
 | GET | `{{baseUrl}}/employees/999999` | 无 | 无 | 404，员工不存在结构 |
-| GET | `{{baseUrl}}/employees` | `department=Sales` | 无 | 200，列表数据来自数据库 |
+| GET | `{{baseUrl}}/employees` | `department=Sales` | 无 | 200，返回固定样例Tanaka；此接口尚未读取数据库 |
 | POST | `{{baseUrl}}/employees/preview` | 无 | `{"name":"Sato","department":"Development","email":"sato@example.com"}` | 200，预览成功 |
 | POST | `{{baseUrl}}/employees/preview` | 无 | `{"name":"Sato","department":"Other","email":"sato@example.com"}` | 400，非法部门消息 |
 | POST | `{{baseUrl}}/employees/preview` | 无 | `{"name":"Sato","department":"Development","email":"used@example.com"}` | 409，邮箱冲突消息 |
@@ -777,37 +1209,19 @@ WHERE id = 1001;
 
 三个POST请求的Body均选择 **raw → JSON**，并确认 `Content-Type: application/json`。
 
-完成这一步后，数据库记录到HTTP响应的主线已经实际运行。下面两节补充项目命名和当前时间字段边界，不再阻塞本章核心验证。
+完成后将数据库记录、Mapper执行结果和HTTP响应三处证据放在一起核对；本章列表仍是固定样例，不作为数据库查询证据。
 
-## 十二、DAO、Repository和Mapper是不是三个层
-
-它们通常都是“数据访问代码”的命名，不表示必须再创建三个依次调用的架构层：
-
-- `DAO` 是Data Access Object的通用叫法，强调封装数据访问。
-- `Repository` 常见于领域设计或Spring Data项目，语义偏向对象集合；不同框架对它的实现方式不同。
-- `Mapper` 是MyBatis项目的常见名称，强调方法、SQL参数和结果之间的映射。
-
-本项目使用MyBatis，因此统一采用 `mapper` 包和 `EmployeeMapper`。不要再创建内容完全相同的 `EmployeeDao`和 `EmployeeRepository`，否则只会增加转发代码。阅读既有日本项目时，应先看接口、SQL和调用关系，再判断名称实际承担什么职责。
-
-## 十三、当前项目的日期时间映射
-
-Employee表的 `created_at`、`updated_at` 使用MySQL `DATETIME`，Entity使用Java 17的 `LocalDateTime`。两者都表示日期和时间，但都不携带时区或UTC偏移；当前项目把它们定义为日本业务环境中的数据库本地时间。
-
-这只是当前项目规格，不是所有系统的通用答案。跨国家事件、审计时间或多地区API需要另外确定UTC、区域时区和接口格式，不能看到 `LocalDateTime` 就默认它代表东京时间。`DATETIME`、`TIMESTAMP`、`LocalDateTime`、`OffsetDateTime`、`Instant` 及Browser到数据库的转换与验证，统一放在附录[Java Web项目中的日期时间与时区](../appendix/A11_java_web_datetime.md)。
-
-本章只需确认MyBatis能够把两列写入Entity对应属性；它们不会进入当前详情响应。任何时间列类型或语义变更，都必须同时调查表定义、既有数据、Mapper映射、JDBC配置和接口规格。
-
-## 十四、按阶段排查数据库问题
+## 十一、按阶段排查数据库问题
 
 | 现象 | 所在阶段 | 常见原因 | 检查和修正 |
 | --- | --- | --- | --- |
 | 提示无法解析 `DB_PASSWORD` | 配置读取 | Eclipse运行配置中未设置环境变量 | 在当前启动类的Run Configuration中添加变量并重启 |
 | 提示找不到MyBatis核心配置 | 配置读取 | `config-location` 路径错误，且启用了存在检查 | 核对 `src/main/resources` 下的位置和 `classpath:` 路径 |
 | 创建 `SqlSessionFactory` 时提示两种配置并存 | MyBatis自动配置 | 同时写了 `config-location` 和 `configuration` | 二选一，删除另一套核心设置来源 |
-| `Access denied for user` | 数据库认证 | 账号、密码、主机范围或权限错误 | 用应用账号单独登录并检查授权，不改用root绕过 |
+| `Access denied for user` | 建立连接时的数据库认证；可能在启动或首次查询出现 | 账号、密码、主机范围或权限错误 | 用应用账号单独登录并检查授权，不改用root绕过 |
 | `Unknown database` | 建立连接 | 数据库名错误或建库脚本未执行 | 在MySQL中检查 `employee_db` |
 | 连接被拒绝或超时 | 网络与MySQL服务 | 服务未启动、端口或地址错误 | 先用数据库客户端连接同一地址 |
-| `Invalid bound statement` | Mapper语句定位 | XML未扫描、namespace或id不一致 | 逐项核对资源路径、接口完整名和方法名 |
+| `Invalid bound statement` | 首次调用对应Mapper方法时的语句定位 | XML未扫描、namespace或id不一致 | 逐项核对资源路径、接口完整名和方法名 |
 | `Table ... doesn't exist` | SQL执行 | 当前数据库错误或表未创建 | 查询当前数据库并检查表名 |
 | `Unknown column` | SQL执行 | SQL列名与DDL不一致 | 对照数据字典和实际表结构 |
 | 属性为 `null`但列有值 | 结果映射 | `resultMap`的column或property写错 | 对照列名、Java属性和setter |
@@ -815,7 +1229,7 @@ Employee表的 `created_at`、`updated_at` 使用MySQL `DATETIME`，Entity使用
 
 排错顺序应是“配置读取→建立连接→找到Mapper语句→执行SQL→结果映射→业务转换”。异常堆栈通常从外层框架异常开始，真正原因常在最后一个 `Caused by` 附近。
 
-## 十五、规格理解、影响调查与操作练习
+## 十二、规格理解、影响调查与操作练习
 
 ### 练习1：建立字段追踪表
 
@@ -852,7 +1266,7 @@ Review指摘：“为了减少类，详情和列表都直接返回Employee。”
 
 自测证据至少包含：数据库产品与版本、执行的SELECT、实际员工编号、请求URL、预期状态、实际状态、响应关键字段、判定和恢复操作。不得记录数据库密码。
 
-## 十六、本章稳定状态
+## 十三、本章稳定状态
 
 完成临时练习并恢复代码与样例数据后，新增目录应为：
 
@@ -882,3 +1296,32 @@ src/main/resources/
 9. 说明当前 `DATETIME` 与 `LocalDateTime` 都不携带时区，并知道何时进入日期时间附录继续学习。
 
 下一章会在这条稳定数据访问链上实现真实新增、修改和删除，并用数据库状态验证每次写操作。
+
+## 十四、附录：既存项目中的其他做法
+
+以下内容用于阅读既存项目，不改变本章 `application.yml`、Mapper和Service主线代码。
+
+### A. 独立mybatis-config.xml
+
+
+有些既存项目把MyBatis核心设置放在 `mybatis-config.xml` 中。Spring Boot不会仅凭文件名自动读取它，必须通过 `mybatis.config-location` 指定资源位置。`mybatis.configuration.*` 和 `mybatis.config-location` 是两种核心设置来源，不能同时使用；`mapper-locations` 和 `type-aliases-package` 仍可保留在 `application.yml` 中。
+
+当前主线继续使用结构更直观的 `mybatis.configuration.*`。独立XML的完整文件、配置切换、`<environments>`差异、故障观察和恢复步骤见附录[Spring Boot怎样读取独立MyBatis配置](../appendix/A12_springboot_mybatis_config.md)。
+
+### B. DAO、Repository和Mapper命名
+
+它们通常都是“数据访问代码”的命名，不表示必须再创建三个依次调用的架构层：
+
+- `DAO` 是Data Access Object的通用叫法，强调封装数据访问。
+- `Repository` 常见于领域设计或Spring Data项目，语义偏向对象集合；不同框架对它的实现方式不同。
+- `Mapper` 是MyBatis项目的常见名称，强调方法、SQL参数和结果之间的映射。
+
+本项目使用MyBatis，因此统一采用 `mapper` 包和 `EmployeeMapper`。不要再创建内容完全相同的 `EmployeeDao`和 `EmployeeRepository`，否则只会增加转发代码。阅读既有日本项目时，应先看接口、SQL和调用关系，再判断名称实际承担什么职责。
+
+### C. 日期时间映射的进阶边界
+
+Employee表的 `created_at`、`updated_at` 使用MySQL `DATETIME`，Entity使用Java 17的 `LocalDateTime`。两者都表示日期和时间，但都不携带时区或UTC偏移；当前项目把它们定义为日本业务环境中的数据库本地时间。
+
+这只是当前项目规格，不是所有系统的通用答案。跨国家事件、审计时间或多地区API需要另外确定UTC、区域时区和接口格式，不能看到 `LocalDateTime` 就默认它代表东京时间。`DATETIME`、`TIMESTAMP`、`LocalDateTime`、`OffsetDateTime`、`Instant` 及Browser到数据库的转换与验证，统一放在附录[Java Web项目中的日期时间与时区](../appendix/A11_java_web_datetime.md)。
+
+本章只需确认MyBatis能够把两列写入Entity对应属性；它们不会进入当前详情响应。任何时间列类型或语义变更，都必须同时调查表定义、既有数据、Mapper映射、JDBC配置和接口规格。

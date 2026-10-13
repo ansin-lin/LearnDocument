@@ -1,76 +1,84 @@
 # 第8章 输入校验与业务规则
 
-> 本章目标：使用Jakarta Validation拒绝空白、超长和格式错误的请求字段，区分JSON读取、字段校验和Service业务规则三个阶段，并把失败转换为第7章建立的稳定HTTP响应。
+> 本章目标：通过一组连续案例，观察JSON读取、DTO字段校验和Service业务规则分别在什么阶段生效，并把失败转换为第7章建立的稳定HTTP响应。
 
-第7章已经能区分200、404、409和500，但普通邮箱的预览请求即使姓名为空、部门只有空格，也会继续进入Service。本章要让不合格输入在正确的位置停止。
+第7章已经能返回200、404、409和500，但请求正文中的空白姓名、错误邮箱和非法部门仍需要在不同位置处理。本章从合法预览请求出发，依次加入字段约束、校验触发、统一错误响应和部门业务规则；每一步都使用同一个接口验证当前代码状态。
 
-请求处理顺序如下：
+阅读与操作顺序：先按案例逐步修改并用Postman观察当前阶段，再用“章末完整代码”核对所有案例完成后的最终文件。章末代码不是第一个案例的起始状态，不能提前整体替换。
 
-```text
-读取JSON
-  → 创建EmployeeCreateRequest
-  → 检查DTO字段约束
-  → 进入Controller
-  → Service检查业务规则
-  → 返回成功响应或业务失败响应
-```
+## 一、开始状态与案例规格
 
-## 一、开始状态与校验规格
+继续使用第7章工程。所有案例都使用：
 
-继续使用第7章工程。本章新增或替换：
+| 项目 | 内容 |
+| --- | --- |
+| HTTP方法 | POST |
+| URL | `{{baseUrl}}/employees/preview` |
+| 查询参数 | 无 |
+| 请求头 | `Content-Type: application/json` |
+| 请求体 | Postman选择 **raw → JSON** |
+
+本章要修改或新增：
 
 ```text
 pom.xml                                             ← 添加Validation依赖
 src/main/java/com/example/employee/
-├── common/
-│   └── ApiResponse.java                           ← 完整替换
-├── controller/
-│   └── EmployeeController.java                    ← 完整替换
-├── dto/request/
-│   └── EmployeeCreateRequest.java                 ← 完整替换
-├── exception/
-│   ├── GlobalExceptionHandler.java                ← 完整替换
-│   └── InvalidDepartmentException.java            ← 新建
-└── service/
-    └── EmployeeService.java                       ← 完整替换
+├── common/ApiResponse.java                         ← 增加可携带字段错误的失败方法
+├── controller/EmployeeController.java              ← 在请求参数上触发校验
+├── dto/EmployeeCreateRequest.java                  ← 声明字段约束
+├── exception/InvalidDepartmentException.java       ← 新建业务异常
+├── exception/GlobalExceptionHandler.java            ← 增加两类400处理
+└── service/EmployeeService.java                    ← 保留并补充业务规则
 ```
 
-其他数据对象、三个第7章异常类和 `HealthController` 保持不变。
+字段规格如下：
 
-### 1. 字段规格
+| 字段 | 字段规则 | 业务规则 |
+| --- | --- | --- |
+| `name` | 必填、不能只含空白，最多50字符 | 本章无额外规则 |
+| `department` | 必填、不能只含空白，最多50字符 | 暂按Sales、Development、Support（正式业务规格待确认） |
+| `email` | 必填、不能只含空白，最多100字符，格式基本正确 | `used@example.com`视为已占用 |
 
-| 规格编号 | 字段 | 规则 | 失败结果 |
-| --- | --- | --- | --- |
-| `EMP-VAL-01` | `name` | 必填、不能全为空白、最多50字符 | 400，`data.name` 保存字段消息 |
-| `EMP-VAL-02` | `department` | 必填、不能全为空白、最多50字符 | 400，`data.department` 保存字段消息 |
-| `EMP-VAL-03` | `email` | 必填、邮箱格式、最多100字符 | 400，`data.email` 保存字段消息 |
-| `EMP-VAL-04` | 请求体 | 必须是可以读取的JSON | 400，消息为“请求JSON格式错误” |
+目前未找到高于现有实现的正式部门规格。本章暂按已有Service及第10章行为统一为 `Sales`、`Development`、`Support`，字段上限与第9章DDL统一为50字符；收到正式规格后，应同步调整DTO、Service、数据库及接口测试。
 
-### 2. 业务规则
+三条失败路线将在下面逐一验证：
 
-当前预览接口允许的部门只有：
+| 失败类型 | 失败阶段 | Controller方法 | Service | 预期状态 |
+| --- | --- | --- | --- | --- |
+| JSON语法损坏 | 消息转换器读取正文 | 不执行 | 不执行 | 400 |
+| DTO字段不合格 | Controller参数解析完成后、方法调用前 | 不执行 | 不执行 | 400 |
+| 业务规则不允许 | Service执行期间 | 已执行 | 已执行并拒绝 | 400或409 |
 
-```text
-Sales
-Development
-Support
+## 二、案例8-01：合法员工请求通过处理
+
+从第7章稳定工程开始。在 `pom.xml` 的 `<dependencies>` 中新增下列依赖；第7章已有的DTO、Controller、Service保持不变。本案例只验证成功路径，不依赖尚未建立的字段错误处理器。
+
+~~~xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-validation</artifactId>
+</dependency>
+~~~
+
+### 代码说明与验证
+
+#### 1. 案例目标
+
+先建立成功基准。发送：
+
+```json
+{
+  "name": "Sato",
+  "department": "Development",
+  "email": "sato@example.com"
+}
 ```
 
-`Other` 是长度合格的普通字符串，能够通过DTO字段校验，但不在允许部门中，因此由Service拒绝并返回400。
+本章完成后仍应返回200。后面的失败案例都只改变其中一个条件，避免同时制造多个原因。
 
-固定邮箱 `used@example.com` 继续表示与当前系统状态冲突，由第7章的 `DuplicateEmailException` 返回409。它不是邮箱格式错误。
+#### 2. Validation依赖解决什么问题
 
-## 二、完整示例
-
-先把一次失败放进处理链：`{"name":" ","department":"Sales","email":"tanaka@example.com"}` 语法正确，Jackson能创建DTO；如果没有触发字段校验，空白姓名仍可能进入Service。JSON无法读取、DTO字段不合格、部门格式正确但业务不允许，是三个不同的停止点。
-
-本章按以下顺序读代码：先加Validation Starter，它带入Jakarta Validation接口及实现；再给DTO字段声明 `@NotBlank`、`@Size`、`@Email`；紧接着在Controller请求参数上使用 `@Valid`，让Spring MVC在调用Controller前触发约束检查。失败时Spring MVC产生 `MethodArgumentNotValidException`，Advice读取字段错误，形成统一400。无法解析的JSON则产生 `HttpMessageNotReadableException`，没有可供字段校验的DTO。最后才由Service判断允许部门及邮箱冲突。单独给字段贴约束注解，不保证普通Java调用或其他入口会自动校验。
-
-下面保留各文件的完整最终状态；写入工程后按“JSON读取→字段约束→Service规则”三阶段用Postman验证。不要求每次验证前重新进行命令行构建。
-
-### 1. 在pom.xml添加Validation依赖
-
-在已有 `<dependencies>` 内加入：
+Spring MVC负责读取HTTP请求，Jakarta Validation负责执行DTO上声明的约束。项目需要添加：
 
 ```xml
 <dependency>
@@ -79,7 +87,459 @@ Support
 </dependency>
 ```
 
-这是对第3章现有 `pom.xml` 的追加片段，不要删除 `spring-boot-starter-web` 和 `spring-boot-starter-test`。本课程使用Spring Boot 3.5.16，由Spring Boot父项目管理兼容版本，因此这里不单独填写 `<version>`。
+这个Starter提供Jakarta Validation API及其实现。只写约束注解而没有实现依赖，项目不能完成实际校验。它不会替代Controller或Service，也不会自动判断数据库中的业务状态。
+
+#### 3. 成功调用链
+
+```text
+Postman发送合法JSON
+  → Spring MVC通过Jackson读取JSON
+  → 创建EmployeeCreateRequest
+  → EmployeeController.previewCreate()
+  → EmployeeService.previewCreate()
+  → HTTP 200和统一响应
+```
+
+当前阶段只添加Validation依赖：DTO尚未声明字段约束，Controller也尚未使用 `@Valid`，所以这里没有执行对象字段校验。此案例只能确认正常请求仍可处理，不能证明输入字段已受Validation保护。下一案例先声明约束，案例8-03再触发校验。
+
+
+Postman发送 `POST {{baseUrl}}/employees/preview`，Body为 `{"name":"Sato","department":"Development","email":"sato@example.com"}`，无查询参数；预期200且 `data` 为预览字符串。此时DTO尚无约束，添加依赖本身不会拒绝非法输入。
+
+## 三、案例8-02：在DTO声明字段约束
+
+在案例8-01基础上完整替换 `EmployeeCreateRequest.java`。本案例只声明规则；Controller尚无 `@Valid`，因此先观察“约束存在但HTTP请求尚未触发校验”的状态。
+
+### 完整替换EmployeeCreateRequest.java
+
+```java
+package com.example.employee.dto.request;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public class EmployeeCreateRequest {
+
+    @NotBlank(message = "员工姓名不能为空")
+    @Size(max = 50, message = "员工姓名不能超过50个字符")
+    private String name;
+
+    @NotBlank(message = "部门不能为空")
+    @Size(max = 50, message = "部门不能超过50个字符")
+    private String department;
+
+    @NotBlank(message = "邮箱不能为空")
+    @Email(message = "邮箱格式不正确")
+    @Size(max = 100, message = "邮箱不能超过100个字符")
+    private String email;
+
+    public EmployeeCreateRequest() {
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+}
+```
+
+
+### 代码说明： 在DTO上声明约束
+
+在 `EmployeeCreateRequest` 的字段上使用：
+
+```java
+@NotBlank(message = "员工姓名不能为空")
+@Size(max = 50, message = "员工姓名不能超过50个字符")
+private String name;
+```
+
+`@NotBlank` 和 `@Size` 都来自 `jakarta.validation.constraints`，但职责不同：
+
+- `@NotBlank` 拒绝 `null`、空字符串和只包含空白的字符串；
+- `@Size(max = 50)` 限制字符数量，不能替代必填判断；
+- `message` 是校验失败时保存的消息，不会自己决定HTTP状态。
+
+邮箱需要组合“必填、长度、基本格式”三类约束：
+
+```java
+@NotBlank(message = "邮箱不能为空")
+@Size(max = 100, message = "邮箱不能超过100个字符")
+@Email(message = "邮箱格式不正确")
+private String email;
+```
+
+`@Email` 只检查基本格式，不会判断邮箱是否真实存在，也不会判断是否已被使用。
+
+
+`@NotBlank` 同时拒绝 `null`、空字符串与纯空白；`@Size` 只限制长度。部门上限为50，允许值由后续Service业务规则决定。
+
+使用Postman发送 `POST {{baseUrl}}/employees/preview`，Body为 `{"name":"   ","department":"Development","email":"sato@example.com"}`；当前仍可能得到200，证明字段上的注解本身尚未触发这次HTTP校验。下一案例加入触发入口。
+
+## 四、案例8-03：用@Valid触发对象校验
+
+在已有 `EmployeeController.java` 中导入 `jakarta.validation.Valid`，仅修改 `previewCreate` 方法的参数，保留原方法体及其他接口：
+
+~~~java
+@Valid @RequestBody EmployeeCreateRequest request
+~~~
+
+### 代码说明： 用@Valid触发本次对象校验
+
+Controller参数写成：
+
+```java
+public ResponseEntity<ApiResponse<String>> previewCreate(
+        @Valid @RequestBody EmployeeCreateRequest request)
+```
+
+`@RequestBody` 先让Spring MVC通过Jackson读取JSON；`@Valid` 来自 `jakarta.validation.Valid`，要求Spring MVC在调用Controller方法前检查这个对象上的约束。它没有属性，完整写法就是 `@Valid`。
+
+如果没有 `@Valid`，DTO上的注解仍然存在，但这次HTTP参数不会因此自动执行对象校验。
+
+
+现在发送与上一案例相同的空白姓名请求：Spring MVC在调用Controller前拒绝它，HTTP为400。此时尚未新增项目专用的字段错误处理方法，因此响应体可能是Spring Boot默认错误结构，不能要求已有 `ApiResponse` 字段Map。
+
+### 对照实验：移除并恢复@Valid
+
+在首次验证400后进行以下受控实验：
+
+1. 临时删除Controller参数前的 `@Valid`；
+2. 在Eclipse中重新启动；
+3. 发送空白姓名，但部门和邮箱填写有效值；
+4. 预期请求进入Service，当前预览逻辑返回200；
+5. 恢复 `@Valid` 并重新启动；
+6. 发送相同请求，预期在进入Controller前返回400。
+
+实验结束后必须保留 `@Valid`。这个结果证明：字段上的约束负责声明规则，Controller参数上的 `@Valid` 负责触发这次对象校验。
+
+案例完成状态：恢复并保留 `@Valid`；非法字段返回400，统一字段Map将在下一案例加入。
+
+## 五、案例8-04：将字段错误转换为统一400
+
+在现有 `ApiResponse.java` 中增加下面的重载方法，并将已有 `failure(String message)` 改为调用 `failure(message, null)`；在第7章的 `GlobalExceptionHandler.java` 中追加字段错误处理方法与所需import。这些都是已有文件的局部修改。
+
+~~~java
+public static <T> ApiResponse<T> failure(String message) {
+    return failure(message, null);
+}
+
+public static <T> ApiResponse<T> failure(String message, T data) {
+    return new ApiResponse<>(false, message, data);
+}
+~~~
+
+在处理器导入 `java.util.LinkedHashMap`、`java.util.Map`、`org.springframework.validation.FieldError` 和 `org.springframework.web.bind.MethodArgumentNotValidException`，追加：
+
+~~~java
+@ExceptionHandler(MethodArgumentNotValidException.class)
+public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(
+        MethodArgumentNotValidException exception) {
+    Map<String, String> fieldErrors = new LinkedHashMap<>();
+    for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
+        fieldErrors.putIfAbsent(
+                fieldError.getField(), fieldError.getDefaultMessage());
+    }
+    return ResponseEntity.badRequest()
+            .body(ApiResponse.failure("参数校验失败", fieldErrors));
+}
+~~~
+
+### 代码说明： 把字段错误转换为统一400响应
+
+校验失败时Spring MVC抛出 `MethodArgumentNotValidException`。处理器的关键代码是：
+
+```java
+for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
+    fieldErrors.putIfAbsent(
+            fieldError.getField(), fieldError.getDefaultMessage());
+}
+return ResponseEntity.badRequest()
+        .body(ApiResponse.failure("参数校验失败", fieldErrors));
+```
+
+这里：
+
+- `getBindingResult()` 取得本次参数绑定和校验结果；
+- `getFieldErrors()` 返回字段错误列表；
+- `FieldError.getField()` 返回字段名；
+- `getDefaultMessage()` 返回约束中的消息；
+- `putIfAbsent()` 让同一字段只保留第一条消息；
+- `ResponseEntity.badRequest()` 决定HTTP状态为400；
+- `ApiResponse.failure(..., fieldErrors)` 决定JSON正文结构。
+
+为此，`ApiResponse` 保留原有 `failure(String message)`，再增加重载：
+
+```java
+public static <T> ApiResponse<T> failure(String message, T data) {
+    return new ApiResponse<>(false, message, data);
+}
+```
+
+### 验证： 立即验证
+
+发送：
+
+```json
+{
+  "name": "   ",
+  "department": "Development",
+  "email": "sato@example.com"
+}
+```
+
+预期状态为400，`data.name` 显示“员工姓名不能为空”，Controller和Service都不执行。可在Controller方法第一行放置断点确认；验证后不需要保留额外调试代码。
+
+
+`LinkedHashMap` 保持字段首次出现的插入顺序；同一字段可能同时违反多个约束，`putIfAbsent` 只保存遍历到的首条消息，不能承诺多条约束错误中哪一条一定先出现。Controller和Service均不执行。
+
+## 六、案例8-05：区分JSON读取失败与字段校验失败
+
+在已有 `GlobalExceptionHandler.java` 导入 `org.springframework.http.converter.HttpMessageNotReadableException`，追加下面的方法；已有字段错误方法保持不变。
+
+~~~java
+@ExceptionHandler(HttpMessageNotReadableException.class)
+public ResponseEntity<ApiResponse<Void>> handleUnreadableJson(
+        HttpMessageNotReadableException exception) {
+    return ResponseEntity.badRequest()
+            .body(ApiResponse.failure("请求JSON格式错误"));
+}
+~~~
+
+### 代码说明与验证
+
+#### 1. 制造JSON读取失败
+
+发送不完整正文：
+
+```json
+{"name":"Sato"
+```
+
+此时Jackson还没有创建完整的 `EmployeeCreateRequest`，所以字段约束无从执行。Spring MVC在消息转换阶段抛出 `HttpMessageNotReadableException`。
+
+#### 2. 增加对应处理器
+
+下面是 `GlobalExceptionHandler` 中的方法片段：
+
+```java
+@ExceptionHandler(HttpMessageNotReadableException.class)
+public ResponseEntity<ApiResponse<Void>> handleUnreadableJson(
+        HttpMessageNotReadableException exception) {
+    return ResponseEntity.badRequest()
+            .body(ApiResponse.failure("请求JSON格式错误"));
+}
+```
+
+`@ExceptionHandler` 由Spring MVC处理；括号中的异常类型决定它匹配哪类失败。不要把 `exception.getMessage()` 直接返回客户端，其中可能包含Java类型和解析器内部信息。
+
+#### 3. 比较两个400
+
+| 对比 | JSON读取失败 | DTO字段校验失败 |
+| --- | --- | --- |
+| DTO是否正常建立 | 不保证 | 是 |
+| 字段约束是否执行 | 否 | 是 |
+| 主要异常 | `HttpMessageNotReadableException` | `MethodArgumentNotValidException` |
+| 是否有字段错误Map | 否 | 有 |
+| Controller、Service | 都不执行 | 都不执行 |
+
+两者状态都是400，但消息和诊断入口不同。相同状态码不代表相同处理阶段。
+
+
+在Postman使用相同POST URL，raw JSON正文为 `{"name":"Sato"`，预期400、无字段错误Map；再发送合法JSON但空白姓名，预期400且 `data.name` 有错误消息。两次请求均未进入Controller方法。
+
+## 七、案例8-06：Service拒绝不允许的部门
+
+在已有项目中新建 `InvalidDepartmentException.java`；修改 `EmployeeService.previewCreate`，使部门判断位于邮箱冲突判断之前；在现有 `GlobalExceptionHandler` 内追加对应方法。
+
+### 新建InvalidDepartmentException.java
+
+文件位置：
+
+```text
+src/main/java/com/example/employee/exception/InvalidDepartmentException.java
+```
+
+完整内容：
+
+```java
+package com.example.employee.exception;
+
+public class InvalidDepartmentException extends RuntimeException {
+
+    public InvalidDepartmentException(String department) {
+        super("不允许的部门：" + department);
+    }
+}
+```
+
+
+在Service导入 `InvalidDepartmentException`，将下面的片段放在 `previewCreate` 方法开头，并在同一类中增加私有方法；其他返回逻辑保持不变：
+
+~~~java
+if (!isAllowedDepartment(request.getDepartment())) {
+    throw new InvalidDepartmentException(request.getDepartment());
+}
+
+private boolean isAllowedDepartment(String department) {
+    return "Sales".equals(department)
+            || "Development".equals(department)
+            || "Support".equals(department);
+}
+~~~
+
+注意 `private boolean isAllowedDepartment` 是类中的独立方法，不能粘贴到 `previewCreate` 方法内部。
+
+~~~java
+@ExceptionHandler(InvalidDepartmentException.class)
+public ResponseEntity<ApiResponse<Void>> handleInvalidDepartment(
+        InvalidDepartmentException exception) {
+    return ResponseEntity.badRequest()
+            .body(ApiResponse.failure(exception.getMessage()));
+}
+~~~
+
+### 代码说明与验证
+
+#### 1. 为什么字段约束不能完成全部判断
+
+`Other` 不是空白，长度也不超过50，因此可以通过DTO约束；但它不在当前业务允许的部门中。Service必须再次判断：
+
+```java
+if (!isAllowedDepartment(request.getDepartment())) {
+    throw new InvalidDepartmentException(request.getDepartment());
+}
+```
+
+`isAllowedDepartment()` 是项目自己的私有方法，不是Spring或Validation API。业务规则放在Service中，是因为同一规则将来还可能被其他Controller、批处理或测试调用。
+
+#### 2. 异常怎样成为400
+
+`InvalidDepartmentException` 表达明确的业务含义。全局异常处理器增加对应方法：
+
+```java
+@ExceptionHandler(InvalidDepartmentException.class)
+public ResponseEntity<ApiResponse<Void>> handleInvalidDepartment(
+        InvalidDepartmentException exception) {
+    return ResponseEntity.badRequest()
+            .body(ApiResponse.failure(exception.getMessage()));
+}
+```
+
+发送：
+
+```json
+{
+  "name": "Sato",
+  "department": "Other",
+  "email": "sato@example.com"
+}
+```
+
+预期状态为400。这个请求已经进入Controller和Service，和前两个400的执行阶段不同。
+
+
+使用Postman发送合法姓名与邮箱、部门为 `Other` 的请求，预期400；改为 `Support`，预期200。业务允许值暂按现有实现确定，正式规格待确认。
+
+## 八、案例8-07：邮箱格式与占用状态
+
+沿用第7章已有的 `DuplicateEmailException` 和409处理器，本案例不修改代码。先发送普通邮箱确认200，再发送：
+
+```json
+{
+  "name": "Sato",
+  "department": "Development",
+  "email": "used@example.com"
+}
+```
+
+它能通过 `@Email`，因为格式合法；Service再根据当前系统状态抛出 `DuplicateEmailException`，第7章的处理器返回409。
+
+```text
+格式是否合法       → DTO Validation
+当前是否允许使用   → Service业务规则
+系统状态发生冲突   → HTTP 409
+```
+
+这说明“格式正确”不等于“业务允许”。不要把重复邮箱检查塞进 `@Email`，也不要只依靠前端校验。
+
+## 九、章末完整代码
+
+以下文件是所有案例及临时实验结束后的最终状态，用于逐文件核对。已经按案例完成修改的文件无需再次覆盖。
+
+### 1. 完整替换pom.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.16</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>employee-management-api</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>employee-management-api</name>
+    <description>Employee management REST API</description>
+
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
 
 ### 2. 完整替换EmployeeCreateRequest.java
 
@@ -408,315 +868,10 @@ public class GlobalExceptionHandler {
 }
 ```
 
-### 8. 先建立输入检查的整体图
 
-“校验”不是一次统一检查。一个请求从原始JSON变成可保存的数据，要依次经过多个关口；每个关口只能回答自己的问题。
+## 十、本章综合验证
 
-```text
-原始请求体
-  → 1. JSON解析：语法能否读懂
-  → 2. 参数绑定：能否创建DTO并转换为目标类型
-  → 3. DTO字段校验：单个值的必填、长度、格式是否合格
-  → 4. Service业务规则：这个值在当前业务状态下是否允许
-  → 5. 数据库约束：最终数据是否满足非空、唯一键、外键等规则
-```
-
-本章实现前四个关口；数据库约束从第9章接入数据库后开始承担作用。
-
-| 关口 | 主要处理者 | 当前例子 | 失败时Controller方法是否执行 |
-| --- | --- | --- | --- |
-| JSON解析 | Jackson与Spring MVC | JSON少了引号或括号 | 否 |
-| 参数绑定 | Spring MVC | 文本无法转换为目标Java类型 | 否 |
-| DTO字段校验 | Jakarta Validation | 姓名空白、邮箱格式错误 | 否 |
-| 业务规则 | `EmployeeService` | 部门不在允许范围、邮箱重复 | 是，随后进入Service |
-| 数据库约束 | 数据库 | 唯一键、外键等冲突 | 已进入业务和持久化流程 |
-
-约束注解负责声明规则，`@Valid` 负责在请求DTO绑定完成后触发这些规则，全局异常处理器负责把失败整理成稳定响应。三者职责不同，缺少任何一个都不是完整的HTTP校验流程。
-
-前端校验可以更早提示用户，但调用者能够绕过网页直接请求API，所以不能替代后端校验；数据库约束能够保护最终数据，但也不能替代DTO和Service提供的清楚错误信息。后文的“四层约束边界”会从前端、DTO、Service和数据库四个保护位置再次整理这一关系。
-
-## 三、Validation依赖提供了什么
-
-`spring-boot-starter-validation` 是Spring Boot提供的起步依赖，主要把Jakarta Validation API及兼容实现加入工程。代码中的约束类型位于 `jakarta.validation` 包，而不是旧项目中可能看到的 `javax.validation` 包。
-
-Spring Boot 3使用Jakarta命名空间：
-
-```java
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-```
-
-如果复制Spring Boot 2时代的 `javax.validation...` 导入，当前工程会找不到类型。不要自行创建同名注解解决依赖错误。
-
-依赖、约束和触发位置三者缺一不可：
-
-```text
-Validation依赖       → 工程具有校验API和实现
-DTO字段上的约束注解  → 声明每个字段的规则
-Controller中的@Valid → 在请求绑定后触发校验
-```
-
-只把Starter写进 `pom.xml` 不会自动知道员工字段规则；只写约束但不触发，也不会在当前请求体入口执行校验。
-
-## 四、字段约束注解怎样选择
-
-三个约束都来自 `jakarta.validation.constraints`，写在字段上，由Validation实现读取。它们不是从上到下依次调用的普通Java方法。
-
-Jakarta Validation约束注解都有三个共同属性：
-
-| 共同属性 | 类型 | 默认值与作用 |
-| --- | --- | --- |
-| `message` | `String` | 使用该约束的默认消息；可以填写固定文字，也可以填写消息资源键 |
-| `groups` | `Class<?>[]` | 默认空数组，约束属于默认校验组；只有按业务阶段选择校验规则时才需要显式填写 |
-| `payload` | `Class<? extends Payload>[]` | 默认空数组，用于附带给校验客户端读取的元数据，普通业务项目很少使用 |
-
-`groups` 和 `payload` 不是字段允许值的条件。新人阶段不要因为看到它们就随意填写；分组用法统一放在附录[使用@Validated选择校验分组](../appendix/A10_validated_validation_groups.md)。本章涉及的每个约束注解，其全部属性一行写法如下：
-
-```java
-@NotBlank(message = "文本不能为空", groups = {}, payload = {})
-@NotEmpty(message = "集合或文本不能为空", groups = {}, payload = {})
-@NotNull(message = "值不能为空", groups = {}, payload = {})
-@Size(min = 0, max = 50, message = "长度不能超过50", groups = {}, payload = {})
-@Email(message = "邮箱格式不正确", regexp = ".+@example\\.com", flags = {}, groups = {}, payload = {})
-@Min(value = 1, message = "不能小于1", groups = {}, payload = {})
-@Max(value = 100, message = "不能大于100", groups = {}, payload = {})
-@Positive(message = "必须大于0", groups = {}, payload = {})
-@PositiveOrZero(message = "不能小于0", groups = {}, payload = {})
-@Pattern(regexp = "[0-9-]+", flags = {}, message = "格式不正确", groups = {}, payload = {})
-```
-
-这些行是属性查阅示例，不是一组应该同时加到同一字段上的规则。`@Email` 的 `regexp` 用于叠加项目自己的正则限制，`flags` 用于改变该正则的匹配方式；本章项目只需要基础邮箱格式，所以正文仍使用更简单的 `@Email(message = "邮箱格式不正确")`。
-
-### 1. @NotBlank
-
-```java
-@NotBlank(message = "员工姓名不能为空")
-```
-
-`@NotBlank` 用于字符序列，要求值不是 `null`，并且去除空白后至少还有一个字符。因此下面四种情况都会失败：字段缺失、显式 `null`、空字符串和纯空白。
-
-| 参数 | 当前值 | 可接受的值 | 默认值与作用 |
-| --- | --- | --- | --- |
-| `message` | `"员工姓名不能为空"` | 消息字符串或消息键 | 省略时使用库的默认消息；本例固定中文接口消息 |
-
-### 2. @Size
-
-```java
-@Size(max = 50, message = "员工姓名不能超过50个字符")
-```
-
-`@Size` 可以检查字符串、集合、Map或数组的元素数量。本章用于限制字符串字符数量。
-
-| 参数 | 当前值 | 可接受的值 | 默认值与作用 |
-| --- | --- | --- | --- |
-| `min` | 未写 | 0及以上整数 | 默认0，本章的必填由 `@NotBlank` 负责 |
-| `max` | 50或100 | 不小于 `min` 的整数 | 默认整数最大值；本章按字段规格限制上限 |
-| `message` | 中文字段消息 | 消息字符串或消息键 | 省略时使用库的默认消息 |
-
-`@Size` 通常把 `null` 交给其他约束处理，所以不能单独表达必填。本章把它和 `@NotBlank` 组合。
-
-### 3. @Email
-
-```java
-@Email(message = "邮箱格式不正确")
-```
-
-`@Email` 检查非空内容是否符合实现支持的邮箱基本格式。它不负责表达“必须提供邮箱”，因此同时使用 `@NotBlank`。
-
-| 参数 | 当前值 | 可接受的值 | 默认值与作用 |
-| --- | --- | --- | --- |
-| `message` | `"邮箱格式不正确"` | 消息字符串或消息键 | 省略时使用库的默认消息 |
-| `regexp` | 未写 | Java正则表达式字符串 | 默认不增加额外正则限制 |
-| `flags` | 未写 | `Pattern.Flag`枚举数组 | 默认空数组，不额外改变正则匹配方式 |
-
-邮箱格式校验不证明邮箱真实存在，也不检查是否已被其他员工使用。
-
-### 4. @NotNull、@NotEmpty和@NotBlank
-
-三个注解不能只看名称选择：
-
-| 注解 | `null` | `""` | `"   "` | 适合场景 |
-| --- | --- | --- | --- | --- |
-| `@NotNull` | 失败 | 通过 | 通过 | 对象、日期、数字等只要求必须有值 |
-| `@NotEmpty` | 失败 | 失败 | 通过 | 集合或字符串不能没有元素 |
-| `@NotBlank` | 失败 | 失败 | 失败 | 姓名、部门等不能只有空白的文本 |
-
-当前三个请求字段都是必填文本，所以选择 `@NotBlank`，不重复叠加 `@NotNull`。以后出现必须提供的数字或日期对象时，再使用 `@NotNull`。
-
-### 5. 数值范围约束
-
-数值字段常用：
-
-| 注解 | 适用规则 | 示例 |
-| --- | --- | --- |
-| `@Min(1)` | 数值不能小于指定下限 | 页码至少为1 |
-| `@Max(100)` | 数值不能大于指定上限 | 每页最多100条 |
-| `@Positive` | 数值必须大于0 | 系统编号必须为正数 |
-| `@PositiveOrZero` | 数值必须大于或等于0 | 数量不能为负数 |
-
-这些注解同样来自 `jakarta.validation.constraints`。当前DTO没有数字字段，不应为了展示注解虚构年龄或级别字段。分页参数出现时，应根据正式规格选择 `@Min`、`@Max`；员工编号的业务含义也必须先由接口规格确认。
-
-`@Min`、`@Max`、`@Positive` 和 `@PositiveOrZero` 通常把 `null` 视为不由当前约束判断的值。因此，“数值范围正确”和“数值必须提供”是两条不同规则。必填数字需要组合约束：
-
-```java
-@NotNull(message = "页码不能为空")
-@Min(value = 1, message = "页码必须大于等于1")
-private Integer page;
-```
-
-这里使用包装类型 `Integer`，才能区分“没有提供”形成的 `null` 和实际数字。若使用基本类型 `int`，字段本身不能保存 `null`，还要结合请求绑定方式判断缺失值会在哪个阶段失败。
-
-## 五、@Valid在什么时候执行
-
-`@Valid` 的完整名称是 `jakarta.validation.Valid`，写在要校验的Controller参数上：
-
-```java
-@Valid @RequestBody EmployeeCreateRequest request
-```
-
-两个注解职责不同：
-
-```text
-@RequestBody → 读取请求体并通过Jackson创建DTO
-@Valid       → 对已经创建的DTO执行字段约束
-```
-
-执行顺序：
-
-```text
-JSON语法正确
-  → Jackson创建并填充EmployeeCreateRequest
-  → Spring执行@Valid
-      ├─ 全部通过：调用Controller方法，再进入Service
-      └─ 任一失败：抛出MethodArgumentNotValidException
-```
-
-`@Valid` 没有需要填写的参数。校验失败发生在Controller方法执行前，因此Service不会收到字段校验失败的请求。
-
-因此它的全部属性写法就是注解本身：
-
-```java
-@Valid
-```
-
-临时删除 `@Valid` 后，DTO上的约束仍存在，但当前HTTP请求不会触发这次对象校验。约束注解不是看到对象就自动执行。
-
-既存项目中还经常出现Spring提供的 `@Validated`。它也能触发请求对象校验，并且可以选择校验分组；本章没有分组需求，继续使用Jakarta Validation的 `@Valid`。完整示例和两者区别见附录[使用@Validated选择校验分组](../appendix/A10_validated_validation_groups.md)。
-
-## 六、字段错误怎样成为400响应
-
-`MethodArgumentNotValidException` 的完整名称是 `org.springframework.web.bind.MethodArgumentNotValidException`。Spring在 `@Valid` 失败时抛出它，其中保存了绑定和校验结果。
-
-处理器依次执行：
-
-```text
-exception.getBindingResult()
-  → getFieldErrors()
-  → 遍历每个FieldError
-  → 取得字段名和消息
-  → 写入fieldErrors Map
-  → 返回HTTP 400和ApiResponse
-```
-
-`Map<String, String>` 是JDK的键值接口：键保存字段名，值保存该字段的第一条错误消息。`LinkedHashMap` 是保持写入顺序的Map实现，但JSON字段顺序仍不属于接口契约。
-
-| 对象或方法 | 当前参数 | 可接受的值 | 返回结果 |
-| --- | --- | --- | --- |
-| `exception.getBindingResult()` | 无 | 无参数 | 返回本次绑定和校验结果 |
-| `.getFieldErrors()` | 无 | 无参数 | 返回 `List<FieldError>` |
-| `fieldError.getField()` | 无 | 无参数 | 返回字段名，例如 `email` |
-| `fieldError.getDefaultMessage()` | 无 | 无参数 | 返回约束注解的消息 |
-| `putIfAbsent(key, value)` | 字段名、消息 | 符合Map泛型的键和值 | 键不存在时写入；返回旧值，本章不接收 |
-| `ResponseEntity.badRequest()` | 无 | 无参数 | 返回HTTP 400响应构建器 |
-
-同一字段可能同时违反多条约束，例如空邮箱既可能涉及必填，也可能涉及格式。`putIfAbsent()` 让每个字段只保留第一条消息，使本章响应容易阅读。正式项目若要求返回全部消息，可以把值类型改成 `List<String>`，但接口规格也要同步改变。
-
-第8章为 `ApiResponse` 增加了第二个失败创建方法：
-
-```java
-failure(String message, T data)
-```
-
-它允许字段错误Map放进 `data`。原来的 `failure(String message)` 仍然存在，并通过：
-
-```java
-return failure(message, null);
-```
-
-调用同名的两个参数版本。这叫方法重载：方法名相同，但参数数量不同。第7章原有404、409和500代码无需修改调用方式。
-
-## 七、JSON解析失败为什么没有字段错误
-
-损坏的JSON在DTO创建完成前就会失败。例如：
-
-```json
-{"name":"Sato"
-```
-
-Spring会抛出 `HttpMessageNotReadableException`，完整名称位于 `org.springframework.http.converter`。这时没有完整的 `EmployeeCreateRequest`，也没有可以执行的字段约束，所以不能返回 `data.name` 等字段结果。
-
-本章统一返回：
-
-```json
-{
-  "success": false,
-  "message": "请求JSON格式错误",
-  "data": null
-}
-```
-
-处理方法接收异常对象，但不把 `exception.getMessage()` 返回给客户端，因为底层消息可能包含Java类型、解析器和内部结构。详细诊断信息留给服务端日志。
-
-## 八、字段校验和业务规则怎样分工
-
-字段校验回答“这个值本身的形状是否合格”：
-
-```text
-是否缺失
-是否为空白
-长度是否超限
-邮箱格式是否基本正确
-```
-
-业务规则回答“在当前业务状态下是否允许”：
-
-```text
-部门是否属于允许范围
-邮箱是否已经被使用
-当前员工状态是否允许修改
-```
-
-因此 `Other` 能通过 `@NotBlank` 和 `@Size`，随后在Service失败：
-
-```java
-if (!isAllowedDepartment(request.getDepartment())) {
-    throw new InvalidDepartmentException(
-            request.getDepartment());
-}
-```
-
-`isAllowedDepartment()` 是本项目的私有业务判断方法，不是Spring或Validation提供的方法。它使用 `||` 表示三个允许条件中任意一个成立就返回 `true`。
-
-当前规则全部不成立时抛出 `InvalidDepartmentException`，全局异常处理器把它转换为400。重复邮箱则是与当前系统状态冲突，继续返回409。
-
-不要把部门名单硬编码进自定义字段注解，也不要在Controller中复制Service业务判断。以后部门来自数据库时，只需要替换Service或数据访问逻辑，HTTP入口和DTO格式规则可以保持稳定。
-
-## 九、四层约束边界
-
-| 位置 | 主要目的 | 示例 | 能否被其他层替代 |
-| --- | --- | --- | --- |
-| 前端校验 | 尽早提示用户、改善操作体验 | 输入时提示邮箱格式 | 不能替代后端校验 |
-| DTO Validation | 保护HTTP输入边界 | 必填、长度、格式 | 不能判断数据库当前状态 |
-| Service业务规则 | 保证业务行为一致 | 允许部门、重复邮箱 | 不能只依靠Controller |
-| 数据库约束 | 保护最终持久数据 | 非空、唯一键、外键 | 不能替代友好的接口校验 |
-
-调用者可以绕过网页直接请求API，因此后端必须校验。Service还可能被批处理或其他入口调用，因此核心业务规则不能只写在前端或Controller。
-
-数据库约束是最后防线，但数据库错误通常不足以直接作为对外业务消息。接入数据库后，需要把持久化冲突转换为稳定HTTP响应。
-
-## 十、在Eclipse中运行并用Postman分阶段验证
-
-保存代码，在Eclipse中从启动类运行应用。Console没有启动错误后，打开第6章建立的Postman Collection。下面的POST请求都使用 `{{baseUrl}}/employees/preview`；除特别说明外，Body选择 **raw → JSON**，并确认 `Content-Type: application/json`。
+完成全部案例并恢复 `@Valid` 后，在Eclipse中从启动类运行应用。Console没有启动错误后，打开第6章建立的Postman Collection。下面的POST请求都使用 `{{baseUrl}}/employees/preview`；除特别说明外，Body选择 **raw → JSON**，并确认 `Content-Type: application/json`。
 
 ### 1. 有效请求
 
@@ -839,26 +994,11 @@ Review校验代码时按顺序检查：
 
 修改前调查接口字段规格、DTO约束、测试请求和未来数据库列。修改 `@Size(max = 30)` 后，分别验证30和31字符边界；保存证据后恢复主线值50。
 
-### 练习3：增加可选电话号码
+### 练习3：证明@Valid不可缺少
 
-临时给请求DTO增加可选字段 `phone`。省略或 `null` 时允许通过，填写后只能包含数字和连字符：
+临时删除Controller参数前的 `@Valid`，在Eclipse中重新启动后发送空白姓名（部门和邮箱仍填写有效值）。预期请求进入Service，当前预览逻辑返回200；记录这一结果。随后恢复 `@Valid` 并重新启动，同一请求应在进入Service前返回400。这个实验结束后必须保留 `@Valid`。
 
-```java
-@Pattern(
-        regexp = "[0-9-]+",
-        message = "电话号码格式不正确")
-private String phone;
-```
-
-`@Pattern` 来自 `jakarta.validation.constraints`。`regexp` 必须是Java正则表达式字符串，`message` 省略时使用默认消息。该约束允许 `null`，因此可以表达“可选，但填写后必须合规”。
-
-补充getter和setter，验证省略、合法值和非法值。完成后删除该字段、导入和方法，避免没有接口规格的练习字段进入后续章节。
-
-### 练习4：证明@Valid不可缺少
-
-临时删除Controller参数前的 `@Valid`，重新启动后发送空白姓名。记录请求是否进入Service以及状态变化；随后恢复 `@Valid`，重新构建并确认同一请求返回400。
-
-### 练习5：整理测试证据和Review指摘
+### 练习4：整理测试证据和Review指摘
 
 至少覆盖：有效值、每个长度边界、缺失、null、空字符串、空白、邮箱错误、损坏JSON、不允许部门、重复邮箱和原接口回归。
 
@@ -899,3 +1039,91 @@ src/main/java/com/example/employee/
 7. 为正常值、边界值和非法值保存可追溯的测试证据。
 
 下一章会为当前接口建立真实表定义、Entity、Mapper和MyBatis执行链。DTO校验继续保护HTTP输入，数据库约束继续保护最终持久数据，两者不能互相替代。
+
+## 十四、附录：其他约束与可选字段
+
+以下内容用于阅读既有项目或独立练习，不是本章预览接口的实现前提。完成练习后必须恢复主线稳定状态。
+
+### A. 约束注解的其他属性
+
+Jakarta Validation约束注解都有三个共同属性：
+
+| 共同属性 | 类型 | 默认值与作用 |
+| --- | --- | --- |
+| `message` | `String` | 使用该约束的默认消息；可以填写固定文字，也可以填写消息资源键 |
+| `groups` | `Class<?>[]` | 默认空数组，约束属于默认校验组；只有按业务阶段选择校验规则时才需要显式填写 |
+| `payload` | `Class<? extends Payload>[]` | 默认空数组，用于附带给校验客户端读取的元数据，普通业务项目很少使用 |
+
+`groups` 和 `payload` 不是字段允许值的条件。新人阶段不要因为看到它们就随意填写；分组用法统一放在附录[使用@Validated选择校验分组](../appendix/A10_validated_validation_groups.md)。本章涉及的每个约束注解，其全部属性一行写法如下：
+
+```java
+@NotBlank(message = "文本不能为空", groups = {}, payload = {})
+@NotEmpty(message = "集合或文本不能为空", groups = {}, payload = {})
+@NotNull(message = "值不能为空", groups = {}, payload = {})
+@Size(min = 0, max = 50, message = "长度不能超过50", groups = {}, payload = {})
+@Email(message = "邮箱格式不正确", regexp = ".+@example\\.com", flags = {}, groups = {}, payload = {})
+@Min(value = 1, message = "不能小于1", groups = {}, payload = {})
+@Max(value = 100, message = "不能大于100", groups = {}, payload = {})
+@Positive(message = "必须大于0", groups = {}, payload = {})
+@PositiveOrZero(message = "不能小于0", groups = {}, payload = {})
+@Pattern(regexp = "[0-9-]+", flags = {}, message = "格式不正确", groups = {}, payload = {})
+```
+
+这些行是属性查阅示例，不是一组应该同时加到同一字段上的规则。`@Email` 的 `regexp` 用于叠加项目自己的正则限制，`flags` 用于改变该正则的匹配方式；本章项目只需要基础邮箱格式，所以正文仍使用更简单的 `@Email(message = "邮箱格式不正确")`。
+
+### B. 其他常见约束
+
+#### 1. @NotNull、@NotEmpty和@NotBlank
+
+三个注解不能只看名称选择：
+
+| 注解 | `null` | `""` | `"   "` | 适合场景 |
+| --- | --- | --- | --- | --- |
+| `@NotNull` | 失败 | 通过 | 通过 | 对象、日期、数字等只要求必须有值 |
+| `@NotEmpty` | 失败 | 失败 | 通过 | 集合或字符串不能没有元素 |
+| `@NotBlank` | 失败 | 失败 | 失败 | 姓名、部门等不能只有空白的文本 |
+
+当前三个请求字段都是必填文本，所以选择 `@NotBlank`，不重复叠加 `@NotNull`。以后出现必须提供的数字或日期对象时，再使用 `@NotNull`。
+
+#### 2. 数值范围约束
+
+数值字段常用：
+
+| 注解 | 适用规则 | 示例 |
+| --- | --- | --- |
+| `@Min(1)` | 数值不能小于指定下限 | 页码至少为1 |
+| `@Max(100)` | 数值不能大于指定上限 | 每页最多100条 |
+| `@Positive` | 数值必须大于0 | 系统编号必须为正数 |
+| `@PositiveOrZero` | 数值必须大于或等于0 | 数量不能为负数 |
+
+这些注解同样来自 `jakarta.validation.constraints`。当前DTO没有数字字段，不应为了展示注解虚构年龄或级别字段。分页参数出现时，应根据正式规格选择 `@Min`、`@Max`；员工编号的业务含义也必须先由接口规格确认。
+
+`@Min`、`@Max`、`@Positive` 和 `@PositiveOrZero` 通常把 `null` 视为不由当前约束判断的值。因此，“数值范围正确”和“数值必须提供”是两条不同规则。必填数字需要组合约束：
+
+```java
+@NotNull(message = "页码不能为空")
+@Min(value = 1, message = "页码必须大于等于1")
+private Integer page;
+```
+
+这里使用包装类型 `Integer`，才能区分“没有提供”形成的 `null` 和实际数字。若使用基本类型 `int`，字段本身不能保存 `null`，还要结合请求绑定方式判断缺失值会在哪个阶段失败。
+
+### C. @Validated与分组
+
+既存项目中还经常出现Spring提供的 `@Validated`。它也能触发请求对象校验，并且可以选择校验分组；本章没有分组需求，继续使用Jakarta Validation的 `@Valid`。完整示例和两者区别见附录[使用@Validated选择校验分组](../appendix/A10_validated_validation_groups.md)。
+
+### D. 可选电话号码练习
+
+
+临时给请求DTO增加可选字段 `phone`。省略或 `null` 时允许通过，填写后只能包含数字和连字符：
+
+```java
+@Pattern(
+        regexp = "[0-9-]+",
+        message = "电话号码格式不正确")
+private String phone;
+```
+
+`@Pattern` 来自 `jakarta.validation.constraints`。`regexp` 必须是Java正则表达式字符串，`message` 省略时使用默认消息。该约束允许 `null`，因此可以表达“可选，但填写后必须合规”。
+
+补充getter和setter，验证省略、合法值和非法值。完成后删除该字段、导入和方法，避免没有接口规格的练习字段进入后续章节。

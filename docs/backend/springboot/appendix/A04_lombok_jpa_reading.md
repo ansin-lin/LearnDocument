@@ -1,6 +1,6 @@
-# Appendix D：Lombok与Spring Data JPA识读
+# A04 Lombok与Spring Data JPA识读
 
-本附录帮助你进入使用Lombok或JPA的既存项目。第20章稳定状态仍使用显式Java代码和MyBatis；下面的示例是独立识读，不要求加入Employee主线。
+本附录帮助你进入使用Lombok或JPA的既存项目。第18章稳定状态仍使用显式Java代码和MyBatis；下面的示例是独立识读，不要求加入Employee主线。
 
 ## 一、Lombok在编译期生成代码
 

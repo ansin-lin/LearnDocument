@@ -1,4 +1,4 @@
-# Appendix E：Spring项目常见注解速查
+# A05 Spring项目常见注解速查
 
 这不是背诵表。阅读既存项目时，先确认注解所属框架、写在什么位置、由谁在什么时候处理，再沿本课程对应章节回看完整场景。同名短名称可能来自不同包，判断时以import为准。
 
@@ -159,8 +159,8 @@ public void synchronizeEmployees() {
 
 | 注解 | 所属 | 识读方向 |
 | --- | --- | --- |
-| `@Getter` / `@Setter` / `@Data` / `@Builder` / `@RequiredArgsConstructor` | Lombok | 编译期生成代码；详见Appendix D |
-| `@Entity` / `@Id` / `@GeneratedValue` / `@Column` | Jakarta Persistence | Entity和表列/主键映射；详见Appendix D |
+| `@Getter` / `@Setter` / `@Data` / `@Builder` / `@RequiredArgsConstructor` | Lombok | 编译期生成代码；详见A04 |
+| `@Entity` / `@Id` / `@GeneratedValue` / `@Column` | Jakarta Persistence | Entity和表列/主键映射；详见A04 |
 
 ## 十一、遇到陌生注解时的调查顺序
 

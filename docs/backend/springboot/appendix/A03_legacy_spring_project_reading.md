@@ -1,6 +1,6 @@
-# Appendix C：日本既存Spring项目的新旧结构识读
+# A03 日本既存Spring项目的新旧结构识读
 
-日本企业项目中仍可能存在Boot 2、WAR、外部Tomcat或XML配置。本附录只建立识读能力，不要求把第20章的Java 17、Spring Boot 3.5.16可执行JAR主线改成旧结构，也不要求重新开发一套XML项目。
+日本企业项目中仍可能存在Boot 2、WAR、外部Tomcat或XML配置。本附录只建立识读能力，不要求把第18章的Java 17、Spring Boot 3.5.16可执行JAR主线改成旧结构，也不要求重新开发一套XML项目。
 
 ## 一、先确认版本，再判断代码是否正确
 

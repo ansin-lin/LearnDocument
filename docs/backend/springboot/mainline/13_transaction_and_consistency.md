@@ -29,7 +29,381 @@ UPDATE成功
 | 两次写入成功 | 保存新值 | 新增1条 | 200 |
 | 第二次写入失败 | 恢复旧值 | 不新增 | 500 |
 
-## 二、完整示例
+## 二、按案例完成两次写入
+
+从第12章稳定工程继续。先建立履历表，再新建实体、Mapper接口和XML；随后修改Service构造器并完整替换原 `update()`，不要新增重名方法。初次实验暂时不加 `@Transactional`，案例二再加回。以下先给出本案例需要的文件和代码，章末保留最终完整文件用于核对其他未改动方法。
+
+### 案例13-01：第二次写入失败时发生什么
+
+一次PUT既更新员工又写履历，两条SQL属于一个业务动作。先在个人练习用的MySQL 8.0 `employee_db` 创建履历表，不能在共享或生产库执行：
+
+```sql
+CREATE TABLE employee_change_logs (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    employee_id BIGINT NOT NULL,
+    action VARCHAR(30) NOT NULL,
+    detail VARCHAR(200) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_employee_change_logs PRIMARY KEY (id),
+    INDEX idx_employee_change_logs_employee_id (employee_id)
+);
+```
+
+`employee_id` 指向发生变更的员工，`action` 固定为 `EMPLOYEE_UPDATED`，`detail` 只记录部门变化；完整字段字典在章末。此表暂不建外键，避免现有物理删除员工时与履历保留规则冲突。
+
+新建 `src/main/java/com/example/employee/entity/EmployeeChangeLog.java`：
+
+```java
+package com.example.employee.entity;
+
+public class EmployeeChangeLog {
+    private Long id;
+    private Long employeeId;
+    private String action;
+    private String detail;
+
+    public EmployeeChangeLog(Long employeeId, String action, String detail) {
+        this.employeeId = employeeId;
+        this.action = action;
+        this.detail = detail;
+    }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Long getEmployeeId() { return employeeId; }
+    public String getAction() { return action; }
+    public String getDetail() { return detail; }
+}
+```
+
+新建 `src/main/java/com/example/employee/mapper/EmployeeChangeLogMapper.java`：
+
+```java
+package com.example.employee.mapper;
+
+import com.example.employee.entity.EmployeeChangeLog;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface EmployeeChangeLogMapper {
+    int insert(EmployeeChangeLog changeLog);
+}
+```
+
+新建 `src/main/resources/mapper/EmployeeChangeLogMapper.xml`：
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.employee.mapper.EmployeeChangeLogMapper">
+    <insert id="insert"
+            parameterType="com.example.employee.entity.EmployeeChangeLog"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO employee_change_logs (employee_id, action, detail)
+        VALUES (#{employeeId}, #{action}, #{detail})
+    </insert>
+</mapper>
+```
+
+`insert()` 返回受影响行数；XML的 `id` 对应接口方法，`#{...}` 读取对象属性，`useGeneratedKeys` 与 `keyProperty` 将新主键写回 `changeLog.id`。在原 `EmployeeServiceImpl.java` 中新增导入 `EmployeeChangeLog`、`EmployeeChangeLogMapper`，把原来仅接收 `EmployeeMapper` 的字段和构造器替换为：
+
+```java
+private static final String ACTION_EMPLOYEE_UPDATED = "EMPLOYEE_UPDATED";
+private final EmployeeMapper employeeMapper;
+private final EmployeeChangeLogMapper employeeChangeLogMapper;
+
+public EmployeeServiceImpl(
+        EmployeeMapper employeeMapper,
+        EmployeeChangeLogMapper employeeChangeLogMapper) {
+    this.employeeMapper = employeeMapper;
+    this.employeeChangeLogMapper = employeeChangeLogMapper;
+}
+```
+
+Spring用构造器注入两个Mapper；原有CRUD方法暂不改动。接着完整替换 `update()`；本案例的最终代码如下，**暂时没有** `@Transactional`：
+
+接着用下面的方法完整替换 `EmployeeServiceImpl.update()`；本案例暂时没有 `@Transactional`，其余CRUD方法保持原样：
+
+```java
+    @Override
+    public EmployeeResponse update(
+            Long id,
+            EmployeeUpdateRequest request) {
+        String department = request.getDepartment().trim();
+        validateDepartment(department);
+        Employee beforeUpdate = findEmployeeOrThrow(id);
+
+        Employee employee = new Employee();
+        employee.setId(id);
+        employee.setName(request.getName().trim());
+        employee.setDepartment(department);
+        employee.setEmail(normalizeEmail(request.getEmail()));
+
+        try {
+            int affectedRows = employeeMapper.update(employee);
+            if (affectedRows > 1) {
+                throw new EmployeeSystemException("修改员工影响多行");
+            }
+            if (affectedRows == 0
+                    && employeeMapper.findById(id) == null) {
+                throw new EmployeeNotFoundException(id);
+            }
+        } catch (DuplicateKeyException exception) {
+            throw new DuplicateEmailException(employee.getEmail());
+        }
+
+        EmployeeChangeLog changeLog = new EmployeeChangeLog(
+                id,
+                ACTION_EMPLOYEE_UPDATED,
+                "department=" + beforeUpdate.getDepartment()
+                        + "->" + employee.getDepartment());
+        int logRows = employeeChangeLogMapper.insert(changeLog);
+        if (logRows != 1 || changeLog.getId() == null) {
+            throw new EmployeeSystemException("员工变更履历写入失败");
+        }
+
+        log.info(
+                "employee_updated employeeId={} department={}",
+                id,
+                employee.getDepartment());
+        return findById(id);
+    }
+```
+
+本方法先读取旧员工，调用 `EmployeeMapper.update()`，再调用 `EmployeeChangeLogMapper.insert()`；正常路径返回更新后员工。先去掉部门两端空格，再按第10章同一规则校验，所以 `" Sales "` 仍可保存为 `Sales`。
+
+失败实验只在第12章专用H2测试库进行：确认员工1001初始部门为Sales，按章末测试的做法在**测试代码中**对H2执行 `DROP TABLE employee_change_logs`，然后以PUT `/employees/1001` 发送 `{"name":"Tanaka","department":"Development","email":"tanaka@example.com"}`。预期第二次INSERT因表不存在而失败，HTTP为500；再用独立查询读取 `employees`，无事务时部门会成为Development，原本期望Sales的断言失败。数据库客户端在个人MySQL只验证正常路径：PUT成功后核对员工部门与新增履历，不在那里删表。H2下一测试前由 `@Sql` 重建两张表和样例数据；恢复 `@Transactional` 后重复失败实验，部门应保持Sales。HTTP 500本身不能证明回滚，必须查询数据。
+
+### 案例13-02：给业务方法建立事务边界
+
+在同一 `update()` 方法的 `@Override` 后恢复 `@Transactional`，导入 `org.springframework.transaction.annotation.Transactional`。Spring管理的Service代理在调用方法前开始事务；两次Mapper写入正常结束时共同提交，第二次抛出运行时异常时共同回滚。重新运行成功和失败测试：成功时员工部门变为Development且履历新增一条；失败时HTTP为500、员工仍是Sales、履历没有本次记录。测试类本身不得加 `@Transactional`，否则测试外层回滚会掩盖Service缺少事务的错误。
+
+### 案例13-03：捕获并吞掉异常的对照实验
+
+只在练习用的 `EmployeeServiceImpl.update()` 中做临时对照，保留案例13-02加上的 `@Transactional`。找到 `EmployeeChangeLog changeLog = ...` 后面、`log.info(...)` 前面的原代码：
+
+```java
+int logRows = employeeChangeLogMapper.insert(changeLog);
+if (logRows != 1 || changeLog.getId() == null) {
+    throw new EmployeeSystemException("员工变更履历写入失败");
+}
+```
+
+临时替换为以下错误写法，并导入 `org.springframework.dao.DataAccessException`；`update()` 的其他行不变：
+
+```java
+try {
+    int logRows = employeeChangeLogMapper.insert(changeLog);
+    if (logRows != 1 || changeLog.getId() == null) {
+        throw new EmployeeSystemException("员工变更履历写入失败");
+    }
+} catch (DataAccessException exception) {
+    log.warn("change_log_failed employeeId={}", id, exception);
+    // 故意吞掉异常，继续走下面的成功返回；仅用于失败实验。
+}
+```
+
+在专用H2测试库重跑章末 `updateRollsBackWhenChangeLogInsertFails()`：测试先删履历表，INSERT抛出的 `DataAccessException` 被本方法捕获；若事务尚未被其他环节标记为回滚，方法随后执行 `log.info(...)` 和 `return findById(id)`，代理看到正常返回，员工部门可能提交为Development，HTTP也可能变成200，原来的500与Sales断言会失败。检查HTTP、日志和数据库最终部门，不只看一个断言。实验结束立即把这段代码**原样恢复为上方不捕获异常的两句判断**，移除不再使用的导入，再重跑回滚测试：500且员工部门为Sales。这个现象取决于捕获位置和已有回滚标记，不能概括为“所有catch必然提交”。
+
+### 案例13-04：沿代理调用路径追踪事务
+
+在Eclipse中给Controller的PUT入口、`EmployeeServiceImpl.update()` 和两个Mapper调用处设置断点，沿“Controller → Spring管理的Service代理 → 真实update方法 → Mapper”检查。注解是事务元数据，事务拦截器围绕经代理进入的方法提交或回滚；`new EmployeeServiceImpl(...)` 的普通Java对象和同类内部 `this.update(...)` 都不能据此期待新事务启动。保留Controller注入的Service调用方式，不新增演示用入口。
+
+### 案例13-05：用测试和数据库状态验收
+
+章末完整 `EmployeeCrudIntegrationTest` 含成功提交与第二次写入失败两个测试。先确保测试方法、测试类都没有 `@Transactional`；每个方法由 `@Sql` 准备固定H2数据，再分别断言HTTP、`employees.department` 和履历条数。另在个人MySQL库用受控练习数据观察正常PUT，并在数据库客户端核对两表；失败实验仅在H2执行，实验后恢复临时方法改动。这里的H2结论不能代替MySQL环境验收。
+
+## 三、事务、提交和回滚
+
+事务是数据库对一组操作的一致性边界：
+
+```text
+事务开始
+  → UPDATE employees
+  → INSERT employee_change_logs
+  ├─ 方法正常结束：commit，两次写入同时可见
+  └─ 出现需回滚异常：rollback，撤销两次写入
+```
+
+commit是确认当前事务的改变；rollback是撤销当前事务中尚未提交的改变。回滚不是把数据库恢复到任意历史时间，也不能撤销事务开始前已提交的数据。
+
+## 四、为什么事务边界放在Service
+
+Controller只知道HTTP请求，单个Mapper只知道自己的SQL。只有Service知道“修改员工和写履历是一个业务动作”：
+
+```text
+Controller
+  → EmployeeServiceImpl.update()  ← 事务边界
+      ├─ EmployeeMapper.update()
+      └─ EmployeeChangeLogMapper.insert()
+```
+
+把 `@Transactional` 写在两个Mapper方法上会把一个业务动作拆成两个边界；写在Controller则会让HTTP层承担业务一致性。
+
+`delete()` 目前只执行一条DELETE，单条SQL由数据库保证原子性，本章不因为“写方法”就机械加注解。`create()` 在INSERT后还会回查刚创建的员工，因此本章也把新增与回查放在一个事务内。
+
+## 五、@Transactional由谁处理
+
+`@Transactional` 的完整名称是 `org.springframework.transaction.annotation.Transactional`。它是事务元数据，不是Java编译器直接执行的commit命令。
+
+Spring Boot根据已有DataSource和事务相关依赖配置事务管理器。Spring在Service Bean外部创建代理：
+
+```text
+Controller调用Service Bean
+  → 事务代理读取@Transactional
+  → 开始或加入事务
+  → 调用真实EmployeeServiceImpl.update()
+  → 根据返回或异常提交/回滚
+```
+
+本章把注解写在具体实现类的 `public` 方法上，并从Controller注入的Service Bean调用。这是容易识别且符合默认代理模式的写法。Spring Framework 6.2对注解位置和代理调用的说明可参考[Spring官方文档](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/annotations.html)。
+
+MyBatis-Spring使Mapper使用与Spring事务管理器对应的DataSource和SqlSession。同一事务中的两个Mapper调用因此可共同提交或回滚，业务代码不能手工调用 `SqlSession.commit()`、`rollback()` 或 `close()`。详见[MyBatis-Spring事务文档](https://mybatis.org/spring/transactions.html)。
+
+## 六、正常结束与异常回滚
+
+`@Transactional` 的默认回滚规则：
+
+| 方法离开方式 | 默认结果 |
+| --- | --- |
+| 正常 `return` | commit |
+| 抛出 `RuntimeException` 或其子类 | rollback |
+| 抛出 `Error` | rollback |
+| 抛出受检 `Exception` | 默认不回滚 |
+
+`EmployeeSystemException`、`DuplicateEmailException` 和MyBatis-Spring转换后的 `DataAccessException` 都是运行时异常，向上抛出时会触发默认回滚。默认规则和自定义回滚规则可参考[Spring回滚规则官方说明](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/rolling-back.html)。
+
+如果业务方法确实会抛出受检异常，应按规格明确回滚类型。下面是规则片段，不加入当前项目：
+
+```java
+@Transactional(rollbackFor = java.io.IOException.class)
+public void importEmployees(java.nio.file.Path file)
+        throws java.io.IOException {
+    // 读取文件并写入数据库
+}
+```
+
+`java.nio.file.Path` 表示文件系统路径，`java.io.IOException` 表示文件读写可能发生的受检异常。这里写完整类名是为了把重点放在回滚规则上；它们不是本章员工项目新增的业务类型。
+
+| 属性 | 当前值 | 可接受的值 | 默认值与作用 |
+| --- | --- | --- | --- |
+| `rollbackFor` | `java.io.IOException.class` | `Throwable` 子类的Class数组 | 默认空数组；增加必须回滚的异常类型 |
+
+不要无理由统一写 `rollbackFor = Exception.class`。先区分当前方法会抛出哪种异常、失败后是应回滚还是允许提交，再定义规则。
+
+## 七、为什么吞掉异常会误提交
+
+下面是错误片段：
+
+```java
+try {
+    employeeChangeLogMapper.insert(changeLog);
+} catch (DataAccessException exception) {
+    log.warn("change_log_failed");
+}
+```
+
+捕获后方法继续正常结束，事务代理看不到异常，前面的employees更新就可能被提交。本章让 `DataAccessException` 继续向外抛出，交给事务代理回滚，再由第11章的全局异常处理器记录并返回500。
+
+如果必须在当前层转换异常，应抛出能触发回滚的新异常，不能只写日志后继续返回成功。
+
+## 八、同类内部调用为什么会绕过代理
+
+默认代理模式只能拦截经过Spring代理的外部调用。下面的 `updateWithoutTransaction()` 如果本身没有事务，它在同一对象内调用 `update()` 时不会再经过外层代理：
+
+```java
+public EmployeeResponse updateWithoutTransaction(
+        Long id,
+        EmployeeUpdateRequest request) {
+    return update(id, request);
+}
+```
+
+因此不要依赖“同类内部调用带注解方法”来启动事务。可以把完整业务边界放在对外的Service方法，或将需要独立事务的职责拆到另一个Bean。
+
+本章 `create()` 和 `update()` 已经由Controller经Service代理调用。它们内部调用 `findById()` 不需要新建第二个事务；查询会在外层已开始的事务中执行。
+
+## 九、默认传播与已有事务
+
+`@Transactional` 默认使用 `Propagation.REQUIRED`：
+
+```text
+调用时没有事务 → 开始新事务
+调用时已有事务 → 加入已有事务
+```
+
+这适合“一个Service业务边界组织多个数据访问”的常见调用。Spring对REQUIRED的完整语义见[官方传播文档](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/tx-propagation.html)。
+
+`REQUIRES_NEW` 会暂停外层事务并使用独立物理事务，它可能额外占用数据库连接；`NESTED` 通常依赖JDBC保存点实现局部回滚。它们都不符合本章“两次写入共同成败”的规格，因此只需能识别，不替换默认REQUIRED。
+
+
+## 十、用数据库状态证明回滚
+
+运行全部测试：
+
+```powershell
+.\mvnw.cmd clean test
+```
+
+在第12章已有测试上增加本章事务场景。不同学员完成的练习数量可能不同，先核对事务成功与失败场景都被执行，再看最终汇总；不要用固定总数判断是否通过。预期：
+
+```text
+BUILD SUCCESS
+```
+
+回滚测试不在测试方法或测试类上加 `@Transactional`。否则测试框架自己的外层事务可能在方法结束时统一回滚，无法证明Service的事务边界真正生效。
+
+证明回滚需要同时保存：
+
+1. PUT实际返500；
+2. 日志中有履历表不存在的原因；
+3. 失败前员工1001的部门为Sales；
+4. 失败后部门仍为Sales；
+5. 下一个测试前两张表已恢复。
+
+只看500不能证明回滚；只看日志也不能证明数据库状态。
+
+## 十一、常见失败与定位
+
+| 现象 | 定位点 | 原因 | 修正 |
+| --- | --- | --- | --- |
+| 履历失败后employees仍改变 | Service Bean调用路径 | 方法没有事务或同类内部调用绕过代理 | 让外部调用经过带注解的Service Bean方法 |
+| 异常已记录但数据仍提交 | catch后的控制流 | 捕获异常后正常返回 | 继续抛出可触发回滚的异常 |
+| 一个Mapper回滚、另一个没有 | DataSource和事务管理器 | Mapper使用不同DataSource或绕过MyBatis-Spring | 确保SqlSessionFactory与事务管理器使用同一DataSource |
+| 测试总是回滚 | 测试类注解 | 测试方法自己带 `@Transactional` | 移除外层测试事务，通过 `@Sql` 隔离数据 |
+| 启动时找不到新Mapper | 包名、`@Mapper`、XML namespace | Java接口和XML名称不一致 | 按完整类名核对namespace |
+
+## 十二、规格理解、影响调查、Review与练习
+
+### 练习1：Review事务边界
+
+审查“Controller调用两个Service，每个Service各自提交”的设计。指出半完成时的数据状态，将一个完整业务动作放到一个Service边界，并列出需回归的HTTP与数据库结果。
+
+### 练习2：验证捕获异常的影响
+
+在专用测试分支中临时捕获履历Mapper异常且不再抛出，运行回滚测试，记录actual为何变成Development。随后恢复正确代码，重跑并确认Sales保持不变。
+
+### 练习3：受检异常规格
+
+假设批量导入方法遇到 `IOException` 时必须撤销已写数据。写出方法签名和 `rollbackFor`，再写一个“异常抛出后表中件数不变”的测试规格。
+
+### 练习4：影响调查
+
+规格变更：删除员工时也必须写 `EMPLOYEE_DELETED` 履历。调查Service、履历数据、物理删除与履历保留顺序、事务、接口响应和回归测试的影响；先不实施，提交调查表。
+
+### 练习5：整理事务证据
+
+分别保存成功与中途失败场景的前置数据、HTTP状态、employees结果、employee_change_logs结果、异常原因和测试结果。结论必须指向数据库证据，不能只写“已加 `@Transactional`”。
+
+### 练习6：选择并发控制方式
+
+对“管理员在编辑画面停留10分钟后提交”和“夜间作业读取后立即更新”两个场景，分别比较不加锁、乐观锁和悲观锁。写出选择、失败时的接口状态、用户可见信息、超时或重试策略以及需补充的并发测试，不只回答机制名称。
+
+## 十三、章末完整代码
+
+### 最终文件清单与完整实现
 
 先理解本章要保护的单位是“一次修改员工业务”，不是单独一条SQL。Spring Boot依据DataSource准备事务管理能力；外部调用进入Spring管理的Service代理时，代理读取 `@Transactional`，开始事务，再让方法依次调用两个Mapper。两次调用使用同一个受事务管理的数据库连接：方法正常结束则共同提交；抛出运行时异常则默认共同回滚。因此注解放在包含两个写操作的Service方法上，不能只贴在其中一个Mapper方法上。
 
@@ -244,10 +618,11 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     @Transactional
     public EmployeeResponse create(EmployeeCreateRequest request) {
-        validateDepartment(request.getDepartment());
+        String department = request.getDepartment().trim();
+        validateDepartment(department);
         Employee employee = new Employee();
         employee.setName(request.getName().trim());
-        employee.setDepartment(request.getDepartment().trim());
+        employee.setDepartment(department);
         employee.setEmail(normalizeEmail(request.getEmail()));
         employee.setStatus("ACTIVE");
         try {
@@ -270,13 +645,14 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeResponse update(
             Long id,
             EmployeeUpdateRequest request) {
-        validateDepartment(request.getDepartment());
+        String department = request.getDepartment().trim();
+        validateDepartment(department);
         Employee beforeUpdate = findEmployeeOrThrow(id);
 
         Employee employee = new Employee();
         employee.setId(id);
         employee.setName(request.getName().trim());
-        employee.setDepartment(request.getDepartment().trim());
+        employee.setDepartment(department);
         employee.setEmail(normalizeEmail(request.getEmail()));
 
         try {
@@ -527,13 +903,14 @@ class EmployeeCrudIntegrationTest {
             throws Exception {
         String createJson =
                 "{\"name\":\"Suzuki\","
-                        + "\"department\":\"Support\","
+                        + "\"department\":\" Support \","
                         + "\"email\":\"suzuki@example.com\"}";
         MvcResult createResult = mockMvc.perform(post("/employees")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createJson))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.id").isNumber())
+                .andExpect(jsonPath("$.data.department").value("Support"))
                 .andReturn();
 
         String location = createResult.getResponse()
@@ -550,7 +927,7 @@ class EmployeeCrudIntegrationTest {
 
         String updateJson =
                 "{\"name\":\"Suzuki Ichiro\","
-                        + "\"department\":\"Development\","
+                        + "\"department\":\" Development \","
                         + "\"email\":\"suzuki@example.com\"}";
         mockMvc.perform(put("/employees/{id}", employeeId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -673,130 +1050,39 @@ class EmployeeCrudIntegrationTest {
 - `created_at` 由数据库生成，本章写入后不立即返回履历详情，所以 `EmployeeChangeLog` 暂时不增加没有被代码使用的 `createdAt` 属性。
 - 成功响应仍通过 `findById(id)` 读取数据库最终状态，保持第10章已经确定的响应规则。
 
-## 三、事务、提交和回滚
+## 十四、本章稳定状态
 
-事务是数据库对一组操作的一致性边界：
-
-```text
-事务开始
-  → UPDATE employees
-  → INSERT employee_change_logs
-  ├─ 方法正常结束：commit，两次写入同时可见
-  └─ 出现需回滚异常：rollback，撤销两次写入
-```
-
-commit是确认当前事务的改变；rollback是撤销当前事务中尚未提交的改变。回滚不是把数据库恢复到任意历史时间，也不能撤销事务开始前已提交的数据。
-
-## 四、为什么事务边界放在Service
-
-Controller只知道HTTP请求，单个Mapper只知道自己的SQL。只有Service知道“修改员工和写履历是一个业务动作”：
+完成后，PUT会在同一事务中更新员工并写变更履历：
 
 ```text
-Controller
-  → EmployeeServiceImpl.update()  ← 事务边界
-      ├─ EmployeeMapper.update()
-      └─ EmployeeChangeLogMapper.insert()
+src/main/java/com/example/employee/
+├── entity/EmployeeChangeLog.java
+├── mapper/EmployeeChangeLogMapper.java
+└── service/impl/EmployeeServiceImpl.java
+src/main/resources/mapper/EmployeeChangeLogMapper.xml
+src/test/java/com/example/employee/
+├── integration/EmployeeCrudIntegrationTest.java
+└── service/EmployeeServiceImplTest.java
+src/test/resources/test-data.sql
 ```
 
-把 `@Transactional` 写在两个Mapper方法上会把一个业务动作拆成两个边界；写在Controller则会让HTTP层承担业务一致性。
+此时你应能够：
 
-`delete()` 目前只执行一条DELETE，单条SQL由数据库保证原子性，本章不因为“写方法”就机械加注解。`create()` 在INSERT后还会回查刚创建的员工，因此本章也把新增与回查放在一个事务内。
+1. 区分单条SQL原子性和多步业务一致性；
+2. 把commit、rollback和Service事务边界对应到真实数据变化；
+3. 解释 `@Transactional` 的代理、外部调用和默认回滚规则；
+4. 识别同类内部调用、吞掉异常和测试外层事务的风险；
+5. 说明默认REQUIRED为何适合当前多步写入；
+6. 区分事务和唯一约束的责任；
+7. 用成功和中途失败测试的数据库状态证明提交与回滚。
 
-## 五、@Transactional由谁处理
+下一章会在员工数量增多的前提下实现条件查询、稳定排序和分页，并继续用自动化测试保护旧有CRUD。
 
-`@Transactional` 的完整名称是 `org.springframework.transaction.annotation.Transactional`。它是事务元数据，不是Java编译器直接执行的commit命令。
+## 附录：隔离、并发更新与锁
 
-Spring Boot根据已有DataSource和事务相关依赖配置事务管理器。Spring在Service Bean外部创建代理：
+以下内容供进入并发改修任务后查阅；本章员工更新与履历共同回滚不依赖这些扩展机制。
 
-```text
-Controller调用Service Bean
-  → 事务代理读取@Transactional
-  → 开始或加入事务
-  → 调用真实EmployeeServiceImpl.update()
-  → 根据返回或异常提交/回滚
-```
-
-本章把注解写在具体实现类的 `public` 方法上，并从Controller注入的Service Bean调用。这是容易识别且符合默认代理模式的写法。Spring Framework 6.2对注解位置和代理调用的说明可参考[Spring官方文档](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/annotations.html)。
-
-MyBatis-Spring使Mapper使用与Spring事务管理器对应的DataSource和SqlSession。同一事务中的两个Mapper调用因此可共同提交或回滚，业务代码不能手工调用 `SqlSession.commit()`、`rollback()` 或 `close()`。详见[MyBatis-Spring事务文档](https://mybatis.org/spring/transactions.html)。
-
-## 六、正常结束与异常回滚
-
-`@Transactional` 的默认回滚规则：
-
-| 方法离开方式 | 默认结果 |
-| --- | --- |
-| 正常 `return` | commit |
-| 抛出 `RuntimeException` 或其子类 | rollback |
-| 抛出 `Error` | rollback |
-| 抛出受检 `Exception` | 默认不回滚 |
-
-`EmployeeSystemException`、`DuplicateEmailException` 和MyBatis-Spring转换后的 `DataAccessException` 都是运行时异常，向上抛出时会触发默认回滚。默认规则和自定义回滚规则可参考[Spring回滚规则官方说明](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/rolling-back.html)。
-
-如果业务方法确实会抛出受检异常，应按规格明确回滚类型。下面是规则片段，不加入当前项目：
-
-```java
-@Transactional(rollbackFor = java.io.IOException.class)
-public void importEmployees(java.nio.file.Path file)
-        throws java.io.IOException {
-    // 读取文件并写入数据库
-}
-```
-
-`java.nio.file.Path` 表示文件系统路径，`java.io.IOException` 表示文件读写可能发生的受检异常。这里写完整类名是为了把重点放在回滚规则上；它们不是本章员工项目新增的业务类型。
-
-| 属性 | 当前值 | 可接受的值 | 默认值与作用 |
-| --- | --- | --- | --- |
-| `rollbackFor` | `java.io.IOException.class` | `Throwable` 子类的Class数组 | 默认空数组；增加必须回滚的异常类型 |
-
-不要无理由统一写 `rollbackFor = Exception.class`。先区分当前方法会抛出哪种异常、失败后是应回滚还是允许提交，再定义规则。
-
-## 七、为什么吞掉异常会误提交
-
-下面是错误片段：
-
-```java
-try {
-    employeeChangeLogMapper.insert(changeLog);
-} catch (DataAccessException exception) {
-    log.warn("change_log_failed");
-}
-```
-
-捕获后方法继续正常结束，事务代理看不到异常，前面的employees更新就可能被提交。本章让 `DataAccessException` 继续向外抛出，交给事务代理回滚，再由第11章的全局异常处理器记录并返回500。
-
-如果必须在当前层转换异常，应抛出能触发回滚的新异常，不能只写日志后继续返回成功。
-
-## 八、同类内部调用为什么会绕过代理
-
-默认代理模式只能拦截经过Spring代理的外部调用。下面的 `updateWithoutTransaction()` 如果本身没有事务，它在同一对象内调用 `update()` 时不会再经过外层代理：
-
-```java
-public EmployeeResponse updateWithoutTransaction(
-        Long id,
-        EmployeeUpdateRequest request) {
-    return update(id, request);
-}
-```
-
-因此不要依赖“同类内部调用带注解方法”来启动事务。可以把完整业务边界放在对外的Service方法，或将需要独立事务的职责拆到另一个Bean。
-
-本章 `create()` 和 `update()` 已经由Controller经Service代理调用。它们内部调用 `findById()` 不需要新建第二个事务；查询会在外层已开始的事务中执行。
-
-## 九、默认传播与已有事务
-
-`@Transactional` 默认使用 `Propagation.REQUIRED`：
-
-```text
-调用时没有事务 → 开始新事务
-调用时已有事务 → 加入已有事务
-```
-
-这适合“一个Service业务边界组织多个数据访问”的常见调用。Spring对REQUIRED的完整语义见[官方传播文档](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/tx-propagation.html)。
-
-`REQUIRES_NEW` 会暂停外层事务并使用独立物理事务，它可能额外占用数据库连接；`NESTED` 通常依赖JDBC保存点实现局部回滚。它们都不符合本章“两次写入共同成败”的规格，因此只需能识别，不替换默认REQUIRED。
-
-## 十、隔离、只读和超时
+### 隔离、只读和超时
 
 | 属性 | 当前章节 | 可接受的值 | 默认值与影响 |
 | --- | --- | --- | --- |
@@ -809,7 +1095,7 @@ public EmployeeResponse updateWithoutTransaction(
 
 `readOnly = true` 是给事务基础设施的只读提示，不应当成拦截所有写SQL的安全权限。`timeout` 用来限制事务最长时间，不是HTTP客户端超时，也不代替SQL性能优化。
 
-## 十一、事务、锁和唯一约束解决不同问题
+### 事务、锁和唯一约束解决不同问题
 
 | 机制 | 当前项目用途 | 不能单独解决 |
 | --- | --- | --- |
@@ -819,7 +1105,7 @@ public EmployeeResponse updateWithoutTransaction(
 
 第10章已经使用唯一约束保护email；本章的事务让该约束失败、履历SQL失败等运行时异常可以撤销当前业务动作中的所有写入。
 
-## 十二、并发更新为什么可能覆盖别人的修改
+### 并发更新与锁的选型
 
 本节属于“设计识读与SQL机制实验”，用于理解既存项目中的并发控制思路。它不会完整修改Employee主线，也不会要求把version字段永久加入后续章节。示例中的Mapper、DTO和异常代码用于说明关键设计点，不构成一套可直接复制运行的完整功能。
 
@@ -843,7 +1129,7 @@ B的UPDATE会把A已经提交的Development重新覆盖为Sales。这就是Lost 
 
 主线暂不改变 `employees` 表和既有接口。下面只展示设计中的关键SQL和判断；若自行做数据库实验，理解后必须恢复到本章开始时的稳定状态。
 
-### 1. 乐观锁：更新时确认版本没有变化
+#### 1. 乐观锁：更新时确认版本没有变化
 
 乐观锁适合冲突不频繁、不能长时间占用数据库锁的画面编辑。先为实验表增加版本号：
 
@@ -879,7 +1165,7 @@ if (updatedRows == 0) {
 
 version是并发控制字段，不是修改次数展示字段。前端重读后应让用户确认新内容，不应偷偷重试完整UPDATE。
 
-### 2. 悲观锁：事务内先锁定再处理
+#### 2. 悲观锁：事务内先锁定再处理
 
 必须先读取最新状态、计算后立即写入且冲突概率高时，可以在同一事务中使用：
 
@@ -901,99 +1187,8 @@ FOR UPDATE;
 
 `@Transactional` 不代表自动解决并发覆盖、重复数据、死锁或所有数据库一致性问题。它只提供已确定事务边界内的提交和回滚语义；唯一约束、并发控制、锁顺序、超时和失败处理仍要根据规格分别设计。
 
-实验至少设计两个并发用户读取同一version、A先提交、B后提交的用例，并保存A成功、B冲突、最终数据保留A结果的证据。完成实验后删除version列及实验Mapper方法，运行原有11个测试，确认主线恢复：
+实验至少设计两个并发用户读取同一version、A先提交、B后提交的用例，并保存A成功、B冲突、最终数据保留A结果的证据。完成实验后删除version列及实验Mapper方法，运行本章原有的全部测试，确认主线恢复：
 
 ```sql
 ALTER TABLE employees DROP COLUMN version;
 ```
-
-## 十三、用数据库状态证明回滚
-
-运行全部测试：
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-第12章有9个测试，本章增加2个事务场景，预期：
-
-```text
-Tests run: 11, Failures: 0, Errors: 0, Skipped: 0
-BUILD SUCCESS
-```
-
-回滚测试不在测试方法或测试类上加 `@Transactional`。否则测试框架自己的外层事务可能在方法结束时统一回滚，无法证明Service的事务边界真正生效。
-
-证明回滚需要同时保存：
-
-1. PUT实际返500；
-2. 日志中有履历表不存在的原因；
-3. 失败前员工1001的部门为Sales；
-4. 失败后部门仍为Sales；
-5. 下一个测试前两张表已恢复。
-
-只看500不能证明回滚；只看日志也不能证明数据库状态。
-
-## 十四、常见失败与定位
-
-| 现象 | 定位点 | 原因 | 修正 |
-| --- | --- | --- | --- |
-| 履历失败后employees仍改变 | Service Bean调用路径 | 方法没有事务或同类内部调用绕过代理 | 让外部调用经过带注解的Service Bean方法 |
-| 异常已记录但数据仍提交 | catch后的控制流 | 捕获异常后正常返回 | 继续抛出可触发回滚的异常 |
-| 一个Mapper回滚、另一个没有 | DataSource和事务管理器 | Mapper使用不同DataSource或绕过MyBatis-Spring | 确保SqlSessionFactory与事务管理器使用同一DataSource |
-| 测试总是回滚 | 测试类注解 | 测试方法自己带 `@Transactional` | 移除外层测试事务，通过 `@Sql` 隔离数据 |
-| 启动时找不到新Mapper | 包名、`@Mapper`、XML namespace | Java接口和XML名称不一致 | 按完整类名核对namespace |
-
-## 十五、规格理解、影响调查、Review与练习
-
-### 练习1：Review事务边界
-
-审查“Controller调用两个Service，每个Service各自提交”的设计。指出半完成时的数据状态，将一个完整业务动作放到一个Service边界，并列出需回归的HTTP与数据库结果。
-
-### 练习2：验证捕获异常的影响
-
-在专用测试分支中临时捕获履历Mapper异常且不再抛出，运行回滚测试，记录actual为何变成Development。随后恢复正确代码，重跑并确认Sales保持不变。
-
-### 练习3：受检异常规格
-
-假设批量导入方法遇到 `IOException` 时必须撤销已写数据。写出方法签名和 `rollbackFor`，再写一个“异常抛出后表中件数不变”的测试规格。
-
-### 练习4：影响调查
-
-规格变更：删除员工时也必须写 `EMPLOYEE_DELETED` 履历。调查Service、履历数据、物理删除与履历保留顺序、事务、接口响应和回归测试的影响；先不实施，提交调查表。
-
-### 练习5：整理事务证据
-
-分别保存成功与中途失败场景的前置数据、HTTP状态、employees结果、employee_change_logs结果、异常原因和测试结果。结论必须指向数据库证据，不能只写“已加 `@Transactional`”。
-
-### 练习6：选择并发控制方式
-
-对“管理员在编辑画面停留10分钟后提交”和“夜间作业读取后立即更新”两个场景，分别比较不加锁、乐观锁和悲观锁。写出选择、失败时的接口状态、用户可见信息、超时或重试策略以及需补充的并发测试，不只回答机制名称。
-
-## 十六、本章稳定状态
-
-完成后，PUT会在同一事务中更新员工并写变更履历：
-
-```text
-src/main/java/com/example/employee/
-├── entity/EmployeeChangeLog.java
-├── mapper/EmployeeChangeLogMapper.java
-└── service/impl/EmployeeServiceImpl.java
-src/main/resources/mapper/EmployeeChangeLogMapper.xml
-src/test/java/com/example/employee/
-├── integration/EmployeeCrudIntegrationTest.java
-└── service/EmployeeServiceImplTest.java
-src/test/resources/test-data.sql
-```
-
-此时你应能够：
-
-1. 区分单条SQL原子性和多步业务一致性；
-2. 把commit、rollback和Service事务边界对应到真实数据变化；
-3. 解释 `@Transactional` 的代理、外部调用和默认回滚规则；
-4. 识别同类内部调用、吞掉异常和测试外层事务的风险；
-5. 说明REQUIRED、隔离、只读与超时在当前用例中的选择；
-6. 区分事务、锁和唯一约束的责任；
-7. 用成功和中途失败测试的数据库状态证明提交与回滚。
-
-下一章会在员工数量增多的前提下实现条件查询、稳定排序和分页，并继续用自动化测试保护旧有CRUD。

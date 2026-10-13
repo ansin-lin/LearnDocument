@@ -11,6 +11,9 @@
 /docs/**/备份/
 /site/
 
+# Local generated Spring Boot teaching project
+/docs/backend/springboot/sample/employee-management-api/
+
 # Python bytecode and caches
 __pycache__/
 *.py[cod]
