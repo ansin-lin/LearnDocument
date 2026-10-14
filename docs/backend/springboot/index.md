@@ -109,10 +109,12 @@ Eclipse编写和调试代码
 | [A08 使用@Validated选择校验分组](appendix/A08_validated_validation_groups.md) | 让同一请求对象在不同阶段执行不同约束 |
 | [A09-1 Java Web项目中的日期时间与时区](appendix/A09_01_java_web_datetime.md) | 区分本地时间、UTC瞬间、区域时区和MySQL时间列 |
 | [A09-2 Spring Boot怎样读取独立MyBatis配置](appendix/A09_02_springboot_mybatis_config.md) | 在可恢复实验中切换YAML与mybatis-config.xml |
-| [A11-1 Spring Boot日志配置进阶](appendix/A11_logging_configuration_advanced.md) | 配置滚动日志、归档清理与日志格式 |
-| [A11-2 Filter与请求处理执行时机](appendix/A11_2_filter_execution_timing.md) | 区分Filter接口、OncePerRequestFilter基类与项目日志Filter，并定位拦截器、全局异常和AOP |
+| [A11-1 Spring Boot日志配置进阶](appendix/A11_logging_configuration_advanced.md) | 理解有效等级、文件滚动、环境覆盖、结构化日志与自定义Logback边界 |
+| [A11-2 Filter与请求处理执行时机](appendix/A11_2_filter_execution_timing.md) | 区分Servlet分派、Filter注册顺序、Security、MVC异常和MDC清理 |
+| [A11-3 使用AOP统一记录方法日志](appendix/A11_3_aop_method_logging.md) | 使用精确切点和自定义注解记录Service耗时，并保持返回、异常和事务语义 |
 | [A12-1 常用测试断言库与断言方法](appendix/A12_01_testing_assertions_reference.md) | 按检查对象选择JUnit、AssertJ、Hamcrest与MockMvc断言 |
 | [A12-2 使用H2完成独立数据库测试实验](appendix/A12_02_h2_test_database.md) | 用独立profile完成H2 Mapper实验并理解与MySQL的差异 |
+| [A13 事务、隔离级别、并发更新与锁](appendix/A13_transaction_isolation_concurrency_locks.md) | 理解ACID、隔离现象和InnoDB锁，并为并发更新选择约束、原子SQL、乐观锁或悲观锁 |
 | [A17 配置、构建与交付进阶](appendix/A17_configuration_build_delivery_advanced.md) | 调查配置覆盖、构建产物与正式交付检查项 |
 | [A18-1 Linux部署与运维手顺参考](appendix/A18_01_linux_deployment_operations_reference.md) | 查阅systemd Unit、更新、切り戻し和运维记录 |
 | [A18-2 常见运行与数据库迁移组件识读](appendix/A18_02_operations_components_reading.md) | 初步识别Actuator、Flyway和Liquibase |

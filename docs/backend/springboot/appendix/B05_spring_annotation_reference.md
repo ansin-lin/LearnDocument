@@ -195,6 +195,12 @@
 | `@Scheduled` | `cron`、`zone`、`fixedDelay`、`fixedRate`、`initialDelay` | cron、延迟、频率三种方式选一；集群防重另行设计 |
 | `@EnableAsync` | `mode`、`proxyTargetClass`、`order` | 默认代理模式，仍需确认Executor |
 | `@Async` | `value`为Executor Bean名，默认`""` | 事务、异常、MDC和Security上下文不会自动跨线程 |
+| `@Aspect` | `value`为实例化模型字符串，常规Spring AOP保持默认`""` | 把类声明为切面定义；仍需由Spring创建为Bean，详见A11-3 |
+| `@Around` | `value`为必填切点表达式；`argNames`默认`""` | 必须正确调用并返回 `ProceedingJoinPoint.proceed()`，不能吞掉原异常 |
+| `@Pointcut` | `value`和`argNames`均为字符串且默认`""`；实际命名切点通常填写表达式 | 给可复用切点命名，方法体为空；范围过宽会意外匹配新方法 |
+| `@Target` | `value`为必填 `ElementType[]` | Java元注解；限制自定义注解可标注的方法、类、字段等位置 |
+| `@Retention` | `value`为必填 `RetentionPolicy` | Java元注解；A11-3使用`RUNTIME`让AOP运行时读取注解 |
+| `@Documented` | 无属性 | Java元注解；让自定义注解出现在生成的API文档中 |
 | Lombok的`@Getter`、`@Setter`、`@Data`、`@Builder`等 | 生成属性详见B04 | 编译期生成代码，不是Spring运行时注入 |
 | JPA的`@Table`、`@Id`、`@GeneratedValue`、`@Column`等 | 表名、列名、生成策略、长度和可空性等，详见B04 | 用于识读JPA项目，不加入MyBatis主线对象 |
 

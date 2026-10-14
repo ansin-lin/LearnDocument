@@ -55,7 +55,7 @@ SLF4J API和默认Logback实现已经由Spring Boot Web Starter提供，本章�
 | Spring MVC HandlerInterceptor | MVC Handler调用前后，可用于Controller公共处理；在MVC链中，范围与Filter不同 | 非MVC的全部Servlet流量 |
 | Spring AOP | Spring管理Bean的被代理方法；适合统一方法耗时 | HTTP底层细节、全部业务事实 |
 
-本章稳定方案是“Service业务事件＋Filter请求信息＋全局异常日志＋MDC关联”。Interceptor只作选型比较；AOP独立实验放在[B06附录](../appendix/B06_spring_common_processing_mechanisms.md)，不进入本章最终工程。同一个事件只设一个主要记录位置。即使某个Service方法返回成功，也不应仅靠AOP推断外层事务已经提交。
+本章稳定方案是“Service业务事件＋Filter请求信息＋全局异常日志＋MDC关联”。Interceptor只作选型比较；AOP方法日志的完整实验放在[A11-3附录](../appendix/A11_3_aop_method_logging.md)，不进入本章最终工程。同一个事件只设一个主要记录位置。即使某个Service方法返回成功，也不应仅靠AOP推断外层事务已经提交。
 
 ## 三、案例一：记录第一条业务日志
 
@@ -515,7 +515,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
 `UUID.randomUUID()` 为这次请求生成标识；`X-Request-Id` 将同一值返回客户端。`MDC.put` 把 `requestId` 放入当前线程的日志上下文，pattern中的 `%X{requestId:-no-request}` 读取它；没有上下文的启动日志显示 `no-request`。Service和Advice在同一同步请求线程上记录日志时，不必手动传入编号。线程会被复用，所以在 `finally` 中清理MDC；内层 `finally` 还保证即使写完成日志本身失败也执行清理。异步线程的传播不属于本案例。
 
-滚动配置限制单文件大小、按天归档并限制保留时间和归档容量；当前项目最终配置仍使用它们，参数与文件名语法的详细说明见[A11-1日志配置进阶附录](../appendix/A11_logging_configuration_advanced.md)。Filter与其他共通机制的执行时机可在完成本章后读[A11-2附录](../appendix/A11_2_filter_execution_timing.md)。
+滚动配置限制单文件大小、按天归档并限制保留时间和归档容量；当前项目最终配置仍使用它们，参数、有效等级、结构化日志和自定义Logback边界见[A11-1日志配置进阶附录](../appendix/A11_logging_configuration_advanced.md)。Filter、Servlet分派和其他请求处理机制的执行时机见[A11-2附录](../appendix/A11_2_filter_execution_timing.md)；需要统一记录指定Service方法耗时时，再进入[A11-3附录](../appendix/A11_3_aop_method_logging.md)。
 
 验证A：发送一次 `GET {{baseUrl}}/employees/1001`，在Postman响应Header记录 `X-Request-Id`，对照Filter和Service日志中的编号一致。验证B：连续发送两次请求，两个Header值应不同，各自日志不得混用。再发送404请求，确认Advice WARN与Filter完成日志共用同一编号。案例完成后保留Filter和pattern，供故障调查使用。
 
@@ -1345,13 +1345,17 @@ logs/employee-api.log                            ← 运行时生成，不提交
 7. 避免多层重复记录同一异常；
 8. 结合日志、响应、数据库状态和断点形成完整故障记录；
 9. 区分当前使用的Filter和Controller Advice的位置与责任；
-10. 在需要阅读既存项目时，知道从附录继续比较Interceptor和AOP。
+10. 在需要阅读既存项目时，知道从A11-1继续调查日志配置，从A11-2判断请求链位置，从A11-3识读AOP方法日志。
 
 下一章会把第10章的手工验证整理成可重复执行的自动化测试。日志用于诊断失败原因，测试用于自动判断结果，两者不能互相替代。
 
 ## 十二、附录：日志扩展方向
 
 以下内容不属于当前本地故障调查主线：
+
+- **A11-1 日志配置进阶**：有效等级、环境覆盖、滚动、结构化日志、Logback XML边界和验证矩阵。
+- **A11-2 请求处理执行时机**：Servlet分派、Filter注册顺序、Security、MVC、异常和MDC清理。
+- **A11-3 AOP方法日志**：精确切点、自定义注解、代理边界、成功/失败/慢调用和安全Review。
 
 - **高级滚动策略**：多环境路径、按级别拆分、特殊归档和更复杂的保留策略应结合部署与磁盘规划。
 - **异步日志**：可以降低调用线程写日志的等待，但要评估队列溢出、停机刷新和故障时丢失风险。

@@ -183,57 +183,7 @@ Spring AOP常通过代理在Spring Bean方法前后加入处理。主线已经�
 
 代理只拦截真正经过代理对象的调用。同一个类中使用 `this.someMethod()` 调用另一个带事务或方法安全注解的方法，通常不会再次经过外层代理。这一边界会在第13章事务和第16章方法权限中结合实际代码说明。
 
-本课程不要求自行编写通用日志切面。看到记录所有方法参数的AOP时，应检查密码、Token、个人信息、大对象、异常语义和性能影响。
-
-### 独立实验：只记录一个Service方法的耗时
-
-若要观察多个Service方法耗时，在每个方法手写计时会重复。AOP（面向切面编程）可把这种公共关注点集中处理。`Aspect` 是切面类；`Join Point` 是可被增强的方法执行点；`Pointcut` 选择方法；`Advice` 是命中后执行的附加逻辑。以下实验只针对员工详情查询，不替代业务成功/失败日志，也不成为第11章的稳定工程状态。
-
-先在 `pom.xml` 的依赖区临时增加下列依赖，并在Eclipse更新Maven项目：
-
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-aspectj</artifactId>
-</dependency>
-```
-
-新建 `src/main/java/com/example/employee/config/ServiceTimingAspect.java`：
-
-```java
-package com.example.employee.config;
-
-import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.annotation.Around;
-import org.aspectj.lang.annotation.Aspect;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
-@Aspect
-@Component
-public class ServiceTimingAspect {
-
-    private static final Logger log =
-            LoggerFactory.getLogger(ServiceTimingAspect.class);
-
-    @Around("execution(* com.example.employee.service.impl.EmployeeServiceImpl.findById(..))")
-    public Object measure(ProceedingJoinPoint joinPoint) throws Throwable {
-        long startedAt = System.nanoTime();
-        try {
-            return joinPoint.proceed();
-        } finally {
-            long elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
-            log.info("service_elapsed method={} elapsedMs={}",
-                    joinPoint.getSignature().getName(), elapsedMs);
-        }
-    }
-}
-```
-
-`@Aspect` 声明切面，`@Component` 让Spring管理它，`@Around` 的表达式只选择 `EmployeeServiceImpl.findById(..)`；`ProceedingJoinPoint` 代表本次调用，`proceed()` 必须执行，否则目标方法不会运行。`finally` 保证成功或异常时均记录耗时。不要在这里记录请求体、响应对象或邮箱。自调用 `this.findById()` 通常不会经过代理，手工 `new` 的对象也不会被代理；方法返回也不等于外层事务已经提交。
-
-在Eclipse启动后，用Postman发送 `GET {{baseUrl}}/employees/1001`，无参数与Body，预期200及既有响应；Console应多一条 `service_elapsed method=findById`，业务状态不变。实验结束删除这个切面类和临时AOP依赖，再更新Maven项目。只有明确的方法级监控需求才考虑在真实项目保留类似设计。
+编写方法日志切面时，应检查密码、Token、个人信息、大对象、异常语义、切点范围和性能影响。完整的递进示例、依赖、自定义 `@MethodLog`、`@Around`、成功/失败/慢调用、自调用边界和验证方式见[A11-3 使用AOP统一记录方法日志](A11_3_aop_method_logging.md)。本附录只负责比较共通机制的位置，不再维护第二份AOP日志实现。
 
 ## 六、识读与Review任务
 
