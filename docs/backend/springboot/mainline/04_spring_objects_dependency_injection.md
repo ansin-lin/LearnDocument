@@ -21,7 +21,7 @@ Controller需要Service
 
 - `GET /health` 返回状态码200和正文 `OK`；
 - 启动类位于根包 `com.example.employee`；
-- `pom.xml` 已包含 `spring-boot-starter-web`；
+- `pom.xml` 已包含Boot 4的 `spring-boot-starter-webmvc`；
 - 项目已在Eclipse中导入，并能从启动类正常启动。
 
 Employee主线新增两个文件，不修改第3章的启动类、配置文件和 `HealthController`：
@@ -461,7 +461,7 @@ public class EmployeeService {
 
 当前Employee主线中，每一种依赖都只有一个候选Bean，构造器按类型就能完成注入。真实项目中，一个接口可能有多个实现；此时Spring需要进一步知道应该选择哪一个，否则应用会在启动阶段报告候选不唯一。
 
-现阶段只需要能够识别“缺少候选”和“候选过多”是两类不同问题。`@Qualifier`、`@Primary`、Bean名称及 `NoUniqueBeanDefinitionException` 的完整独立实验，放在附录[多个Bean候选的选择与排错](../appendix/A06_multiple_bean_candidates.md)中。
+现阶段只需要能够识别“缺少候选”和“候选过多”是两类不同问题。`@Qualifier`、`@Primary`、Bean名称及 `NoUniqueBeanDefinitionException` 的完整独立实验，放在附录[A04 多个Bean候选的选择与排错](../appendix/A04_multiple_bean_candidates.md)中。
 
 ## 十二、常见问题与Review
 

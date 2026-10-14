@@ -1,6 +1,6 @@
-# A01 Spring Boot调用外部REST API
+# B01 Spring Boot调用外部REST API
 
-> 本专题目标：理解Service除了Mapper还可能依赖外部系统，并使用Spring Framework 6.2的 `RestClient` 完成同步GET、POST、Header、JSON、超时和分层异常处理。
+> 本专题目标：理解Service除了Mapper还可能依赖外部系统，并使用Spring Framework 7的 `RestClient` 完成同步GET、POST、Header、JSON、超时和分层异常处理。
 
 ## 一、业务场景与边界
 
@@ -23,7 +23,7 @@ client/HrApiClient.java
 dto/external/HrEmployeeResponse.java
 ```
 
-本专题使用同步客户端 `RestClient`，适合当前Servlet MVC主线。Spring官方将其定义为带流式API的同步HTTP客户端，参见[REST Clients](https://docs.spring.io/spring-framework/reference/6.2/integration/rest-clients.html)。老项目中仍可能看到 `RestTemplate`，识读时要继续追踪其Bean、超时和异常处理；本课程新增代码使用RestClient，不把WebClient、Reactive或WebFlux扩展成另一条主线。
+本专题使用同步客户端 `RestClient`，适合当前Servlet MVC主线。Spring官方将其定义为带流式API的同步HTTP客户端，参见[REST Clients](https://docs.spring.io/spring-framework/reference/integration/rest-clients.html)。老项目中仍可能看到 `RestTemplate`，识读时要继续追踪其Bean、超时和异常处理；本课程新增代码使用RestClient，不把WebClient、Reactive或WebFlux扩展成另一条主线。
 
 ## 二、完整最小示例
 
@@ -102,6 +102,8 @@ public class HrApiProperties {
 }
 ```
 
+`@ConfigurationProperties` 属于Spring Boot，写在配置属性类上。应用上下文启动时，Spring Boot把前缀 `external.hr` 下的外部配置按属性名绑定到这个对象；本例中的 `base-url`、`connect-timeout` 会分别绑定到 `baseUrl`、`connectTimeout`。它只负责绑定，不会单独把该类注册为Bean，本例稍后使用 `@EnableConfigurationProperties` 完成注册。
+
 `URI` 保留协议、主机和路径语义；`Duration` 让 `2s`、`3s` 直接绑定为时间长度。生产启动前应像第17章一样校验非空、HTTPS和正数超时，本示例省略重复的Validation代码。
 
 ### 3. 创建RestClient Bean并设置超时
@@ -143,6 +145,14 @@ public class HrApiConfig {
 ```
 
 `java.net.http.HttpClient` 设置建立连接的最长等待；`JdkClientHttpRequestFactory` 把JDK客户端接入Spring并设置读取响应的最长等待。`RestClient.Builder` 统一保存base URL、请求工厂和默认Authorization Header。
+
+本段首次出现的注解：
+
+| 注解 | 所属与位置 | 处理时机和本例效果 |
+| --- | --- | --- |
+| `@Configuration` | Spring；配置类 | 容器启动扫描配置时，把该类作为Bean定义来源处理 |
+| `@EnableConfigurationProperties(HrApiProperties.class)` | Spring Boot；配置类 | 容器启动时注册并绑定 `HrApiProperties`，使其可以注入 `@Bean` 方法 |
+| `@Bean` | Spring；配置类的方法 | 容器创建配置时调用该方法，并把返回的 `RestClient` 注册为Bean；默认Bean名是方法名 `hrRestClient` |
 
 连接超时和读取超时解决不同阶段：前者限制连接建立，后者限制已发送请求后等待响应。两者都必须是正数；无限等待会长期占用处理线程。Token虽然由配置提供，也不能在启动日志中打印。
 
@@ -316,6 +326,8 @@ public class HrApiClient {
     }
 }
 ```
+
+`@Component` 属于Spring，写在类上。组件扫描在应用启动时发现 `HrApiClient` 并把它注册为Bean，随后Spring通过构造器注入前面创建的 `RestClient`；它不会改变类中HTTP调用方法本身的语义。
 
 调用链依次是 `get()`/`post()` 选择HTTP方法，`uri(...)` 组合路径和变量，`header(...)` 添加本次requestId，`body(...)` 由Jackson写JSON，`retrieve()` 执行并进入响应处理，最后 `body(Class)` 读取JSON或 `toBodilessEntity()` 接受无正文成功响应。
 

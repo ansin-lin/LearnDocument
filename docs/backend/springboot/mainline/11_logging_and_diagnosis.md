@@ -55,7 +55,7 @@ SLF4J API和默认Logback实现已经由Spring Boot Web Starter提供，本章�
 | Spring MVC HandlerInterceptor | MVC Handler调用前后，可用于Controller公共处理；在MVC链中，范围与Filter不同 | 非MVC的全部Servlet流量 |
 | Spring AOP | Spring管理Bean的被代理方法；适合统一方法耗时 | HTTP底层细节、全部业务事实 |
 
-本章稳定方案是“Service业务事件＋Filter请求信息＋全局异常日志＋MDC关联”。Interceptor只作选型比较；AOP独立实验放在[A13附录](../appendix/A13_spring_common_processing_mechanisms.md)，不进入本章最终工程。同一个事件只设一个主要记录位置。即使某个Service方法返回成功，也不应仅靠AOP推断外层事务已经提交。
+本章稳定方案是“Service业务事件＋Filter请求信息＋全局异常日志＋MDC关联”。Interceptor只作选型比较；AOP独立实验放在[B06附录](../appendix/B06_spring_common_processing_mechanisms.md)，不进入本章最终工程。同一个事件只设一个主要记录位置。即使某个Service方法返回成功，也不应仅靠AOP推断外层事务已经提交。
 
 ## 三、案例一：记录第一条业务日志
 
@@ -100,7 +100,41 @@ public EmployeeResponse create(EmployeeCreateRequest request) {
 
 原方法的插入、影响行数检查、重复邮箱异常转换和再次查询都保留；唯一新机制是Logger与成功后的一条业务事件。若在INSERT前输出 `employee_created`，插入失败也会留下假成功记录。`employeeMapper.insert` 返回1且生成id之后才输出；更严格的“事务已提交”语义需要事务提交后机制，本章不把这条方法内日志称为提交证明。
 
-SLF4J是应用调用的日志门面/API，`Logger` 是实际调用对象；Logback是Spring Boot默认使用的输出实现，决定Console、文件和格式。`LoggerFactory.getLogger(EmployeeServiceImpl.class)` 以当前类作为Logger名称，便于按类配置等级。`private` 防止外部随意调用，`static` 让该类共享Logger，`final` 避免重新赋值。`log.info("employeeId={}", id)` 中 `{}` 按顺序绑定参数；相比字符串拼接，未启用等级时可避免不必要的字符串构造，也便于保持稳定格式。`System.out.println()` 缺少统一等级、来源、格式、滚动文件与运行配置，不适合作为项目日志方案。配置的INFO门槛会显示INFO、WARN、ERROR，过滤DEBUG、TRACE。
+SLF4J是应用调用的日志门面/API，`Logger` 是实际调用对象；Logback是Spring Boot默认使用的输出实现，决定Console、文件和格式。`LoggerFactory.getLogger(EmployeeServiceImpl.class)` 以当前类作为Logger名称，便于按类配置等级。`private` 防止外部随意调用，`static` 让该类共享Logger，`final` 避免重新赋值。`log.info("employeeId={}", id)` 中 `{}` 按顺序绑定参数；相比字符串拼接，未启用等级时可避免不必要的字符串构造，也便于保持稳定格式。`System.out.println()` 缺少统一等级、来源、格式、滚动文件与运行配置，不适合作为项目日志方案。
+
+#### 2.1 日志等级与输出门槛
+
+本项目在代码中使用SLF4J最常见的五个日志方法。按“信息最细”到“问题最严重”排列为：
+
+```text
+TRACE → DEBUG → INFO → WARN → ERROR
+细节最多                         严重程度最高
+```
+
+日志语句本身的等级表示“这条事件是什么性质”；配置中的等级表示“从哪个门槛开始输出”。例如，Logger的有效门槛为INFO时，会输出INFO、WARN和ERROR，过滤DEBUG和TRACE；改成DEBUG后，会增加DEBUG，但仍过滤TRACE；改成ERROR后，只输出ERROR。
+
+```text
+配置TRACE：TRACE、DEBUG、INFO、WARN、ERROR
+配置DEBUG：       DEBUG、INFO、WARN、ERROR
+配置INFO：              INFO、WARN、ERROR
+配置WARN：                    WARN、ERROR
+配置ERROR：                         ERROR
+```
+
+有效门槛由Logger名称和配置层级共同决定。`root` 是没有更具体设置时的默认门槛；包或类的配置比 `root` 更具体，因此可以保持全局INFO，只把正在调查的业务包临时调成DEBUG。不要为了调查一个接口把整个应用长期设为TRACE。
+
+为了在案例一中实际观察门槛，可在 `create()` 的 `log.info(...)` 前临时加入下面一行：
+
+```java
+// 仅用于日志等级实验，验证后删除
+log.debug("employee_create_debug employeeId={}", employee.getId());
+```
+
+门槛为INFO时，这条DEBUG日志不出现，而后面的 `employee_created` INFO日志出现；门槛改为DEBUG并重启后，两条都会出现。实验结束要删除临时DEBUG语句并恢复INFO，章末稳定代码不保留没有长期诊断价值的重复日志。
+
+Spring Boot的等级配置还接受 `FATAL` 和 `OFF`。当前默认Logback没有独立的FATAL等级，会把它映射为ERROR；`OFF` 用于关闭指定Logger输出。业务代码继续统一使用SLF4J的TRACE、DEBUG、INFO、WARN、ERROR五种方法即可，参考[Spring Boot日志官方说明](https://docs.spring.io/spring-boot/reference/features/logging.html#features.logging.log-levels)。
+
+#### 2.2 五个等级分别表示什么
 
 | 等级 | 当前项目适用例 | 不应滥用为 |
 | --- | --- | --- |
@@ -110,9 +144,47 @@ SLF4J是应用调用的日志门面/API，`Logger` 是实际调用对象；Logba
 | WARN | 员工不存在、重复邮箱等可预期但需关注的失败 | 数据库不可用等系统故障的唯一告警 |
 | ERROR | 数据库访问失败等需要排查的系统异常，并在边界保留堆栈 | 所有404、409或用户输入错误 |
 
+TRACE和DEBUG主要服务于调查，正常运行时通常关闭；INFO用于正常运行期间仍值得保留的关键事实；WARN表示系统还能继续工作，但出现了偏离正常路径且值得关注的情况；ERROR表示本次处理因非预期的系统问题失败，通常需要调查、修复或通知。等级越高不代表日志越“重要”或越应该多写，ERROR过多会掩盖真正故障，INFO过多也会增加检索和保存成本。
+
+#### 2.3 怎样选择日志等级
+
+写日志前按下面顺序判断：
+
+```text
+本次处理是否因非预期系统故障而失败，并需要人员调查？
+  ├─ 是 → ERROR，在统一边界记录一次异常堆栈
+  └─ 否
+      ↓
+是否偏离正常路径、值得关注，但系统仍能按规格返回或继续运行？
+  ├─ 是 → WARN
+  └─ 否
+      ↓
+是否是正常运行期间也需要长期保留的关键业务或运行事实？
+  ├─ 是 → INFO
+  └─ 否
+      ↓
+是否只在问题调查时需要这些内部条件、数量或分支信息？
+  ├─ 是 → DEBUG
+  └─ 否 → 极细执行轨迹才考虑TRACE；没有诊断价值则不记录
+```
+
+选择等级时看事件语义和后续行动，不要只看HTTP状态码或是否出现异常类：
+
+| 场景 | 建议选择 | 判断理由 |
+| --- | --- | --- |
+| 员工新增成功 | INFO | 正常业务事件，运行期间需要保留员工编号 |
+| 列表查询使用了哪些筛选条件、返回多少条 | DEBUG | 主要用于调查查询问题，日常不必持续输出 |
+| 查不到指定员工并按规格返回404 | WARN或不单独记录 | 属于可预期业务结果；是否需要WARN取决于项目监控和发生频率 |
+| 请求字段校验失败并返回400 | 通常不单独记ERROR | 客户端输入错误，不代表服务器发生系统故障；请求完成日志已保留状态 |
+| 重复邮箱并按规格返回409 | WARN或按项目策略 | 业务冲突，可恢复，不应伪装成系统ERROR |
+| 数据库连接失败导致接口返回500 | ERROR | 非预期系统故障，需要堆栈和调查 |
+| 开发期间逐行确认框架调用顺序 | TRACE | 细节量很大，只应限定范围和时间临时开启 |
+
+同一种事件在不同项目中可能采用不同等级。例如“员工不存在”若是普通查询结果，可以不单独记录；若它表示内部数据引用失效，则可能需要WARN。团队应在日志设计或运维规范中统一判断标准，Review时检查相同事件是否使用相同等级。
+
 ### 3. 基础日志配置
 
-在第10章的 `application.yml` 末尾追加以下最小配置，不改动原有数据库与MyBatis部分。后面的requestId案例再加入日志格式，滚动文件配置及细节见[日志配置进阶附录](../appendix/A14_logging_configuration_advanced.md)。
+在第10章的 `application.yml` 末尾追加以下最小配置，不改动原有数据库与MyBatis部分。后面的requestId案例再加入日志格式，滚动文件配置及细节见[A11-1日志配置进阶附录](../appendix/A11_logging_configuration_advanced.md)。
 
 ```yaml
 logging:
@@ -129,7 +201,9 @@ logging:
 
 ### 4. 验证和完成状态
 
-在Eclipse运行启动类；Postman发送 `POST {{baseUrl}}/employees`，Body为 `{"name":"Suzuki","department":"Sales","email":"suzuki@example.com"}`，预期201、Location指向生成id、响应 `data.id` 与Console及 `logs/employee-api.log` 中的 `employee_created employeeId=...` 一致；再用数据库客户端核对该id。临时在Eclipse启动配置中设 `APP_SERVICE_LOG_LEVEL=DEBUG` 重启，观察DEBUG后恢复INFO。恢复测试数据后保留日志代码。
+在Eclipse运行启动类；Postman发送 `POST {{baseUrl}}/employees`，Body为 `{"name":"Suzuki","department":"Sales","email":"suzuki@example.com"}`，预期201、Location指向生成id、响应 `data.id` 与Console及 `logs/employee-api.log` 中的 `employee_created employeeId=...` 一致；再用数据库客户端核对该id。
+
+按2.1节加入临时 `employee_create_debug` 日志：先保持INFO门槛并重启，确认只出现 `employee_created`；再在Eclipse启动配置的Environment页设置 `APP_SERVICE_LOG_LEVEL=DEBUG` 并重启，重新发送一份使用不同邮箱的新增请求，确认DEBUG和INFO两条日志都出现。最后删除临时DEBUG语句、恢复INFO并删除实验数据，保留正式的INFO业务日志。
 
 ## 四、案例二：在Service和异常边界记录有效信息
 
@@ -327,9 +401,17 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
 ## 六、案例四：为每个请求加入requestId与MDC
 
-在案例三的Filter上增加UUID、响应Header和MDC；保留已有的method、path、status与耗时日志。先在 `RequestLoggingFilter.java` 导入 `java.util.UUID` 和 `org.slf4j.MDC`，然后完整替换该类的 `doFilterInternal()` 方法；类、注解、Logger和其他import保持不变。
+在案例三的Filter上增加UUID、响应Header和MDC；保留已有的method、path、status与耗时日志。先在 `RequestLoggingFilter.java` 的import区域追加下面两行，然后完整替换该类的 `doFilterInternal()` 方法；类、注解、Logger和其他import保持不变。
 
-假设A查询、B新增、C删除的日志在Console交错，仅靠时间难以判断归属。requestId是每次请求的关联编号；UUID使本地生成的编号足够不易碰撞，响应Header让调用方也能提供同一线索。MDC是当前线程的诊断上下文：Filter设置后，同步调用链上的Service和Advice日志都可通过pattern读取。异步线程不自动继承此上下文，需要另行传播；容器线程会复用，所以必须在请求结束时清理。
+```java
+import org.slf4j.MDC;
+
+import java.util.UUID;
+```
+
+`MDC` 的完整类名是 `org.slf4j.MDC`，由项目现有的SLF4J日志依赖提供，不需要再创建课程自己的 `MDC` 类。`put()`、`get()`、`remove()` 和 `clear()` 是静态方法，因此使用 `MDC.put(...)`，不需要也不能写成 `new MDC()`。Java仍然需要上面的import；也可以写完整类名 `org.slf4j.MDC.put(...)`，但项目代码通常使用import保持可读性。
+
+假设A查询、B新增、C删除的日志在Console交错，仅靠时间难以判断归属。requestId是每次请求的关联编号；UUID使本地生成的编号足够不易碰撞，响应Header让调用方也能提供同一线索。MDC是SLF4J定义的当前线程诊断上下文：`put("requestId", requestId)` 以键值对保存编号，日志pattern中的 `%X{requestId}` 再按同一个键读取。Filter设置后，同步调用链上的Service和Advice日志都可读取该值。异步线程不自动继承此上下文，需要另行传播；容器线程会复用，所以必须在请求结束时调用 `remove("requestId")` 清理。
 
 ```java
     @Override
@@ -433,7 +515,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
 `UUID.randomUUID()` 为这次请求生成标识；`X-Request-Id` 将同一值返回客户端。`MDC.put` 把 `requestId` 放入当前线程的日志上下文，pattern中的 `%X{requestId:-no-request}` 读取它；没有上下文的启动日志显示 `no-request`。Service和Advice在同一同步请求线程上记录日志时，不必手动传入编号。线程会被复用，所以在 `finally` 中清理MDC；内层 `finally` 还保证即使写完成日志本身失败也执行清理。异步线程的传播不属于本案例。
 
-滚动配置限制单文件大小、按天归档并限制保留时间和归档容量；当前项目最终配置仍使用它们，参数与文件名语法的详细说明见[日志配置进阶附录](../appendix/A14_logging_configuration_advanced.md)。
+滚动配置限制单文件大小、按天归档并限制保留时间和归档容量；当前项目最终配置仍使用它们，参数与文件名语法的详细说明见[A11-1日志配置进阶附录](../appendix/A11_logging_configuration_advanced.md)。Filter与其他共通机制的执行时机可在完成本章后读[A11-2附录](../appendix/A11_2_filter_execution_timing.md)。
 
 验证A：发送一次 `GET {{baseUrl}}/employees/1001`，在Postman响应Header记录 `X-Request-Id`，对照Filter和Service日志中的编号一致。验证B：连续发送两次请求，两个Header值应不同，各自日志不得混用。再发送404请求，确认Advice WARN与Filter完成日志共用同一编号。案例完成后保留Filter和pattern，供故障调查使用。
 

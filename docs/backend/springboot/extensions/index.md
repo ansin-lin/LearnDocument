@@ -17,7 +17,7 @@
 
 ## 固定的练习起点
 
-在独立目录复制第18章通过运行检查的员工管理项目，不在原主线工程直接实验。保留 `employees`、`employee_change_logs`、`app_users` 三张表及现有权限、测试；数据库另建个人练习库，不连接共享/生产库。Java 17、Spring Boot 3.5.16、MyBatis Starter 3.0.x、MySQL 8.0.16+ 不变。Redis 和 Batch 的依赖交给Spring Boot 3.5的依赖管理；Apache POI 本练习锁定5.5.1，升级前从[官方发布页](https://poi.apache.org/download.html)核对并运行完整回归。
+在独立目录复制第18章通过运行检查的员工管理项目，不在原主线工程直接实验。保留 `employees`、`employee_change_logs`、`app_users` 三张表及现有权限、测试；数据库另建个人练习库，不连接共享/生产库。Java 17、Spring Boot 4.1.x（POM固定4.1.1）、MyBatis Starter与Test Starter 4.1.0、MySQL 8.0.16+ 不变。Redis 和 Batch 的依赖交给Spring Boot 4.1的依赖管理；Apache POI 本练习锁定5.5.1，升级前从[官方发布页](https://poi.apache.org/download.html)核对并运行完整回归。
 
 在每章结束时提交一个可回退的练习提交。若只学某一方向，从同一验收快照分支开始；最终项目则顺序整合三项成果。这样不会把某个实验的半成品错误地当作下一个实验的前提。
 
@@ -38,7 +38,7 @@ Spring Batch：有状态、可观察、可恢复的批量读取/处理/写入
 
 ## 官方资料
 
-- [Spring Boot 3.5 文档](https://docs.spring.io/spring-boot/3.5/reference/index.html)
+- [Spring Boot 4.1 文档](https://docs.spring.io/spring-boot/reference/index.html)
 - [Spring Data Redis 模板](https://docs.spring.io/spring-data/redis/reference/redis/template.html)
 - [Spring Batch 5.2 参考文档](https://docs.spring.io/spring-batch/reference/5.2/index.html)
 - [Apache POI Spreadsheet](https://poi.apache.org/components/spreadsheet/)

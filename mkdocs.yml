@@ -368,7 +368,7 @@ nav:
       - 9. 数据库记录怎样成为接口响应: backend/springboot/mainline/09_database_and_mybatis.md
       - 10. 完成员工增删改查: backend/springboot/mainline/10_employee_crud.md
       - 11. 用日志定位接口故障: backend/springboot/mainline/11_logging_and_diagnosis.md
-      - 12. 用自动化测试保护员工CRUD: backend/springboot/mainline/12_automated_testing_and_regression.md
+      - 12. 员工CRUD的分层测试与接口验证: backend/springboot/mainline/12_automated_testing_and_regression.md
       - 13. 用事务保证多步写入一致: backend/springboot/mainline/13_transaction_and_consistency.md
       - 14. 让员工列表支持条件查询与分页: backend/springboot/mainline/14_search_sort_pagination.md
       - 15. 用Session识别当前登录用户: backend/springboot/mainline/15_session_login.md
@@ -383,26 +383,31 @@ nav:
       - 账票处理与文件交付: backend/springboot/extensions/reporting.md
       - 月度员工变更账票项目: backend/springboot/extensions/monthly-report-project.md
     - 附录:
-      - Appendix学习入口: backend/springboot/appendix/index.md
-      - A01. Spring Boot调用外部REST API: backend/springboot/appendix/A01_external_api_restclient.md
-      - A02. 如何阅读一个陌生的Spring项目: backend/springboot/appendix/A02_existing_project_reading.md
-      - A03. 日本既存Spring项目的新旧结构识读: backend/springboot/appendix/A03_legacy_spring_project_reading.md
-      - A04. Lombok与Spring Data JPA识读: backend/springboot/appendix/A04_lombok_jpa_reading.md
-      - A05. Spring项目常见注解速查: backend/springboot/appendix/A05_spring_annotation_reference.md
-      - A06. 多个Bean候选的选择与排错: backend/springboot/appendix/A06_multiple_bean_candidates.md
-      - A07. Jackson字段映射与输出规则: backend/springboot/appendix/A07_jackson_json_mapping.md
-      - A08. Header、Cookie与文件上传: backend/springboot/appendix/A08_http_headers_cookies_file_upload.md
-      - A09. 使用@Controller返回HTML页面: backend/springboot/appendix/A09_spring_mvc_html_views.md
-      - A10. 使用@Validated选择校验分组: backend/springboot/appendix/A10_validated_validation_groups.md
-      - A11. Java Web项目中的日期时间与时区: backend/springboot/appendix/A11_java_web_datetime.md
-      - A12. Spring Boot怎样读取独立MyBatis配置: backend/springboot/appendix/A12_springboot_mybatis_config.md
-      - A13. Spring共通处理机制: backend/springboot/appendix/A13_spring_common_processing_mechanisms.md
-      - A14. Spring Boot日志配置进阶: backend/springboot/appendix/A14_logging_configuration_advanced.md
-      - A15. 常用测试断言库与断言方法: backend/springboot/appendix/A15_testing_assertions_reference.md
-      - A16. 配置、构建与交付进阶: backend/springboot/appendix/A16_configuration_build_delivery_advanced.md
-      - A17. Linux部署与运维手顺参考: backend/springboot/appendix/A17_linux_deployment_operations_reference.md
-      - A18. 常见运行与数据库迁移组件识读: backend/springboot/appendix/A18_operations_components_reading.md
-      - A19. 常见问题与排查索引: backend/springboot/appendix/A19_troubleshooting_review_index.md
+      - 附录学习入口: backend/springboot/appendix/index.md
+      - 章节对应附录:
+        - A03-1. 使用@Controller返回HTML页面: backend/springboot/appendix/A03_01_spring_mvc_html_views.md
+        - A03-2. 使用DevTools加快本地开发: backend/springboot/appendix/A03_02_devtools_local_development.md
+        - A04. 多个Bean候选的选择与排错: backend/springboot/appendix/A04_multiple_bean_candidates.md
+        - A05. Jackson字段映射与输出规则: backend/springboot/appendix/A05_jackson_json_mapping.md
+        - A06. Header、Cookie与文件上传: backend/springboot/appendix/A06_http_headers_cookies_file_upload.md
+        - A08. 使用@Validated选择校验分组: backend/springboot/appendix/A08_validated_validation_groups.md
+        - A09-1. Java Web项目中的日期时间与时区: backend/springboot/appendix/A09_01_java_web_datetime.md
+        - A09-2. Spring Boot怎样读取独立MyBatis配置: backend/springboot/appendix/A09_02_springboot_mybatis_config.md
+        - A11-1. Spring Boot日志配置进阶: backend/springboot/appendix/A11_logging_configuration_advanced.md
+        - A11-2. Filter与请求处理执行时机: backend/springboot/appendix/A11_2_filter_execution_timing.md
+        - A12-1. 常用测试断言库与断言方法: backend/springboot/appendix/A12_01_testing_assertions_reference.md
+        - A12-2. 使用H2完成独立数据库测试实验: backend/springboot/appendix/A12_02_h2_test_database.md
+        - A17. 配置、构建与交付进阶: backend/springboot/appendix/A17_configuration_build_delivery_advanced.md
+        - A18-1. Linux部署与运维手顺参考: backend/springboot/appendix/A18_01_linux_deployment_operations_reference.md
+        - A18-2. 常见运行与数据库迁移组件识读: backend/springboot/appendix/A18_02_operations_components_reading.md
+      - 通用附录:
+        - B01. Spring Boot调用外部REST API: backend/springboot/appendix/B01_external_api_restclient.md
+        - B02. 如何阅读一个陌生的Spring项目: backend/springboot/appendix/B02_existing_project_reading.md
+        - B03. 日本既存Spring项目的新旧结构识读: backend/springboot/appendix/B03_legacy_spring_project_reading.md
+        - B04. Lombok与Spring Data JPA识读: backend/springboot/appendix/B04_lombok_jpa_reading.md
+        - B05. Spring项目常见注解速查: backend/springboot/appendix/B05_spring_annotation_reference.md
+        - B06. Spring共通处理机制: backend/springboot/appendix/B06_spring_common_processing_mechanisms.md
+        - B07. 常见问题与排查索引: backend/springboot/appendix/B07_troubleshooting_review_index.md
   - 新主线：WorkHub 任务管理:
     - 学习路线: training_projects/workhub_task_practice/index.md
     - 0. 统一练习规格: training_projects/workhub_task_practice/00_practice_spec.md

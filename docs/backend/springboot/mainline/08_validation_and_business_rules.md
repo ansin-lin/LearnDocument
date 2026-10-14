@@ -498,7 +498,7 @@ public ResponseEntity<ApiResponse<Void>> handleInvalidDepartment(
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.16</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -515,7 +515,7 @@ public ResponseEntity<ApiResponse<Void>> handleInvalidDepartment(
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
         <dependency>
@@ -1054,7 +1054,7 @@ Jakarta Validation约束注解都有三个共同属性：
 | `groups` | `Class<?>[]` | 默认空数组，约束属于默认校验组；只有按业务阶段选择校验规则时才需要显式填写 |
 | `payload` | `Class<? extends Payload>[]` | 默认空数组，用于附带给校验客户端读取的元数据，普通业务项目很少使用 |
 
-`groups` 和 `payload` 不是字段允许值的条件。新人阶段不要因为看到它们就随意填写；分组用法统一放在附录[使用@Validated选择校验分组](../appendix/A10_validated_validation_groups.md)。本章涉及的每个约束注解，其全部属性一行写法如下：
+`groups` 和 `payload` 不是字段允许值的条件。新人阶段不要因为看到它们就随意填写；分组用法统一放在附录[A08 使用@Validated选择校验分组](../appendix/A08_validated_validation_groups.md)。本章涉及的每个约束注解，其全部属性一行写法如下：
 
 ```java
 @NotBlank(message = "文本不能为空", groups = {}, payload = {})
@@ -1110,7 +1110,7 @@ private Integer page;
 
 ### C. @Validated与分组
 
-既存项目中还经常出现Spring提供的 `@Validated`。它也能触发请求对象校验，并且可以选择校验分组；本章没有分组需求，继续使用Jakarta Validation的 `@Valid`。完整示例和两者区别见附录[使用@Validated选择校验分组](../appendix/A10_validated_validation_groups.md)。
+既存项目中还经常出现Spring提供的 `@Validated`。它也能触发请求对象校验，并且可以选择校验分组；本章没有分组需求，继续使用Jakarta Validation的 `@Valid`。完整示例和两者区别见附录[A08 使用@Validated选择校验分组](../appendix/A08_validated_validation_groups.md)。
 
 ### D. 可选电话号码练习
 

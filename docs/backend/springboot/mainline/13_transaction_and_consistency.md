@@ -174,7 +174,7 @@ Spring用构造器注入两个Mapper；原有CRUD方法暂不改动。接着完�
 
 本方法先读取旧员工，调用 `EmployeeMapper.update()`，再调用 `EmployeeChangeLogMapper.insert()`；正常路径返回更新后员工。先去掉部门两端空格，再按第10章同一规则校验，所以 `" Sales "` 仍可保存为 `Sales`。
 
-失败实验只在第12章专用H2测试库进行：确认员工1001初始部门为Sales，按章末测试的做法在**测试代码中**对H2执行 `DROP TABLE employee_change_logs`，然后以PUT `/employees/1001` 发送 `{"name":"Tanaka","department":"Development","email":"tanaka@example.com"}`。预期第二次INSERT因表不存在而失败，HTTP为500；再用独立查询读取 `employees`，无事务时部门会成为Development，原本期望Sales的断言失败。数据库客户端在个人MySQL只验证正常路径：PUT成功后核对员工部门与新增履历，不在那里删表。H2下一测试前由 `@Sql` 重建两张表和样例数据；恢复 `@Transactional` 后重复失败实验，部门应保持Sales。HTTP 500本身不能证明回滚，必须查询数据。
+失败实验只在第12章建立的专用MySQL测试库进行：确认员工1001初始部门为Sales，按章末测试的做法在**测试代码中**执行 `DROP TABLE employee_change_logs`，然后以PUT `/employees/1001` 发送 `{"name":"Tanaka","department":"Development","email":"tanaka@example.com"}`。预期第二次INSERT因表不存在而失败，HTTP为500；再用独立查询读取 `employees`，无事务时部门会成为Development，原本期望Sales的断言失败。个人开发库只验证正常路径：PUT成功后核对员工部门与新增履历，不在那里删表。下一测试前由 `@Sql` 重建两张表和样例数据；恢复 `@Transactional` 后重复失败实验，部门应保持Sales。HTTP 500本身不能证明回滚，必须查询数据。
 
 ### 案例13-02：给业务方法建立事务边界
 
@@ -205,7 +205,7 @@ try {
 }
 ```
 
-在专用H2测试库重跑章末 `updateRollsBackWhenChangeLogInsertFails()`：测试先删履历表，INSERT抛出的 `DataAccessException` 被本方法捕获；若事务尚未被其他环节标记为回滚，方法随后执行 `log.info(...)` 和 `return findById(id)`，代理看到正常返回，员工部门可能提交为Development，HTTP也可能变成200，原来的500与Sales断言会失败。检查HTTP、日志和数据库最终部门，不只看一个断言。实验结束立即把这段代码**原样恢复为上方不捕获异常的两句判断**，移除不再使用的导入，再重跑回滚测试：500且员工部门为Sales。这个现象取决于捕获位置和已有回滚标记，不能概括为“所有catch必然提交”。
+在专用MySQL测试库重跑章末 `updateRollsBackWhenChangeLogInsertFails()`：测试先删履历表，INSERT抛出的 `DataAccessException` 被本方法捕获；若事务尚未被其他环节标记为回滚，方法随后执行 `log.info(...)` 和 `return findById(id)`，代理看到正常返回，员工部门可能提交为Development，HTTP也可能变成200，原来的500与Sales断言会失败。检查HTTP、日志和数据库最终部门，不只看一个断言。实验结束立即把这段代码**原样恢复为上方不捕获异常的两句判断**，移除不再使用的导入，再重跑回滚测试：500且员工部门为Sales。这个现象取决于捕获位置和已有回滚标记，不能概括为“所有catch必然提交”。
 
 ### 案例13-04：沿代理调用路径追踪事务
 
@@ -213,7 +213,7 @@ try {
 
 ### 案例13-05：用测试和数据库状态验收
 
-章末完整 `EmployeeCrudIntegrationTest` 含成功提交与第二次写入失败两个测试。先确保测试方法、测试类都没有 `@Transactional`；每个方法由 `@Sql` 准备固定H2数据，再分别断言HTTP、`employees.department` 和履历条数。另在个人MySQL库用受控练习数据观察正常PUT，并在数据库客户端核对两表；失败实验仅在H2执行，实验后恢复临时方法改动。这里的H2结论不能代替MySQL环境验收。
+章末完整 `EmployeeCrudIntegrationTest` 含成功提交与第二次写入失败两个测试。先确保测试方法、测试类都没有 `@Transactional`；每个方法由 `@Sql` 在专用MySQL测试库准备固定数据，再分别断言HTTP、`employees.department` 和履历条数。个人开发库只用受控练习数据观察正常PUT；删表失败实验只能在通过保护检查的测试库执行，实验后恢复临时方法改动。
 
 ## 三、事务、提交和回滚
 
@@ -865,9 +865,10 @@ INSERT INTO employees (
 ```java
 package com.example.employee.integration;
 
+import com.example.employee.support.MySqlTestGuard;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -890,7 +891,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(
         scripts = "/test-data.sql",
         executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class EmployeeCrudIntegrationTest {
+class EmployeeCrudIntegrationTest extends MySqlTestGuard {
 
     @Autowired
     private MockMvc mockMvc;
@@ -1038,7 +1039,7 @@ class EmployeeCrudIntegrationTest {
 }
 ```
 
-`DROP TABLE` 只在第12章创建的专用H2内存库中制造第二步失败，不得把这段测试连接到开发MySQL或共享环境。`@Sql` 会在下一个测试方法前重建两张表。
+`DROP TABLE` 只在第12章创建、并通过 `MySqlTestGuard` 检查的专用MySQL测试库中制造第二步失败，不得把这段测试连接到开发库、共享库或生产库。`@Sql` 会在下一个测试方法前重建两张表。
 
 `JdbcTemplate.execute(String sql)` 直接执行不需要返回结果集的SQL。本例用它删除测试库中的履历表，是为了稳定地制造“第一条UPDATE成功、第二条INSERT失败”；它不是业务代码，也不是生产环境的删表方案。其余测试中使用的 `queryForObject()` 则会执行查询并把单个结果转换为指定Java类型。
 

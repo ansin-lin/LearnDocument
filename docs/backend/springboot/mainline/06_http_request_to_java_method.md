@@ -421,7 +421,7 @@ List<EmployeeListItemResponse>
 
 类上已有 `@RestController`，所以Spring MVC会把方法返回值写入HTTP响应体。对于这些Java对象，Spring Web使用Jackson完成JSON转换。
 
-Jackson是Spring Web Starter带入的JSON处理库，本章不需要在 `pom.xml` 中重复添加版本。它的核心转换类是 `com.fasterxml.jackson.databind.ObjectMapper`；Spring Boot会自动配置所需对象，本章业务代码不直接创建或调用它。
+Jackson是Spring Web MVC Starter带入的JSON处理库，本章不需要在 `pom.xml` 中重复添加版本。Spring Boot 4默认使用Jackson 3，核心转换类是 `tools.jackson.databind.ObjectMapper`；Spring Boot会自动配置面向JSON的 `JsonMapper`，本章业务代码不直接创建或调用它。Jackson注解是迁移中的例外，仍位于 `com.fasterxml.jackson.annotation` 包。
 
 两个方向使用不同名称：
 
@@ -476,7 +476,7 @@ GET请求通常没有请求体，所以不需要为本章GET请求设置 `Conten
   → 客户端收到HTTP 200和JSON正文
 ```
 
-内置Tomcat由 `spring-boot-starter-web` 提供，是当前应用接收HTTP连接的Web服务器。`DispatcherServlet` 是Spring MVC的核心请求分发对象，完整名称是 `org.springframework.web.servlet.DispatcherServlet`，负责寻找匹配的Controller方法并组织后续处理。
+内置Tomcat由Boot 4的 `spring-boot-starter-webmvc` 提供，是当前应用接收HTTP连接的Web服务器。`DispatcherServlet` 是Spring MVC的核心请求分发对象，完整名称是 `org.springframework.web.servlet.DispatcherServlet`，负责寻找匹配的Controller方法并组织后续处理。
 
 业务代码不需要手动调用Tomcat、DispatcherServlet或ObjectMapper。Controller通过注解声明请求规则，框架在运行时完成匹配、转换和调用。
 
@@ -548,7 +548,7 @@ Spring的singleton描述Bean在容器中的复用范围，不等于要求开发�
 | Cookie | `@CookieValue` | 知道Cookie仍属于客户端请求数据 |
 | multipart中的JSON或文件 | `@RequestPart`、`MultipartFile` | 知道一次请求可以包含多个part |
 
-这些输入各自还有必填规则、媒体类型、大小限制和安全边界，不适合与三种基础输入同时展开。需要实现相关功能时，使用附录[Header、Cookie与文件上传](../appendix/A08_http_headers_cookies_file_upload.md)完成独立实验。
+这些输入各自还有必填规则、媒体类型、大小限制和安全边界，不适合与三种基础输入同时展开。需要实现相关功能时，使用附录[A06 Header、Cookie与文件上传](../appendix/A06_http_headers_cookies_file_upload.md)完成独立实验。
 
 ## 十三、用Eclipse启动并认识Postman
 

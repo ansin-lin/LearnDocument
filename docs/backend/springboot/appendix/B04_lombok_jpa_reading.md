@@ -1,4 +1,4 @@
-# A04 Lombok与Spring Data JPA识读
+# B04 Lombok与Spring Data JPA识读
 
 本附录帮助你进入使用Lombok或JPA的既存项目。第18章稳定状态仍使用显式Java代码和MyBatis；下面的示例是独立识读，不要求加入Employee主线。
 
@@ -25,17 +25,22 @@ public EmployeeService(EmployeeMapper employeeMapper) {
 
 所以它仍然是构造器注入，不是字段注入。存在多个同类型Bean时，仍要按项目设计处理Qualifier或Primary，Lombok不会替Spring选择Bean。
 
+这里两个类级注解由不同机制处理：`@Service` 属于Spring，应用启动进行组件扫描时把业务类注册为Bean；`@RequiredArgsConstructor` 属于Lombok，在Java编译期生成构造器，Spring随后使用这个构造器注入 `EmployeeMapper`。一个负责“对象由谁管理”，另一个负责“源码中省略哪段构造器代码”。
+
 ## 二、常见Lombok注解
 
-| 注解 | 常见生成内容 | 既存项目阅读重点 |
+以下注解都属于Lombok，由编译器的annotation processing在编译期处理；它们不是Spring运行时功能。
+
+| 注解 | 可写位置与常见生成内容 | 既存项目阅读重点 |
 | --- | --- | --- |
-| `@Getter` | getter | 可写在类或字段，检查访问级别 |
-| `@Setter` | setter | final字段不会得到普通setter |
-| `@NoArgsConstructor` | 无参构造器 | 检查final字段和框架要求 |
-| `@AllArgsConstructor` | 包含所有字段的构造器 | 字段顺序变化会影响参数顺序 |
-| `@RequiredArgsConstructor` | final字段和带`@NonNull`且未初始化字段的构造器 | 常用于Spring构造器注入 |
-| `@Builder` | Builder API | 对象构建方式，不是Spring功能，也不会自动校验 |
-| `@Data` | getter、非final字段setter、`toString`、`equals`、`hashCode`和required constructor相关能力 | 不只是Getter+Setter，具体行为按Lombok版本定义确认 |
+| `@Getter` | 类或字段；生成getter | 检查访问级别；类级写法通常覆盖全部合适字段 |
+| `@Setter` | 类或字段；生成setter | final字段不会得到普通setter |
+| `@NoArgsConstructor` | 类；生成无参构造器 | 检查final字段、强制初始化选项和框架要求 |
+| `@AllArgsConstructor` | 类；生成包含所有字段的构造器 | 字段顺序变化会影响参数顺序 |
+| `@RequiredArgsConstructor` | 类；生成包含final字段和带 `@NonNull` 且未初始化字段的构造器 | 常用于Spring构造器注入 |
+| `@NonNull` | 字段、参数等；让Lombok生成空值检查，并影响required constructor | 它不是Jakarta Validation的 `@NotNull`；后者由Validator执行“值不能为null”的约束，因此Lombok注解不能代替HTTP请求校验 |
+| `@Builder` | 类、构造器或方法；生成Builder API | 对象构建方式，不是Spring功能，也不会自动校验 |
+| `@Data` | 类；组合生成getter、非final字段setter、`toString`、`equals`、`hashCode`和required constructor相关能力 | 不只是Getter+Setter，具体行为按Lombok版本定义确认 |
 
 Builder识读示例：
 
@@ -84,15 +89,17 @@ public class Employee {
 }
 ```
 
-| 注解 | 所属 | 作用 |
-| --- | --- | --- |
-| `@Entity` | Jakarta Persistence | 表示该类由JPA作为持久化实体管理 |
-| `@Table` | Jakarta Persistence | 指定表名；省略时按实现和命名策略推断 |
-| `@Id` | Jakarta Persistence | 标记主键 |
-| `@GeneratedValue` | Jakarta Persistence | 声明主键生成策略 |
-| `@Column` | Jakarta Persistence | 指定列名、可空性、长度等映射信息 |
+这些注解都属于Jakarta Persistence。JPA在建立持久化单元和处理实体状态时读取映射信息，而不是由Spring MVC处理。
 
-Boot 3项目使用 `jakarta.persistence.*`；Boot 2旧项目常见 `javax.persistence.*`。这些不是Spring MVC请求注解。
+| 注解 | 可写位置 | 作用与本例效果 |
+| --- | --- | --- |
+| `@Entity` | 实体类 | 表示该类由JPA作为持久化实体管理 |
+| `@Table` | 实体类 | 指定表名 `employees`；省略时按实现和命名策略推断 |
+| `@Id` | 字段或getter | 标记主键属性 |
+| `@GeneratedValue` | 主键字段或getter | 声明主键生成策略；本例使用数据库自增的 `IDENTITY` |
+| `@Column` | 字段或getter | 指定列名、可空性、长度等映射信息；本例把 `name` 映射为非空且最长100 |
+
+Boot 3和Boot 4项目使用 `jakarta.persistence.*`；Boot 2旧项目常见 `javax.persistence.*`。这些不是Spring MVC请求注解。
 
 ## 五、Repository怎样出现
 
@@ -116,7 +123,9 @@ employeeRepository.save(employee);
 employeeRepository.deleteById(id);
 ```
 
-`findById` 返回 `Optional<Employee>`。`save` 可能表示新增或更新，实际SQL和执行时机受实体状态和事务影响，不能把每次Java方法调用简单等同为立刻执行一条固定SQL。继承Spring Data Repository的接口通常可被自动发现，不一定显式写 `@Repository`。
+`findById` 返回 `Optional<Employee>`。`save` 可能表示新增或更新，实际SQL和执行时机受实体状态和事务影响，不能把每次Java方法调用简单等同为立刻执行一条固定SQL。
+
+`@Repository` 属于Spring，通常写在数据访问实现类上，由组件扫描在启动时注册Bean，并可参与Spring的数据访问异常转换。继承Spring Data Repository的接口由Spring Data扫描并在运行时生成代理实现，因此通常不需要显式写 `@Repository`；“没写注解”不等于没有Repository Bean。
 
 ## 六、MyBatis与JPA对比
 

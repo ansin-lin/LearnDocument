@@ -82,6 +82,29 @@ public class ApiResponse<T> {
 
 Controller保留第6章路径与输入绑定，只把成功结果包装成200；失败时方法被异常中断。
 
+下面代码第一次出现 `ResponseEntity.ok(...)`。这个 `ok()` 不是本项目中需要自己定义的方法，而是Spring Framework已经定义在 `org.springframework.http.ResponseEntity` 类中的静态工厂方法。导入 `ResponseEntity` 后，可以使用“类名.静态方法名”的形式直接调用它。
+
+为了先看懂调用，可以把Spring提供的两个常用重载理解成下面的简化签名；这些代码已经在Spring库中，不要复制到项目里：
+
+```java
+public static <T> ResponseEntity<T> ok(T body)
+public static ResponseEntity.BodyBuilder ok()
+```
+
+- `ok(body)`：立即创建“HTTP状态为200、响应体为body”的 `ResponseEntity`；
+- `ok()`：先创建状态为200的响应构建器，后面还要继续调用 `.header(...)`、`.body(...)` 或 `.build()`；
+- `T` 是响应体类型，不是固定类。本案例传入 `ApiResponse<EmployeeResponse>`，因此最终返回类型是 `ResponseEntity<ApiResponse<EmployeeResponse>>`。
+
+下面这一行应从内向外阅读：
+
+```java
+return ResponseEntity.ok(ApiResponse.success(employee));
+```
+
+1. `ApiResponse.success(employee)` 调用本章刚定义的本地方法，生成统一JSON正文对象；
+2. `ResponseEntity.ok(...)` 调用Spring提供的方法，把该对象放入响应体并设置HTTP 200；
+3. `return` 把完整HTTP响应交还给Spring MVC。
+
 ```java
 package com.example.employee.controller;
 

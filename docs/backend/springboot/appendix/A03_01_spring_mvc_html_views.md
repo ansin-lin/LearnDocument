@@ -1,4 +1,4 @@
-# A09 使用@Controller返回HTML页面
+# A03-1 使用@Controller返回HTML页面
 
 Employee主线使用`@RestController`返回JSON。本附录使用独立实验说明另一种常见项目形态：Spring MVC选择HTML模板，把Java数据放入页面，再把渲染后的HTML返回浏览器。
 
@@ -36,7 +36,7 @@ Employee主线使用`@RestController`返回JSON。本附录使用独立实验说
 
 `@ResponseBody`的完整名称是`org.springframework.web.bind.annotation.ResponseBody`，可以写在Controller类或方法上。它告诉Spring MVC不要把返回字符串解释成视图名称，而是通过消息转换器把返回值写入HTTP响应正文。
 
-`@RestController`同时包含`@Controller`和`@ResponseBody`的语义。因此下面两种写法的响应正文行为相近：
+这两个注解都在应用启动时参与Controller方法注册，并在请求处理返回值阶段决定如何解释方法结果。`@RestController`的完整名称是 `org.springframework.web.bind.annotation.RestController`，写在类上，同时包含`@Controller`和`@ResponseBody`的语义。因此下面两种写法的响应正文行为相近：
 
 ```java
 @RestController
@@ -55,7 +55,7 @@ public class HealthController {
 
 ## 三、加入Thymeleaf模板引擎
 
-`spring-boot-starter-web`提供Spring MVC，但不会单独决定使用哪一种服务器端模板技术。本实验选择Thymeleaf。
+Boot 4的 `spring-boot-starter-webmvc` 提供Spring MVC，但不会单独决定使用哪一种服务器端模板技术。本实验选择Thymeleaf。
 
 在`pom.xml`的`<dependencies>`中追加：
 
@@ -170,6 +170,8 @@ public class EmployeePageController {
 首次出现的内容：
 
 - `@Controller`使返回字符串可以作为视图名称处理。
+- `@GetMapping`属于Spring MVC，写在方法上；应用启动建立请求映射，请求到达时分别把两个GET路径交给对应方法。
+- `@PathVariable`属于Spring MVC，写在方法参数上；请求进入方法前，它把URL中的 `{id}` 取出并转换为 `Long`，缺失或转换失败时方法主体不会正常执行。
 - `welcome()`返回`"welcome"`，视图解析器寻找`templates/welcome.html`。
 - `employeeDetail()`接收路径中的`id`和Spring提供的`Model`。
 - `model.addAttribute("employee", employee)`以名称`employee`保存页面数据。

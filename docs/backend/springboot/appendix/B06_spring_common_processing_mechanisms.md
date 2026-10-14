@@ -1,4 +1,4 @@
-# A13 Spring共通处理机制：Filter、Interceptor、Controller Advice与AOP
+# B06 Spring共通处理机制：Filter、Interceptor、Controller Advice与AOP
 
 本附录用于阅读既存Spring项目中的共通处理。开始前应完成第11章，能够使用 `RequestLoggingFilter`、requestId和全局异常处理器。本附录不改变Employee主线的最终代码；实验文件完成后要删除。
 
@@ -27,6 +27,26 @@ HTTP Request
 | AOP / Spring Proxy | Spring Bean方法调用 | 事务、方法权限、受控横切逻辑 | 原始HTTP报文处理 |
 
 选择机制前先问：问题发生在HTTP入口、MVC Handler、异常转换，还是Bean方法调用。
+
+### 本附录出现的注解由谁处理
+
+| 注解 | 所属与标注位置 | 处理时机和作用 |
+| --- | --- | --- |
+| `@Order` | Spring Core；Bean类或Bean定义 | 容器组织有顺序的组件时提供优先级；本例让Filter尽早执行，数值越小优先级越高 |
+| `@Configuration` | Spring；配置类 | 应用上下文启动时把类作为Bean定义和框架配置的来源 |
+| `@Component` | Spring；组件类 | 组件扫描时把类注册为Bean；本附录的AOP切面使用它，Interceptor实验则故意不用 |
+| `@RestController` | Spring MVC；Controller类 | 启动时注册请求处理器，并让返回值默认写入响应正文 |
+| `@RestControllerAdvice` | Spring MVC；共通异常处理类 | 启动时注册面向REST Controller的Advice，异常解析阶段返回响应正文 |
+| `@ExceptionHandler` | Spring MVC；Advice或Controller方法 | Controller调用抛出匹配异常时选择处理方法并生成响应 |
+| `@Transactional` | Spring Transaction；Bean类或方法 | 调用经过Spring代理时，在目标方法前后建立事务边界并决定提交或回滚 |
+| `@PreAuthorize` | Spring Security；Bean类或方法 | 启用方法安全后，代理在目标方法调用前计算授权表达式 |
+| `@Aspect` | AspectJ注解，由Spring AOP读取；切面类 | 容器建立AOP代理时把该类识别为切面定义 |
+| `@Before` | AspectJ注解，由Spring AOP读取；切面方法 | 命中切点的目标方法执行前运行Advice |
+| `@AfterReturning` | AspectJ注解，由Spring AOP读取；切面方法 | 命中方法正常返回后运行Advice；抛出异常时不执行 |
+| `@Around` | AspectJ注解，由Spring AOP读取；切面方法 | 包围目标调用，必须正确调用 `proceed()` 才会继续执行目标方法 |
+| `@Override` | Java；重写方法 | 编译器确认方法确实重写接口或父类声明；它不是Spring运行时注解 |
+
+同一注解是否真正生效还取决于组件是否成为Spring Bean、相关能力是否启用，以及调用是否经过对应处理链或代理。下文再结合实验说明这些边界。
 
 ## 二、Filter：覆盖最外层HTTP入口
 
@@ -156,10 +176,10 @@ Spring AOP常通过代理在Spring Bean方法前后加入处理。主线已经�
 
 | 注解或方法 | 作用 | Review重点 |
 | --- | --- | --- |
-| `@Aspect` | 声明一个由Spring AOP使用的切面类 | 切点实际匹配哪些Bean |
-| `@Before` | 匹配的方法调用前执行 | 是否改变参数或记录敏感值 |
-| `@AfterReturning` | 方法正常返回后执行 | 是否误记录大量响应或个人信息 |
-| `@Around` | 包围目标调用 | 是否正确调用且只调用一次 `proceed()` |
+| `@Aspect` | 在类上声明一个由Spring AOP使用的切面定义 | 切点实际匹配哪些Bean |
+| `@Before` | 在Advice方法上声明：匹配的方法调用前执行 | 是否改变参数或记录敏感值 |
+| `@AfterReturning` | 在Advice方法上声明：目标方法正常返回后执行 | 是否误记录大量响应或个人信息 |
+| `@Around` | 在Advice方法上声明：包围目标调用 | 是否正确调用且只调用一次 `proceed()` |
 
 代理只拦截真正经过代理对象的调用。同一个类中使用 `this.someMethod()` 调用另一个带事务或方法安全注解的方法，通常不会再次经过外层代理。这一边界会在第13章事务和第16章方法权限中结合实际代码说明。
 
@@ -174,7 +194,7 @@ Spring AOP常通过代理在Spring Bean方法前后加入处理。主线已经�
 ```xml
 <dependency>
     <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-aop</artifactId>
+    <artifactId>spring-boot-starter-aspectj</artifactId>
 </dependency>
 ```
 

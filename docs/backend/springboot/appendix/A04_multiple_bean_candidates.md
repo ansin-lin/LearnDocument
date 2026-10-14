@@ -1,4 +1,4 @@
-# A06 多个Bean候选的选择与排错
+# A04 多个Bean候选的选择与排错
 
 本附录只讲一个问题：同一接口存在多个Spring Bean时，容器怎样选择构造器需要的对象，以及候选不唯一时怎样定位。它不修改Employee主线，所有代码放在可删除的 `dilab` 包中。
 
@@ -110,6 +110,16 @@ public class PaymentDemoController {
     }
 }
 ```
+
+完整示例中出现的基础注解：
+
+| 注解 | 所属与位置 | 处理时机和本例效果 |
+| --- | --- | --- |
+| `@Service` | Spring；实现类 | 启动组件扫描时把两个实现分别注册为Bean |
+| `@Qualifier` | Spring；候选Bean和注入点 | 容器解析构造器依赖时，按 `credit` 限定值缩小 `PaymentService` 候选范围 |
+| `@RestController` | Spring MVC；Controller类 | 启动时注册Controller Bean，并让方法返回值默认写入HTTP响应正文 |
+| `@GetMapping` | Spring MVC；Controller方法 | MVC建立映射时把GET路径 `/di-lab/payment-method` 关联到该方法 |
+| `@Override` | Java；重写方法 | 编译器确认方法确实重写接口声明；它不创建Spring Bean |
 
 先执行测试并启动项目：
 

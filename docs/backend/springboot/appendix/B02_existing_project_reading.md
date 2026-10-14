@@ -1,4 +1,4 @@
-# A02 如何阅读一个陌生的Spring项目
+# B02 如何阅读一个陌生的Spring项目
 
 从零写过员工管理API，不代表拿到已有仓库就能安全改修。既存项目阅读的目标不是尽快看完所有文件，而是先确定技术基线和运行方式，再沿一个业务用例纵向追踪，最后调查会影响全局的共通机制。
 
@@ -32,7 +32,7 @@ Maven项目先看 `pom.xml`，Gradle项目先看 `build.gradle` 或 `build.gradl
 
 同时查看模块列表、私有仓库地址、dependency management和构建profile。不能仅凭源码中的import猜版本；有效依赖还可能来自父POM或BOM。保存依赖树时注意不要公开私有仓库凭据。
 
-既存POM中至少要能识别这些能力线索，不要求背GroupId：`spring-boot-starter-web`、`validation`、`security`、MyBatis Starter、`spring-boot-starter-data-jpa`、MySQL/PostgreSQL Driver、Lombok、`spring-boot-starter-test` 和 `spring-batch`。HTTP客户端可能由Spring Framework本身提供，也可能来自项目的其他依赖；要继续搜索Bean配置和实际调用，不能只看依赖名称下结论。
+既存POM中至少要能识别这些能力线索，不要求背GroupId：Boot 4主线使用的 `spring-boot-starter-webmvc`、旧项目常见且在Boot 4中已弃用的 `spring-boot-starter-web`、`validation`、`security`、MyBatis Starter、`spring-boot-starter-data-jpa`、MySQL/PostgreSQL Driver、Lombok、`spring-boot-starter-test` 和 `spring-batch`。HTTP客户端可能由Spring Framework本身提供，也可能来自项目的其他依赖；要继续搜索Bean配置和实际调用，不能只看依赖名称下结论。
 
 ## 四、Step 3：寻找启动入口和部署方式
 
@@ -47,7 +47,9 @@ public class Application {
 }
 ```
 
-确认启动类所在包，因为默认组件扫描从该包向下进行。若找不到main方法，继续按[A03：日本既存Spring项目的新旧结构识读](A03_legacy_spring_project_reading.md)检查WAR、ServletInitializer、XML和外部Tomcat。不要因此断言项目“不能启动”。
+`@SpringBootApplication` 属于Spring Boot，写在启动类上。应用启动时它同时提供配置类、自动配置入口和默认组件扫描语义；扫描范围通常从启动类所在包向下，因此包位置会直接影响Controller、Service等Bean能否被发现。组合注解的三个核心组成和各自作用见第3章。
+
+确认启动类所在包，因为默认组件扫描从该包向下进行。若找不到main方法，继续按[B03：日本既存Spring项目的新旧结构识读](B03_legacy_spring_project_reading.md)检查WAR、ServletInitializer、XML和外部Tomcat。不要因此断言项目“不能启动”。
 
 ## 五、Step 4：确认配置从哪里来
 
@@ -101,7 +103,12 @@ Response DTO或输出文件
 
 ## 八、Step 7：用测试确认既有规格
 
-检查Unit Test、`@WebMvcTest`、`@SpringBootTest`、Integration Test、test profile、测试数据、SQL和Mock。测试可以帮助确认正常、异常和边界行为，但“现有测试没有覆盖”不等于“业务允许任意修改”；缺口要登记为待确认或补测范围。
+检查Unit Test、`@WebMvcTest`、`@SpringBootTest`、Integration Test、test profile、测试数据、SQL和Mock。
+
+- `@WebMvcTest` 属于Spring Boot Test，写在测试类上；测试上下文创建时只聚焦Spring MVC切片，通常需要为Controller依赖准备Mock。
+- `@SpringBootTest` 属于Spring Boot Test，写在测试类上；测试启动时加载完整Boot应用上下文，适合验证多个层和配置的集成，不应替代全部快速单元测试。
+
+测试可以帮助确认正常、异常和边界行为，但“现有测试没有覆盖”不等于“业务允许任意修改”；缺口要登记为待确认或补测范围。
 
 ## 九、Step 8：建立业务调用图
 

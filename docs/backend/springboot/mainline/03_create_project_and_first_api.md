@@ -55,7 +55,7 @@ Spring Initializr用于生成工程骨架和构建配置，不会替你编写员
 | --- | --- | --- | --- |
 | Project | Maven | 生成器列出的Maven或Gradle | 选择构建工具；本课程用 `pom.xml` |
 | Language | Java | 生成器列出的Java、Kotlin或Groovy | 选择源码语言 |
-| Spring Boot | `3.5.16` | 页面仍提供的正式版本 | 固定框架基线；不选择SNAPSHOT、M或RC版本 |
+| Spring Boot | `4.1.1` | 页面提供的4.1.x正式版本 | 固定框架基线；不选择SNAPSHOT、M或RC版本 |
 | Group | `com.example` | 合法的Maven组织标识 | 作为项目坐标和包名前缀 |
 | Artifact | `employee-management-api` | 合法的Maven产物名称 | 作为工程和构建产物的基础名称 |
 | Name | `employee-management-api` | 普通项目名称文本 | 作为项目显示名称 |
@@ -64,7 +64,7 @@ Spring Initializr用于生成工程骨架和构建配置，不会替你编写员
 | Packaging | Jar | Jar或War | 使用可执行Jar和内置Web服务器 |
 | Java | 17 | 该版本支持的生成器选项 | 与项目编译和运行环境一致 |
 
-本项目固定使用Spring Boot 3.5.16。生成器页面可能默认选择Spring Boot 4，但4.x并不是错误版本；它需要配合另一套框架兼容组合。为了让全课程代码和依赖保持一致，本项目不要只升级Spring Boot大版本。若生成器以后不再提供3.5.16，不要自行换成其他大版本后继续照抄课程代码，应先按项目升级方针统一调整依赖和课程基线。
+本项目属于Spring Boot 4.1.x课程基线，示例 `pom.xml` 固定使用4.1.1。生成器页面可能出现更新的补丁版本或下一代版本；为了让全课程代码和依赖保持一致，不要只修改Spring Boot版本后继续照抄课程代码。若页面不再提供4.1.1，可先下载同一4.1.x正式版本，再统一核对Starter兼容性、测试导入和构建结果。
 
 ### 2. 添加依赖
 
@@ -79,7 +79,7 @@ Spring Initializr用于生成工程骨架和构建配置，不会替你编写员
 - MyBatis和MySQL Driver用于数据库访问，当前健康检查接口还不访问数据库。
 - Validation用于请求参数校验，当前接口还没有接收业务参数。
 - Lombok可以减少getter、setter等样板代码，但当前对象结构很简单，直接写普通Java代码更直观。
-- DevTools是本地开发辅助工具，不是项目成功运行的必要条件。
+- DevTools是本地开发辅助工具，不是项目成功运行的必要条件；完成本章并掌握手动启动流程后，可通过[A03-2附录](../appendix/A03_02_devtools_local_development.md)学习自动重启。
 
 生成器会创建测试目录和Spring Boot测试依赖，它们属于标准工程结构，保留即可。
 
@@ -168,7 +168,7 @@ employee-management-api/
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.16</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -185,7 +185,7 @@ employee-management-api/
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
         <dependency>
@@ -210,12 +210,12 @@ employee-management-api/
 
 `pom.xml` 是Maven的项目说明文件。Maven读取它以后，知道项目名称、Java版本、需要下载哪些依赖，以及可以使用哪些构建插件。
 
-- `parent` 指定Spring Boot父项目。这里的 `3.5.16` 统一管理Spring相关依赖的兼容版本。
+- `parent` 指定Spring Boot父项目。这里的 `4.1.1` 统一管理Spring相关依赖的兼容版本。
 - `relativePath` 为空，表示不要先到本项目的上级目录寻找父项目，而是按坐标解析Spring Boot父项目。
 - `groupId` 通常表示组织或项目组，`artifactId` 表示具体构建产物；两者和 `version` 一起形成项目坐标。
 - `properties` 中的 `java.version` 要求项目使用Java 17编译。
 - `dependencies` 保存项目直接使用的依赖。
-- `spring-boot-starter-web` 是Web起步依赖，会带入Spring MVC、JSON转换和内置Tomcat等相互兼容的组件。
+- `spring-boot-starter-webmvc` 是Spring Boot 4的MVC Web起步依赖，会带入Spring MVC、JSON转换和内置Tomcat等相互兼容的组件。旧项目常见的 `spring-boot-starter-web` 在Boot 4中已经弃用。
 - `spring-boot-starter-test` 提供测试所需组件；`scope` 为 `test` 表示只在编译和运行测试时使用，不作为应用正式运行代码的依赖。
 - `spring-boot-maven-plugin` 为Maven增加Spring Boot构建、打包和运行能力。第17章会使用它生成可执行JAR；Maven也提供 `spring-boot:run` 目标，但本地主线日常启动统一使用Eclipse。
 
@@ -316,7 +316,7 @@ public class EmployeeManagementApiApplication {
 
 | 帮助 | 在本章从哪里观察 | 当前工程中的结果 |
 | --- | --- | --- |
-| Starter | `pom.xml` 中的 `spring-boot-starter-web` | 引入Web请求处理、JSON转换和内嵌服务器所需的常用依赖 |
+| Starter | `pom.xml` 中的 `spring-boot-starter-webmvc` | 引入Web请求处理、JSON转换和内嵌服务器所需的常用依赖 |
 | 自动配置 | `@SpringBootApplication` 中的 `@EnableAutoConfiguration` | 根据现有依赖和配置准备常用Web组件 |
 | 内嵌服务器 | 启动日志中的Tomcat和端口信息 | 启动Java应用时同时开始监听HTTP端口 |
 
@@ -374,7 +374,7 @@ server.port=8080
 - `#` 可以开始注释。YAML中的字符串若包含可能被解释为语法的内容，例如冒号后接空格，可以加引号，如 `"提示: 请重试"`。这只是语法示意，不需要添加到本项目配置中。
 - 同一个父节点下不要重复定义同名键。增加其他 `server` 配置时，应放在已有的 `server:` 下，不要另写一段同名父节点。
 
-两种格式都能用于实际项目，properties并不是已废弃格式。维护既有项目时遵循项目约定即可。同一位置、相同配置文件基本名下，两种格式同时存在时，重复配置以properties为准，例如 `application.properties` 中的端口会覆盖同目录 `application.yml` 中的端口；这不代表properties能覆盖所有其他配置来源。因此，本项目只保留一种格式，避免“改了配置却没生效”。参见 [Spring Boot 3.5外部化配置说明](https://docs.spring.io/spring-boot/3.5/reference/features/external-config.html)。
+两种格式都能用于实际项目，properties并不是已废弃格式。维护既有项目时遵循项目约定即可。同一位置、相同配置文件基本名下，两种格式同时存在时，重复配置以properties为准，例如 `application.properties` 中的端口会覆盖同目录 `application.yml` 中的端口；这不代表properties能覆盖所有其他配置来源。因此，本项目只保留一种格式，避免“改了配置却没生效”。参见 [Spring Boot 4.1外部化配置说明](https://docs.spring.io/spring-boot/reference/features/external-config.html)。
 
 ### 验证配置确实生效
 
@@ -419,7 +419,7 @@ public class HealthController {
 | `@Controller` | 类 | 表示这个类是Spring MVC控制器；组件扫描发现后，Spring会创建并管理它的对象 |
 | `@ResponseBody` | 类或方法 | 表示方法返回值经过消息转换后写入HTTP响应正文，不把字符串解释为后端页面名称 |
 
-`@Controller` 的完整名称是 `org.springframework.stereotype.Controller`。单独使用它时，方法返回的字符串通常表示视图名称，例如返回 `"welcome"` 可以交给视图解析器寻找页面模板。完整的页面返回示例见附录[使用@Controller返回HTML页面](../appendix/A09_spring_mvc_html_views.md)。
+`@Controller` 的完整名称是 `org.springframework.stereotype.Controller`。单独使用它时，方法返回的字符串通常表示视图名称，例如返回 `"welcome"` 可以交给视图解析器寻找页面模板。完整的页面返回示例见附录[A03-1 使用@Controller返回HTML页面](../appendix/A03_01_spring_mvc_html_views.md)。
 
 `@ResponseBody` 的完整名称是 `org.springframework.web.bind.annotation.ResponseBody`。写在某个Controller方法上时，只改变该方法的返回处理；写在类上时，会作用于这个类的全部处理方法。它不会自动把任意字符串变成JSON：返回 `String` 时通常直接写入文本，返回Java对象时才由Jackson等消息转换器按协商的媒体类型转换。
 

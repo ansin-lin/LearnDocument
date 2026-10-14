@@ -1,4 +1,4 @@
-# A12 Spring Boot怎样读取独立MyBatis配置
+# A09-2 Spring Boot怎样读取独立MyBatis配置
 
 第9章主线直接在 `application.yml` 的 `mybatis.configuration` 下填写MyBatis核心设置。既存项目也可能使用独立的 `mybatis-config.xml`。本附录通过一次可恢复实验，说明Spring Boot怎样找到该文件，以及它与Mapper XML为什么不是同一种配置。
 
@@ -65,7 +65,9 @@ mybatis:
 | `mapper-locations` | 一个或多个Mapper XML资源模式 | 本实验继续明确设置 | 加载保存SQL的 `EmployeeMapper.xml` |
 | `type-aliases-package` | 一个或多个Java包名 | 本实验继续明确设置 | 扫描 `Employee` 等类型别名 |
 
-Starter先读取 `application.yml`，把 `config-location` 指向的核心XML交给 `SqlSessionFactory`，同时按照 `mapper-locations` 加载SQL映射文件。`@Mapper` 接口由Mapper扫描注册成Spring Bean，三部分最终在同一个 `SqlSessionFactory` 中建立联系。
+Starter先读取 `application.yml`，把 `config-location` 指向的核心XML交给 `SqlSessionFactory`，同时按照 `mapper-locations` 加载SQL映射文件。
+
+`@Mapper` 属于MyBatis，写在Mapper接口上。应用上下文启动时，MyBatis-Spring扫描该接口、创建Mapper代理并注册为Spring Bean；方法被调用时，代理再通过 `SqlSessionFactory` 找到对应SQL。注解本身不保存SQL，XML的 `namespace` 和方法 `id` 仍必须与接口匹配。三部分最终在同一个 `SqlSessionFactory` 中建立联系。
 
 ## 四、两种核心设置来源不能叠加
 
@@ -93,7 +95,7 @@ Starter先读取 `application.yml`，把 `config-location` 指向的核心XML交
 
 当前Spring Boot项目已经通过 `spring.datasource` 创建 `DataSource`，事务基础设施也由Spring集成。独立MyBatis配置只保存MyBatis自身设置，不再复制账号、连接池和事务管理器，否则会形成两套数据源配置。
 
-“由Spring集成”只表示Mapper能够加入已经开启的Spring事务，不表示每个Service方法会自动成为事务。没有 `@Transactional` 时，事务外的Mapper调用仍分别提交；第10章说明当前限制，第13章建立正式事务边界。
+“由Spring集成”只表示Mapper能够加入已经开启的Spring事务，不表示每个Service方法会自动成为事务。`@Transactional` 属于Spring，写在Spring Bean的类或方法上；调用经过Spring代理时，事务拦截器在目标方法前开始或加入事务，并根据返回或异常决定提交、回滚。没有 `@Transactional` 时，事务外的Mapper调用仍分别提交；第10章说明当前限制，第13章建立正式事务边界。
 
 MyBatis基础课程的[MyBatis配置文件](../../mybatis/03_mybatis_config_file.md)展示普通Java项目怎样独立准备配置；本附录说明接入Spring Boot Starter后怎样由Spring装配。
 

@@ -1,4 +1,4 @@
-# A07 Jackson字段映射与输出规则
+# A05 Jackson字段映射与输出规则
 
 本附录只讲Java对象与JSON字段之间的映射规则。它建立在第5章的数据边界和第6章的序列化、反序列化之上，不替代请求DTO和响应DTO的职责划分。
 
@@ -8,6 +8,8 @@
 ## 二、完整实验：JSON与Java字段映射
 
 第6章会由Jackson把Java对象转换成JSON。既存项目的数据对象中常见下面四个注解，它们只调整JSON映射，不会改变对象是请求DTO、响应DTO还是数据库对象的职责。
+
+这四个注解都属于Jackson annotations，可写在Jackson能够识别的属性位置；Jackson在把Java对象序列化为JSON或把JSON反序列化为Java对象时读取它们。它们不会注册Spring Bean，也不会执行业务校验。
 
 ### 1. 先看完整的识读示例
 
@@ -90,7 +92,7 @@ JSON字段 employee_name
 
 ### 3. @JsonIgnore：不参与JSON映射
 
-`@JsonIgnore` 也属于Jackson annotations。本例把 `internalMemo` 排除在JSON外，即使类中存在公共getter也不应输出该属性。
+`@JsonIgnore` 也属于Jackson annotations，可写在字段或访问方法等属性位置。本例写在字段上，把 `internalMemo` 排除在JSON读写外，即使类中存在公共getter也不应输出该属性。
 
 但“字段不会输出”不等于数据边界已经安全。响应类若混入密码哈希、内部权限或大量数据库字段，后续改动可能重新暴露数据。仍应优先使用职责明确的Response DTO，只把 `@JsonIgnore` 用于确实属于同一对象但不参与当前JSON映射的属性。
 
@@ -102,11 +104,11 @@ JSON字段 employee_name
 
 ### 5. @JsonFormat：改变JSON表示，不增加时区
 
-`@JsonFormat` 的 `pattern` 指定日期时间的文本格式。本例 `yyyy-MM-dd HH:mm:ss` 会输出四位年份、两位月份、两位日期以及时分秒。
+`@JsonFormat` 属于Jackson annotations，可写在日期时间字段或访问方法等属性位置。Jackson读写该属性时由 `pattern` 指定日期时间的文本格式；本例 `yyyy-MM-dd HH:mm:ss` 会输出四位年份、两位月份、两位日期以及时分秒。
 
 `LocalDateTime` 本身没有时区。添加 `@JsonFormat` 只改变JSON字符串长什么样，不会自动说明它是UTC、Asia/Tokyo还是服务器本地时间。日期类型、时区、数据库字段和浏览器转换在第9章统一说明。
 
-Jackson由 `spring-boot-starter-web` 间接提供，本课程主线不单独固定Jackson版本；实际版本由Spring Boot 3.5.16依赖管理决定。四个注解的定义可从[Jackson annotations项目文档](https://github.com/FasterXML/jackson-annotations)核对。
+Jackson由 `spring-boot-starter-webmvc` 间接提供，本课程主线不单独固定Jackson版本；实际版本由Spring Boot 4.1.1依赖管理决定。Boot 4默认使用Jackson 3，大多数核心类从 `com.fasterxml.jackson` 迁移到了 `tools.jackson`，但注解模块是例外，本附录四个注解仍从 `com.fasterxml.jackson.annotation` 导入。注解定义可从[Jackson annotations项目文档](https://github.com/FasterXML/jackson-annotations)核对。
 
 ### 6. 既存DTO的阅读顺序
 

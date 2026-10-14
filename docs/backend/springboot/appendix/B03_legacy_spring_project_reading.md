@@ -1,10 +1,10 @@
-# A03 日本既存Spring项目的新旧结构识读
+# B03 日本既存Spring项目的新旧结构识读
 
-日本企业项目中仍可能存在Boot 2、WAR、外部Tomcat或XML配置。本附录只建立识读能力，不要求把第18章的Java 17、Spring Boot 3.5.16可执行JAR主线改成旧结构，也不要求重新开发一套XML项目。
+日本企业项目中仍可能存在Boot 2、Boot 3、WAR、外部Tomcat或XML配置。本附录只建立识读能力，不要求把第18章的Java 17、Spring Boot 4.1.x可执行JAR主线改成旧结构，也不要求重新开发一套XML项目。
 
 ## 一、先确认版本，再判断代码是否正确
 
-Spring Boot 3基于Spring Framework 6，Servlet、Validation和Persistence等API使用Jakarta命名空间：
+Spring Boot 4基于Spring Framework 7并继续使用Jakarta命名空间；Boot 3基于Spring Framework 6，同样使用Jakarta命名空间。看到下面的导入时，不能只凭 `jakarta` 判断项目究竟是Boot 3还是Boot 4，还要检查 `pom.xml`：
 
 ```java
 import jakarta.servlet.Filter;
@@ -53,6 +53,8 @@ public class ServletInitializer extends SpringBootServletInitializer {
 }
 ```
 
+`@Override` 是Java标准注解，写在重写的方法上，由Java编译器处理。它要求 `configure` 确实覆盖父类或接口中的方法；方法名、参数或返回类型写错时可在编译期发现。它不是Spring注解，也不会注册Bean。
+
 `SpringBootServletInitializer` 是Boot为传统Servlet容器部署提供的入口适配。`configure` 指出应用配置源。看到它时继续检查WAR packaging、Tomcat依赖scope、容器版本和部署文档；它不意味着要深入Servlet容器生命周期源码。
 
 ## 四、传统Spring XML从哪里读
@@ -81,6 +83,11 @@ public class AppConfig {
     }
 }
 ```
+
+| 注解 | 所属与位置 | 处理时机和本例效果 |
+| --- | --- | --- |
+| `@Configuration` | Spring；配置类 | Spring容器加载配置时把该类作为Bean定义来源 |
+| `@Bean` | Spring；配置类的方法 | 容器创建配置时调用方法，把返回的 `EmployeePolicy` 注册为Bean；默认Bean名是 `employeePolicy` |
 
 XML中的相近含义：
 

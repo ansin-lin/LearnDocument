@@ -1,6 +1,6 @@
 # Spring Boot 新版主线
 
-本路线以“员工管理后端 API”为贯穿项目，使用Spring Boot 3.5.16、Java 17、MyBatis Spring Boot Starter 3.0.x和MySQL 8.0.16及以上版本构建一个可运行、可测试、可交付的Web后端系统。
+本路线以“员工管理后端 API”为贯穿项目，使用Spring Boot 4.1.x（示例固定为4.1.1）、Java 17、MyBatis Spring Boot Starter 4.1.0、MyBatis Spring Boot Starter Test 4.1.0和MySQL 8.0.16及以上版本构建一个可运行、可测试、可交付的Web后端系统。
 
 ## 技术基线
 
@@ -9,11 +9,12 @@
 | 技术 | 课程基线 | 说明 |
 | --- | --- | --- |
 | Java | 17 | 编译和运行都使用同一主版本 |
-| Spring Boot | 3.5.16 | 保持Spring Framework 6和Jakarta命名空间一致 |
-| MyBatis Spring Boot Starter | 3.0.x | 与Spring Boot 3.2～3.5、Java 17兼容 |
+| Spring Boot | 4.1.x（POM固定4.1.1） | 使用Spring Framework 7、Jakarta EE 11相关API和Boot 4模块化依赖 |
+| MyBatis Spring Boot Starter | 4.1.0 | 与Spring Boot 4.1、Java 17及以上版本兼容 |
+| MyBatis Spring Boot Starter Test | 4.1.0 | Mapper测试专用Starter，与正式Starter保持同一版本 |
 | MySQL | 8.0.16+ | 从8.0.16起会实际执行本课程使用的CHECK约束；语法按MySQL 8.0说明 |
 
-Spring Boot 4和MyBatis Starter 4属于另一套兼容组合。学习主线时不要只升级其中一个依赖；参与实际项目时，应以项目的依赖清单、构建结果和升级方针为准。
+本课程把Spring Boot 4.1.x与MyBatis Starter 4.1.0作为一套兼容组合。学习主线时不要只改其中一个依赖；参与实际项目时，应以项目的依赖清单、构建结果和升级方针为准。
 
 ## 本地开发与验证工具
 
@@ -85,7 +86,7 @@ Eclipse编写和调试代码
 | 9 | [数据库记录怎样成为接口响应](mainline/09_database_and_mybatis.md) | 建立表、Entity、Mapper和Service的数据访问链 |
 | 10 | [完成员工增删改查](mainline/10_employee_crud.md) | 实现真实CRUD，并同时核对HTTP响应与数据库状态 |
 | 11 | [用日志定位接口故障](mainline/11_logging_and_diagnosis.md) | 建立请求追踪与关键日志，完成一次故障调查闭环 |
-| 12 | [用自动化测试保护员工CRUD](mainline/12_automated_testing_and_regression.md) | 建立Service、Web与数据库测试，根据改修选择回归范围 |
+| 12 | [员工CRUD的分层测试与接口验证](mainline/12_automated_testing_and_regression.md) | 分别完成Mapper、Service、Controller测试和Postman确认，最后验证完整Spring Boot调用链 |
 | 13 | [用事务保证多步写入一致](mainline/13_transaction_and_consistency.md) | 更新员工并写变更履历，用成功与失败测试证明提交和回滚 |
 | 14 | [让员工列表支持条件查询与分页](mainline/14_search_sort_pagination.md) | 实现筛选、稳定排序和分页，验证总件数、空页与非法参数 |
 | 15 | [用Session识别当前登录用户](mainline/15_session_login.md) | 使用数据库账号和BCrypt登录，通过Session完成当前用户识别与安全退出 |
@@ -96,28 +97,35 @@ Eclipse编写和调试代码
 
 完成第18章后，使用第19章独立完成一次前后端联调综合练习。需要缓存、批量任务或账票交付时，再进入[Spring Boot 企业扩展](extensions/index.md)：先学[Redis](extensions/redis.md)、[Spring Batch](extensions/spring-batch.md)与[账票处理](extensions/reporting.md)，最后完成[月度员工变更账票项目](extensions/monthly-report-project.md)。企业扩展从第18章员工管理稳定成果的独立副本开始，不改变主线最终状态。进入既存项目时可按需要使用附录补足代码识读能力：
 
-| 附录 | 学习成果 |
+完整入口见[附录学习入口](appendix/index.md)。A开头的附录与01～18章的章号对应；一章没有专属附录时直接跳号，同一章有多个附录时使用 `A03-1` 这样的子编号。B开头的是跨章节通用附录。
+
+| 章节对应附录 | 学习成果 |
 | --- | --- |
-| [Appendix学习入口](appendix/index.md) | 按A01～A17选择实际开发、既存项目识读或单主题扩展 |
-| [Spring Boot调用外部REST API](appendix/A01_external_api_restclient.md) | 用RestClient识别GET、POST、超时和外部异常转换 |
-| [如何阅读一个陌生的Spring项目](appendix/A02_existing_project_reading.md) | 从构建、启动、配置、业务链到共通机制完成调查 |
-| [日本既存Spring项目的新旧结构识读](appendix/A03_legacy_spring_project_reading.md) | 识别Boot 2/3、JAR/WAR、外部Tomcat和XML配置 |
-| [Lombok与Spring Data JPA识读](appendix/A04_lombok_jpa_reading.md) | 识别编译期生成代码、Entity和Repository |
-| [Spring项目常见注解速查](appendix/A05_spring_annotation_reference.md) | 按框架、位置、处理时机和课程场景理解注解 |
-| [多个Bean候选的选择与排错](appendix/A06_multiple_bean_candidates.md) | 处理同一接口多个实现时的选择规则与启动失败 |
-| [Jackson字段映射与输出规则](appendix/A07_jackson_json_mapping.md) | 在理解序列化后学习字段改名、忽略、空值和日期格式 |
-| [Header、Cookie与文件上传](appendix/A08_http_headers_cookies_file_upload.md) | 在三种基础输入之后扩展请求头、Cookie和multipart |
-| [使用@Controller返回HTML页面](appendix/A09_spring_mvc_html_views.md) | 理解视图名称、Model数据和Thymeleaf服务端渲染 |
-| [使用@Validated选择校验分组](appendix/A10_validated_validation_groups.md) | 让同一个请求对象在草稿和提交阶段执行不同约束 |
-| [Java Web项目中的日期时间与时区](appendix/A11_java_web_datetime.md) | 区分本地时间、UTC瞬间、区域时区和MySQL时间列 |
-| [Spring Boot怎样读取独立MyBatis配置](appendix/A12_springboot_mybatis_config.md) | 在可恢复实验中切换YAML与mybatis-config.xml |
-| [Spring共通处理机制](appendix/A13_spring_common_processing_mechanisms.md) | 区分Filter、Interceptor、Controller Advice与AOP的执行位置和责任 |
-| [Spring Boot日志配置进阶](appendix/A14_logging_configuration_advanced.md) | 解释滚动日志、归档清理与日志格式，并完成可恢复的配置验证 |
-| [常用测试断言库与断言方法](appendix/A15_testing_assertions_reference.md) | 按检查对象选择JUnit、AssertJ、Hamcrest与MockMvc断言 |
-| [配置、构建与交付进阶](appendix/A16_configuration_build_delivery_advanced.md) | 调查配置覆盖、构建产物与正式交付检查项 |
-| [Linux部署与运维手顺参考](appendix/A17_linux_deployment_operations_reference.md) | 查阅systemd Unit、更新、切り戻し和运维记录 |
-| [常见运行与数据库迁移组件识读](appendix/A18_operations_components_reading.md) | 初步识别Actuator、Flyway和Liquibase |
-| [常见问题与排查索引](appendix/A19_troubleshooting_review_index.md) | 按失败阶段回到对应内容查找原因 |
+| [A03-1 使用@Controller返回HTML页面](appendix/A03_01_spring_mvc_html_views.md) | 理解视图名称、Model数据和Thymeleaf服务端渲染 |
+| [A03-2 使用DevTools加快本地开发](appendix/A03_02_devtools_local_development.md) | 理解自动编译、自动重启及其生产边界 |
+| [A04 多个Bean候选的选择与排错](appendix/A04_multiple_bean_candidates.md) | 处理同一接口多个实现时的选择规则与启动失败 |
+| [A05 Jackson字段映射与输出规则](appendix/A05_jackson_json_mapping.md) | 学习字段改名、忽略、空值和日期格式 |
+| [A06 Header、Cookie与文件上传](appendix/A06_http_headers_cookies_file_upload.md) | 扩展请求头、Cookie和multipart输入 |
+| [A08 使用@Validated选择校验分组](appendix/A08_validated_validation_groups.md) | 让同一请求对象在不同阶段执行不同约束 |
+| [A09-1 Java Web项目中的日期时间与时区](appendix/A09_01_java_web_datetime.md) | 区分本地时间、UTC瞬间、区域时区和MySQL时间列 |
+| [A09-2 Spring Boot怎样读取独立MyBatis配置](appendix/A09_02_springboot_mybatis_config.md) | 在可恢复实验中切换YAML与mybatis-config.xml |
+| [A11-1 Spring Boot日志配置进阶](appendix/A11_logging_configuration_advanced.md) | 配置滚动日志、归档清理与日志格式 |
+| [A11-2 Filter与请求处理执行时机](appendix/A11_2_filter_execution_timing.md) | 区分Filter接口、OncePerRequestFilter基类与项目日志Filter，并定位拦截器、全局异常和AOP |
+| [A12-1 常用测试断言库与断言方法](appendix/A12_01_testing_assertions_reference.md) | 按检查对象选择JUnit、AssertJ、Hamcrest与MockMvc断言 |
+| [A12-2 使用H2完成独立数据库测试实验](appendix/A12_02_h2_test_database.md) | 用独立profile完成H2 Mapper实验并理解与MySQL的差异 |
+| [A17 配置、构建与交付进阶](appendix/A17_configuration_build_delivery_advanced.md) | 调查配置覆盖、构建产物与正式交付检查项 |
+| [A18-1 Linux部署与运维手顺参考](appendix/A18_01_linux_deployment_operations_reference.md) | 查阅systemd Unit、更新、切り戻し和运维记录 |
+| [A18-2 常见运行与数据库迁移组件识读](appendix/A18_02_operations_components_reading.md) | 初步识别Actuator、Flyway和Liquibase |
+
+| 通用附录 | 学习成果 |
+| --- | --- |
+| [B01 Spring Boot调用外部REST API](appendix/B01_external_api_restclient.md) | 用RestClient识别GET、POST、超时和外部异常转换 |
+| [B02 如何阅读一个陌生的Spring项目](appendix/B02_existing_project_reading.md) | 从构建、启动、配置、业务链到共通机制完成调查 |
+| [B03 日本既存Spring项目的新旧结构识读](appendix/B03_legacy_spring_project_reading.md) | 识别Boot 2/3、JAR/WAR、外部Tomcat和XML配置 |
+| [B04 Lombok与Spring Data JPA识读](appendix/B04_lombok_jpa_reading.md) | 识别编译期生成代码、Entity和Repository |
+| [B05 Spring项目常见注解速查](appendix/B05_spring_annotation_reference.md) | 按框架、位置、处理时机和课程场景理解注解 |
+| [B06 Spring共通处理机制](appendix/B06_spring_common_processing_mechanisms.md) | 区分Filter、Interceptor、Controller Advice与AOP的责任 |
+| [B07 常见问题与排查索引](appendix/B07_troubleshooting_review_index.md) | 按失败阶段回到对应内容查找原因 |
 
 基础主线现已形成从系统认识、工程实现、部署基础到前后端联调综合任务的完整学习顺序。附录建议按当前项目实际使用的技术选择阅读，不要求一次背完。
 

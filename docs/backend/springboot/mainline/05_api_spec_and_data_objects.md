@@ -465,7 +465,7 @@ response/EmployeeResponse.java
 
 本章定义的Java属性名与JSON字段名保持一致，因此暂时不需要额外注解。真实项目可能要求修改JSON名称、忽略内部属性、省略空值或规定日期格式，这些属于“Java对象与JSON之间怎样转换”，应先理解第6章的序列化和反序列化流程。
 
-学完第6章后，可使用附录[Jackson字段映射与输出规则](../appendix/A07_jackson_json_mapping.md)完成独立实验。本章主线只确认数据对象的职责和字段边界。
+学完第6章后，可使用附录[A05 Jackson字段映射与输出规则](../appendix/A05_jackson_json_mapping.md)完成独立实验。本章主线只确认数据对象的职责和字段边界。
 
 ## 十二、构建并检查结果
 

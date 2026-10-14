@@ -1,4 +1,4 @@
-# A16 配置、构建与交付进阶
+# A17 配置、构建与交付进阶
 
 本附录承接[第17章](../mainline/17_profiles_configuration_packaging.md)中不属于新人主线的配置与交付内容。只有项目手顺要求时再使用，不把示例直接当成生产标准。
 
@@ -23,7 +23,7 @@ java -jar employee-api.jar --server.port=8081 --spring.profiles.active=prod
 
 ## 二、配置对象的扩展
 
-相关配置可以用嵌套 `@ConfigurationProperties` 集中管理，并用Bean Validation在启动时检查。配置校验失败属于启动失败，应让日志指出属性名和约束，但不能打印秘密值。
+相关配置可以用嵌套 `@ConfigurationProperties` 集中管理，并用Bean Validation在启动时检查。`@ConfigurationProperties` 属于Spring Boot，写在配置属性类上；应用上下文启动时，配置绑定器按注解的prefix把一组外部配置转换并写入类型安全对象。它负责成组绑定，不会自行隐藏秘密，也需要通过配置属性扫描或显式启用方式注册。配置校验失败属于启动失败，应让日志指出属性名和约束，但不能打印秘密值。
 
 启动确认日志可以记录版本、Profile和非敏感功能开关：
 

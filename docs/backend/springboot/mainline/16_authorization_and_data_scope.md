@@ -83,7 +83,7 @@ Controller → Service → Mapper → 数据库
 
 ### 案例16-02：把登录身份关联到员工
 
-第15章的 `app_users.employee_id` 已存在，无需再改表结构。只在个人练习库或专用H2 `test-data.sql` 中，为现有1001、1002员工准备两个USER账号和一个ADMIN账号。H2完整初始化脚本在下方；如果从第15章脚本增量修改，保留原有 `tanaka` 行，再追加这两行：
+第15章的 `app_users.employee_id` 已存在，无需再改表结构。只在个人练习库或专用MySQL测试库的 `test-data.sql` 中，为现有1001、1002员工准备两个USER账号和一个ADMIN账号。完整测试初始化脚本在下方；如果从第15章脚本增量修改，保留原有 `tanaka` 行，再追加这两行：
 
 ```sql
 INSERT INTO app_users (id, username, password_hash, employee_id, role, enabled)
@@ -153,7 +153,7 @@ EmployeeResponse findById(Long id);
 ```java
 package com.example.employee.exception;
 import com.example.employee.common.ApiResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -185,7 +185,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 ```java
 package com.example.employee.exception;
 import com.example.employee.common.ApiResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -251,7 +251,7 @@ src/test/resources/test-data.sql                       ← 完整替换
 package com.example.employee.exception;
 
 import com.example.employee.common.ApiResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -294,7 +294,7 @@ public class RestAuthenticationEntryPoint
 package com.example.employee.exception;
 
 import com.example.employee.common.ApiResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -507,7 +507,7 @@ public class SecurityConfig {
 
 ### 6. 完整替换test-data.sql
 
-以下SQL使用H2测试数据库；每条测试前会重新建立已知状态。两个USER分别关联1001和1002，ADMIN不需要绑定某一名员工：
+以下SQL使用第12章的专用MySQL测试数据库；每条测试前会重新建立已知状态。两个USER分别关联1001和1002，ADMIN不需要绑定某一名员工：
 
 ```sql
 DROP TABLE IF EXISTS employee_change_logs;
@@ -594,9 +594,10 @@ import org.springframework.security.test.context.support.WithMockUser;
 ```java
 package com.example.employee.security;
 
+import com.example.employee.support.MySqlTestGuard;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -621,7 +622,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Sql(scripts = "/test-data.sql",
         executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class AuthorizationIntegrationTest {
+class AuthorizationIntegrationTest extends MySqlTestGuard {
 
     @Autowired
     private MockMvc mockMvc;
@@ -866,7 +867,7 @@ EmployeeService.findById(1002)
 
 `AuthenticationEntryPoint.commence()` 处理“需要身份但当前未登录”，写入401；`AccessDeniedHandler.handle()` 处理“已经登录但权限不足”，写入403。两个接口都由Spring Security在适当时机调用，不由Controller手动调用。
 
-`ObjectMapper` 是第6章已经使用过的JSON转换器。本章用 `writeValue(OutputStream, Object)` 把统一的 `ApiResponse` 直接写入Servlet响应流；因为此时还未进入Controller，不能使用 `ResponseEntity` 返回。`SC_UNAUTHORIZED` 和 `SC_FORBIDDEN` 分别是Servlet提供的401、403常量。
+`ObjectMapper` 是第6章已经说明过的JSON转换器；Boot 4默认使用Jackson 3，因此导入是 `tools.jackson.databind.ObjectMapper`。本章用 `writeValue(OutputStream, Object)` 把统一的 `ApiResponse` 直接写入Servlet响应流；因为此时还未进入Controller，不能使用 `ResponseEntity` 返回。`SC_UNAUTHORIZED` 和 `SC_FORBIDDEN` 分别是Servlet提供的401、403常量。
 
 异常响应只说明需要登录或权限不足，不向客户端暴露内部规则、数据库账号关系、表达式或异常堆栈。
 
@@ -1000,7 +1001,7 @@ CORS只决定浏览器是否允许某个来源读取响应，不证明用户身�
 
 除了第15章已有登录测试，本章新增11个授权及CSRF对照场景。必须确认所有旧测试和新测试都通过；只运行新测试不能证明加入权限后没有破坏CRUD、事务和分页。
 
-自动化测试完成后，在数据库客户端确认个人MySQL练习库的 `app_users` 中存在 `tanaka` 和 `admin`；测试目录中的H2数据不会自动写入MySQL：
+自动化测试完成后，在数据库客户端确认个人MySQL练习库的 `app_users` 中存在 `tanaka` 和 `admin`；专用测试库的数据不会自动写入个人开发库：
 
 ```sql
 SELECT username, role, enabled

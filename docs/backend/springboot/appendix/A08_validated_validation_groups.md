@@ -1,4 +1,4 @@
-# A10 使用@Validated选择校验分组
+# A08 使用@Validated选择校验分组
 
 第8章使用`@Valid`一次执行员工新增请求的全部约束。真实项目有时会让同一个数据对象经过不同处理阶段，例如“保存草稿”允许暂时缺少部门和邮箱，“正式提交”则要求全部填写。校验分组可以让调用入口明确选择本次需要执行的约束。
 
@@ -144,6 +144,14 @@ public class EmployeeProfileRequest {
 }
 ```
 
+这个DTO中的约束都来自Jakarta Validation，写在字段上，并在 `@Validated` 触发校验后由Validator处理：
+
+| 注解 | 当前规则 | 重要边界 |
+| --- | --- | --- |
+| `@NotBlank` | 字符串不能为null、空字符串或只有空白 | `groups` 决定在哪个阶段执行，`message` 是失败消息 |
+| `@Size` | 字符串长度不能超过 `max` | `null` 本身可以通过，因此必填规则要另配 `@NotBlank` |
+| `@Email` | 非null值必须符合邮箱格式 | 不证明邮箱真实存在，也不负责查重 |
+
 所有约束的`groups`参数接受一个或多个分组类型：
 
 | 写法 | 本次含义 |
@@ -190,6 +198,16 @@ public class ValidationGroupDemoController {
     }
 }
 ```
+
+Controller中的入口注解都属于Spring MVC，由框架在应用启动和请求进入方法前处理：
+
+| 注解 | 标注位置 | 当前效果 |
+| --- | --- | --- |
+| `@RestController` | 类 | 注册REST Controller，返回值默认写入响应正文 |
+| `@RequestMapping` | 类 | 为类中方法统一增加 `/validation-lab/employees` 基础路径 |
+| `@PostMapping` | 方法 | 把POST子路径 `/draft`、`/submit` 映射到对应方法 |
+| `@RequestBody` | 方法参数 | 由消息转换器把JSON读取为 `EmployeeProfileRequest`，读取失败时不会正常进入方法 |
+| `@Validated` | 本例的方法参数 | 在请求体绑定后选择指定分组并触发校验，失败时形成校验异常 |
 
 两个方法接收相同的Java类型，但`@Validated`选择的分组不同：
 
@@ -267,7 +285,7 @@ HTTP请求
 
 ## 六、类级@Validated为什么是另一种场景
 
-既存Service中还可能看到`@Validated`写在类上，并把`@NotNull`、`@Min`等直接写在方法参数或返回值上。这属于方法校验，不是本附录演示的`@RequestBody`分组校验。
+既存Service中还可能看到`@Validated`写在类上，并把`@NotNull`、`@Min`等直接写在方法参数或返回值上。这属于方法校验，不是本附录演示的`@RequestBody`分组校验。`@NotNull` 属于Jakarta Validation，要求值不能是null，但不限制空字符串；`@Min(value)` 也属于Jakarta Validation，要求数值大于或等于指定下限。二者由方法校验器在受Spring管理的方法调用前后处理，是否生效还要确认代理和项目版本。
 
 两种写法要分开判断：
 

@@ -50,7 +50,7 @@ POST /auth/login → SecurityFilterChain（先检查CSRF）→ AuthController
 
 ### 案例15-01：未登录访问员工接口
 
-先在第14章 `pom.xml` 的 `<dependencies>` 中追加以下两项，其他原有依赖不删；版本继续交给Spring Boot 3.5.x管理。第一项进入正式应用，第二项只供测试使用：
+先在第14章 `pom.xml` 的 `<dependencies>` 中追加以下两项，其他原有依赖不删；版本继续交给Spring Boot 4.1.x管理。第一项进入正式应用，第二项只供测试使用：
 
 ```xml
 <dependency>
@@ -58,8 +58,8 @@ POST /auth/login → SecurityFilterChain（先检查CSRF）→ AuthController
     <artifactId>spring-boot-starter-security</artifactId>
 </dependency>
 <dependency>
-    <groupId>org.springframework.security</groupId>
-    <artifactId>spring-security-test</artifactId>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security-test</artifactId>
     <scope>test</scope>
 </dependency>
 ```
@@ -656,7 +656,7 @@ src/test/resources/test-data.sql                            ← 完整替换
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.16</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
     <groupId>com.example</groupId>
@@ -670,7 +670,7 @@ src/test/resources/test-data.sql                            ← 完整替换
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -679,7 +679,7 @@ src/test/resources/test-data.sql                            ← 完整替换
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>3.0.5</version>
+            <version>4.1.0</version>
         </dependency>
         <dependency>
             <groupId>com.mysql</groupId>
@@ -696,13 +696,13 @@ src/test/resources/test-data.sql                            ← 完整替换
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -717,7 +717,7 @@ src/test/resources/test-data.sql                            ← 完整替换
 </project>
 ```
 
-第一项把Spring Security加入正式应用；第二项只给测试提供 `csrf()` 等安全请求工具。版本由Spring Boot 3.5.16统一管理，不单独填写。
+第一项把Spring Security加入正式应用；第二项是Boot 4的Security测试Starter，给测试提供 `csrf()` 等安全请求工具。版本由Spring Boot 4.1.1统一管理，不单独填写。
 
 ### 2. 在MySQL 8.0创建账号表
 
@@ -1193,9 +1193,10 @@ class EmployeeControllerWebTest {
 ```java
 package com.example.employee.security;
 
+import com.example.employee.support.MySqlTestGuard;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.http.MediaType;
@@ -1217,7 +1218,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Sql(scripts = "/test-data.sql",
         executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class SessionLoginTest {
+class SessionLoginTest extends MySqlTestGuard {
 
     @Autowired
     private MockMvc mockMvc;

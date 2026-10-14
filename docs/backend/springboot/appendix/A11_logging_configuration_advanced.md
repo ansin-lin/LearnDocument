@@ -1,6 +1,8 @@
-# A14 Spring Boot日志配置进阶
+# A11-1 Spring Boot日志配置进阶
 
 第11章主线已经建立Logger、请求日志和requestId。本附录专门解释该项目最终 `application.yml` 中的日志等级、文件滚动与格式设置。学习前先完成第11章案例，备份本地配置；修改后在Eclipse重启应用，用Postman验证CRUD状态保持不变，并检查Console与日志文件。
+
+完成本附录后，应能回答四个问题：哪些日志允许输出、当前日志写到哪里、历史文件何时滚动与清理、怎样用requestId关联同一次请求。更复杂的集中日志平台不属于本附录范围。
 
 下面只列出 `application.yml` 的 `logging` 部分；数据库和MyBatis设置继续沿用第11章完整配置。
 
@@ -25,7 +27,7 @@ logging:
     file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%X{requestId:-no-request}] %logger{36} - %msg%n"
 ```
 
-## 先看懂logging配置的结构
+## 一、先看懂logging配置的结构
 
 `logging` 是Spring Boot的日志配置入口。第11章使用Spring Boot Web Starter默认提供的SLF4J和Logback，因此可以直接在 `application.yml` 中设置日志等级、日志文件、滚动策略和输出格式，不需要另外创建 `logback-spring.xml`。
 
@@ -41,7 +43,7 @@ logging
 
 YAML通过缩进表示从属关系。例如 `max-file-size` 必须位于 `logging.logback.rollingpolicy` 下面；缩进层级错误时，它就不再是这一组滚动配置。修改配置后需要重新启动应用，不能只刷新浏览器。
 
-## level：决定哪些日志可以输出
+## 二、level：决定哪些日志可以输出
 
 日志等级从详细到严重依次为：
 
@@ -80,7 +82,7 @@ Logger名称通常是类的完整包名。多个配置同时匹配时，范围�
 
 MyBatis通常使用Mapper接口名或XML的namespace作为Logger名称。Mapper达到DEBUG时可能输出SQL，进一步提高到TRACE时还可能出现更细的结果信息。因此不能为了查看一条Service调试日志而把 `root` 或整个项目包长期改成DEBUG。
 
-## file：同时写入控制台和日志文件
+## 三、file：同时写入控制台和日志文件
 
 ```yaml
 logging:
@@ -104,7 +106,7 @@ logging:
 
 只配置 `logging.file.path` 也能指定目录，但同时配置 `name` 和 `path` 时容易让新人误判实际文件位置。第11章只使用更明确的 `logging.file.name`。
 
-## rollingpolicy：限制活动文件和历史文件
+## 四、rollingpolicy：限制活动文件和历史文件
 
 如果一直向同一个文件追加日志，文件会持续增大。滚动（rolling）是指达到条件后，把当前活动文件归档，再建立新的活动文件继续写入。
 
@@ -139,7 +141,7 @@ employee-api.log.2026-10-08.1.gz
 
 这些属性由Spring Boot交给默认Logback配置处理；属性入口可对照[Spring Boot官方日志说明](https://docs.spring.io/spring-boot/reference/features/logging.html)，日期周期、大小序号和清理顺序可对照[Logback滚动文件说明](https://logback.qos.ch/manual/appenders.html#SizeAndTimeBasedRollingPolicy)。
 
-## pattern：决定每一行日志的格式
+## 五、pattern：决定每一行日志的格式
 
 `logging.pattern.console` 控制控制台格式，`logging.pattern.file` 控制文件格式。第11章让两处保持一致，方便用同一个requestId对照控制台和文件。
 
@@ -162,13 +164,13 @@ employee-api.log.2026-10-08.1.gz
 | `%msg` | 代码传入的日志消息 |
 | `%n` | 换行 |
 
-UTC偏移表示该条日志使用的时间偏移量，但不包含完整的区域时区规则。Java Web时间类型和时区边界见[日期时间附录](../appendix/A11_java_web_datetime.md)。
+UTC偏移表示该条日志使用的时间偏移量，但不包含完整的区域时区规则。Java Web时间类型和时区边界见[A09-1日期时间附录](A09_01_java_web_datetime.md)。
 
 完成配置后，分别检查输出等级、文件位置、归档条件和requestId字段。
 
 
 
-## 验证与恢复
+## 六、验证与恢复
 
 1. 在Eclipse用INFO启动，发送一次GET和POST，确认Console与 `logs/employee-api.log` 中有日志；同一请求的 `X-Request-Id` 与日志编号一致。
 2. 只把当前启动配置中的 `APP_SERVICE_LOG_LEVEL` 临时设为DEBUG并重启，观察Service调试行；确认Mapper并未因这个局部设置大量输出SQL。

@@ -973,9 +973,10 @@ INSERT INTO employees (
 ```java
 package com.example.employee.integration;
 
+import com.example.employee.support.MySqlTestGuard;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
@@ -991,7 +992,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(
         scripts = {"/test-data.sql", "/search-test-data.sql"},
         executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class EmployeeSearchIntegrationTest {
+class EmployeeSearchIntegrationTest extends MySqlTestGuard {
 
     @Autowired
     private MockMvc mockMvc;

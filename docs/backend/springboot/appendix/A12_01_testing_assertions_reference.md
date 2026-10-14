@@ -1,6 +1,6 @@
-# A15 常用测试断言库与断言方法
+# A12-1 常用测试断言库与断言方法
 
-本附录接在[第12章：自动化测试与回归](../mainline/12_automated_testing_and_regression.md)之后查阅。目标是能根据“要证明什么”选断言，并读懂既存测试的失败信息。下面的 `actual`、`employee`、`names` 等变量代表测试中已取得的结果；代码是方法用法片段，不是可直接运行的完整测试类。
+本附录接在[第12章：员工CRUD的分层测试与接口验证](../mainline/12_automated_testing_and_regression.md)之后查阅。目标是能根据“要证明什么”选断言，并读懂既存测试的失败信息。下面的 `actual`、`employee`、`names` 等变量代表测试中已取得的结果；代码是方法用法片段，不是可直接运行的完整测试类。
 
 第12章工程的 `spring-boot-starter-test` 已用于 JUnit Jupiter、AssertJ、Mockito 与 Spring Test。既存项目若使用 Hamcrest，先检查 `pom.xml` 中的实际依赖版本；不要仅凭示例就盲目增加依赖。以下导入分别来自不同库，同名 `assertThat` 不要在同一个类中同时静态导入。
 
@@ -11,6 +11,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 // Hamcrest示例单独使用：import static org.hamcrest.MatcherAssert.assertThat;
 // Hamcrest示例单独使用：import static org.hamcrest.Matchers.*;
 ```
+
+第12章先分别运行测试文件，最后才学习完整Spring Boot集成测试。本附录按检查对象提供查阅内容，不改变主线执行顺序：
+
+| 第12章阶段 | 主要检查工具 | 本附录查阅位置 |
+| --- | --- | --- |
+| Mapper层切片/数据库测试 | AssertJ检查查询结果、行数和异常 | 第二、三节 |
+| Service单体测试 | AssertJ检查业务结果，Mockito验证依赖交互 | 第二、三、六节 |
+| Controller层MockMvc测试 | MockMvc检查状态、Header和JSON | 第五节 |
+| Postman手工接口测试 | 人工核对HTTP结果和数据库，不使用Java断言库 | 第七节 |
+| `@SpringBootTest`完整集成测试 | MockMvc、AssertJ和数据库查询组合 | 第三、五、八节 |
 
 ## 一、先按检查对象选工具
 
@@ -169,7 +179,11 @@ verifyNoInteractions(employeeMapper);          // 与该Mock没有交互
 
 `verify` 检查被测对象与 Mock 的交互；它不判断返回内容是否正确，也不证明真实 Mapper SQL、事务或数据库状态。测试 Service 时通常同时检查返回值/异常和必要交互；测试真实持久化行为时需要相应集成测试。
 
-## 七、写断言时的检查顺序
+## 七、Postman检查与自动化断言的边界
+
+Postman主线案例由学员手工确认HTTP方法、URL、参数、请求体、状态码、Headers、JSON和数据库结果。它不会因为“看起来正确”就自动留下Java断言，也不能替代JUnit回归。证据中应写明输入、预期、实际结果和数据库确认；后续重复频繁、规则稳定的场景再转换为MockMvc或完整集成测试。
+
+## 八、写断言时的检查顺序
 
 1. 先写明规格中的预期：精确值、至少包含、完整集合、异常，还是 HTTP 契约。
 2. 用与预期强度相符的方法：完整顺序选 `containsExactly`，不关心顺序选 `containsExactlyInAnyOrder`，只要一个元素才选 `contains` / `hasItem`。

@@ -1,4 +1,4 @@
-# A17 Linux部署与运维手顺参考
+# A18-1 Linux部署与运维手顺参考
 
 本附录承接[第18章](../mainline/18_deployment_operations_check.md)中较深的Linux部署操作。示例以Ubuntu 24.04 LTS和systemd为背景，必须在专用练习机或获得授权的环境使用；生产目录、账号、端口和安全要求以项目手顺为准。
 

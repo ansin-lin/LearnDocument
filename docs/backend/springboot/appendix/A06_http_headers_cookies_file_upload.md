@@ -1,4 +1,4 @@
-# A08 Header、Cookie与文件上传
+# A06 Header、Cookie与文件上传
 
 本附录只讲三类HTTP扩展输入：请求头、Cookie和multipart文件。路径参数、查询参数与JSON请求体仍以第6章为主；认证授权、Session登录和文件持久化不在本附录中展开。
 
@@ -82,6 +82,16 @@ public class HttpInputDemoController {
 ```
 
 这两个类只证明不同HTTP位置怎样进入Java参数，不保存文件、不修改数据库，也不构成文件管理功能。
+
+完整示例中的入口注解先统一说明：
+
+| 注解 | 标注位置 | Spring MVC处理时机和本例效果 |
+| --- | --- | --- |
+| `@RestController` | Controller类 | 启动时注册请求处理器，方法返回的字符串写入响应正文 |
+| `@GetMapping` | 方法 | 建立GET路径映射；请求到达时据此选择 `requestInfo` 或 `language` |
+| `@PostMapping` | 方法 | 建立POST路径映射；本例还用 `consumes` 限制为 `multipart/form-data` |
+
+下文会详细解释 `@RequestHeader`、`@CookieValue` 和 `@RequestPart`。比较图中还会出现三个已学输入注解：`@PathVariable` 写在方法参数上并从URL路径片段取值，`@RequestParam` 从Query String或表单参数取值，`@RequestBody` 让消息转换器读取整个请求体。它们都由Spring MVC在进入Controller方法前完成绑定；绑定失败时通常不会执行方法主体。
 
 ### 2. @RequestHeader读取请求头
 

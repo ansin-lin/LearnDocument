@@ -49,7 +49,7 @@ Vue的页面字段、路由和业务流程不因后台语言改变。后台内�
 
 ## 三、固定技术和任务边界
 
-使用Java 17、Spring Boot 3.5.x、Spring Web、Validation、Spring Security、MyBatis Starter 3.0.x、MySQL、BCrypt、JUnit、Mockito和MockMvc。代码继续按`Controller → Service → Mapper → MySQL`组织，请求DTO、响应DTO和Entity分开建立。
+使用Java 17、Spring Boot 4.1.x、Spring Web MVC、Validation、Spring Security、MyBatis Starter 4.1.0、MyBatis Test Starter 4.1.0、MySQL、BCrypt、JUnit、Mockito和MockMvc。代码继续按`Controller → Service → Mapper → MySQL`组织，请求DTO、响应DTO和Entity分开建立。
 
 本任务不增加JWT、Redis、JPA、Docker、消息队列、微服务、审批人画面、邮件、前端分页或管理后台。不要为了展示技术而改变Vue接口。
 

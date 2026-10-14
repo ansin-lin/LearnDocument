@@ -1,10 +1,10 @@
-# A18 常见运行与数据库迁移组件识读
+# A18-2 常见运行与数据库迁移组件识读
 
-本附录只建立Actuator、Flyway和Liquibase的项目阅读能力。Employee主线仍按现有部署检查和SQL准备方式运行，不为展示组件而更改数据库初始化流程。
+本附录只建立Actuator、Flyway和Liquibase的项目阅读能力。Employee主线仍按现有部署检查和SQL准备方式运行，不为展示组件而更改数据库初始化流程。完成后应能从构建文件、配置和资源目录判断项目使用了哪个组件、由谁触发、状态记录在哪里，以及失败时应查看哪份恢复手顺。
 
 ## 一、Spring Boot Actuator
 
-Actuator为运行中的应用提供健康、信息、指标等管理端点。项目加入 `spring-boot-starter-actuator` 后，常见端点包括 `/actuator/health`；实际暴露范围由配置决定。
+Actuator为运行中的应用提供健康、信息、指标等管理端点。构建文件中的识别线索是 `org.springframework.boot:spring-boot-starter-actuator`；常见端点包括 `/actuator/health`，实际暴露范围由配置决定。
 
 阅读项目时确认：依赖是否存在、management端口和base path、哪些端点暴露、是否有Security保护、健康检查是否泄露数据库或外部系统细节、监控平台怎样采集。不要在生产环境直接暴露全部端点；“能访问health”也不等于完整业务验收通过。
 
@@ -23,7 +23,7 @@ management:
 
 ## 二、Flyway
 
-Flyway通常按版本化迁移脚本管理数据库结构变化。常见目录和文件名类似：
+Flyway通常按版本化迁移脚本管理数据库结构变化。构建文件中常见识别线索是 `org.flywaydb:flyway-core`；不同数据库还可能需要对应数据库支持模块，不能只看到脚本目录就断定依赖完整。常见目录和文件名类似：
 
 ```text
 src/main/resources/db/migration/
@@ -35,7 +35,7 @@ V2__add_employee_status.sql
 
 ## 三、Liquibase
 
-Liquibase使用changelog描述数据库变更，可采用YAML、XML、JSON或SQL。常见入口配置类似：
+Liquibase使用changelog描述数据库变更，可采用YAML、XML、JSON或SQL。构建文件中常见识别线索是 `org.liquibase:liquibase-core`。常见入口配置类似：
 
 ```yaml
 spring:

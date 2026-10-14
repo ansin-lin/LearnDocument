@@ -126,7 +126,7 @@ WHERE id = 1001;
 <dependency>
     <groupId>org.mybatis.spring.boot</groupId>
     <artifactId>mybatis-spring-boot-starter</artifactId>
-    <version>3.0.5</version>
+    <version>4.1.0</version>
 </dependency>
 <dependency>
     <groupId>com.mysql</groupId>
@@ -776,7 +776,7 @@ ORDER BY id;
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.16</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -793,7 +793,7 @@ ORDER BY id;
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
         <dependency>
@@ -804,7 +804,7 @@ ORDER BY id;
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>3.0.5</version>
+            <version>4.1.0</version>
         </dependency>
 
         <dependency>
@@ -1306,7 +1306,7 @@ src/main/resources/
 
 有些既存项目把MyBatis核心设置放在 `mybatis-config.xml` 中。Spring Boot不会仅凭文件名自动读取它，必须通过 `mybatis.config-location` 指定资源位置。`mybatis.configuration.*` 和 `mybatis.config-location` 是两种核心设置来源，不能同时使用；`mapper-locations` 和 `type-aliases-package` 仍可保留在 `application.yml` 中。
 
-当前主线继续使用结构更直观的 `mybatis.configuration.*`。独立XML的完整文件、配置切换、`<environments>`差异、故障观察和恢复步骤见附录[Spring Boot怎样读取独立MyBatis配置](../appendix/A12_springboot_mybatis_config.md)。
+当前主线继续使用结构更直观的 `mybatis.configuration.*`。独立XML的完整文件、配置切换、`<environments>`差异、故障观察和恢复步骤见附录[A09-2 Spring Boot怎样读取独立MyBatis配置](../appendix/A09_02_springboot_mybatis_config.md)。
 
 ### B. DAO、Repository和Mapper命名
 
@@ -1322,6 +1322,6 @@ src/main/resources/
 
 Employee表的 `created_at`、`updated_at` 使用MySQL `DATETIME`，Entity使用Java 17的 `LocalDateTime`。两者都表示日期和时间，但都不携带时区或UTC偏移；当前项目把它们定义为日本业务环境中的数据库本地时间。
 
-这只是当前项目规格，不是所有系统的通用答案。跨国家事件、审计时间或多地区API需要另外确定UTC、区域时区和接口格式，不能看到 `LocalDateTime` 就默认它代表东京时间。`DATETIME`、`TIMESTAMP`、`LocalDateTime`、`OffsetDateTime`、`Instant` 及Browser到数据库的转换与验证，统一放在附录[Java Web项目中的日期时间与时区](../appendix/A11_java_web_datetime.md)。
+这只是当前项目规格，不是所有系统的通用答案。跨国家事件、审计时间或多地区API需要另外确定UTC、区域时区和接口格式，不能看到 `LocalDateTime` 就默认它代表东京时间。`DATETIME`、`TIMESTAMP`、`LocalDateTime`、`OffsetDateTime`、`Instant` 及Browser到数据库的转换与验证，统一放在附录[A09-1 Java Web项目中的日期时间与时区](../appendix/A09_01_java_web_datetime.md)。
 
 本章只需确认MyBatis能够把两列写入Entity对应属性；它们不会进入当前详情响应。任何时间列类型或语义变更，都必须同时调查表定义、既有数据、Mapper映射、JDBC配置和接口规格。

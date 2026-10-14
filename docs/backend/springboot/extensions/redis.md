@@ -8,7 +8,7 @@
 
 ## 2. 环境与连接
 
-在 `pom.xml` 增加依赖，版本由 Spring Boot 3.5.16 管理：
+在 `pom.xml` 增加依赖，版本由 Spring Boot 4.1.1 管理：
 
 ```xml
 <dependency>
@@ -57,7 +57,7 @@ public class RedisProbe {
 
 先明确缓存契约：键 `employee:detail:v1:{id}`；值只含允许该详情接口公开的字段；TTL 5 分钟；不存在的员工不缓存；缓存异常退回 MySQL。`v1` 使字段格式变化时可换键前缀，不能将 Java Entity 连同内部状态直接序列化公开。若详情响应依用户权限不同，应按权限设计键，或在权限检查后仅缓存不含用户特有数据的公共 DTO。
 
-新建 `cache/EmployeeDetailCache.java`，以主线的 `EmployeeResponse` 作为 JSON 负载；实际构造器/字段按第9章工程中的 DTO 调整：
+新建 `cache/EmployeeDetailCache.java`，以主线的 `EmployeeResponse` 作为 JSON 负载；实际构造器/字段按第9章工程中的 DTO 调整。Boot 4默认使用Jackson 3，下面的 `ObjectMapper` 与 `JacksonException` 分别从 `tools.jackson.databind` 和 `tools.jackson.core` 导入：
 
 ```java
 @Component
@@ -83,7 +83,7 @@ public class EmployeeDetailCache {
             CachedEmployee item = json.readValue(value, CachedEmployee.class);
             return Optional.of(new EmployeeResponse(item.id(), item.name(),
                     item.department(), item.email()));
-        } catch (JsonProcessingException | DataAccessException ex) {
+        } catch (JacksonException | DataAccessException ex) {
             // 缓存坏值或连接故障不能让详情接口失效；记录键和原因，不打印个人数据。
             log.warn("Employee detail cache read failed, key={}", key(id), ex);
             return Optional.empty();
@@ -95,7 +95,7 @@ public class EmployeeDetailCache {
             CachedEmployee item = new CachedEmployee(value.getId(),
                     value.getName(), value.getDepartment(), value.getEmail());
             redis.opsForValue().set(key(id), json.writeValueAsString(item), TTL);
-        } catch (JsonProcessingException | DataAccessException ex) {
+        } catch (JacksonException | DataAccessException ex) {
             // DB 查询已经成功；缓存写入失败只降低性能。
             log.warn("Employee detail cache write failed, key={}", key(id), ex);
         }

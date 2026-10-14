@@ -2,14 +2,14 @@
 
 > 本章目标：理解开发、测试和生产环境为什么需要不同配置，掌握Profile与环境变量的基础用法，了解Maven构建过程，并把项目打包成可以脱离Eclipse运行的JAR。
 
-从第16章稳定工程继续。本章不改变员工API、Session登录和权限规则。生产交付的深入做法见附录 [A16 配置、构建与交付进阶](../appendix/A16_configuration_build_delivery_advanced.md)。
+从第16章稳定工程继续。本章不改变员工API、Session登录和权限规则。生产交付的深入做法见附录 [A17 配置、构建与交付进阶](../appendix/A17_configuration_build_delivery_advanced.md)。
 
 ## 一、为什么不同环境需要不同配置
 
 | 环境 | 典型用途 | 数据库与日志特点 |
 | --- | --- | --- |
 | dev | 开发者本机调试 | 本机MySQL，日志较详细 |
-| test | 自动化测试 | H2测试库，数据可重复准备 |
+| test | 自动化测试 | 专用MySQL测试库，数据可重复准备并有库名保护 |
 | prod | 正式运行 | 受控数据库，秘密由运行环境提供 |
 
 如果把数据库地址、密码和端口写死在Java代码中，每次换环境都要改代码。Spring Boot把差异放入配置，使同一个JAR可以在启动时选择环境。
@@ -75,14 +75,16 @@ logging:
 ```yaml
 spring:
   datasource:
-    url: jdbc:h2:mem:employee_test;MODE=MySQL;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
+    url: ${TEST_DB_URL:jdbc:mysql://localhost:3306/employee_test_db?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=Asia/Tokyo}
+    username: ${DB_USERNAME:employee_app}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
 logging:
   level:
     root: WARN
 ```
+
+测试配置仍与第12章一致：数据库名必须以 `_test` 或 `_test_db` 结尾，账号和密码沿用第9章的本地环境变量，执行建表脚本的测试继续继承 `MySqlTestGuard`。H2只用于A12-2的独立比较实验，不属于test主线配置。
 
 `application-prod.yml`只写结构和外部值占位符：
 
@@ -176,7 +178,7 @@ public record DeploymentProperties(
 }
 ```
 
-启动类增加 `@ConfigurationPropertiesScan` 后，Spring会把 `app.*` 绑定到对象。`@Validated` 在启动时检查约束。配置对象描述运行参数，不是数据库Entity。复杂绑定与覆盖实验见A16附录。
+启动类增加 `@ConfigurationPropertiesScan` 后，Spring会把 `app.*` 绑定到对象。`@Validated` 在启动时检查约束。配置对象描述运行参数，不是数据库Entity。复杂绑定与覆盖实验见A17附录。
 
 ## 五、Maven构建基础
 

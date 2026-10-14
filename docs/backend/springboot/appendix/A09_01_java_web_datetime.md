@@ -1,4 +1,4 @@
-# A11 Java Web项目中的日期时间与时区
+# A09-1 Java Web项目中的日期时间与时区
 
 第9章为了接收数据库时间列，在 `Employee` Entity中使用了 `LocalDateTime`。这一选择只解决当前项目的本地业务时间映射；真实项目还必须分清“日历日期”“本地时间”“UTC瞬间”和“带偏移的接口时间”。
 
@@ -73,7 +73,7 @@ Browser中的日期时间
 | JDBC→DB | Java类型与列类型不一致 | Mapper参数、JDBC URL、表定义 |
 | DB→查询结果 | 连接时区或列类型语义不同 | `session time_zone`、原始列值 |
 
-A07中的 `@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")` 只规定JSON文本格式，不会为 `LocalDateTime` 增加时区。需要表达offset时，应在接口规格中采用可携带offset的ISO-8601形式，并选择 `OffsetDateTime` 等对应类型，而不是只改变显示格式。
+A05中的 `@JsonFormat` 属于Jackson，通常写在JSON属性对应的字段或getter上；Jackson在JSON序列化和反序列化时读取它。本例写法 `@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")` 只规定文本格式，不会为 `LocalDateTime` 增加时区。需要表达offset时，应在接口规格中采用可携带offset的ISO-8601形式，并选择 `OffsetDateTime` 等对应类型，而不是只改变显示格式。
 
 ## 五、MySQL DATETIME与TIMESTAMP
 
