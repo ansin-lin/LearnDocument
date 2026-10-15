@@ -86,7 +86,7 @@ Eclipse编写和调试代码
 | 9 | [数据库记录怎样成为接口响应](mainline/09_database_and_mybatis.md) | 建立表、Entity、Mapper和Service的数据访问链 |
 | 10 | [完成员工增删改查](mainline/10_employee_crud.md) | 实现真实CRUD，并同时核对HTTP响应与数据库状态 |
 | 11 | [用日志定位接口故障](mainline/11_logging_and_diagnosis.md) | 建立请求追踪与关键日志，完成一次故障调查闭环 |
-| 12 | [员工CRUD的分层测试与接口验证](mainline/12_automated_testing_and_regression.md) | 分别完成Mapper、Service、Controller测试和Postman确认，最后验证完整Spring Boot调用链 |
+| 12 | [员工CRUD的分层测试与接口验证](mainline/12_automated_testing_and_regression.md) | 依次完成MySQL/H2 Mapper正常系与异常系、Service单元测试、Controller MockMvc测试和Postman确认，最后验证完整调用链 |
 | 13 | [用事务保证多步写入一致](mainline/13_transaction_and_consistency.md) | 更新员工并写变更履历，用成功与失败测试证明提交和回滚 |
 | 14 | [让员工列表支持条件查询与分页](mainline/14_search_sort_pagination.md) | 实现筛选、稳定排序和分页，验证总件数、空页与非法参数 |
 | 15 | [用Session识别当前登录用户](mainline/15_session_login.md) | 使用数据库账号和BCrypt登录，通过Session完成当前用户识别与安全退出 |
@@ -112,8 +112,9 @@ Eclipse编写和调试代码
 | [A11-1 Spring Boot日志配置进阶](appendix/A11_logging_configuration_advanced.md) | 理解有效等级、文件滚动、环境覆盖、结构化日志与自定义Logback边界 |
 | [A11-2 Filter与请求处理执行时机](appendix/A11_2_filter_execution_timing.md) | 区分Servlet分派、Filter注册顺序、Security、MVC异常和MDC清理 |
 | [A11-3 使用AOP统一记录方法日志](appendix/A11_3_aop_method_logging.md) | 使用精确切点和自定义注解记录Service耗时，并保持返回、异常和事务语义 |
-| [A12-1 常用测试断言库与断言方法](appendix/A12_01_testing_assertions_reference.md) | 按检查对象选择JUnit、AssertJ、Hamcrest与MockMvc断言 |
-| [A12-2 使用H2完成独立数据库测试实验](appendix/A12_02_h2_test_database.md) | 用独立profile完成H2 Mapper实验并理解与MySQL的差异 |
+| [A12-1 常用测试断言库与断言方法](appendix/A12_01_testing_assertions_reference.md) | 随第12章案例按需查阅JUnit、AssertJ、MockMvc断言与Mockito交互验证，识读Hamcrest |
+| [A12-2 使用H2完成独立数据库测试实验](appendix/A12_02_h2_test_database.md) | 在MySQL Mapper案例后，用独立profile完成H2正常系与异常系对照实验 |
+| [A12-3 JUnit Jupiter常用注解与方法](appendix/A12_03_junit_jupiter_annotations_methods.md) | 查阅JUnit生命周期、断言和参数化测试写法，并用于第12章各层测试 |
 | [A13-1 事务原理与Spring事务机制](appendix/A13_01_transaction_spring_mechanisms.md) | 深入理解ACID、事务边界、`@Transactional`属性与传播方式 |
 | [A13-2 隔离级别与MVCC](appendix/A13_02_isolation_mvcc.md) | 区分并发读取现象、隔离级别、快照读与当前读 |
 | [A13-3 并发更新与锁](appendix/A13_03_concurrent_updates_locks.md) | 选择约束、原子UPDATE、乐观锁或悲观锁，并验证锁等待与死锁 |

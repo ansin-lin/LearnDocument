@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 接口与数据表达扩展 | 调用外部API、调整JSON、读取Header/Cookie、上传文件、返回HTML、使用校验分组、处理日期时间或独立MyBatis配置 | B01、A03-1、A05、A06、A08、A09-1、A09-2 |
 | 既存项目识读与Spring机制 | 接手陌生项目、识别旧结构、阅读Lombok/JPA、查注解、多Bean排错、判断共通处理放在哪一层 | B02～B06、A04 |
-| 质量保证、开发效率与故障排查 | 调整日志、辨认请求处理时机、使用AOP记录方法耗时、补充测试断言、比较H2与MySQL测试、使用本地开发辅助工具，或根据现象定位构建、HTTP、数据库、安全及部署问题 | A03-2、A11-1、A11-2、A11-3、A12-1、A12-2、B07 |
+| 质量保证、开发效率与故障排查 | 调整日志、辨认请求处理时机、使用AOP记录方法耗时、补充测试断言、比较H2与MySQL测试、使用JUnit生命周期与参数化测试、使用本地开发辅助工具，或根据现象定位构建、HTTP、数据库、安全及部署问题 | A03-2、A11-1、A11-2、A11-3、A12-1、A12-2、A12-3、B07 |
 | 事务与并发控制 | 调查多步写入、隔离现象、丢失更新、锁等待和死锁，选择约束、原子UPDATE、乐观锁或悲观锁 | A13-1～A13-3、B07 |
 | 配置、交付与运维识读 | 调查配置覆盖、检查构建产物、阅读Linux部署手顺、识别Actuator和数据库迁移组件 | A17、A18-1、A18-2 |
 
@@ -31,8 +31,9 @@
 | [A11-1 Spring Boot日志配置进阶](A11_logging_configuration_advanced.md) | 第11章 | 日志处理链、有效等级、Console/File输出、滚动、MDC格式、环境覆盖、结构化日志和Logback XML边界 | 完成一次可回退的日志配置改修，并用验证矩阵解释日志为什么出现或缺失 |
 | [A11-2 Filter、OncePerRequestFilter与RequestLoggingFilter的执行时机](A11_2_filter_execution_timing.md) | 第11章 | Filter继承关系、Servlet分派、注册顺序、Security/MVC异常路径、MDC线程清理 | 根据200、400、404、401、403和500证据判断请求实际到达的位置 |
 | [A11-3 使用AOP统一记录方法日志](A11_3_aop_method_logging.md) | 第11章、A11-2 | Aspect、Join Point、Pointcut、Advice、代理、自定义注解、方法耗时和安全边界 | 为明确标记的Service方法记录成功、失败和慢调用，同时保持原返回、异常和事务语义 |
-| [A12-1 常用测试断言库与断言方法](A12_01_testing_assertions_reference.md) | 第12章 | Mapper、Service、Controller和完整集成测试所用的JUnit、AssertJ、MockMvc与Mockito；Postman检查边界 | 根据被测层选择断言，并读懂expected/actual和HTTP测试失败 |
-| [A12-2 使用H2完成独立数据库测试实验](A12_02_h2_test_database.md) | 第12章Mapper案例后 | H2内存库、独立profile、测试脚本、Mapper切片、与MySQL的边界 | 独立运行一个H2 Mapper实验，区分Mapper切片测试与纯单元测试，并说明为什么它不能代替MySQL测试 |
+| [A12-1 常用测试断言库与断言方法](A12_01_testing_assertions_reference.md) | 第12章各层案例后按需查阅 | JUnit、AssertJ、MockMvc结果匹配器、Mockito交互验证与Hamcrest识读 | 为正常系和异常系选择足够精确的断言，读懂expected/actual与HTTP测试失败 |
+| [A12-2 使用H2完成独立数据库测试实验](A12_02_h2_test_database.md) | 第12章MySQL Mapper案例后 | H2独立profile、脚本、数据库保护、正常系与异常系Mapper测试及MySQL对照 | 实际运行H2四个场景，并说明它不能替代MySQL测试 |
+| [A12-3 JUnit Jupiter常用注解与方法](A12_03_junit_jupiter_annotations_methods.md) | 第12章 | JUnit生命周期、断言、参数化测试和Spring测试注解的边界 | 独立运行JUnit练习，并为各层正常系与异常系选择准确断言 |
 | [A13-1 事务原理与Spring事务机制](A13_01_transaction_spring_mechanisms.md) | 第13章 | 事务边界、ACID、`@Transactional`默认值、属性与传播方式 | 识别业务事务边界及异常处理风险 |
 | [A13-2 隔离级别与MVCC](A13_02_isolation_mvcc.md) | 第13章 | 并发读取现象、隔离级别、快照读与当前读 | 解释多个事务读取同一数据时的可见结果 |
 | [A13-3 并发更新与锁](A13_03_concurrent_updates_locks.md) | 第13章 | 唯一约束、原子UPDATE、乐观锁、悲观锁、锁等待与死锁 | 根据业务不变量选择并发控制机制，并用两个会话验证结果 |

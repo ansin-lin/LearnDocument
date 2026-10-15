@@ -1258,6 +1258,6 @@ src/test/resources/test-data.sql
 6. 区分事务和唯一约束的责任；
 7. 用成功和中途失败测试的数据库状态证明提交与回滚。
 
-需要深入事务原理与Spring事务规则时，进入[A13-1 事务原理与Spring事务机制](../appendix/A13_01_transaction_spring_mechanisms.md)；调查并发读取时查阅[A13-2 隔离级别与MVCC](../appendix/A13_02_isolation_mvcc.md)；处理丢失更新、锁等待和死锁时查阅[A13-3 并发更新与锁](../appendix/A13_03_concurrent_updates_locks.md)。附录实验不改变本章主线工程的稳定状态。
+需要深入事务原理与Spring事务规则时，进入[A13-1 事务原理与Spring事务机制](../appendix/A13_01_transaction_spring_mechanisms.md)；调查并发读取时查阅[A13-2 隔离级别与MVCC](../appendix/A13_02_isolation_mvcc.md)；处理丢失更新、锁等待和死锁时查阅[A13-3 并发更新与锁](../appendix/A13_03_concurrent_updates_locks.md)。附录实验不改变本章主线工程的稳定状态。需要复习本章测试使用的JUnit注解、生命周期和断言时，查阅第12章的[A12-3 JUnit Jupiter常用注解与方法](../appendix/A12_03_junit_jupiter_annotations_methods.md)。
 
 下一章会在员工数量增多的前提下实现条件查询、稳定排序和分页，并继续用自动化测试保护旧有CRUD。

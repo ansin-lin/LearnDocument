@@ -1,6 +1,6 @@
 # A12-1 常用测试断言库与断言方法
 
-本附录接在[第12章：员工CRUD的分层测试与接口验证](../mainline/12_automated_testing_and_regression.md)之后查阅。目标是能根据“要证明什么”选断言，并读懂既存测试的失败信息。下面的 `actual`、`employee`、`names` 等变量代表测试中已取得的结果；代码是方法用法片段，不是可直接运行的完整测试类。
+本附录配合[第12章：员工CRUD的分层测试与接口验证](../mainline/12_automated_testing_and_regression.md)按需查阅：完成MySQL/H2 Mapper案例时看值与异常，完成Service案例时看业务结果与Mock交互，完成Controller案例时看HTTP匹配器；通读全部方法不是开始写测试的前置条件。目标是根据“规格要求证明什么”选择足够精确的检查，并读懂失败信息。下面的`actual`、`employee`、`names`等变量代表测试中已取得的结果；代码是用法片段，不是可直接运行的完整测试类。
 
 第12章工程的 `spring-boot-starter-test` 已用于 JUnit Jupiter、AssertJ、Mockito 与 Spring Test。既存项目若使用 Hamcrest，先检查 `pom.xml` 中的实际依赖版本；不要仅凭示例就盲目增加依赖。以下导入分别来自不同库，同名 `assertThat` 不要在同一个类中同时静态导入。
 
@@ -16,13 +16,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 | 第12章阶段 | 主要检查工具 | 本附录查阅位置 |
 | --- | --- | --- |
-| Mapper层切片/数据库测试 | AssertJ检查查询结果、行数和异常 | 第二、三节 |
-| Service单体测试 | AssertJ检查业务结果，Mockito验证依赖交互 | 第二、三、六节 |
+| MySQL和H2的Mapper层切片/数据库测试 | AssertJ检查查询结果、行数、未写入状态和约束异常 | 第二、三节 |
+| Service单元测试 | AssertJ检查业务结果和异常，Mockito验证必要的依赖交互 | 第二、三、六节 |
 | Controller层MockMvc测试 | MockMvc检查状态、Header和JSON | 第五节 |
 | Postman手工接口测试 | 人工核对HTTP结果和数据库，不使用Java断言库 | 第七节 |
 | `@SpringBootTest`完整集成测试 | MockMvc、AssertJ和数据库查询组合 | 第三、五、八节 |
 
 ## 一、先按检查对象选工具
+
+先写清前置数据、被测操作和预期，再选择工具。一个测试通常需要**结果断言**，有时还需要**状态或交互验证**：例如“重复邮箱不得新增员工”既要检查抛出的异常，也要检查表仍只有原来的两行。下面的库并不是互相排斥的备选整套方案；JUnit负责运行测试，其他工具针对不同结果提供检查方法。
 
 | 要检查的对象 | 首选方式 | 说明 |
 | --- | --- | --- |
@@ -31,6 +33,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 | 既存测试中的组合匹配条件 | Hamcrest | `assertThat(actual, matcher)`；先识别项目是否已有该库 |
 | Controller 的 HTTP 响应 | Spring Test `MockMvcResultMatchers` | 检查状态、响应头、JSON 等接口契约 |
 | Mock 对象有没有被调用 | Mockito `verify` | 这是交互验证，不是返回值或真实 SQL 的断言 |
+
+在本课程的Service测试里，优先使用AssertJ表达结果和异常；Controller测试用MockMvc结果匹配器表达HTTP契约。JUnit Assertions也必须能读懂，Hamcrest主要用于识读采用该风格的既存项目；不要为了展示多个库，在同一测试中对同一个结果无意义地重复断言。
 
 ## 二、JUnit Jupiter：基础值和执行结果
 
@@ -148,7 +152,7 @@ MockMvc 通过 `andExpect(...)` 接收 Spring Test 的结果匹配器。这些�
 | `.andExpect(status().isOk())` | HTTP 状态码为 200；`isCreated()` 为 201，`isBadRequest()` 为 400，`isNotFound()` 为 404。 |
 | `.andExpect(status().is(422))` | 状态码精确等于 422；用于没有专门快捷方法或项目自定义的状态。 |
 | `.andExpect(header().exists("Location"))` | 响应中存在该 Header；不检查值。 |
-| `.andExpect(header().string("Location", "/api/employees/1001"))` | 该响应 Header 的字符串值恰好相等。 |
+| `.andExpect(header().string("Location", "/employees/1001"))` | 该响应 Header 的字符串值恰好相等。 |
 | `.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))` | 响应媒体类型与 JSON 兼容；可接受 `application/json;charset=UTF-8` 等带参数形式。 |
 | `.andExpect(content().string("done"))` | 响应体全文等于指定字符串。 |
 | `.andExpect(content().json("{\"code\":\"OK\"}"))` | 响应 JSON 包含示例中要求的字段/值；默认比较并非严格禁止额外字段。 |
@@ -159,14 +163,17 @@ MockMvc 通过 `andExpect(...)` 接收 Spring Test 的结果匹配器。这些�
 例如创建员工接口需要同时检查状态和返回 ID，而不能只看 200：
 
 ```java
-mockMvc.perform(post("/api/employees")
+mockMvc.perform(post("/employees")
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"name\":\"Tanaka\"}"))
+        .content("{\"name\":\"Tanaka\","
+                + "\"department\":\"Sales\","
+                + "\"email\":\"tanaka.new@example.com\"}"))
     .andExpect(status().isCreated())
-    .andExpect(jsonPath("$.data.id").exists());
+    .andExpect(header().string("Location", "/employees/1001"))
+    .andExpect(jsonPath("$.data.id").value(1001));
 ```
 
-这里的 `post` 是请求构造，`status`、`jsonPath` 才是响应断言。实际项目还应按接口规格检查错误码、消息、必要 Header 和数据库结果；使用 Mock Service 的 Controller 测试不能证明 SQL 执行。
+这里的 `post` 是请求构造，`status`、`header`、`jsonPath` 才是响应断言。上方是**方法用法片段**：只有测试上下文中已提供MockMvc、Controller所需的Mock Service，且该Service预设返回id为1001的新增结果时，Location和id断言才成立；不能把片段单独粘贴后声称可以运行。实际项目还应按接口规格检查错误码、消息、必要Header和数据库结果；使用Mock Service的Controller测试不能证明SQL执行。
 
 ## 六、Mockito 的边界：验证调用，不代替结果断言
 
@@ -189,6 +196,16 @@ Postman主线案例由学员手工确认HTTP方法、URL、参数、请求体、
 2. 用与预期强度相符的方法：完整顺序选 `containsExactly`，不关心顺序选 `containsExactlyInAnyOrder`，只要一个元素才选 `contains` / `hasItem`。
 3. 失败时确认看到的是实际值、预期值还是异常堆栈；不要只因测试变绿就削弱断言。
 4. 对数据库、事务或安全规则，补充对应层级的测试和证据，不把 Mock 交互验证当作端到端证明。
+
+| 测试规格 | 不足以证明规格的写法 | 更合适的检查 |
+| --- | --- | --- |
+| Mapper新增一行且能读取邮箱 | 只写`assertThat(rows).isGreaterThan(0)` | `isEqualTo(1)`，再按生成id查询并核对邮箱 |
+| 重复邮箱不得新增 | 只写`assertThatThrownBy(...).isInstanceOf(...)` | 再查表行数或目标邮箱对应记录，确认数据未增加 |
+| Service遇到不存在id应抛业务异常 | 只写`verify(mapper).findById(id)` | 断言异常类型与规定消息，再按需要验证Mapper调用 |
+| Controller新增返回正确资源 | 只写`status().isCreated()` | 同时检查Location、`success`、返回id与关键字段 |
+| 列表必须按规格排序 | 只写`contains("Tanaka")` | 用`containsExactly(...)`检查完整元素和顺序 |
+
+“正常系”与“异常系”并非对应不同的断言库：同一个`assertThat`可检查成功结果、空结果和数据库状态；`assertThatThrownBy`仅用于实际应该抛Java异常的场景。HTTP 400/404/409是Controller返回的响应，不应在MockMvc测试中误写成“JUnit必须抛异常”。
 
 ## 参考资料
 

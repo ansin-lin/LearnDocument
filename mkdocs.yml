@@ -398,6 +398,7 @@ nav:
         - A11-3. 使用AOP统一记录方法日志: backend/springboot/appendix/A11_3_aop_method_logging.md
         - A12-1. 常用测试断言库与断言方法: backend/springboot/appendix/A12_01_testing_assertions_reference.md
         - A12-2. 使用H2完成独立数据库测试实验: backend/springboot/appendix/A12_02_h2_test_database.md
+        - A12-3. JUnit Jupiter常用注解与方法: backend/springboot/appendix/A12_03_junit_jupiter_annotations_methods.md
         - A13-1. 事务原理与Spring事务机制: backend/springboot/appendix/A13_01_transaction_spring_mechanisms.md
         - A13-2. 隔离级别与MVCC: backend/springboot/appendix/A13_02_isolation_mvcc.md
         - A13-3. 并发更新与锁: backend/springboot/appendix/A13_03_concurrent_updates_locks.md
