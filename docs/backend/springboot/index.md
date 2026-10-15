@@ -114,7 +114,9 @@ Eclipse编写和调试代码
 | [A11-3 使用AOP统一记录方法日志](appendix/A11_3_aop_method_logging.md) | 使用精确切点和自定义注解记录Service耗时，并保持返回、异常和事务语义 |
 | [A12-1 常用测试断言库与断言方法](appendix/A12_01_testing_assertions_reference.md) | 按检查对象选择JUnit、AssertJ、Hamcrest与MockMvc断言 |
 | [A12-2 使用H2完成独立数据库测试实验](appendix/A12_02_h2_test_database.md) | 用独立profile完成H2 Mapper实验并理解与MySQL的差异 |
-| [A13 事务、隔离级别、并发更新与锁](appendix/A13_transaction_isolation_concurrency_locks.md) | 理解ACID、隔离现象和InnoDB锁，并为并发更新选择约束、原子SQL、乐观锁或悲观锁 |
+| [A13-1 事务原理与Spring事务机制](appendix/A13_01_transaction_spring_mechanisms.md) | 深入理解ACID、事务边界、`@Transactional`属性与传播方式 |
+| [A13-2 隔离级别与MVCC](appendix/A13_02_isolation_mvcc.md) | 区分并发读取现象、隔离级别、快照读与当前读 |
+| [A13-3 并发更新与锁](appendix/A13_03_concurrent_updates_locks.md) | 选择约束、原子UPDATE、乐观锁或悲观锁，并验证锁等待与死锁 |
 | [A17 配置、构建与交付进阶](appendix/A17_configuration_build_delivery_advanced.md) | 调查配置覆盖、构建产物与正式交付检查项 |
 | [A18-1 Linux部署与运维手顺参考](appendix/A18_01_linux_deployment_operations_reference.md) | 查阅systemd Unit、更新、切り戻し和运维记录 |
 | [A18-2 常见运行与数据库迁移组件识读](appendix/A18_02_operations_components_reading.md) | 初步识别Actuator、Flyway和Liquibase |

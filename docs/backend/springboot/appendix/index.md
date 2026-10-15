@@ -11,7 +11,7 @@
 | 接口与数据表达扩展 | 调用外部API、调整JSON、读取Header/Cookie、上传文件、返回HTML、使用校验分组、处理日期时间或独立MyBatis配置 | B01、A03-1、A05、A06、A08、A09-1、A09-2 |
 | 既存项目识读与Spring机制 | 接手陌生项目、识别旧结构、阅读Lombok/JPA、查注解、多Bean排错、判断共通处理放在哪一层 | B02～B06、A04 |
 | 质量保证、开发效率与故障排查 | 调整日志、辨认请求处理时机、使用AOP记录方法耗时、补充测试断言、比较H2与MySQL测试、使用本地开发辅助工具，或根据现象定位构建、HTTP、数据库、安全及部署问题 | A03-2、A11-1、A11-2、A11-3、A12-1、A12-2、B07 |
-| 事务与并发控制 | 调查多步写入、隔离现象、丢失更新、锁等待和死锁，选择约束、原子UPDATE、乐观锁或悲观锁 | A13、B07 |
+| 事务与并发控制 | 调查多步写入、隔离现象、丢失更新、锁等待和死锁，选择约束、原子UPDATE、乐观锁或悲观锁 | A13-1～A13-3、B07 |
 | 配置、交付与运维识读 | 调查配置覆盖、检查构建产物、阅读Linux部署手顺、识别Actuator和数据库迁移组件 | A17、A18-1、A18-2 |
 
 同一个现场任务可能跨越多条路线。例如“服务器上的更新接口返回403”应先用B07确定是Security还是部署问题，再回到第15～16章检查认证、CSRF和权限；只有证据指向服务器配置时才进入A17和A18-1。
@@ -33,7 +33,9 @@
 | [A11-3 使用AOP统一记录方法日志](A11_3_aop_method_logging.md) | 第11章、A11-2 | Aspect、Join Point、Pointcut、Advice、代理、自定义注解、方法耗时和安全边界 | 为明确标记的Service方法记录成功、失败和慢调用，同时保持原返回、异常和事务语义 |
 | [A12-1 常用测试断言库与断言方法](A12_01_testing_assertions_reference.md) | 第12章 | Mapper、Service、Controller和完整集成测试所用的JUnit、AssertJ、MockMvc与Mockito；Postman检查边界 | 根据被测层选择断言，并读懂expected/actual和HTTP测试失败 |
 | [A12-2 使用H2完成独立数据库测试实验](A12_02_h2_test_database.md) | 第12章Mapper案例后 | H2内存库、独立profile、测试脚本、Mapper切片、与MySQL的边界 | 独立运行一个H2 Mapper实验，区分Mapper切片测试与纯单元测试，并说明为什么它不能代替MySQL测试 |
-| [A13 事务、隔离级别、并发更新与锁](A13_transaction_isolation_concurrency_locks.md) | 第13章 | 事务与ACID、隔离级别、MVCC、并发异常、唯一约束、原子UPDATE、乐观锁、悲观锁、锁等待与死锁 | 根据业务不变量和冲突特点选择并发控制机制，并用两个会话验证结果 |
+| [A13-1 事务原理与Spring事务机制](A13_01_transaction_spring_mechanisms.md) | 第13章 | 事务边界、ACID、`@Transactional`默认值、属性与传播方式 | 识别业务事务边界及异常处理风险 |
+| [A13-2 隔离级别与MVCC](A13_02_isolation_mvcc.md) | 第13章 | 并发读取现象、隔离级别、快照读与当前读 | 解释多个事务读取同一数据时的可见结果 |
+| [A13-3 并发更新与锁](A13_03_concurrent_updates_locks.md) | 第13章 | 唯一约束、原子UPDATE、乐观锁、悲观锁、锁等待与死锁 | 根据业务不变量选择并发控制机制，并用两个会话验证结果 |
 | [A17 配置、构建与交付进阶](A17_configuration_build_delivery_advanced.md) | 第17章 | 配置覆盖调查、`@ConfigurationProperties`、产物摘要、外部配置模板、交付清单 | 确认最终生效配置和构建来源，整理不含秘密的交付资料 |
 | [A18-1 Linux部署与运维手顺参考](A18_01_linux_deployment_operations_reference.md) | 第18章及Linux基础 | systemd、目录权限、发布检查、切り戻し、端口/日志调查、反向代理与HTTPS边界 | 阅读和执行受控部署手顺，保留发布、验证和回退记录 |
 | [A18-2 常见运行与数据库迁移组件识读](A18_02_operations_components_reading.md) | 第9、17、18章 | Actuator、Flyway、Liquibase、管理端点安全、迁移历史与职责冲突 | 在既存项目中找到监控和迁移入口，说明当前组件及其替代流程 |

@@ -122,9 +122,7 @@ public EmployeeServiceImpl(
 }
 ```
 
-Spring用构造器注入两个Mapper；原有CRUD方法暂不改动。接着完整替换 `update()`；本案例的最终代码如下，**暂时没有** `@Transactional`：
-
-接着用下面的方法完整替换 `EmployeeServiceImpl.update()`；本案例暂时没有 `@Transactional`，其余CRUD方法保持原样：
+Spring用构造器注入两个Mapper；原有CRUD方法暂不改动。接着用下面的方法完整替换 `EmployeeServiceImpl.update()`；本案例**暂时没有** `@Transactional`，其余CRUD方法保持原样：
 
 ```java
     @Override
@@ -174,11 +172,23 @@ Spring用构造器注入两个Mapper；原有CRUD方法暂不改动。接着完�
 
 本方法先读取旧员工，调用 `EmployeeMapper.update()`，再调用 `EmployeeChangeLogMapper.insert()`；正常路径返回更新后员工。先去掉部门两端空格，再按第10章同一规则校验，所以 `" Sales "` 仍可保存为 `Sales`。
 
-失败实验只在第12章建立的专用MySQL测试库进行：确认员工1001初始部门为Sales，按章末测试的做法在**测试代码中**执行 `DROP TABLE employee_change_logs`，然后以PUT `/employees/1001` 发送 `{"name":"Tanaka","department":"Development","email":"tanaka@example.com"}`。预期第二次INSERT因表不存在而失败，HTTP为500；再用独立查询读取 `employees`，无事务时部门会成为Development，原本期望Sales的断言失败。个人开发库只验证正常路径：PUT成功后核对员工部门与新增履历，不在那里删表。下一测试前由 `@Sql` 重建两张表和样例数据；恢复 `@Transactional` 后重复失败实验，部门应保持Sales。HTTP 500本身不能证明回滚，必须查询数据。
+业务代码准备好后，先按章末完整代码建立或更新 `src/test/resources/test-data.sql`、`EmployeeCrudIntegrationTest.java`，并根据新增的Mapper构造器依赖更新 `EmployeeServiceImplTest.java`。此时**只采用案例13-01没有 `@Transactional` 的 `update()`**；不要提前复制章末Service的最终注解。最终测试类只保留一份 `updateRollsBackWhenChangeLogInsertFails()`：它要求HTTP为500、员工1001的部门保持Sales，不为无事务阶段另建长期测试类，也不要把断言改为Development。
+
+在Eclipse中右键运行这个测试方法。它的 `@Sql` 先在第12章建立、且通过 `MySqlTestGuard` 保护的专用MySQL测试库重建两张表及员工1001（原部门Sales）；测试代码随后删除**该测试库的**履历表，再向 `PUT /employees/1001` 发送 `{"name":"Tanaka","department":"Development","email":"tanaka@example.com"}`。第一次UPDATE成功，第二次INSERT因表不存在而失败。在两个Mapper使用同一真实MySQL数据源、异常继续向外传播且测试本身没有事务的前提下，HTTP预期为500，独立查询得到的部门却是Development。因此最终测试的Sales断言应显示红色：它正确发现了部分提交，不是JUnit坏了，更不能修改断言来取得绿色。只在专用测试库执行删表实验；个人开发库只验证正常PUT及履历，不删表。下次运行此方法时，`@Sql` 会重新准备表和数据。
+
+| 实验阶段 | Service代码状态 | HTTP预期 | 独立查询的最终部门 | 同一个回滚测试 |
+| --- | --- | --- | --- | --- |
+| 案例13-01 | `update()` 暂无 `@Transactional` | 500 | Development | 红色：实际值不符合Sales断言 |
+| 案例13-02 | `update()` 增加 `@Transactional` | 500 | Sales | 绿色：Sales断言通过 |
+| 案例13-03 | 有事务，但临时吞掉履历异常 | 观察实际结果，可能变化 | 根据实际事务状态确认 | 记录现象并分析，不改最终断言 |
+
+这是故意构造的教学实验；章末保留的正式业务代码必须是案例13-02恢复后的正确状态。
 
 ### 案例13-02：给业务方法建立事务边界
 
-在同一 `update()` 方法的 `@Override` 后恢复 `@Transactional`，导入 `org.springframework.transaction.annotation.Transactional`。Spring管理的Service代理在调用方法前开始事务；两次Mapper写入正常结束时共同提交，第二次抛出运行时异常时共同回滚。重新运行成功和失败测试：成功时员工部门变为Development且履历新增一条；失败时HTTP为500、员工仍是Sales、履历没有本次记录。测试类本身不得加 `@Transactional`，否则测试外层回滚会掩盖Service缺少事务的错误。
+在同一 `update()` 方法的 `@Override` 后加上 `@Transactional`，导入 `org.springframework.transaction.annotation.Transactional`。它标记“这个公开的Service方法是事务边界”，不是一条需要自己编写commit的SQL；Spring管理的Service代理在调用方法前开始事务。这里不设置属性，默认采用 `REQUIRED`（没有事务就新建，已有事务就加入）、数据库默认隔离级别、非只读，并在运行时异常或 `Error` 向外抛出时回滚；常用属性及为什么采用这些默认值见下文第五、六、九节及[A13-1事务机制附录](../appendix/A13_01_transaction_spring_mechanisms.md)。
+
+只新增这一行注解，放在原方法的 `@Override` 与 `public EmployeeResponse update(...)` 之间；案例13-01的完整方法体一行也不删。两次Mapper写入正常结束时共同提交，第二次抛出运行时异常时共同回滚。**不要修改测试代码或断言**，在Eclipse中重新运行刚才的 `updateRollsBackWhenChangeLogInsertFails()`：HTTP仍为500，独立查询的员工部门应从无事务时的Development变为Sales，同一个测试由红色变为绿色。再运行 `updateCommitsEmployeeAndChangeLogTogether()`，确认正常更新时部门变为Development且履历新增一条。正常测试证明共同成功；只在失败测试中才能证明中途异常时共同回滚，两者缺一不可。测试类本身不得加 `@Transactional`，否则测试外层回滚会掩盖Service缺少事务的错误。
 
 ### 案例13-03：捕获并吞掉异常的对照实验
 
@@ -205,7 +215,7 @@ try {
 }
 ```
 
-在专用MySQL测试库重跑章末 `updateRollsBackWhenChangeLogInsertFails()`：测试先删履历表，INSERT抛出的 `DataAccessException` 被本方法捕获；若事务尚未被其他环节标记为回滚，方法随后执行 `log.info(...)` 和 `return findById(id)`，代理看到正常返回，员工部门可能提交为Development，HTTP也可能变成200，原来的500与Sales断言会失败。检查HTTP、日志和数据库最终部门，不只看一个断言。实验结束立即把这段代码**原样恢复为上方不捕获异常的两句判断**，移除不再使用的导入，再重跑回滚测试：500且员工部门为Sales。这个现象取决于捕获位置和已有回滚标记，不能概括为“所有catch必然提交”。
+在专用MySQL测试库重跑章末 `updateRollsBackWhenChangeLogInsertFails()`，记录履历Mapper是否抛出异常、Service是否捕获、HTTP实际返回200还是500、员工部门最终值，以及是否出现额外事务异常，再解释最终回滚测试为何通过或失败。若事务未被其他环节标记为仅回滚，方法正常返回可能让先前的UPDATE提交；若已经被标记为仅回滚，则仍可能回滚或产生额外事务异常。捕获位置、底层异常和后续数据库操作都会影响结果，不能推断“所有 `catch` 必然提交或返回200”。实验结束把临时代码**原样恢复为上方不捕获异常的两句判断**，移除不再使用的导入，保留 `@Transactional`，然后重跑同一回滚测试：应返回500且员工部门为Sales。
 
 ### 案例13-04：沿代理调用路径追踪事务
 
@@ -213,7 +223,16 @@ try {
 
 ### 案例13-05：用测试和数据库状态验收
 
-章末完整 `EmployeeCrudIntegrationTest` 含成功提交与第二次写入失败两个测试。先确保测试方法、测试类都没有 `@Transactional`；每个方法由 `@Sql` 在专用MySQL测试库准备固定数据，再分别断言HTTP、`employees.department` 和履历条数。个人开发库只用受控练习数据观察正常PUT；删表失败实验只能在通过保护检查的测试库执行，实验后恢复临时方法改动。
+章末完整 `EmployeeCrudIntegrationTest` 含成功提交与第二次写入失败两个测试。先确保测试方法、测试类都没有 `@Transactional`；每个方法由 `@Sql` 在专用MySQL测试库准备固定数据。成功测试断言HTTP、`employees.department`、履历条数和内容；失败测试故意删除履历表，因此只能断言HTTP与员工部门没有改变，不能再查询已删除的履历表。个人开发库只用受控练习数据观察正常PUT；删表失败实验只能在通过保护检查的测试库执行，实验后恢复临时方法改动。
+
+这里有两种不同的事务位置：
+
+| 位置 | `@Transactional` 的作用 | 本章采用吗 |
+| --- | --- | --- |
+| `EmployeeServiceImpl.update()` | 把员工UPDATE和履历INSERT放进一个业务事务 | 采用 |
+| JUnit测试类或方法 | 可能让测试操作处于测试框架管理的事务中，并在测试结束后回滚 | 不采用 |
+
+本章要验证的是**Service自身**能否回滚。因此通过真实Spring管理的Service Bean执行接口请求，再由 `JdbcTemplate` 独立查询数据库最终状态；不在测试类或测试方法上增加 `@Transactional`。第12章的Mockito测试直接 `new EmployeeServiceImpl(...)`，得到普通Java对象而非Spring事务代理，它能验证Service逻辑和异常传播，却不能证明真实MySQL事务已回滚。前者属于单体测试；Controller、Service、Mapper与MySQL共同参与的事务验证属于后端内部结合测试，两者都通过Eclipse的JUnit功能运行。
 
 ## 三、事务、提交和回滚
 
@@ -258,7 +277,7 @@ Controller调用Service Bean
   → 根据返回或异常提交/回滚
 ```
 
-本章把注解写在具体实现类的 `public` 方法上，并从Controller注入的Service Bean调用。这是容易识别且符合默认代理模式的写法。Spring Framework 6.2对注解位置和代理调用的说明可参考[Spring官方文档](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/annotations.html)。
+本章把注解写在具体实现类的 `public` 方法上，并从Controller注入的Service Bean调用。这是容易识别且符合默认代理模式的写法。注解位置和代理调用可参考[Spring官方文档](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)。
 
 MyBatis-Spring使Mapper使用与Spring事务管理器对应的DataSource和SqlSession。同一事务中的两个Mapper调用因此可共同提交或回滚，业务代码不能手工调用 `SqlSession.commit()`、`rollback()` 或 `close()`。详见[MyBatis-Spring事务文档](https://mybatis.org/spring/transactions.html)。
 
@@ -273,7 +292,7 @@ MyBatis-Spring使Mapper使用与Spring事务管理器对应的DataSource和SqlSe
 | 抛出 `Error` | rollback |
 | 抛出受检 `Exception` | 默认不回滚 |
 
-`EmployeeSystemException`、`DuplicateEmailException` 和MyBatis-Spring转换后的 `DataAccessException` 都是运行时异常，向上抛出时会触发默认回滚。默认规则和自定义回滚规则可参考[Spring回滚规则官方说明](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/rolling-back.html)。
+`EmployeeSystemException`、`DuplicateEmailException` 和MyBatis-Spring转换后的 `DataAccessException` 都是运行时异常，向上抛出时会触发默认回滚。默认规则和自定义回滚规则可参考[Spring回滚规则官方说明](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/rolling-back.html)。
 
 如果业务方法确实会抛出受检异常，应按规格明确回滚类型。下面是规则片段，不加入当前项目：
 
@@ -305,7 +324,7 @@ try {
 }
 ```
 
-捕获后方法继续正常结束，事务代理看不到异常，前面的employees更新就可能被提交。本章让 `DataAccessException` 继续向外抛出，交给事务代理回滚，再由第11章的全局异常处理器记录并返回500。
+捕获后方法继续正常结束，事务代理看不到这个异常，前面的employees更新**可能**被提交；但若事务已被其他环节标记为仅回滚，仍可能回滚或出现额外事务异常。必须结合HTTP、日志与数据库状态确认，不能只看 `catch` 就断言一定提交。本章的最终代码让 `DataAccessException` 继续向外抛出，交给事务代理回滚，再由全局异常处理器返回500。
 
 如果必须在当前层转换异常，应抛出能触发回滚的新异常，不能只写日志后继续返回成功。
 
@@ -334,26 +353,20 @@ public EmployeeResponse updateWithoutTransaction(
 调用时已有事务 → 加入已有事务
 ```
 
-这适合“一个Service业务边界组织多个数据访问”的常见调用。Spring对REQUIRED的完整语义见[官方传播文档](https://docs.spring.io/spring-framework/reference/6.2/data-access/transaction/declarative/tx-propagation.html)。
+这适合“一个Service业务边界组织多个数据访问”的常见调用。Spring对REQUIRED的完整语义见[官方传播文档](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html)。
 
 `REQUIRES_NEW` 会暂停外层事务并使用独立物理事务，它可能额外占用数据库连接；`NESTED` 通常依赖JDBC保存点实现局部回滚。它们都不符合本章“两次写入共同成败”的规格，因此只需能识别，不替换默认REQUIRED。
 
 
 ## 十、用数据库状态证明回滚
 
-运行全部测试：
+在Eclipse中分别运行 `EmployeeServiceImplTest`、`EmployeeCrudIntegrationTest`，再对项目执行 **Run As → JUnit Test** 回归其他测试类。确认测试连接的是受保护的专用MySQL测试库；不要为了每次验证接口都先使用命令行重新编译和启动服务。Maven构建与打包仍在第17章单独学习。
 
-```powershell
-.\mvnw.cmd clean test
-```
+在第12章已有测试上增加本章事务场景。不同学员完成的练习数量可能不同，先核对事务成功与失败场景都被执行，再看最终汇总；不要用固定总数判断是否通过。日常流程是修改Service、在Eclipse运行相关JUnit方法、阅读失败堆栈与数据库结果、修复后重跑原方法，最后运行整个测试类及相关回归并保存证据。预期：
 
-在第12章已有测试上增加本章事务场景。不同学员完成的练习数量可能不同，先核对事务成功与失败场景都被执行，再看最终汇总；不要用固定总数判断是否通过。预期：
+Eclipse的JUnit视图应显示全部已运行测试成功、失败数为0；若某项失败，先查看该测试的异常和数据库最终状态，不凭绿色/红色图标猜原因。
 
-```text
-BUILD SUCCESS
-```
-
-回滚测试不在测试方法或测试类上加 `@Transactional`。否则测试框架自己的外层事务可能在方法结束时统一回滚，无法证明Service的事务边界真正生效。
+回滚测试不在测试方法或测试类上加 `@Transactional`。否则测试框架自己的外层事务可能在方法结束时统一回滚，无法证明Service的事务边界真正生效。Service的Mockito单体测试也不能代替这项真实数据库验证。
 
 证明回滚需要同时保存：
 
@@ -383,7 +396,7 @@ BUILD SUCCESS
 
 ### 练习2：验证捕获异常的影响
 
-在专用测试分支中临时捕获履历Mapper异常且不再抛出，运行回滚测试，记录actual为何变成Development。随后恢复正确代码，重跑并确认Sales保持不变。
+在专用测试分支中临时捕获履历Mapper异常且不再抛出，运行同一个回滚测试，记录HTTP、异常、数据库部门与JUnit断言的实际结果，并解释原因；不要预设一定变成Development。随后恢复正确代码，重跑并确认Sales保持不变。
 
 ### 练习3：受检异常规格
 
@@ -395,7 +408,7 @@ BUILD SUCCESS
 
 ### 练习5：整理事务证据
 
-分别保存成功与中途失败场景的前置数据、HTTP状态、employees结果、employee_change_logs结果、异常原因和测试结果。结论必须指向数据库证据，不能只写“已加 `@Transactional`”。
+分别保存成功与中途失败场景的前置数据、HTTP状态、employees结果、异常原因和测试结果。成功场景还要记录履历条数与内容；失败实验会临时删除履历表，不能再查询该表，应记录删表操作及下次测试前由 `@Sql` 恢复的证据。结论必须指向数据库证据，不能只写“已加 `@Transactional`”。
 
 ### 练习6：选择并发控制方式
 
@@ -411,7 +424,7 @@ BUILD SUCCESS
 
 以下仍保留完整代码和测试，按“履历表与Mapper→Service事务方法→成功与失败测试”阅读。
 
-本章保留第12章的接口契约和测试配置，增加一张表和一个Mapper，并替换Service实现与直接受影响的测试文件。
+本章保留第12章的接口契约和测试配置，增加一张表和一个Mapper，并替换Service实现与直接受影响的测试文件。替换测试类时须保留原有正常系、异常系回归案例，不因新增事务测试而删减第12章覆盖范围。
 
 ```text
 src/main/java/com/example/employee/
@@ -748,8 +761,11 @@ public class EmployeeServiceImpl implements EmployeeService {
 package com.example.employee.service;
 
 import com.example.employee.dto.request.EmployeeCreateRequest;
+import com.example.employee.dto.request.EmployeeUpdateRequest;
 import com.example.employee.dto.response.EmployeeResponse;
 import com.example.employee.entity.Employee;
+import com.example.employee.entity.EmployeeChangeLog;
+import com.example.employee.exception.DuplicateEmailException;
 import com.example.employee.exception.EmployeeNotFoundException;
 import com.example.employee.exception.InvalidDepartmentException;
 import com.example.employee.mapper.EmployeeChangeLogMapper;
@@ -757,9 +773,13 @@ import com.example.employee.mapper.EmployeeMapper;
 import com.example.employee.service.impl.EmployeeServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -811,18 +831,133 @@ class EmployeeServiceImplTest {
     }
 
     @Test
-    void createRejectsInvalidDepartmentBeforeMapperCall() {
-        EmployeeCreateRequest request = new EmployeeCreateRequest();
-        request.setName("Suzuki");
-        request.setDepartment("Unknown");
-        request.setEmail("suzuki@example.com");
+    void createConvertsDuplicateKeyToBusinessConflict() {
+        EmployeeCreateRequest request = createRequest("Sales");
+        request.setEmail("tanaka@example.com");
+        when(employeeMapper.insert(any(Employee.class)))
+                .thenThrow(new DuplicateKeyException("duplicate email"));
 
         assertThatThrownBy(() -> employeeService.create(request))
-                .isInstanceOf(InvalidDepartmentException.class);
+                .isInstanceOf(DuplicateEmailException.class)
+                .hasMessage("邮箱已被使用：tanaka@example.com");
+        verify(employeeMapper).insert(any(Employee.class));
+        verifyNoInteractions(employeeChangeLogMapper);
+    }
+
+    @Test
+    void createRejectsInvalidDepartmentBeforeMapperCall() {
+        EmployeeCreateRequest request = createRequest("Unknown");
+
+        assertThatThrownBy(() -> employeeService.create(request))
+                .isInstanceOf(InvalidDepartmentException.class)
+                .hasMessage("不允许的部门：Unknown");
         verifyNoInteractions(employeeMapper, employeeChangeLogMapper);
+    }
+
+    @Test
+    void createReturnsGeneratedEmployee() {
+        EmployeeCreateRequest request = createRequest("Sales");
+        when(employeeMapper.insert(any(Employee.class))).thenAnswer(invocation -> {
+            Employee inserted = invocation.getArgument(0);
+            inserted.setId(2001L);
+            return 1;
+        });
+        Employee stored = employee(2001L, "Sales");
+        stored.setName("Suzuki");
+        stored.setEmail("suzuki@example.com");
+        when(employeeMapper.findById(2001L)).thenReturn(stored);
+
+        EmployeeResponse actual = employeeService.create(request);
+
+        assertThat(actual.getId()).isEqualTo(2001L);
+        assertThat(actual.getName()).isEqualTo("Suzuki");
+        verify(employeeMapper).insert(any(Employee.class));
+        verify(employeeMapper).findById(2001L);
+        verifyNoInteractions(employeeChangeLogMapper);
+    }
+
+    @Test
+    void updateMissingEmployeeStopsBeforeWriting() {
+        when(employeeMapper.findById(9999L)).thenReturn(null);
+
+        assertThatThrownBy(() -> employeeService.update(
+                9999L, updateRequest("Sales")))
+                .isInstanceOf(EmployeeNotFoundException.class);
+        verify(employeeMapper).findById(9999L);
+        verify(employeeMapper, org.mockito.Mockito.never())
+                .update(any(Employee.class));
+        verifyNoInteractions(employeeChangeLogMapper);
+    }
+
+    @Test
+    void updateWritesDepartmentChangeLog() {
+        Employee before = employee(1001L, "Sales");
+        Employee after = employee(1001L, "Development");
+        when(employeeMapper.findById(1001L)).thenReturn(before, after);
+        when(employeeMapper.update(any(Employee.class))).thenReturn(1);
+        when(employeeChangeLogMapper.insert(any(EmployeeChangeLog.class)))
+                .thenAnswer(invocation -> {
+                    EmployeeChangeLog inserted = invocation.getArgument(0);
+                    inserted.setId(3001L);
+                    return 1;
+                });
+
+        EmployeeResponse actual = employeeService.update(
+                1001L, updateRequest(" Development "));
+
+        assertThat(actual.getDepartment()).isEqualTo("Development");
+        ArgumentCaptor<EmployeeChangeLog> logCaptor =
+                ArgumentCaptor.forClass(EmployeeChangeLog.class);
+        verify(employeeChangeLogMapper).insert(logCaptor.capture());
+        assertThat(logCaptor.getValue().getEmployeeId()).isEqualTo(1001L);
+        assertThat(logCaptor.getValue().getAction())
+                .isEqualTo("EMPLOYEE_UPDATED");
+        assertThat(logCaptor.getValue().getDetail())
+                .isEqualTo("department=Sales->Development");
+    }
+
+    @Test
+    void updatePropagatesChangeLogDatabaseFailure() {
+        when(employeeMapper.findById(1001L))
+                .thenReturn(employee(1001L, "Sales"));
+        when(employeeMapper.update(any(Employee.class))).thenReturn(1);
+        when(employeeChangeLogMapper.insert(any(EmployeeChangeLog.class)))
+                .thenThrow(new DataIntegrityViolationException("insert failed"));
+
+        assertThatThrownBy(() -> employeeService.update(
+                1001L, updateRequest("Development")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        verify(employeeChangeLogMapper).insert(any(EmployeeChangeLog.class));
+    }
+
+    private EmployeeCreateRequest createRequest(String department) {
+        EmployeeCreateRequest request = new EmployeeCreateRequest();
+        request.setName("Suzuki");
+        request.setDepartment(department);
+        request.setEmail("suzuki@example.com");
+        return request;
+    }
+
+    private EmployeeUpdateRequest updateRequest(String department) {
+        EmployeeUpdateRequest request = new EmployeeUpdateRequest();
+        request.setName("Tanaka");
+        request.setDepartment(department);
+        request.setEmail("tanaka@example.com");
+        return request;
+    }
+
+    private Employee employee(Long id, String department) {
+        Employee employee = new Employee();
+        employee.setId(id);
+        employee.setName("Tanaka");
+        employee.setDepartment(department);
+        employee.setEmail("tanaka@example.com");
+        return employee;
     }
 }
 ```
+
+这里是不用Spring容器的Service单体测试：它证明参数处理、Mapper协作、履历内容和异常**没有被吞掉**，但普通 `new EmployeeServiceImpl(...)` 不会创建事务代理，不能用它证明数据库回滚。回滚必须由下面的MySQL集成测试验证。`ArgumentCaptor.forClass()` 建立参数捕获器，`capture()` 记录实际交给Mapper的对象，`getValue()` 读取它以核对履历字段；这是第12章Mockito断言的延伸。
 
 ### 7. 完整替换test-data.sql
 
@@ -842,11 +977,13 @@ CREATE TABLE employees (
 );
 
 CREATE TABLE employee_change_logs (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT NOT NULL AUTO_INCREMENT,
     employee_id BIGINT NOT NULL,
     action VARCHAR(30) NOT NULL,
     detail VARCHAR(200) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_employee_change_logs PRIMARY KEY (id),
+    INDEX idx_employee_change_logs_employee_id (employee_id)
 );
 
 INSERT INTO employees (
@@ -936,10 +1073,12 @@ class EmployeeCrudIntegrationTest extends MySqlTestGuard {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.department")
                         .value("Development"));
+        assertThat(countChangeLogs(employeeId)).isEqualTo(1);
 
         mockMvc.perform(delete("/employees/{id}", employeeId))
                 .andExpect(status().isNoContent());
         assertThat(countEmployee(employeeId)).isZero();
+        assertThat(countChangeLogs(employeeId)).isEqualTo(1);
 
         mockMvc.perform(get("/employees/{id}", employeeId))
                 .andExpect(status().isNotFound());
@@ -962,6 +1101,35 @@ class EmployeeCrudIntegrationTest extends MySqlTestGuard {
                 "SELECT COUNT(*) FROM employees",
                 Integer.class);
         assertThat(count).isEqualTo(2);
+    }
+
+    @Test
+    void duplicateEmailOnUpdateReturns409AndKeepsOriginalFields()
+            throws Exception {
+        String requestJson =
+                "{\"name\":\"Tanaka Updated\","
+                        + "\"department\":\"Support\","
+                        + "\"email\":\"sato@example.com\"}";
+
+        mockMvc.perform(put("/employees/1001")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT name FROM employees WHERE id = ?",
+                String.class, 1001L)).isEqualTo("Tanaka");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT department FROM employees WHERE id = ?",
+                String.class, 1001L)).isEqualTo("Sales");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT email FROM employees WHERE id = ?",
+                String.class, 1001L)).isEqualTo("tanaka@example.com");
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM employees", Integer.class);
+        assertThat(count).isEqualTo(2);
+        assertThat(countChangeLogs(1001L)).isZero();
     }
 
     @Test
@@ -1007,6 +1175,11 @@ class EmployeeCrudIntegrationTest extends MySqlTestGuard {
                 Integer.class);
         assertThat(department).isEqualTo("Development");
         assertThat(logCount).isEqualTo(1);
+        String detail = jdbcTemplate.queryForObject(
+                "SELECT detail FROM employee_change_logs "
+                        + "WHERE employee_id = 1001",
+                String.class);
+        assertThat(detail).isEqualTo("department=Sales->Development");
     }
 
     @Test
@@ -1036,10 +1209,18 @@ class EmployeeCrudIntegrationTest extends MySqlTestGuard {
                 employeeId);
         return count == null ? 0 : count;
     }
+
+    private int countChangeLogs(long employeeId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM employee_change_logs WHERE employee_id = ?",
+                Integer.class,
+                employeeId);
+        return count == null ? 0 : count;
+    }
 }
 ```
 
-`DROP TABLE` 只在第12章创建、并通过 `MySqlTestGuard` 检查的专用MySQL测试库中制造第二步失败，不得把这段测试连接到开发库、共享库或生产库。`@Sql` 会在下一个测试方法前重建两张表。
+`DROP TABLE` 只在第12章创建、并通过 `MySqlTestGuard` 检查的专用MySQL测试库中制造第二步失败，不得把这段测试连接到开发库、共享库或生产库。`@Sql` 会在下一个测试方法前重建两张表。第12章的PUT重复邮箱409回归测试也保留在完整类中；它额外确认失败后1001号员工的姓名、部门、邮箱和员工总数均不变，且没有虚假的 `EMPLOYEE_UPDATED` 履历。
 
 `JdbcTemplate.execute(String sql)` 直接执行不需要返回结果集的SQL。本例用它删除测试库中的履历表，是为了稳定地制造“第一条UPDATE成功、第二条INSERT失败”；它不是业务代码，也不是生产环境的删表方案。其余测试中使用的 `queryForObject()` 则会执行查询并把单个结果转换为指定Java类型。
 
@@ -1077,6 +1258,6 @@ src/test/resources/test-data.sql
 6. 区分事务和唯一约束的责任；
 7. 用成功和中途失败测试的数据库状态证明提交与回滚。
 
-需要继续学习ACID、隔离级别、MVCC、并发更新、乐观锁、悲观锁、锁等待和死锁时，进入[A13 事务、隔离级别、并发更新与锁](../appendix/A13_transaction_isolation_concurrency_locks.md)。这些内容用于并发改修与设计Review，不改变本章主线工程的稳定状态。
+需要深入事务原理与Spring事务规则时，进入[A13-1 事务原理与Spring事务机制](../appendix/A13_01_transaction_spring_mechanisms.md)；调查并发读取时查阅[A13-2 隔离级别与MVCC](../appendix/A13_02_isolation_mvcc.md)；处理丢失更新、锁等待和死锁时查阅[A13-3 并发更新与锁](../appendix/A13_03_concurrent_updates_locks.md)。附录实验不改变本章主线工程的稳定状态。
 
 下一章会在员工数量增多的前提下实现条件查询、稳定排序和分页，并继续用自动化测试保护旧有CRUD。
