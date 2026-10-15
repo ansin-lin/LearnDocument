@@ -402,6 +402,7 @@ nav:
         - A13-1. 事务原理与Spring事务机制: backend/springboot/appendix/A13_01_transaction_spring_mechanisms.md
         - A13-2. 隔离级别与MVCC: backend/springboot/appendix/A13_02_isolation_mvcc.md
         - A13-3. 并发更新与锁: backend/springboot/appendix/A13_03_concurrent_updates_locks.md
+        - A16. 跨源Session与CORS实验: backend/springboot/appendix/A16_cross_origin_session_cors.md
         - A17. 配置、构建与交付进阶: backend/springboot/appendix/A17_configuration_build_delivery_advanced.md
         - A18-1. Linux部署与运维手顺参考: backend/springboot/appendix/A18_01_linux_deployment_operations_reference.md
         - A18-2. 常见运行与数据库迁移组件识读: backend/springboot/appendix/A18_02_operations_components_reading.md

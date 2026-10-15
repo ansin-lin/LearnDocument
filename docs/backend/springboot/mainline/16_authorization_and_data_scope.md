@@ -33,6 +33,8 @@ Controller → Service → Mapper → 数据库
 
 本章先固定规格，再写代码。`USER` 表示普通用户，`ADMIN` 表示管理员：
 
+表中POST、PUT、DELETE的匿名401以**已携带有效CSRF令牌**为前提。若写请求缺少或带错令牌，CSRF过滤器可能先返回403；这不是“匿名用户已通过认证”。GET不需要CSRF令牌。第15章的登录与退出流程也保持CSRF检查。
+
 | 请求 | 未登录 | USER | ADMIN | 判断位置 |
 | --- | --- | --- | --- | --- |
 | `GET /health` | 允许 | 允许 | 允许 | URL规则 |
@@ -41,9 +43,9 @@ Controller → Service → Mapper → 数据库
 | `POST /auth/logout` | 有效CSRF时204 | 204 | 204 | Logout Filter＋CSRF |
 | `GET /employees` | 401 | 403 | 允许 | URL＋角色 |
 | `GET /employees/{id}` | 401 | 仅本人；他人403 | 允许任意员工 | URL＋Service方法 |
-| `POST /employees` | 401 | 403 | 允许 | URL＋HTTP方法＋角色 |
-| `PUT /employees/{id}` | 401 | 403，即使修改本人也不允许 | 允许 | URL＋HTTP方法＋角色 |
-| `DELETE /employees/{id}` | 401 | 403 | 允许 | URL＋HTTP方法＋角色 |
+| `POST /employees` | 有效CSRF时401 | 403 | 允许 | CSRF通过后按URL＋HTTP方法＋角色 |
+| `PUT /employees/{id}` | 有效CSRF时401 | 403，即使修改本人也不允许 | 允许 | CSRF通过后按URL＋HTTP方法＋角色 |
+| `DELETE /employees/{id}` | 有效CSRF时401 | 403 | 允许 | CSRF通过后按URL＋HTTP方法＋角色 |
 | 未列入规格的其他请求 | 拒绝 | 拒绝 | 拒绝 | 兜底规则 |
 
 这里包含三种不同概念：
@@ -52,7 +54,7 @@ Controller → Service → Mapper → 数据库
 - **操作权限**：某个角色能否执行查询、新增、修改或删除。
 - **数据范围**：操作本身允许后，还能访问哪些记录，例如“只能查看本人”。
 
-401表示当前请求没有可用的登录身份；403表示身份已经确认，但权限不足。找不到员工仍由第7章的统一异常处理返回404。
+401表示当前请求没有可用的登录身份；403可能表示已认证但权限不足，也可能是写请求尚未通过CSRF检查。找不到员工仍由第7章的统一异常处理返回404。
 
 本章对列表采取“仅ADMIN可查询”的明确规格，所以普通用户连列表入口都不能通过，暂时不需要给分页SQL增加按用户过滤。若将来允许USER按部门或本人查看列表，必须从可信账号关系取得范围，并把同一范围条件同时传给第14章列表SQL和COUNT SQL；只在返回一页后用Java过滤会泄露错误的 `total`，也可能漏掉其他页。届时需先评审部门变更、排序和分页边界，再修改Mapper与测试，不能仅把URL规则从 `hasRole("ADMIN")` 改为 `authenticated()`。
 
@@ -241,6 +243,7 @@ src/test/java/com/example/employee/
 ├── controller/EmployeeControllerWebTest.java          ← 修改测试角色
 ├── integration/EmployeeCrudIntegrationTest.java       ← 增加管理员身份
 ├── integration/EmployeeSearchIntegrationTest.java     ← 增加管理员身份
+├── security/SessionLoginTest.java                      ← 调整创建员工的回归场景
 └── security/AuthorizationIntegrationTest.java          ← 新建
 src/test/resources/test-data.sql                       ← 完整替换
 ```
@@ -409,6 +412,7 @@ package com.example.employee.config;
 import com.example.employee.exception.RestAccessDeniedHandler;
 import com.example.employee.exception.RestAuthenticationEntryPoint;
 import com.example.employee.security.AppUserDetailsService;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -422,10 +426,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 
 @Configuration
 @EnableMethodSecurity
@@ -442,8 +449,16 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SessionAuthenticationStrategy sessionAuthenticationStrategy() {
-        return new ChangeSessionIdAuthenticationStrategy();
+    public CsrfTokenRepository csrfTokenRepository() {
+        return new CookieCsrfTokenRepository();
+    }
+
+    @Bean
+    public SessionAuthenticationStrategy sessionAuthenticationStrategy(
+            CsrfTokenRepository csrfTokenRepository) {
+        return new CompositeSessionAuthenticationStrategy(List.of(
+                new ChangeSessionIdAuthenticationStrategy(),
+                new CsrfAuthenticationStrategy(csrfTokenRepository)));
     }
 
     @Bean
@@ -460,12 +475,12 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             SecurityContextRepository repository,
+            CsrfTokenRepository csrfTokenRepository,
             RestAuthenticationEntryPoint authenticationEntryPoint,
             RestAccessDeniedHandler accessDeniedHandler)
             throws Exception {
         http
-                .csrf(csrf -> csrf.csrfTokenRepository(
-                        new CookieCsrfTokenRepository()))
+                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
                 .securityContext(context -> context
                         .requireExplicitSave(true)
                         .securityContextRepository(repository))
@@ -589,7 +604,64 @@ import org.springframework.security.test.context.support.WithMockUser;
 
 写请求原有的 `.with(csrf())` 必须保留。身份验证和CSRF是两项不同检查，具备ADMIN角色不等于可以省略CSRF令牌。
 
-### 8. 新建AuthorizationIntegrationTest.java
+### 8. 调整第15章的SessionLoginTest.java
+
+第15章的 `employeeApiRequiresLoginAndWriteRequiresCsrf()` 用tanaka登录后创建员工，原本用于证明“同一登录会话缺少CSRF会403、带有效令牌会201”。本章把新增员工限定为ADMIN；若原样保留，带令牌的USER请求也必须是403，因此不能把它继续断言为201。只替换该测试方法，其他真实登录、令牌刷新、退出和Session测试保留：
+
+```java
+@Test
+void employeeApiRequiresLoginAndWriteRequiresCsrf() throws Exception {
+    mockMvc.perform(get("/employees/1001"))
+            .andExpect(status().isUnauthorized());
+
+    MvcResult userLogin = mockMvc.perform(post("/auth/login")
+                    .with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"username\":\"tanaka\","
+                            + "\"password\":\"TrainingPass123!\"}"))
+            .andExpect(status().isOk())
+            .andReturn();
+    MockHttpSession userSession =
+            (MockHttpSession) userLogin.getRequest().getSession(false);
+    assertThat(userSession).isNotNull();
+    mockMvc.perform(get("/employees/1001").session(userSession))
+            .andExpect(status().isOk());
+
+    MvcResult adminLogin = mockMvc.perform(post("/auth/login")
+                    .with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"username\":\"admin\","
+                            + "\"password\":\"TrainingPass123!\"}"))
+            .andExpect(status().isOk())
+            .andReturn();
+    MockHttpSession adminSession =
+            (MockHttpSession) adminLogin.getRequest().getSession(false);
+    assertThat(adminSession).isNotNull();
+
+    String createJson = "{\"name\":\"Sato\","
+            + "\"department\":\"Sales\","
+            + "\"email\":\"session-new-employee@example.com\"}";
+    assertThat(countByEmail("session-new-employee@example.com")).isZero();
+    mockMvc.perform(post("/employees")
+                    .session(adminSession)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(createJson))
+            .andExpect(status().isForbidden());
+    assertThat(countByEmail("session-new-employee@example.com")).isZero();
+    mockMvc.perform(post("/employees")
+                    .session(adminSession)
+                    .with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(createJson))
+            .andExpect(status().isCreated());
+    assertThat(countByEmail("session-new-employee@example.com"))
+            .isEqualTo(1);
+}
+```
+
+此方法已位于第15章完整测试类中，所需的 `MockMvc`、`MockHttpSession`、`MediaType`、`MvcResult`、`csrf()`、`assertThat(...)` 和 `countByEmail(...)` 均沿用原文件。USER只验证本人可读；ADMIN的同一写接口先缺CSRF得403且数据库不变，再带有效令牌得201且新增一行。这样保留了第15章的CSRF教学目的，也符合本章的新权限规格。
+
+### 9. 新建AuthorizationIntegrationTest.java
 
 ```java
 package com.example.employee.security;
@@ -635,6 +707,18 @@ class AuthorizationIntegrationTest extends MySqlTestGuard {
         mockMvc.perform(get("/employees/{id}", 1001))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("请先登录"));
+    }
+
+    @Test
+    void anonymousWriteDistinguishesMissingCsrfFromMissingLogin()
+            throws Exception {
+        mockMvc.perform(delete("/employees/{id}", 1002))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/employees/{id}", 1002)
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("请先登录"));
+        assertThat(employeeName(1002L)).isEqualTo("Sato");
     }
 
     @Test
@@ -791,7 +875,7 @@ class AuthorizationIntegrationTest extends MySqlTestGuard {
 
 `user("tanaka").roles("USER")` 是Spring Security测试库提供的请求处理器，只为当前MockMvc请求建立测试身份；它不提交密码，也不执行第15章登录流程。这里用它隔离验证权限规则，而真实账号密码和Session仍由 `SessionLoginTest` 负责。`roles("USER")` 会建立 `ROLE_USER`，不要写成 `roles("ROLE_USER")`。
 
-本章的 `EmployeeAccess` 还会按测试用户名查询 `app_users`，所以tanaka和sato必须存在于 `test-data.sql`。ADMIN在检查authority后直接通过，不依赖某一个employeeId。`.andExpect(...)` 延续第12章写法，分别断言HTTP状态和统一JSON字段。越权PUT再用 `JdbcTemplate` 核对原姓名未改变；缺CSRF的ADMIN删除也会403，带有效CSRF的ADMIN删除才应204且数据库记录消失。这两种403原因不同，不能只凭状态码判断角色规则是否正确。
+本章的 `EmployeeAccess` 还会按测试用户名查询 `app_users`，所以tanaka和sato必须存在于 `test-data.sql`。ADMIN在检查authority后直接通过，不依赖某一个employeeId。`.andExpect(...)` 延续第12章写法，分别断言HTTP状态和统一JSON字段。匿名DELETE不带令牌先得403，带有效令牌才进入身份判断并得401；两次都不应删行。越权PUT再用 `JdbcTemplate` 核对原姓名未改变；缺CSRF的ADMIN删除也会403，带有效CSRF的ADMIN删除才应204且数据库记录消失。这两种403原因不同，不能只凭状态码判断角色规则是否正确。
 
 ## 四、URL级规则怎样工作
 
@@ -808,7 +892,7 @@ class AuthorizationIntegrationTest extends MySqlTestGuard {
 
 `/employees` 和 `/employees/*` 是不同范围：前者是列表及新增路径，后者匹配带一个路径片段的详情、修改和删除路径。仅按路径写一条规则会把GET和DELETE混在一起，所以本章同时匹配 `HttpMethod`。
 
-`anyRequest().denyAll()` 是安全兜底。以后新增接口时，开发者必须主动决定权限；遗漏规则不会意外变成公开接口。Spring Security 6.5官方说明也强调匹配顺序和兜底授权规则，参见[请求级授权](https://docs.spring.io/spring-security/reference/6.5/servlet/authorization/authorize-http-requests.html)。
+`anyRequest().denyAll()` 是安全兜底。以后新增接口时，开发者必须主动决定权限；遗漏规则不会意外变成公开接口。当前课程的Spring Boot 4.1.1管理Spring Security 7.1.1，匹配顺序和兜底授权规则可参见[请求级授权](https://docs.spring.io/spring-security/reference/servlet/authorization/authorize-http-requests.html)。
 
 `POST /auth/logout` 由第15章已配置的Logout Filter在URL授权之前处理，并继续受CSRF保护。它采用可重复执行的退出语义：只要CSRF有效，即使当前已经没有登录Session也返回204；调用方随后访问受保护接口时，才会得到401。不要误以为给 `authorizeHttpRequests` 增加logout规则就一定能改变过滤器链中更早的logout处理。
 
@@ -830,7 +914,7 @@ EmployeeService.findById(1002)
 
 `@PreAuthorize` 来自 `org.springframework.security.access.prepost`，可写在Spring管理的类、接口或方法上，在目标方法执行前计算表达式。`@employeeAccess` 引用名称为 `employeeAccess` 的Bean，`authentication` 是当前认证对象，`#p0` 是被调用方法的第一个参数，也就是 `id`。
 
-方法检查依赖Spring代理，只有通过容器中的 `EmployeeService` Bean调用才会触发；在测试中直接 `new EmployeeServiceImpl(...)` 不会经过代理，同一对象内部的 `this.findById(...)` 自调用通常也绕过代理。本章详情请求经Controller注入的Service代理进入；新增、修改方法内部再次读取结果虽可能调用同名方法，但只有ADMIN能到达这些写接口，不能把内部自调用当作USER详情授权的保障。以后若新增其他Service入口调用详情方法，必须重新审查边界。因此第12章纯单元测试不能代替本章的Spring集成测试。方法授权的启用方式和接口注解支持可参考[Spring Security方法级授权](https://docs.spring.io/spring-security/reference/6.5/servlet/authorization/method-security.html)。
+方法检查依赖Spring代理，只有通过容器中的 `EmployeeService` Bean调用才会触发；在测试中直接 `new EmployeeServiceImpl(...)` 不会经过代理，同一对象内部的 `this.findById(...)` 自调用通常也绕过代理。本章详情请求经Controller注入的Service代理进入；新增、修改方法内部再次读取结果虽可能调用同名方法，但只有ADMIN能到达这些写接口，不能把内部自调用当作USER详情授权的保障。以后若新增其他Service入口调用详情方法，必须重新审查边界。因此第12章纯单元测试不能代替本章的Spring集成测试。方法授权的启用方式和接口注解支持可参考[Spring Security方法级授权](https://docs.spring.io/spring-security/reference/servlet/authorization/method-security.html)。
 
 ## 六、当前用户信息必须来自可信位置
 
@@ -871,125 +955,9 @@ EmployeeService.findById(1002)
 
 异常响应只说明需要登录或权限不足，不向客户端暴露内部规则、数据库账号关系、表达式或异常堆栈。
 
-## 八、Session、同源与CORS的边界
+## 八、Session与跨源请求的边界
 
-浏览器页面和API的协议、主机、端口全部相同时属于同源，浏览器可按正常Cookie规则携带JSESSIONID。任一项不同就是跨源，浏览器会执行CORS检查。
-
-当前课程默认前端与API同源，因此主线不添加CORS配置。下面用“前端 `http://localhost:3000`、API `http://localhost:8080`”做独立实验，完成后恢复同源主线。
-
-浏览器会在跨源请求中发送 `Origin`。对于使用PUT、DELETE、自定义请求头或某些Content-Type的请求，浏览器通常先发OPTIONS预检，询问后端是否允许这个来源、方法和请求头。后端返回的 `Access-Control-Allow-Origin` 等响应头满足规则后，浏览器才会继续实际请求。预检成功不等于登录成功。
-
-### 1. 两种配置位置
-
-`@CrossOrigin` 可以加在单个Controller或方法上，适合识别现有代码或非常局部的规则：
-
-```java
-@CrossOrigin(origins = "http://localhost:3000")
-@RestController
-@RequestMapping("/employees")
-public class EmployeeController {
-    // 原有方法保持不变
-}
-```
-
-企业项目通常需要统一审查允许来源，因而更适合集中配置。新建 `CorsConfig.java`：
-
-```java
-package com.example.employee.config;
-
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-@Configuration
-public class CorsConfig implements WebMvcConfigurer {
-
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/auth/**")
-                .allowedOrigins("http://localhost:3000")
-                .allowedMethods("GET", "POST", "OPTIONS")
-                .allowedHeaders("Content-Type", "X-XSRF-TOKEN", "X-Request-Id")
-                .allowCredentials(true)
-                .maxAge(3600);
-
-        registry.addMapping("/employees/**")
-                .allowedOrigins("http://localhost:3000")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("Content-Type", "X-XSRF-TOKEN", "X-Request-Id")
-                .allowCredentials(true)
-                .maxAge(3600);
-    }
-}
-```
-
-认证路径与员工路径分开配置：`/auth/**` 只开放登录流程需要的GET、POST和OPTIONS，`/employees/**` 再开放CRUD使用的PUT与DELETE。若本地实验为了观察其他路径而临时使用 `addMapping("/**")`，必须明确它只是本地配置；真实项目应按前端需要访问的API、环境和安全设计缩小范围，不能为了方便永久覆盖全部路径。
-
-第一次出现的配置含义如下：
-
-| 配置 | 含义 |
-| --- | --- |
-| `addMapping` | 哪些后端路径应用该CORS规则 |
-| `allowedOrigins` | 明确允许哪些页面来源；来源包含协议、主机和端口 |
-| `allowedMethods` | 跨源实际请求可使用的方法 |
-| `allowedHeaders` | 浏览器可以随请求发送哪些请求头 |
-| `allowCredentials` | 是否允许跨源携带Cookie等凭据 |
-| `maxAge` | 浏览器可缓存预检结果的秒数，不是Session有效期 |
-
-使用Session Cookie时，前端还需明确发送凭据：
-
-```javascript
-fetch("http://localhost:8080/employees/1001", {
-  credentials: "include"
-});
-```
-
-允许凭据时不能把允许来源配置成 `*`。来源要按dev、test、prod环境分别管理，不能把临时本机来源直接带入生产。
-
-完整的跨域Session流程如下。每一步请求都要使用 `credentials: "include"`；POST还要按第15章取得并发送CSRF请求头：
-
-```text
-Frontend http://localhost:3000
-  ↓ GET /auth/csrf
-  ↓ POST /auth/login
-      credentials: include
-      CSRF Header
-  ↓ Server验证账号并建立Session
-  ↓ Set-Cookie: JSESSIONID
-  ↓ Browser保存Cookie
-  ↓ GET /auth/me 或 GET /employees/1001
-      credentials: include
-  ↓ Spring Security从Session恢复Authentication
-  ↓ Authorization检查角色和数据范围
-  ↓ Controller
-```
-
-`GET /auth/csrf`、`POST /auth/login`、`GET /auth/me`、`POST /auth/logout` 和员工接口都必须命中CORS规则，否则不能完成真实的前后端分离登录验证。CORS成功不等于登录成功，登录成功不等于拥有目标权限，拥有权限也不等于写请求已经通过CSRF检查。
-
-### 2. Spring Security也要启用CORS集成
-
-本项目使用Spring Security。在第15章的 `SecurityConfig` 中保留原有规则，只给 `SecurityFilterChain` 增加以下配置和静态导入：
-
-```java
-import static org.springframework.security.config.Customizer.withDefaults;
-
-http.cors(withDefaults());
-```
-
-Spring Security需要在认证授权前处理CORS，因为OPTIONS预检通常没有JSESSIONID。若只配置MVC却没有正确接入安全过滤链，预检可能先被401或403拒绝。不要通过把员工接口改成 `permitAll()` 来“修复”跨域。
-
-### 3. 四个经常混淆的边界
-
-| 机制 | 回答的问题 | 失败时常见现象 |
-| --- | --- | --- |
-| CORS | 这个浏览器页面来源能否读取响应 | 浏览器拦截，或预检失败 |
-| 认证 | 当前请求是谁 | 401 |
-| 授权 | 这个身份能否操作该资源 | 403 |
-| CSRF | 携带用户凭据的写请求是否来自预期页面操作 | 403或CSRF错误 |
-
-CORS只决定浏览器是否允许某个来源读取响应，不证明用户身份，也不授予USER管理员权限。Postman不受浏览器同源限制，但仍会受到后端认证、授权和CSRF规则约束；因此Postman成功不能证明浏览器跨域配置一定正确。
-
-实验时先发送OPTIONS预检，确认允许来源不是 `*`、方法和请求头正确；再分别验证未登录401、USER越权403、ADMIN成功以及写请求仍需要CSRF令牌。完成后删除 `CorsConfig` 和 `http.cors(...)` 增量，重跑本章测试，恢复同源稳定状态。官方配置边界可对照[Spring MVC CORS](https://docs.spring.io/spring-framework/reference/web/webmvc-cors.html)和[Spring Security CORS集成](https://docs.spring.io/spring-security/reference/servlet/integrations/cors.html)。
+本章的Session登录和权限测试默认页面与API同源。页面与API的协议、主机或端口不同，浏览器还会执行CORS检查；CORS只决定浏览器能否读取跨源响应，不替代登录、角色授权或CSRF检查。需要前后端分开运行时，按[A16 跨源Session与CORS实验](../appendix/A16_cross_origin_session_cors.md)配置并用浏览器验证；本章稳定工程不加入实验配置。
 
 ## 九、运行与验证
 
@@ -999,7 +967,7 @@ CORS只决定浏览器是否允许某个来源读取响应，不证明用户身�
 .\mvnw.cmd clean test
 ```
 
-除了第15章已有登录测试，本章新增11个授权及CSRF对照场景。必须确认所有旧测试和新测试都通过；只运行新测试不能证明加入权限后没有破坏CRUD、事务和分页。
+除了第15章已有登录测试，本章新增12个授权及CSRF对照场景。必须确认所有旧测试和新测试都通过；只运行新测试不能证明加入权限后没有破坏CRUD、事务和分页。
 
 自动化测试完成后，在数据库客户端确认个人MySQL练习库的 `app_users` 中存在 `tanaka` 和 `admin`；专用测试库的数据不会自动写入个人开发库：
 

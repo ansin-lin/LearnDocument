@@ -11,6 +11,7 @@
 | 接口与数据表达扩展 | 调用外部API、调整JSON、读取Header/Cookie、上传文件、返回HTML、使用校验分组、处理日期时间或独立MyBatis配置 | B01、A03-1、A05、A06、A08、A09-1、A09-2 |
 | 既存项目识读与Spring机制 | 接手陌生项目、识别旧结构、阅读Lombok/JPA、查注解、多Bean排错、判断共通处理放在哪一层 | B02～B06、A04 |
 | 质量保证、开发效率与故障排查 | 调整日志、辨认请求处理时机、使用AOP记录方法耗时、补充测试断言、比较H2与MySQL测试、使用JUnit生命周期与参数化测试、使用本地开发辅助工具，或根据现象定位构建、HTTP、数据库、安全及部署问题 | A03-2、A11-1、A11-2、A11-3、A12-1、A12-2、A12-3、B07 |
+| 前后端跨源联调 | 浏览器页面与API的Origin不同，且需要Session Cookie与CSRF保护 | A16 |
 | 事务与并发控制 | 调查多步写入、隔离现象、丢失更新、锁等待和死锁，选择约束、原子UPDATE、乐观锁或悲观锁 | A13-1～A13-3、B07 |
 | 配置、交付与运维识读 | 调查配置覆盖、检查构建产物、阅读Linux部署手顺、识别Actuator和数据库迁移组件 | A17、A18-1、A18-2 |
 
@@ -37,6 +38,7 @@
 | [A13-1 事务原理与Spring事务机制](A13_01_transaction_spring_mechanisms.md) | 第13章 | 事务边界、ACID、`@Transactional`默认值、属性与传播方式 | 识别业务事务边界及异常处理风险 |
 | [A13-2 隔离级别与MVCC](A13_02_isolation_mvcc.md) | 第13章 | 并发读取现象、隔离级别、快照读与当前读 | 解释多个事务读取同一数据时的可见结果 |
 | [A13-3 并发更新与锁](A13_03_concurrent_updates_locks.md) | 第13章 | 唯一约束、原子UPDATE、乐观锁、悲观锁、锁等待与死锁 | 根据业务不变量选择并发控制机制，并用两个会话验证结果 |
+| [A16 跨源Session与CORS实验](A16_cross_origin_session_cors.md) | 第15～16章 | Origin、OPTIONS预检、MVC与Security CORS配置、携带Cookie的跨源请求 | 在浏览器中验证跨源登录、权限与CSRF的独立边界，实验后恢复同源主线 |
 | [A17 配置、构建与交付进阶](A17_configuration_build_delivery_advanced.md) | 第17章 | 配置覆盖调查、`@ConfigurationProperties`、产物摘要、外部配置模板、交付清单 | 确认最终生效配置和构建来源，整理不含秘密的交付资料 |
 | [A18-1 Linux部署与运维手顺参考](A18_01_linux_deployment_operations_reference.md) | 第18章及Linux基础 | systemd、目录权限、发布检查、切り戻し、端口/日志调查、反向代理与HTTPS边界 | 阅读和执行受控部署手顺，保留发布、验证和回退记录 |
 | [A18-2 常见运行与数据库迁移组件识读](A18_02_operations_components_reading.md) | 第9、17、18章 | Actuator、Flyway、Liquibase、管理端点安全、迁移历史与职责冲突 | 在既存项目中找到监控和迁移入口，说明当前组件及其替代流程 |

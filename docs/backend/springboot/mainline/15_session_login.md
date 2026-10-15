@@ -41,12 +41,12 @@ POST /auth/login → SecurityFilterChain（先检查CSRF）→ AuthController
                                              DaoAuthenticationProvider
                                               ├─ AppUserDetailsService → AppUserMapper → app_users
                                               └─ PasswordEncoder（比较原始密码和哈希）
-成功的Authentication → SessionAuthenticationStrategy（更换Session ID）
+成功的Authentication → SessionAuthenticationStrategy（更换Session ID并清理旧CSRF令牌）
                     → SecurityContextRepository（保存到Session）
 后续请求携带JSESSIONID → SecurityFilterChain从Session恢复身份 → /auth/me或员工接口
 ```
 
-`@Configuration` 中的 `@Bean` 方法把PasswordEncoder、AuthenticationManager、SecurityContextRepository和SessionAuthenticationStrategy注册进Spring容器；构造器参数和 `@Bean` 方法参数由容器按类型注入。账号Mapper由MyBatis创建，`AppUserDetailsService` 由 `@Service` 注册。依赖关系不是“Controller自己new所有对象”，缺少其中一个Bean会在启动时暴露，而不是等登录时才随机失效。
+`@Configuration` 中的 `@Bean` 方法把PasswordEncoder、AuthenticationManager、SecurityContextRepository、CsrfTokenRepository和SessionAuthenticationStrategy注册进Spring容器；构造器参数和 `@Bean` 方法参数由容器按类型注入。账号Mapper由MyBatis创建，`AppUserDetailsService` 由 `@Service` 注册。依赖关系不是“Controller自己new所有对象”，缺少其中一个Bean会在启动时暴露，而不是等登录时才随机失效。
 
 ### 案例15-01：未登录访问员工接口
 
@@ -256,6 +256,7 @@ package com.example.employee.config;
 
 import com.example.employee.security.AppUserDetailsService;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -267,10 +268,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 
 @Configuration
 public class SecurityConfig {
@@ -283,8 +287,15 @@ public class SecurityConfig {
         return new HttpSessionSecurityContextRepository();
     }
     @Bean
-    public SessionAuthenticationStrategy sessionAuthenticationStrategy() {
-        return new ChangeSessionIdAuthenticationStrategy();
+    public CsrfTokenRepository csrfTokenRepository() {
+        return new CookieCsrfTokenRepository();
+    }
+    @Bean
+    public SessionAuthenticationStrategy sessionAuthenticationStrategy(
+            CsrfTokenRepository csrfTokenRepository) {
+        return new CompositeSessionAuthenticationStrategy(List.of(
+                new ChangeSessionIdAuthenticationStrategy(),
+                new CsrfAuthenticationStrategy(csrfTokenRepository)));
     }
     @Bean
     public AuthenticationManager authenticationManager(
@@ -297,10 +308,10 @@ public class SecurityConfig {
     }
     @Bean
     public SecurityFilterChain securityFilterChain(
-            HttpSecurity http, SecurityContextRepository repository)
+            HttpSecurity http, SecurityContextRepository repository,
+            CsrfTokenRepository csrfTokenRepository)
             throws Exception {
-        http.csrf(csrf -> csrf.csrfTokenRepository(
-                    new CookieCsrfTokenRepository()))
+        http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
                 .securityContext(context -> context
                     .requireExplicitSave(true)
                     .securityContextRepository(repository))
@@ -322,7 +333,7 @@ public class SecurityConfig {
 }
 ```
 
-过滤链保留CSRF默认防护并明确使用Cookie令牌仓库；`AuthenticationManager` 注入账号加载服务与密码编码器，`SecurityContextRepository` 保存认证，Session策略在成功登录时更新会话ID。`/auth/login` 和 `/auth/csrf` 由当前 `anyRequest().permitAll()` 放行，但POST登录仍需通过CSRF检查；员工接口及 `/auth/me` 需要登录。
+过滤链保留CSRF默认防护并明确使用Cookie令牌仓库；`AuthenticationManager` 注入账号加载服务与密码编码器，`SecurityContextRepository` 保存认证。这里把更换Session ID与清理旧CSRF令牌两个策略组合成一个Bean，由自定义登录Controller在认证成功后主动调用；只调用更换ID的策略，不会自动清理旧令牌。`List.of(...)` 提供按顺序执行的两个策略；`CookieCsrfTokenRepository` 负责Cookie存取，`CsrfAuthenticationStrategy` 通过同一个仓库发出清除旧Cookie的响应。过滤链也使用这个仓库。`/auth/login` 和 `/auth/csrf` 由当前 `anyRequest().permitAll()` 放行，但POST登录仍需通过CSRF检查；员工接口及 `/auth/me` 需要登录。
 
 新建 `dto/request/LoginRequest.java`、`dto/response/CurrentUserResponse.java` 和 `dto/response/CsrfResponse.java`：
 
@@ -425,7 +436,7 @@ public class AuthController {
 }
 ```
 
-登录先验证密码，再更换Session ID、设置本次请求的认证、显式保存上下文；仅返回200而未调用 `saveContext()`，下一请求仍会是匿名。退出无需另建Controller方法，交由过滤链处理。最后新建 `src/main/java/com/example/employee/exception/AuthExceptionHandler.java`：
+登录先验证密码，再通过组合策略更换Session ID、清理登录前CSRF令牌，最后设置本次请求的认证并显式保存上下文；仅返回200而未调用 `saveContext()`，下一请求仍会是匿名。退出无需另建Controller方法，交由过滤链处理。最后新建 `src/main/java/com/example/employee/exception/AuthExceptionHandler.java`：
 
 ```java
 package com.example.employee.exception;
@@ -471,7 +482,7 @@ HTTP请求本身不记住上一个请求。服务器Session保存认证上下文
 
 ### 案例15-05：用受保护写请求验证CSRF
 
-当前Cookie会被浏览器自动附带，因此恶意页面可能借用户已登录状态发起写请求。Spring Security的CSRF过滤器对当前POST、PUT、DELETE进行令牌检查；Cookie不是CSRF令牌。先在登录会话中不给员工POST附令牌，预期403且业务代码不执行；再GET `/auth/csrf` 取当前令牌，用响应中的headerName发送token并携带同一会话Cookie，预期201且数据库出现练习员工。登录或退出可能使旧令牌失效，写请求前按当前会话重新获取。本章不关闭CSRF；具体请求、清理和回归测试见后文。
+当前Cookie会被浏览器自动附带，因此恶意页面可能借用户已登录状态发起写请求。Spring Security的CSRF过滤器对当前POST、PUT、DELETE进行令牌检查；Cookie不是CSRF令牌。先在登录会话中不给员工POST附令牌，预期403且业务代码不执行；再GET `/auth/csrf` 取当前令牌，用响应中的headerName发送token并携带同一会话Cookie，预期201且数据库出现练习员工。本例登录和退出都会通知客户端清除旧CSRF Cookie；写请求前按当前会话重新获取令牌。本章不关闭CSRF；具体请求、清理和回归测试见后文。
 
 ### 案例15-06：退出并验证旧会话失效
 
@@ -491,13 +502,15 @@ Filter是在请求到达Controller之前执行的Servlet组件。Spring Security
 | --- | --- | --- | --- |
 | `passwordEncoder()` | 无 | `PasswordEncoder` | BCrypt哈希与验证 |
 | `authenticationManager(...)` | 容器注入两个Bean | `AuthenticationManager` | 组织账号加载和密码校验 |
+| `csrfTokenRepository()` | 无 | `CsrfTokenRepository` | 保存和读取Cookie令牌；策略通过它清除Cookie |
+| `sessionAuthenticationStrategy(...)` | 容器注入令牌仓库 | `SessionAuthenticationStrategy` | 登录成功时依次更换Session ID、清理旧CSRF令牌 |
 | `securityFilterChain(...)` | 容器注入安全对象 | `SecurityFilterChain` | 生成Web安全过滤器链 |
 
 这些对象确实由Spring Security运行时使用，不是为了展示注解而虚构的空组件。
 
 ## 六、密码如何验证
 
-`BCryptPasswordEncoder(10)` 使用bcrypt和强度10。`encode()`生成单向哈希，`matches(raw, encoded)`验证原始输入是否对应已存哈希。密码不能解密，也不能明文保存或用Base64代替哈希。正式系统需要根据服务器性能测量强度，并规划哈希升级。参考[Spring Security密码存储](https://docs.spring.io/spring-security/reference/6.5/features/authentication/password-storage.html)。
+`BCryptPasswordEncoder(10)` 使用bcrypt和强度10。`encode()`生成单向哈希，`matches(raw, encoded)`验证原始输入是否对应已存哈希。密码不能解密，也不能明文保存或用Base64代替哈希。正式系统需要根据服务器性能测量强度，并规划哈希升级。参考[Spring Security密码存储](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html)。
 
 登录过程由 `DaoAuthenticationProvider` 协作完成：调用 `UserDetailsService` 查账号、检查enabled、使用PasswordEncoder比较密码，成功后返回已认证的 `Authentication`。
 
@@ -505,11 +518,11 @@ Filter是在请求到达Controller之前执行的Servlet组件。Spring Security
 
 `Authentication` 登录前可以承载用户名和密码输入，登录后表示已经确认的用户；返回结果中的凭据会由框架按安全策略处理。`SecurityContext` 保存当前请求的Authentication，`SecurityContextHolder` 让同一请求中的后续代码取得它。
 
-自定义Controller完成登录时，Spring Security 6要求显式调用 `SecurityContextRepository.saveContext()`，否则当前请求看似成功，下一请求却恢复不到用户。官方流程见[认证持久化与Session管理](https://docs.spring.io/spring-security/reference/6.5/servlet/authentication/session-management.html)。
+本课程采用Spring Boot 4.1.1管理的Spring Security 7.1.1。自定义Controller完成登录时，需要显式调用 `SecurityContextRepository.saveContext()`，否则当前请求看似成功，下一请求却恢复不到用户。官方流程见[认证持久化与Session管理](https://docs.spring.io/spring-security/reference/servlet/authentication/session-management.html)。
 
-`SessionAuthenticationStrategy` 在认证成功时更换Session ID，防止攻击者预先固定一个会话标识。Cookie只保存随机JSESSIONID，账号信息保存在服务器Session中；客户端不能从Cookie值推算密码。
+组合的 `SessionAuthenticationStrategy` 在认证成功时先更换Session ID，防止攻击者预先固定会话标识，然后通知客户端清除登录前的CSRF Cookie。JSESSIONID只保存随机会话标识，账号信息保存在服务器Session中；客户端不能从Cookie值推算密码。
 
-由于这是自定义登录Controller，`AuthController.login()` 会主动调用这个策略；本例的 `SecurityFilterChain` 不再重复配置 `sessionManagement().sessionAuthenticationStrategy(...)`。Spring Security 6默认不依赖旧式的 `SessionManagementFilter` 自动检测新认证，官方文档也要求自定义认证机制自行执行相应策略。
+由于这是自定义登录Controller，`AuthController.login()` 会主动调用组合策略：先由 `ChangeSessionIdAuthenticationStrategy` 更换ID，再由 `CsrfAuthenticationStrategy` 清除登录前令牌；本例的 `SecurityFilterChain` 不再重复配置 `sessionManagement().sessionAuthenticationStrategy(...)`。自定义认证机制不能假设过滤器会替它调用策略。
 
 ## 八、CSRF为什么登录和退出也要检查
 
@@ -517,7 +530,7 @@ Filter是在请求到达Controller之前执行的Servlet组件。Spring Security
 
 Spring Security对当前Servlet应用默认启用CSRF防护；这里配置 `CookieCsrfTokenRepository` 是选择令牌**存储方式**，不是“打开CSRF”的开关。未配置仓库时默认使用基于HttpSession的令牌仓库；本例改为把令牌存在 `XSRF-TOKEN` Cookie中，而登录认证信息仍通过服务器Session与 `JSESSIONID` 恢复，两种Cookie用途不同。客户端先读取 `/auth/csrf`，从响应Body取 `token`，再按 `headerName` 指定的名称放进写请求头；仅自动携带 `XSRF-TOKEN` Cookie不等于已提交令牌。当前课程不需要浏览器JavaScript直接读取令牌Cookie，因此 `new CookieCsrfTokenRepository()` 保持该Cookie的HttpOnly保护。
 
-认证成功和退出时，Spring Security会清理旧CSRF令牌；认证成功后应在**新Session/Cookie状态**下再GET `/auth/csrf`，使用新响应的令牌做POST/PUT/DELETE。缺少、错误或过期令牌时，CSRF过滤器在Controller和URL角色判断之前就可能返回403；这与“已经登录但角色不足”也返回403是两种不同来源。要定位，先核对本次请求是否带有效CSRF，再检查是否已经登录以及是否有角色权限。若将来由前端JavaScript直接读取Cookie，才需评估 `withHttpOnlyFalse()` 与SPA令牌处理；这不意味着可以关闭JSESSIONID的HttpOnly。参考[Spring Security CSRF说明](https://docs.spring.io/spring-security/reference/6.5/servlet/exploits/csrf.html)和[登出时清理CSRF令牌](https://docs.spring.io/spring-security/reference/6.5/servlet/authentication/logout.html)。
+本例的自定义登录Controller通过上面的组合策略发出清除旧令牌Cookie的响应；退出则由框架的Logout Filter清理。客户端必须接受这个 `Set-Cookie` 更新，不能故意重送旧Cookie；之后应在**新Session/Cookie状态**下再GET `/auth/csrf`，使用新响应的令牌做POST/PUT/DELETE。缺少、错误或过期令牌时，CSRF过滤器在Controller和URL角色判断之前就可能返回403；这与“已经登录但角色不足”也返回403是两种不同来源。要定位，先核对本次请求是否带有效CSRF，再检查是否已经登录以及是否有角色权限。若将来由前端JavaScript直接读取Cookie，才需评估 `withHttpOnlyFalse()` 与SPA令牌处理；这不意味着可以关闭JSESSIONID的HttpOnly。参考[Spring Security CSRF说明](https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html)和[登出时清理CSRF令牌](https://docs.spring.io/spring-security/reference/servlet/authentication/logout.html)。
 
 ## 九、Cookie和会话边界
 
@@ -533,7 +546,7 @@ Session保存在单个应用进程内时，重启会使登录失效，多实例�
 .\mvnw.cmd clean test
 ```
 
-第14章累计15个测试，本章新增6个，预期21个全部通过。这个数字是按文档中的测试方法计算的预期，不是实际执行结果。自动化测试完成后，使用已配置数据库环境变量的Eclipse Run Configuration启动应用，再用Postman观察真实Cookie和Session流程；Postman不能替代上述JUnit和MockMvc回归。
+第14章累计15个测试，本章新增7个，预期22个全部通过。这个数字是按文档中的测试方法计算的预期，不是实际执行结果。自动化测试完成后，使用已配置数据库环境变量的Eclipse Run Configuration启动应用，再用Postman观察真实Cookie和Session流程；Postman不能替代上述JUnit和MockMvc回归。
 
 先清除Postman在 `localhost` 的旧练习Cookie，发送未登录的 `GET {{baseUrl}}/employees/1001`（无参数、无请求体），按本章安全配置预期401。第14章以前的员工查询现在都需要登录；员工POST、PUT、DELETE还要携带当前会话的CSRF令牌。这是引入Security后的接口访问前提，不是原CRUD业务响应规则被删除。
 
@@ -575,7 +588,7 @@ Session保存在单个应用进程内时，重启会使登录失效，多实例�
 
 然后发送 `GET {{baseUrl}}/auth/me`，无查询参数、无请求体，预期200且 `data.username=tanaka`。如果得到401，先检查是否仍使用同一个Postman环境、域名和Cookie jar。
 
-再发送 `GET {{baseUrl}}/employees/1001`，无参数和请求体，预期200且 `data.id=1001`；在Postman Cookies管理器临时清除 `JSESSIONID` 后重发，预期401。接着重新GET `/auth/csrf`、带新令牌POST `/auth/login`，重新建立登录会话。登录后的CSRF令牌可能因认证而更新；再次GET `/auth/csrf`，使用新响应中的 `headerName` 与 `token` 做后续写请求，不能长期复用登录前复制的令牌。
+再发送 `GET {{baseUrl}}/employees/1001`，无参数和请求体，预期200且 `data.id=1001`；在Postman Cookies管理器临时清除 `JSESSIONID` 后重发，预期401。接着重新GET `/auth/csrf`、带新令牌POST `/auth/login`，重新建立登录会话。本例登录成功会清除登录前的CSRF Cookie；确认Postman已接受该响应后，再GET `/auth/csrf`，使用新响应中的 `headerName` 与 `token` 做后续写请求，不能长期复用登录前复制的令牌。
 
 ### 3. 验证错误密码和缺少CSRF
 
@@ -908,6 +921,7 @@ package com.example.employee.config;
 
 import com.example.employee.security.AppUserDetailsService;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -919,10 +933,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 
 @Configuration
 public class SecurityConfig {
@@ -938,8 +955,16 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SessionAuthenticationStrategy sessionAuthenticationStrategy() {
-        return new ChangeSessionIdAuthenticationStrategy();
+    public CsrfTokenRepository csrfTokenRepository() {
+        return new CookieCsrfTokenRepository();
+    }
+
+    @Bean
+    public SessionAuthenticationStrategy sessionAuthenticationStrategy(
+            CsrfTokenRepository csrfTokenRepository) {
+        return new CompositeSessionAuthenticationStrategy(List.of(
+                new ChangeSessionIdAuthenticationStrategy(),
+                new CsrfAuthenticationStrategy(csrfTokenRepository)));
     }
 
     @Bean
@@ -955,11 +980,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            SecurityContextRepository repository)
+            SecurityContextRepository repository,
+            CsrfTokenRepository csrfTokenRepository)
             throws Exception {
         http
-                .csrf(csrf -> csrf.csrfTokenRepository(
-                        new CookieCsrfTokenRepository()))
+                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
                 .securityContext(context -> context
                         .requireExplicitSave(true)
                         .securityContextRepository(repository))
@@ -1193,7 +1218,9 @@ class EmployeeControllerWebTest {
 ```java
 package com.example.employee.security;
 
+import com.jayway.jsonpath.JsonPath;
 import com.example.employee.support.MySqlTestGuard;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -1247,6 +1274,57 @@ class SessionLoginTest extends MySqlTestGuard {
         mockMvc.perform(get("/employees/1001").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(1001));
+    }
+
+    @Test
+    void loginClearsPreLoginCsrfCookieAndRequiresFreshToken()
+            throws Exception {
+        MvcResult beforeLogin = mockMvc.perform(get("/auth/csrf"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie oldCookie = beforeLogin.getResponse().getCookie("XSRF-TOKEN");
+        assertThat(oldCookie).isNotNull();
+        String oldToken = JsonPath.read(
+                beforeLogin.getResponse().getContentAsString(),
+                "$.data.token");
+
+        MvcResult login = mockMvc.perform(post("/auth/login")
+                        .cookie(oldCookie)
+                        .header("X-XSRF-TOKEN", oldToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"tanaka\","
+                                + "\"password\":\"TrainingPass123!\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie clearedCookie = login.getResponse().getCookie("XSRF-TOKEN");
+        assertThat(clearedCookie).isNotNull();
+        assertThat(clearedCookie.getMaxAge()).isZero();
+        MockHttpSession session =
+                (MockHttpSession) login.getRequest().getSession(false);
+        assertThat(session).isNotNull();
+
+        // 模拟客户端接受了清除Cookie的响应：不再发送oldCookie。
+        mockMvc.perform(post("/auth/logout")
+                        .session(session)
+                        .header("X-XSRF-TOKEN", oldToken))
+                .andExpect(status().isForbidden());
+        assertThat(session.isInvalid()).isFalse();
+
+        MvcResult refreshed = mockMvc.perform(get("/auth/csrf")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie freshCookie = refreshed.getResponse().getCookie("XSRF-TOKEN");
+        assertThat(freshCookie).isNotNull();
+        String freshToken = JsonPath.read(
+                refreshed.getResponse().getContentAsString(),
+                "$.data.token");
+        mockMvc.perform(post("/auth/logout")
+                        .session(session)
+                        .cookie(freshCookie)
+                        .header("X-XSRF-TOKEN", freshToken))
+                .andExpect(status().isNoContent());
+        assertThat(session.isInvalid()).isTrue();
     }
 
     @Test
@@ -1354,7 +1432,7 @@ class SessionLoginTest extends MySqlTestGuard {
 }
 ```
 
-上述测试的创建邮箱不在 `test-data.sql` 的两条员工记录中。`JdbcTemplate` 在请求前、缺CSRF后、成功创建后分别读取数据库件数，避免只看HTTP状态而漏掉持久化结果。`MockMvc` 中的 `MockHttpSession` 是测试对象；退出后检查它已失效，并让新的受保护请求得到401。旧 `JSESSIONID` 在真实Servlet容器中的重送效果还需按前面的Postman退出步骤验证，不能把MockMvc新请求冒充为旧Cookie重送。
+上述测试的创建邮箱不在 `test-data.sql` 的两条员工记录中。`JdbcTemplate` 在请求前、缺CSRF后、成功创建后分别读取数据库件数，避免只看HTTP状态而漏掉持久化结果。令牌更新测试先取得登录前的CSRF Cookie与响应体令牌；登录响应应清除旧Cookie。模拟客户端接受清除响应后，旧请求头单独发起logout会403，重新GET令牌并携带新Cookie与请求头才会204。`JsonPath.read(..., "$.data.token")` 只从测试响应中取令牌，不把值打印或保存到日志。`MockMvc` 中的 `MockHttpSession` 是测试对象；退出后检查它已失效，并让新的受保护请求得到401。旧 `JSESSIONID` 在真实Servlet容器中的重送效果还需按前面的Postman退出步骤验证，不能把MockMvc新请求冒充为旧Cookie重送。
 
 ## 十四、本章稳定状态
 
