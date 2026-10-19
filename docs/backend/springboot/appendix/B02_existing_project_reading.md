@@ -2,6 +2,8 @@
 
 从零写过员工管理API，不代表拿到已有仓库就能安全改修。既存项目阅读的目标不是尽快看完所有文件，而是先确定技术基线和运行方式，再沿一个业务用例纵向追踪，最后调查会影响全局的共通机制。
 
+前置：完成主线员工CRUD、事务、日志与测试，并能按[B01](B01_spring_common_processing_mechanisms.md)区分请求入口和方法代理。练习只读调查，不更改主线工程。
+
 ## 一、开始前先明确调查成果
 
 收到Repository后先看README、构建文件和目录结构，再写清楚要回答的问题：这是什么项目、怎样构建启动、入口URL在哪里、请求数据怎样转换、业务规则在哪一层、数据或外部系统在哪里访问、有哪些权限和事务、哪些测试能证明没有回归。调查产出至少包括调用链、配置来源、影响文件、待确认事项和测试范围。
@@ -49,7 +51,7 @@ public class Application {
 
 `@SpringBootApplication` 属于Spring Boot，写在启动类上。应用启动时它同时提供配置类、自动配置入口和默认组件扫描语义；扫描范围通常从启动类所在包向下，因此包位置会直接影响Controller、Service等Bean能否被发现。组合注解的三个核心组成和各自作用见第3章。
 
-确认启动类所在包，因为默认组件扫描从该包向下进行。若找不到main方法，继续按[B03：日本既存Spring项目的新旧结构识读](B03_legacy_spring_project_reading.md)检查WAR、ServletInitializer、XML和外部Tomcat。不要因此断言项目“不能启动”。
+确认启动类所在包，因为默认组件扫描从该包向下进行。若找不到main方法，继续按[B04：日本既存Spring项目的新旧结构识读](B04_legacy_spring_project_reading.md)检查WAR、ServletInitializer、XML和外部Tomcat。不要因此断言项目“不能启动”。
 
 ## 五、Step 4：确认配置从哪里来
 
@@ -148,6 +150,52 @@ Exception Handling → Response
 
 练习时任选一个未读过的Spring仓库，只做只读调查。提交构建基线、启动方式、一条纵向调用链、一张横向机制表和待确认事项；在能说明现行行为前不要开始修改。
 
-## 十一、阅读完成标准
+## 十一、改修票 EMP-409：员工保存偶尔返回409
+
+调查目标：在**一个陌生仓库副本**中找出“编辑员工后偶发409”的真实来源。下面是假设的既存项目线索，不能当作当前主线已实现的乐观锁：主线第13章关注员工更新与履历的事务；`version` 乐观锁的可复现实验在[A13-3](A13_03_concurrent_updates_locks.md)。先确认仓库确实有 `version` 列和对应SQL，若没有就不能套用下述结论。
+
+1. 从浏览器Network或改修票记录 `PUT /employees/1001`、请求体、响应体、时间和requestId。确认409是应用返回，还是代理/外部服务返回；不复制个人信息到报告。
+2. 搜索 `@PutMapping` 与 `/employees` 找到Controller映射，记录Request DTO的 `version` 是否必填、Validation是否在方法进入前发生。IDEA用 Search Everywhere/Find in Files，Eclipse用 Search → File/Java Search；均可在Controller方法设断点。
+3. 从Controller方法使用 IDEA Find Usages/Call Hierarchy 或 Eclipse References/Call Hierarchy 找到Service实现；用 Go to Implementation/Implementation 或 Open Type Hierarchy 确认接口绑定。记录是否有 `@Transactional`、`@PreAuthorize`，以及同一Service是否被Batch或其他Controller调用。
+4. 跟入Mapper接口及XML，核对 `UPDATE employees SET ..., version = version + 1 WHERE id = #{id} AND version = #{version}`。`#{}` 是参数绑定；不能把输入拼接成 `${}`。检查Mapper返回的影响行数：0行可能表示版本已变化、员工已删除或权限范围排除，不是天然等于“并发冲突”。
+5. 从Service的行数分支追踪冲突异常，再查 `@RestControllerAdvice` 把它映射到409的位置。调试时在SQL执行前、行数判断处和Advice各设断点；用两次读取同一version、先后保存的**专用测试数据**复现，不在生产库写入。
+6. 调查前端：保存失败时是否显示冲突提示、保留用户输入、刷新最新员工、禁止静默覆盖；搜索调用该URL的Vue/React API模块和页面。回归范围覆盖正常更新、冲突、员工不存在、权限拒绝、履历事务和前端提示。
+
+只读命令行定位示例（在仓库根目录执行；Windows PowerShell可使用 `rg`，Linux/Shell项目可用 `grep -R`）：
+
+```powershell
+rg -n 'PutMapping|/employees|version|Optimistic|@Transactional|ExceptionHandler' docs/backend/springboot
+```
+
+这条命令只搜索教材目录，因此结果**不是某个实际应用仓库的证据**。在实际仓库应把范围改成已确认的应用模块，例如 `src/main/java`、`src/main/resources`、`src/test`；先看命中文件，再读上下文和调用方。若机器没有 `rg`，在Linux项目根目录可用 `grep -RInE 'PutMapping|version|Transactional' src/main`。不要把搜索结果的“没有命中”直接写成“功能不存在”，还可能是父模块、生成代码、XML或另一种命名。
+
+### 已填写的调查报告示例
+
+以下是**教学用假设仓库**的报告格式；行号需在接手的仓库重新核对，不能复制为真实结论。
+
+| 项目 | 结论与证据状态 |
+| --- | --- |
+| 改修票 | EMP-409：员工编辑保存偶发409；已确认：请求为 `PUT /employees/1001`，响应含requestId `demo-409` |
+| 技术基线 | 已确认：示例POM声明Java 17、Boot 4.1.1、MyBatis；真实仓库还需核对有效依赖树 |
+| 运行方式 | 已确认：示例为Maven可执行JAR、test profile；生产Profile与外部配置尚未确认 |
+| 调用链 | 已确认（示例代码）：Controller → EmployeeService.update → EmployeeMapper.updateByIdAndVersion → MySQL；失败由ConflictException → Advice映射409 |
+| 影响文件 | 已确认（示例）：Controller/DTO、Service、Mapper接口/XML、Advice、Service/Mapper/Web测试；前端保存页面为推测影响，需搜索实际调用方 |
+| 现行处理 | 已确认（示例）：SQL的 `id + version` 条件更新，0行抛冲突；同一事务还写履历 |
+| 问题原因 | **推测**：两个编辑会话读取同一version，后提交者0行；还未排除员工删除、数据范围条件和请求重复提交 |
+| 待确认事项 | 客户是否期望冲突后自动刷新、保留输入或允许覆盖；实际SQL是否有额外条件；生产日志是否有相同requestId |
+| 测试范围 | 正常更新1行、旧version更新0行、员工删除、权限/数据范围、履历回滚、前端409提示与重试流程 |
+| 残留风险 | 未拿到真实日志和SQL执行证据前，不把“乐观锁导致”定为根因；不能在生产环境复现写入 |
+
+## 十二、只读调查安全边界与验收
+
+### 独立调查作业：从EMP-409票走到改修影响表
+
+在一份已获授权的陌生项目副本中，从README、POM、一个员工保存URL和一条脱敏409日志开始；先只读，不运行未知初始化脚本。提交一页调查报告与一张调用图，不要求阅读全部源码。报告必须标出Java/Boot/MyBatis的**声明版本与实际解析版本的区别**、启动命令和Profile、数据源配置来源（只写变量名，不写秘密）、Controller入口、Controller→Service→Mapper→SQL、事务边界、异常映射、权限检查及现有单元/Web/Mapper测试覆盖范围。把409根因写成“已确认/推测/待确认”，再列影响文件与回归用例。无法访问运行环境时明确标注未验证，不猜测生产配置。
+
+教师参考答案以本章前面的**假设仓库**为准：`PUT /employees/{id}` → 更新Service → `updateByIdAndVersion` → SQL的 `id+version` 条件 → 0行分支 → 冲突异常 → Advice 409；事务应查Service公开入口，权限应查Security规则和方法注解，版本应核对有效POM及依赖树。`version` 并非主线工程默认字段，因此真实仓库若没有此列，必须改走业务状态冲突调查，不可照抄答案。评分：技术基线/启动/配置15分，业务调用链25分，共通机制（事务、异常、权限、测试）20分，根因与证据状态20分，影响范围与可执行回归方案20分。只写结论无路径/证据不得满分。
+
+陌生仓库先确认环境、权限和数据范围。不要运行名称不明的初始化/迁移脚本、不要对生产数据库做写入实验、不要把密钥、连接串、客户数据粘进工单或公开聊天。即使只是构建，也先看插件是否会执行迁移、代码生成或外部上传。交付物为一张带证据来源的调用图、上表格式的调查报告、未确认事项和测试矩阵；Reviewer应能沿相同文件与日志复核每个“已确认”结论。
+
+## 十三、阅读完成标准
 
 你不需要记住全部代码，但应能用证据回答：项目怎样构建和启动、运行时配置来自哪里、改修用例经过哪些组件、数据写到哪里、失败怎样返回、谁有权限、哪些测试和日志可以验证。未知项要明确标成待确认，不用猜测补齐。

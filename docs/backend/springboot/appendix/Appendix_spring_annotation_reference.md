@@ -1,8 +1,16 @@
-# B05 Spring项目常见注解速查
+# Spring项目常见注解速查手册
 
 本附录收录Spring Boot主线第1～18章正文中实际写过或讲到的注解。它用于查阅，不要求背诵。遇到注解时，先看完整import，再确认它写在类、方法、字段还是参数上，最后判断由Java编译器、Spring容器、Spring MVC、Validation、Security、MyBatis或测试框架中的哪一方处理。
 
-课程基线是Java 17、Spring Boot 4.1.x、Spring Framework 7.x和MyBatis Starter/Test Starter 4.1.0。旧项目中的同名注解可能来自不同包，也可能已经弃用或移除，不能只按短名称复制。
+查阅优先级：**A 独立开发**（主线反复使用的Bean/MVC/Validation/MyBatis/事务/测试注解），**B 能在既有架构下改修**（Security、配置、外部API、Lombok/JPA与共通机制），**C 理解并能识读**（旧项目、调度/异步及低频属性）。这里的级别针对当前训练目标，不代表注解本身的技术难度。首次学习应回到对应章节：Bean/DI见[第3～4章](../mainline/04_spring_objects_dependency_injection.md)，MVC见[第6章](../mainline/06_http_request_to_java_method.md)，校验与异常见[第7～8章](../mainline/08_validation_and_business_rules.md)，MyBatis/事务见[第9～13章](../mainline/13_transaction_and_consistency.md)，日志与测试见[第11～12章](../mainline/12_automated_testing_and_regression.md)，Security见[第15～16章](../mainline/16_authorization_and_data_scope.md)，配置与运行见[第17～18章](../mainline/18_deployment_operations_check.md)。本表是一行速查，不能代替运行示例。
+
+| 掌握级别 | 优先查阅的类别 | 典型验收 |
+| --- | --- | --- |
+| A 独立开发 | Bean/构造器注入、MVC映射、Validation、MyBatis、事务、JUnit与MockMvc常用注解 | 不看表完成普通CRUD并能写测试 |
+| B 已有架构下改修 | Security、配置属性、Advice/AOP、Lombok/JPA识读及外部API相关注解 | 根据既存设计书找到处理者并安全改修 |
+| C 理解并使用 | 旧版测试注解、低频映射属性、调度/异步和生命周期注解 | 找到实际配置和执行证据，不靠短名称猜行为 |
+
+课程基线是Java 17、Spring Boot 4.1.1、Spring Framework 7.x和MyBatis Starter/Test Starter 4.1.0。旧项目中的同名注解可能来自不同包，也可能已经弃用或移除，不能只按短名称复制。A/B/C是任务掌握要求，不是必须背诵表内每个可选属性；B级Security仍要能在既有架构下验证401/403，C级调度/异步不作为CRUD前置。
 
 ## 一、怎样阅读下面的表
 
@@ -150,7 +158,7 @@
 | `@Test` | JUnit Jupiter；标记测试方法 | 无属性 | 无 | `@Test void returnsEmployeeWhenFound() { ... }` |
 | `@BeforeEach` | JUnit Jupiter；每个测试前准备 | 无属性 | 无 | `@BeforeEach void setUp() { ... }` |
 | `@AfterEach` | JUnit Jupiter；每个测试后清理 | 无属性 | 无 | `@AfterEach void tearDown() { ... }` |
-| `@BeforeAll` | JUnit Jupiter；整个测试类的测试方法开始前执行一次 | 无属性 | 无；默认要求方法为`static`，配合`PER_CLASS`可使用实例方法 | `@BeforeAll void verifyTestDatabase() { ... }` |
+| `@BeforeAll` | JUnit Jupiter；整个测试类的测试方法开始前执行一次 | 无属性 | 无；默认要求方法为`static`，配合`PER_CLASS`可使用实例方法 | `@BeforeAll static void verifyTestDatabase() { ... }` |
 | `@TestInstance` | JUnit Jupiter；选择测试类实例生命周期 | `value` | 必填`PER_METHOD`或`PER_CLASS` | `@TestInstance(TestInstance.Lifecycle.PER_CLASS)` |
 | `@TestMethodOrder` | JUnit Jupiter；指定方法排序策略 | `value` | 必填`Class<? extends MethodOrderer>` | `@TestMethodOrder(MethodOrderer.OrderAnnotation.class)` |
 | `@ExtendWith` | JUnit Jupiter；注册Extension | `value` | 必填Extension类数组 | `@ExtendWith(MockitoExtension.class)` |
@@ -158,6 +166,8 @@
 | `@InjectMocks` | Mockito；创建被测对象并尝试注入mock | 无常用属性 | 无 | `@InjectMocks private EmployeeServiceImpl employeeService;` |
 
 `@Mock` 不会把对象放入Spring容器。`@InjectMocks` 也不是Spring依赖注入的替代品；主线仍优先显式构造被测对象。
+
+`@BeforeAll` 的可编译最小写法：`class EmployeeTest { @BeforeAll static void prepare() { /* 只读准备 */ } @Test void example() { } }`。只有显式加 `@TestInstance(TestInstance.Lifecycle.PER_CLASS)` 时，才能把 `prepare()` 写成非static实例方法；不要把默认生命周期的非static示例复制到测试类。
 
 ## 十一、Spring与Spring Boot测试
 
@@ -174,6 +184,24 @@
 | `@Sql` | Spring Test；在测试前后执行SQL | `value`/`scripts`、`statements`、`executionPhase`、`config` | 脚本/语句数组；阶段默认`BEFORE_TEST_METHOD` | `@Sql(scripts = "/sql/test-data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)` |
 
 `@WebMvcTest` 通常与 `@MockitoBean` 配合；`@SpringBootTest` 加 `@AutoConfigureMockMvc` 才是完整应用上下文中的MockMvc测试；`@MybatisTest` 只证明Mapper和SQL映射。
+
+Boot 4.1.1 查import时，可用下表核对**完整类名、直接依赖、放置位置**；属性类型/默认值仍看上方对应行及项目锁定版本的官方API，不能把不同版本同名注解混用。
+
+| 注解 | 完整类名 | 依赖与放置位置 |
+| --- | --- | --- |
+| `@SpringBootApplication` | `org.springframework.boot.autoconfigure.SpringBootApplication` | Boot自动配置；启动配置类 |
+| `@ConfigurationProperties` | `org.springframework.boot.context.properties.ConfigurationProperties` | Boot配置属性；属性类/Bean方法 |
+| `@ControllerAdvice` | `org.springframework.web.bind.annotation.ControllerAdvice` | Spring Web MVC；类 |
+| `@ExceptionHandler` | `org.springframework.web.bind.annotation.ExceptionHandler` | Spring Web MVC；异常处理方法 |
+| `@Transactional` | `org.springframework.transaction.annotation.Transactional` | Spring事务；类/方法；仅经代理的调用按代理事务语义执行 |
+| `@EnableMethodSecurity` | `org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity` | Security配置；配置类；`@PreAuthorize`要有方法安全支持 |
+| `@MockitoBean` | `org.springframework.test.context.bean.override.mockito.MockitoBean` | Spring Test；测试类/字段；不同于纯Mockito `@Mock` |
+| `@WebMvcTest` | `org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest` | Boot WebMVC Test Starter；测试类 |
+| `@AutoConfigureMockMvc` | `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc` | Boot WebMVC Test Starter；测试类；隔离工程已编译运行 |
+| `@AutoConfigureTestDatabase` | `org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase` | Boot JDBC Test；测试类/方法；`NONE`不替换数据库 |
+| `@MybatisTest` | `org.mybatis.spring.boot.test.autoconfigure.MybatisTest` | MyBatis Starter Test 4.1.0；测试类；不加载普通Service Bean |
+
+其中 `@AutoConfigureMockMvc`、`@MockitoBean` 已在[B05隔离工程](examples/hr-client-lab/README.md)以 Boot 4.1.1 编译并执行；`@MybatisTest` 与 `@AutoConfigureTestDatabase` 的import可在主线测试源码中核对，但本轮未运行其真实数据库测试。`@WebMvcTest` 的包名依据[Boot 4.1.1官方API](https://docs.spring.io/spring-boot/api/java/org/springframework/boot/webmvc/test/autoconfigure/WebMvcTest.html)，MyBatis测试注解见[官方Starter文档](https://mybatis.org/spring-boot-starter/mybatis-spring-boot-test-autoconfigure/)。历史 `@MockBean` 在Boot 4主线不使用；不要把JPA的 `@Entity` 加在普通MyBatis对象上。`@Valid` 是Jakarta校验入口，`@Validated` 可在Spring上下文中承载分组或方法校验，两者不完全等价。
 
 ## 十二、扩展与既存项目识读注解
 
@@ -201,8 +229,10 @@
 | `@Target` | `value`为必填 `ElementType[]` | Java元注解；限制自定义注解可标注的方法、类、字段等位置 |
 | `@Retention` | `value`为必填 `RetentionPolicy` | Java元注解；A11-3使用`RUNTIME`让AOP运行时读取注解 |
 | `@Documented` | 无属性 | Java元注解；让自定义注解出现在生成的API文档中 |
-| Lombok的`@Getter`、`@Setter`、`@Data`、`@Builder`等 | 生成属性详见B04 | 编译期生成代码，不是Spring运行时注入 |
-| JPA的`@Table`、`@Id`、`@GeneratedValue`、`@Column`等 | 表名、列名、生成策略、长度和可空性等，详见B04 | 用于识读JPA项目，不加入MyBatis主线对象 |
+| Lombok的`@Getter`、`@Setter`、`@Data`、`@Builder`等 | 生成属性详见[B03](B03_lombok_jpa_reading.md) | 编译期生成代码，不是Spring运行时注入 |
+| JPA的`@Table`、`@Id`、`@GeneratedValue`、`@Column`等 | 表名、列名、生成策略、长度和可空性等，详见[B03](B03_lombok_jpa_reading.md) | 用于识读JPA项目，不加入MyBatis主线对象 |
+
+以上扩展注解按需查阅：Lombok/JPA属于B级既存项目识读，旧版 `@MockBean` 属C级历史识读，调度与异步只有在项目确有后台任务时才进入B级改修。完整的Filter/Advice/AOP执行边界见[B01](B01_spring_common_processing_mechanisms.md)，外部API练习见[B05](B05_external_api_restclient.md)。注解是否生效仍要看对应starter、组件扫描、测试切片和代理边界。
 
 ## 十三、遇到陌生注解时的调查顺序
 

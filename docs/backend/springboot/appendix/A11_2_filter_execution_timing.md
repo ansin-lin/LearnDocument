@@ -41,7 +41,7 @@
 | `@RestControllerAdvice`＋`@ExceptionHandler` | MVC处理Controller或Handler阶段的可匹配异常时参与异常解析 | 把业务异常转换为HTTP响应；不会自然接管Security过滤器在Controller之前作出的拒绝 |
 | Spring AOP / 代理 | 对匹配的Spring Bean方法、且调用确实经过代理时执行；本项目事务与方法权限主要作用于Service调用 | Advice可在目标方法前后运行；同类对象内部 `this.method()` 调用通常绕过代理，不等同于Servlet Filter |
 
-`HandlerInterceptor` 不适合作为本项目的主要安全边界：它运行在MVC Handler选择之后，Spring Security已经在更早的过滤器链处理认证授权。对于REST响应，`postHandle` 执行时响应内容可能已写出，不应把修改响应正文的关键逻辑放在那里。详细的拦截器注册和回调实验见[B06 Spring共通处理机制](B06_spring_common_processing_mechanisms.md)；全局异常转换见[第7章](../mainline/07_success_and_failure_response.md)，AOP与事务代理边界见[第13章](../mainline/13_transaction_and_consistency.md)。
+`HandlerInterceptor` 不适合作为本项目的主要安全边界：它运行在MVC Handler选择之后，Spring Security已经在更早的过滤器链处理认证授权。对于REST响应，`postHandle` 执行时响应内容可能已写出，不应把修改响应正文的关键逻辑放在那里。详细的拦截器注册和回调实验见[B01 Spring共通处理机制](B01_spring_common_processing_mechanisms.md)；全局异常转换见[第7章](../mainline/07_success_and_failure_response.md)，AOP与事务代理边界见[第13章](../mainline/13_transaction_and_consistency.md)。
 
 ## 四、Servlet分派类型决定Filter是否再次参与
 

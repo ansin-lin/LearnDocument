@@ -2,7 +2,7 @@
 
 完成[第13章：用事务保证多步写入一致](../mainline/13_transaction_and_consistency.md)后，本附录处理多个请求同时修改数据时的约束、原子UPDATE、乐观锁、悲观锁、锁等待与死锁。事务基本机制见[A13-1](A13_01_transaction_spring_mechanisms.md)，读取现象、隔离级别和MVCC见[A13-2](A13_02_isolation_mvcc.md)。课程环境按MySQL 8的InnoDB说明；其他数据库的锁范围和异常行为应以项目文档和实测为准。
 
-第13章工程没有 `version` 列和休假余额表；下文相关代码是**独立扩展实验或设计片段**，不能直接追加到主线工程。实验仅在个人专用练习库进行，开始前记录原数据，结束后恢复表、代码和测试。
+第13章工程没有 `version` 列和休假余额表；下文相关代码是**独立扩展实验或设计片段**，不能直接追加到主线工程。实验优先在可按初始化脚本重建的专用数据库或独立实验记录上进行；使用个人专用练习库时须先记录原数据，并按第四节核对员工、履历、临时表结构和代码。不得在生产、共享开发或其他学员共用的数据库上做这些写入与删列实验。
 
 | 业务要求 | 主要机制 |
 | --- | --- |
@@ -13,6 +13,8 @@
 
 `@Transactional` 保护的是一次业务操作的提交/回滚边界，不会自动比较两个用户各自读取的旧数据，也不能单独解决丢失更新。
 
+项目里“加锁”不是先找一个注解贴上去。先写出必须保持的业务不变量（例如余额不能为负、编辑不能覆盖他人改动），确认竞争发生在同一行、同一范围还是多行之间，再决定把并发判断放在数据库约束、单条条件SQL、version条件或事务内的锁定读。最后必须定义失败响应、超时/重试边界及并发验证；只看一个请求成功不能证明设计有效。
+
 ## 一、锁的基本概念
 
 ### 1. 共享锁与排他锁
@@ -22,7 +24,16 @@
 | 共享锁，S Lock | 保护读取的记录不被冲突方式修改 | 多个事务可共享读取，但与需要修改的排他锁冲突 |
 | 排他锁，X Lock | 保护即将或正在修改的记录 | 其他冲突读写需要等待事务结束 |
 
+下面是同一资源上典型的S/X兼容关系；InnoDB还有意向锁和其他锁模式，不能用这张简表推断全部内部锁：
+
+| 已有锁 | 新S锁 | 新X锁 |
+| --- | --- | --- |
+| S锁 | 兼容 | 冲突 |
+| X锁 | 冲突 | 冲突 |
+
 InnoDB内部还使用表级意向锁来表示事务准备在表内取得哪类行锁。新人阶段不需要手工管理意向锁，但应知道“行锁”和“表上完全没有锁”不是同一件事。
+
+普通 `SELECT` 通常是MVCC一致性读，并不会因为读到某行就替业务长期锁住它；`SELECT ... FOR SHARE` 是共享锁定读，`SELECT ... FOR UPDATE` 是排他锁定读，`UPDATE`/`DELETE` 也会为其写入取得必要的锁。锁的获取由数据库执行SQL时完成，不由Java对象上的 `synchronized` 或 `@Transactional` 注解单独完成。`@Transactional` 的关键作用是让锁定读和后续写入留在**同一个数据库事务**内，直到提交或回滚才释放锁。
 
 ### 2. 记录锁、间隙锁和next-key lock
 
@@ -33,6 +44,18 @@ InnoDB内部还使用表级意向锁来表示事务准备在表内取得哪类�
 | Next-key Lock | 记录锁加其前方间隙锁 | 在范围扫描中保护已有记录与插入范围 |
 
 InnoDB的“行锁”实际与索引记录密切相关。若 `WHERE` 条件没有合适索引，数据库可能扫描并锁定比预想更多的记录或范围。因此索引不仅影响速度，也会影响并发等待范围。
+
+比较下面三个**MySQL 8.0 InnoDB锁定读设计片段**；不要直接在共享库执行。它们的实际锁数不是固定常量，须结合`EXPLAIN`、表索引、行分布和隔离级别观察：
+
+```sql
+SELECT id, name, department FROM employees WHERE id = 1001 FOR UPDATE;
+SELECT id, name, department FROM employees
+WHERE department = 'Sales' FOR UPDATE;
+SELECT id, name, department FROM employees
+WHERE name LIKE '%Tanaka%' FOR UPDATE;
+```
+
+第一条按主键等值查找，若记录存在，通常能较精确地定位目标索引记录。第二条如果部门索引和条件选择性不同，可能扫描一段索引范围，`REPEATABLE READ`下还可能涉及间隙/next-key锁；第三条前导通配符通常难以利用普通B-tree索引作前缀定位，扫描及锁范围可能扩大。`READ COMMITTED`与`REPEATABLE READ`的间隙锁使用也不同。不能宣称“WHERE id只锁一行”或“LIKE必锁全表”；用执行计划和两个连接的等待现象核对。
 
 ### 3. 锁什么时候释放
 
@@ -59,6 +82,8 @@ SHOW CREATE TABLE employees;
 
 适合“email不能重复”这类最终不变量。即使两个请求同时通过事前检查，数据库也只允许一个冲突值成功。Service需要把重复键异常转换为明确的业务冲突响应。
 
+两个请求A、B都先查询“邮箱不存在”，随后同时INSERT相同邮箱：应用层的两次检查都可能通过，`UNIQUE`约束最终只允许一个提交。对当前员工项目，应保留第10章Service的邮箱规范化和重复冲突处理：MyBatis/Spring数据访问层抛出的重复键异常由Service转换为业务冲突，统一异常处理按既有API规格返回409；不要把数据库表名、SQL或堆栈返回客户端。正常系验证一条新邮箱可创建；竞争系验证只有一行、另一请求为约定冲突且数据库没有重复；若看到500，先检查异常转换路径，不能删掉唯一约束。
+
 唯一约束不负责合并两次更新，也不替代多SQL事务。
 
 ### 方案2：原子条件UPDATE——在一条SQL中判断并修改
@@ -69,6 +94,7 @@ SHOW CREATE TABLE employees;
 UPDATE leave_balances
 SET remaining_days = remaining_days - #{requestDays}
 WHERE employee_id = #{employeeId}
+  AND #{requestDays} > 0
   AND remaining_days >= #{requestDays};
 ```
 
@@ -84,7 +110,9 @@ if (updatedRows == 0) {
 }
 ```
 
-单条条件UPDATE通常比“SELECT后在Java判断再UPDATE”更短、更容易保持原子性。影响0行可能有多种原因，错误消息和后续调查应按规格区分。
+`requestDays`必须是合法正数：请求DTO可用`@NotNull`与`@Positive`（`jakarta.validation.constraints`）约束，Service仍要校验整数/小数单位和请假规则，SQL里的`#{requestDays} > 0`再守住一次边界。若传入负数而只检查`remaining_days >= requestDays`，减去负数反而可能增加余额。原子条件UPDATE保护判断与修改的竞争窗口，**不能替代输入校验**；表上的非负`CHECK`或等效数据库约束可作为最终不变量保护，具体支持须按数据库版本核对。
+
+单条条件UPDATE通常比“SELECT后在Java判断再UPDATE”更短、更容易保持原子性。影响1行才是扣减成功；0行可能是余额不足、员工不存在、输入非法或状态不允许，不能一律告诉用户“余额不足”。先按规格决定是否额外查询区分原因，注意并发时事后查询只供错误分类，不回溯改变本次UPDATE结果。两个并发请求各要7天而余额为10天时，最多一个影响1行，最终余额应为3且不为负；用两个独立连接或并发JUnit请求验证影响行数、最终余额和失败响应。该表只是独立设计片段，不永久加入员工主线。
 
 ### 方案3：乐观锁——提交时验证version
 
@@ -99,7 +127,27 @@ ALTER TABLE employees
     ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
 ```
 
-读取详情时把 `version` 从数据库映射到Java对象并返回给前端；前端编辑时保存这个值，更新请求再带回原version。Service不能在提交前重新查询version并覆盖客户端传回的旧值，否则冲突检测会失效。Mapper XML中的 `#{version}` 必须来自**请求携带的旧版本**：
+读取详情时把 `version` 从数据库映射到Java对象并返回给前端；前端编辑时保存这个值，更新请求再带回原version。Service不能在提交前重新查询version并覆盖客户端传回的旧值，否则冲突检测会失效。Mapper XML中的 `#{version}` 必须来自**请求携带的旧版本**。
+
+对应到员工项目，需要同时调整这些位置，而不只是增加数据库列：
+
+| 文件或位置 | 必须增加或修改什么 | 验证点 |
+| --- | --- | --- |
+| `employees` 表 | `version BIGINT NOT NULL DEFAULT 0` | 旧行初始化为0 |
+| `Employee`、`EmployeeMapper.xml` 的 `employeeResultMap` 与详情SELECT | 增加 `version` 属性、映射和查询列 | Mapper读出的版本与数据库一致 |
+| `EmployeeResponse` | 返回当前 `version` | 前端能保留读取时的版本 |
+| `EmployeeUpdateRequest` | 增加必填旧版本，建议 `@NotNull @Min(0)` | 漏传或负值被请求校验拒绝 |
+| `EmployeeMapper.updateWithVersion(...)` | SQL同时匹配 `id` 与旧 `version`，成功时版本加1 | 两个旧版本请求仅一个影响1行 |
+| `EmployeeServiceImpl.update(...)` | 保留部门校验、邮箱冲突转换、履历写入和 `@Transactional`；根据影响行数区分不存在与版本冲突 | 冲突时不写履历，成功时两表共同提交 |
+| `GlobalExceptionHandler` 与测试 | 将版本冲突映射为409，并测试正常、旧版本及不存在id | HTTP、数据库、履历三者一致 |
+
+这张表是**实验改修清单**，不是已完成的主线文件。`@Min(0)` 与 `@NotNull` 分别来自 `jakarta.validation.constraints`；Controller原有的 `@Valid` 才会触发请求校验。`version` 是并发控制字段，不应由Service用提交前新查到的值替换客户端的旧值。在 `Employee` 中增加 `Long version` 及getter/setter，在只读的 `EmployeeResponse` 中增加字段、构造器参数和getter，并更新构造响应对象的位置；在 `EmployeeUpdateRequest` 中增加 `@NotNull @Min(0) private Long version;` 及getter/setter。详情SELECT和 `employeeResultMap` 同时增加 `version` 列与属性映射。
+
+把下列声明加入 `EmployeeMapper.java`，参数是已经经过Service规范化、且保留请求旧版本的 `Employee`；XML中的每个 `#{...}` 都从这个对象读取：
+
+```java
+int updateWithVersion(Employee employee);
+```
 
 ```xml
 <update id="updateWithVersion">
@@ -107,7 +155,6 @@ ALTER TABLE employees
     SET name = #{name},
         email = #{email},
         department = #{department},
-        status = #{status},
         version = version + 1,
         updated_at = CURRENT_TIMESTAMP
     WHERE id = #{id}
@@ -115,15 +162,25 @@ ALTER TABLE employees
 </update>
 ```
 
+在原 `EmployeeServiceImpl.update(...)` 中按主线做完部门和邮箱规范化后，构造 `Employee employee` 时照旧设置 `id`、`name`、`department`、`email`，**另外执行 `employee.setVersion(request.getVersion())`**。保留 `@Transactional`，用以下片段替换原 `employeeMapper.update(employee)` 的调用及其影响行数判断，后面的履历INSERT仍只在成功时执行：
+
 ```java
-int updatedRows = employeeMapper.updateWithVersion(request);
+int updatedRows = employeeMapper.updateWithVersion(employee);
 if (updatedRows == 0) {
+    if (employeeMapper.findById(id) == null) {
+        throw new EmployeeNotFoundException(id);
+    }
     throw new DataConflictException(
             "员工信息已被其他用户更新，请重新读取");
 }
+if (updatedRows != 1) {
+    throw new EmployeeSystemException("修改员工影响多行");
+}
 ```
 
-`updateWithVersion` 与 `DataConflictException` 是本附录假定新增的Mapper方法和业务异常，不存在于第13章主线代码。只有在新增异常处理、明确把该异常映射为HTTP 409，并完成请求/响应对象的version字段后，才可期待下面的接口结果。影响0行也可能是员工不存在；正式实现应按接口规格区分404与409，但不能用“重新查到的version”代替客户端旧version。
+这里只替换影响行数判断片段，原来的 `try/catch (DuplicateKeyException)` 及履历写入不得删除。`DataConflictException` 应作为运行时业务异常，由项目异常处理器映射为409；成功后再次读取员工响应时必须包含数据库新版本。上面是**原方法内部的增量片段**，不是可单独编译的完整方法。
+
+`updateWithVersion` 与 `DataConflictException` 是本附录假定新增的Mapper方法和业务异常，不存在于第13章主线代码。只有在完成上面列出的字段、异常处理和测试后，才可期待下面的接口结果。影响0行也可能是员工不存在；本例再次查询只用于区分404与409，不能用“重新查到的version”代替客户端旧version。并发删除等更复杂竞态需按接口规格另行处理。
 
 并发过程是：
 
@@ -136,7 +193,7 @@ A返回成功                      B返回409 Conflict
 
 不要在B失败后静默重试完整UPDATE，否则仍可能覆盖A的变更。正确做法通常是让用户读取最新数据、比较差异并重新决定。
 
-若只做附录实验，先记录员工原部门；结束时恢复这条练习数据，再移除实验Mapper方法、DTO字段及异常映射，确认没有代码依赖version，最后在个人练习库恢复主线表结构。删除列会丢失实验版本值，不得在共享或生产库执行：
+实验前后的员工、履历及临时`version`列按第四节统一记录与恢复。以下删列SQL**仅用于隔离且允许重建的专用实验库**，必须在实验事务全部结束、相关Mapper/DTO/异常映射均已移除且代码不再引用`version`后执行；删除列会丢失实验版本值，不得在共享或生产库执行：
 
 ```sql
 ALTER TABLE employees DROP COLUMN version;
@@ -153,21 +210,27 @@ int updateDepartment(
         @Param("department") String department);
 ```
 
-这两个声明放在实验用 `EmployeeMapper` 中，需导入 `org.apache.ibatis.annotations.Param`。`@Param` 为多个或单个方法参数指定XML里 `#{id}`、`#{department}` 使用的名称；这里用它明确对应关系。对应的Mapper XML片段为：
+这两个声明放在实验用 `EmployeeMapper` 中，需导入 `org.apache.ibatis.annotations.Param`。`@Param` 为多个或单个方法参数指定XML里 `#{id}`、`#{department}` 使用的名称；这里用它明确对应关系。对应的 `src/main/resources/mapper/EmployeeMapper.xml` 在现有 `<mapper>` 内、普通 `findById` 映射旁边增加**两个独立标签**；锁定读复用主线已有的 `employeeResultMap`：
 
-```sql
-SELECT id, name, email, department, status
-FROM employees
-WHERE id = #{id}
-FOR UPDATE;
+```xml
+<select id="findByIdForUpdate" parameterType="long"
+        resultMap="employeeResultMap">
+    SELECT id, name, department, email, status,
+           created_at, updated_at
+    FROM employees
+    WHERE id = #{id}
+    FOR UPDATE
+</select>
 
-UPDATE employees
-SET department = #{department},
-    updated_at = CURRENT_TIMESTAMP
-WHERE id = #{id};
+<update id="updateDepartment">
+    UPDATE employees
+    SET department = #{department},
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = #{id}
+</update>
 ```
 
-上面两条是MyBatis映射中使用的SQL主体，`#{...}` 是MyBatis参数占位符，不能原样贴到数据库客户端执行。实际加入Mapper XML时，分别放入 `<select id="findByIdForUpdate" resultType="com.example.employee.entity.Employee">` 与 `<update id="updateDepartment">`，不要把两条语句放进同一个映射标签。第一条是锁定读，第二条是受同一事务保护的更新。
+XML的 `id` 必须与接口方法名一致；`#{...}` 是MyBatis参数占位符，不能原样贴到数据库客户端执行。普通详情查询继续使用原来的 `findById`，不能因为新增锁定读而把所有GET请求都改为 `FOR UPDATE`。
 
 ```java
 @Transactional
@@ -181,6 +244,27 @@ public void changeDepartment(Long id, String department) {
 ```
 
 `FOR UPDATE` 和后续UPDATE必须处于同一事务。若查询方法先结束并提交，再执行更新，锁已经释放，设计目标没有实现。该例只展示锁定读与写入的边界；若把它用于主线员工更新，还必须保留第13章的履历写入与部门校验，不能用此片段替换完整 `update()`。
+
+如果确实需要在第13章员工更新中读取**事务内最新的旧部门**来写履历，最小的实验性接入位置是 `EmployeeServiceImpl.update(Long id, EmployeeUpdateRequest request)` 中的读取行：保留方法原有的 `@Transactional`、校验、UPDATE、异常转换、履历INSERT和返回值，只把
+
+```java
+Employee beforeUpdate = findEmployeeOrThrow(id);
+```
+
+替换为
+
+```java
+Employee beforeUpdate = employeeMapper.findByIdForUpdate(id);
+if (beforeUpdate == null) {
+    throw new EmployeeNotFoundException(id);
+}
+```
+
+同时在原 `EmployeeMapper.java` 增加 `Employee findByIdForUpdate(@Param("id") Long id);` 并加入上面的同名XML `<select>`；这个路径不需要新增 `updateDepartment`，仍调用主线原有的 `employeeMapper.update(employee)` 和 `employeeChangeLogMapper.insert(changeLog)`。执行顺序是“Service代理开启事务 → 锁定读员工行 → 更新员工 → 写履历 → 提交并释放锁”。第二个请求要修改同一员工时会等待第一个事务结束，然后读取最新部门，履历才能记录正确的前后变化；如果履历写入失败，事务回滚时员工修改也撤销。
+
+但这**不能解决用户在旧画面停留十分钟后的覆盖问题**：第二个请求虽然等到锁并读到最新数据库行，却仍可能用旧请求体中的姓名、邮箱覆盖别人刚提交的值。旧画面编辑应采用上面的version比较，或在取得锁后把客户端携带的旧版本/旧值与当前行比较，不一致时返回冲突而不是继续UPDATE。悲观锁保护的是事务内的读—改—写窗口，不自动判断浏览器数据是否过期。
+
+若采用锁定读，还需在设计书明确：按主键还是范围查找、是否有索引、锁持有到哪一步、哪些异常回滚、等待多久后报错、是否允许有限重试，以及多个员工同时更新时的固定加锁顺序。`FOR UPDATE NOWAIT` 在无法立即取得锁时直接报错；`SKIP LOCKED` 会跳过已锁行，更适合工作队列，不能用于“指定员工不存在就跳过”的普通详情或更新接口。本练习保留默认等待行为，先用两个数据库会话观察，再根据项目规格决定超时与响应。
 
 悲观锁会让竞争事务等待，因此需要：
 
@@ -201,6 +285,27 @@ public void changeDepartment(Long id, String department) {
 | 多条SQL必须共同成功 | 事务 | 它与上面并发控制方案可以组合使用 |
 | 所有事务仿佛逐个执行 | `SERIALIZABLE` | 成本高，只在明确规格与验证后选择 |
 
+日本业务系统中的选型还应把失败后动作写进规格，而不是只选技术名：
+
+| 改修任务 | 优先调查的机制 | 必须写清的失败结果 |
+| --- | --- | --- |
+| 社员编号/邮箱不得重复 | `UNIQUE`及异常转换 | 冲突响应，库中仍只有一行 |
+| 库存或休假余额不能扣负 | 输入校验＋原子条件UPDATE | 影响0行的原因分类，最终值不为负 |
+| 两名管理员编辑同一员工 | version乐观锁 | 旧版本409、不覆盖、不写履历 |
+| 后台审批状态迁移 | 状态条件UPDATE或短事务锁定读 | 状态已变化时冲突，不重复审批 |
+| 多员工批量更新 | 事务＋固定访问顺序 | 失败批次回滚，重试范围明确 |
+| Batch与在线同时更新 | 竞争范围调查＋事务＋并发控制 | 在线/Batch各自的冲突或重试契约 |
+
+在设计评审中，把选择写成可验收的规则。例如“员工编辑：请求必须带读取时的version，旧版本返回409且不写履历”比“使用乐观锁”更能指导开发；“后台状态迁移：按主键 `FOR UPDATE`，短事务内判断最新状态并更新，等待超时按约定失败”比“加悲观锁”更能指导测试。锁方案不仅是SQL，还要同时落实索引、Service事务边界、异常响应和证据。
+
+| 验证场景 | 应观察的证据 | 不能只看什么 |
+| --- | --- | --- |
+| 两个旧版本更新同一员工 | 一个UPDATE影响1行，另一个0行/409；成功者数据和履历一致 | 两个请求都返回了响应 |
+| 两个事务锁同一员工 | 第二个在第一个提交前等待；提交后读到最新部门 | 单次 `FOR UPDATE` 成功 |
+| 锁内履历INSERT失败 | 员工更新回滚；锁释放；后续请求可继续 | 仅看HTTP 500 |
+| 修改不同员工 | 不应因错误的范围扫描而无谓互相等待 | 只看索引是否存在 |
+| 旧画面提交 | 检测旧version或旧值并拒绝覆盖 | 只确认使用了 `FOR UPDATE` |
+
 ## 三、锁等待与死锁
 
 ### 1. 锁等待不是死锁
@@ -219,6 +324,19 @@ public void changeDepartment(Long id, String department) {
 双方都等待对方释放资源，无法自行继续。InnoDB通常会检测死锁，并选择一个事务作为牺牲者回滚，让另一个继续。
 
 数据库能解除这一次僵局，不代表应用无需处理。项目应准备接收死锁异常；如果业务操作具备幂等性并且规格允许，可以有限次数重试整个事务，而不是只重放中间一条SQL。
+
+锁等待与死锁要分开：等待可能在持锁者提交后继续，也可能因超时失败；死锁形成循环等待，InnoDB在启用死锁检测时通常选择一个事务回滚。两者都不是“数据库文件损坏”的直接证据。MySQL对**锁等待超时**默认可能只回滚当前语句而非整个事务，具体受配置影响，因此应用捕获到异常后不能假定事务状态仍可安全继续；应让业务事务按明确回滚规则结束，再决定是否重试。
+
+```text
+发生等待/死锁 → 记录requestId、业务键、SQL阶段、数据库错误码
+  → 查哪个事务持锁、执行计划与访问顺序
+  → Spring/MyBatis接收并转换异常
+  → 判断业务是否允许重试、整个事务是否已回滚
+  → 允许：在事务边界外有限次数重试整个业务用例
+  → 不允许：返回约定错误，并核对最终数据
+```
+
+Spring数据访问异常层级可能出现`PessimisticLockingFailureException`、`CannotAcquireLockException`等；旧的`DeadlockLoserDataAccessException`已被标为过时。具体转换还取决于MyBatis/Spring集成、驱动、SQLState和数据库错误码，不要断言“所有死锁都必然是同一个Java类”。调查时保留根因错误码与数据库端证据，再决定错误响应。有限重试应有次数上限、间隔和幂等性保障；外部通知、文件交付及不可重复操作不能仅因数据库事务回滚就机械重做。
 
 ### 3. 降低死锁和等待的方法
 
@@ -240,7 +358,26 @@ SHOW ENGINE INNODB STATUS;
 
 ## 四、两个会话怎样验证并发现象
 
-并发问题不能只发送一次Postman请求就下结论。可以在专用学习数据库打开数据库客户端的连接A和连接B，明确控制提交顺序。不要在开发共享库或生产库执行锁实验。
+并发问题不能只发送一次Postman请求就下结论。优先使用可按已知初始化脚本重建的**专用实验数据库或独立实验记录**；其次才是在个人专用练习库中使用明确标记的实验员工。两个数据库客户端连接A、B必须属于同一被允许的实验库，并明确控制提交顺序。禁止在生产、共享开发或其他学员共用数据库执行清空、DROP、批量DELETE或锁实验。若第12章的测试脚本包含DROP，只能在其既有专用测试库和保护规则下运行，本附录不修改`MySqlTestGuard`或扩大脚本执行范围。
+
+### 实验前记录：先区分SQL与真实API
+
+| 实验方式 | `employees`可能变化 | `employee_change_logs`可能变化 | 恢复重点 |
+| --- | --- | --- | --- |
+| 数据库客户端直接执行本节原生SQL | SQL明确修改的员工字段、临时`version` | 通常不会调用履历Mapper，因此不因这两条UPDATE新增业务履历 | 按记录核对并恢复SQL直接改动的值，不虚构履历变化 |
+| 通过真实员工HTTP API调用第13章Service | 员工字段；若完成乐观锁改修，成功时还更新`version` | 成功请求可能新增变更履历；冲突请求不应新增 | 同时核对员工、版本和新增履历，按环境恢复或保留审计证据 |
+
+在**建`version`列之前**记录数据库名称及其是否为个人专用实验库、实验员工id、原姓名、部门、邮箱、必要的其他业务字段、`SHOW CREATE TABLE employees`结果、该员工履历原有条数与可辨认的履历id；为避免他人同时改动，实验期间只使用自己控制的记录。MySQL 8.0 InnoDB示例读取如下，`1001`须替换为自己的实验员工id：
+
+```sql
+SHOW CREATE TABLE employees;
+SELECT id, name, department, email, status
+FROM employees WHERE id = 1001;
+SELECT id, action, detail, created_at
+FROM employee_change_logs WHERE employee_id = 1001 ORDER BY id;
+```
+
+**主线尚无`version`列，建列前不要执行`SELECT version`。** 按第二节“方案3”在专用实验库建列后，再执行`SELECT id, version FROM employees WHERE id = 1001;`记录本次版本起点；同时保留建列前的表结构记录。若只做`FOR UPDATE`等待实验而不做乐观锁，不需要建列。记录实验前履历条数及id，是为了区分原有履历和可能由真实API新增的履历，**不是授权按id范围批量删除**。
 
 ### 实验1：观察 `FOR UPDATE` 等待
 
@@ -280,7 +417,7 @@ COMMIT;
 
 ### 实验2：验证乐观锁冲突
 
-先在个人练习库按“方案3”增加 `version`，确认员工1001存在并记下原部门；不要使用共享数据。连接A、B各执行 `SELECT id, department, version FROM employees WHERE id = 1001`，记下相同的旧版本，例如0。然后在A执行：
+先按本节“实验前记录”核对员工1001及履历、保存建列前表结构，再在允许的专用实验库按“方案3”增加`version`；不要使用共享数据。建列后连接A、B各执行 `SELECT id, department, version FROM employees WHERE id = 1001`，记下相同的旧版本，例如0。然后在A执行：
 
 ```sql
 UPDATE employees
@@ -298,9 +435,58 @@ WHERE id = 1001 AND version = 0;
 
 B应影响0行。再次查询应看到Development与version=1，不能把B的0行当成功。若实际起始版本不是0，把两条SQL中的0都替换为**实验前读到的同一个旧版本**，最终版本应为旧版本加1。随后通过已完成version传递与异常映射的实验接口验证B返回409；只执行这两条SQL不能证明HTTP响应。
 
-实验结束按本附录第二节“方案3：乐观锁”中的恢复顺序处理：确认连接A、B都已提交或回滚，用实验前记录的原部门恢复员工1001（若原来是Sales，可在个人练习库执行 `UPDATE employees SET department = 'Sales' WHERE id = 1001`），移除临时Mapper方法、DTO字段和异常映射，确认工程不再引用version，最后执行前文的 `ALTER TABLE employees DROP COLUMN version`。重新查询员工数据、核对表结构，并运行第13章原有事务测试，确认回到主线稳定状态。不要在共享库或生产库执行这些恢复操作。
+这两条原生UPDATE只改员工行，不经过第13章的Service及履历Mapper，通常不会新增`employee_change_logs`；若再调用了真实HTTP API，则按下方统一恢复手顺分别核对两类变化，不能只恢复部门。
 
-## 五、事务和并发控制的常见误区
+### 统一恢复：员工当前值与履历分别核对
+
+1. 确认连接A、B及Postman实验请求已结束；两个数据库连接均明确`COMMIT`或`ROLLBACK`，没有遗留事务或锁等待。
+2. 对照实验前记录查询员工当前姓名、部门、邮箱及其他被改字段；若建过`version`列，再查询当前版本和原记录的版本起点。不要把“只恢复部门”当成整个员工记录已恢复。
+3. 分清原生SQL与真实API各自做了什么。原生SQL通常没有业务履历；成功的API更新会经第13章事务写入履历，409冲突分支不应写入。
+4. 查询该员工`employee_change_logs`的条数和id，与实验前记录逐条对照；若有API新增履历，先确定是保留审计证据，还是在**可重建的专用实验数据库**中按既有初始化流程整体恢复已知状态。
+5. 首选重建专用实验库或从实验前备份恢复独立实验记录；执行初始化脚本前再次核对数据库名称、现有专用测试库保护机制和允许的恢复范围。不得把含DROP的测试脚本拿到个人业务库、共享库或正式库执行。
+6. 如果使用个人练习库，只恢复能明确识别且允许恢复的实验员工值；不要用模糊条件`DELETE FROM employee_change_logs WHERE employee_id = ...`清理履历。无法安全撤销API产生的履历时，保留并标记实验记录，不能声称数据库已回到完全相同的历史状态。
+7. 移除临时Mapper方法、DTO/Entity字段、冲突异常映射和其他实验改动，并确认代码已不再引用`version`。只在隔离且允许重建的专用实验库中按第二节给出的SQL删除临时`version`列；若没有建列，就不要执行删列。
+8. 重新查询员工值、履历条数及id，并对照建列前`SHOW CREATE TABLE employees`确认结构。运行第13章原事务回归测试；记录哪些数据完全恢复、哪些审计履历按规则保留。
+
+只做本节**原生SQL**实验、确认实验前部门确为`Sales`、实验后确为`Development`，且期间没有通过API写入履历时，可在隔离实验库按已记录的id执行以下**定向恢复示意**；先核对实际值，条件不符时停止，不要改成无条件覆盖：
+
+```sql
+UPDATE employees
+SET department = 'Sales'
+WHERE id = 1001 AND department = 'Development';
+
+SELECT id, name, department, email
+FROM employees WHERE id = 1001;
+```
+
+第一条预期影响1行；若影响0行，先调查是否有人或其他实验改变了记录。若数据库客户端关闭了自动提交，在核对结果后还须明确`COMMIT`，并用新查询确认保存。该示意**不适用于已调用真实员工API的场景**，不能用它替代履历核对，也不能恢复未记录的姓名、邮箱或其他字段。
+
+**恢复员工当前字段，不代表历史履历自动恢复。正式业务系统中的审计履历通常不能随意删除。** 本实验优先通过专用、可重建的数据环境恢复，而不是让学员对真实业务履历执行DELETE。若只执行了两条原生SQL且没有触发业务Mapper，应如实记录“履历未变化”，不假定每个并发实验都会新增履历。
+
+## 五、综合案例：两名管理员同时修改同一员工
+
+**起点与问题复现。** 本例只在可重建的专用MySQL 8.0 InnoDB实验库或个人专用练习库、实验用工程分支进行。按第四节记录员工1001原姓名、部门、邮箱、表结构及履历；建列后再记录version起点。A、B分别用Postman或两个测试请求读取相同详情。A修改部门后提交，B仍拿旧画面中的完整员工数据提交。原主线UPDATE仅按id定位时，B可能覆盖A的部门；两个请求各自有`@Transactional`也不会自动识别B的旧画面。
+
+**原因与方案比较。** 竞争窗口跨越“读取详情→用户思考→点击保存”，可能长达数分钟。`FOR UPDATE`只在短数据库事务内锁行，不能在用户编辑期间长期持锁；如果B拿到锁后仍无条件写旧请求体，还是会覆盖A。条件UPDATE可以比较旧字段，但字段较多时version更清晰。因此本场景通常优先采用前文方案3的version，保留`@Transactional`保证员工UPDATE和履历INSERT共同提交。它们解决不同问题，不是二选一。
+
+| 验证项目 | 无version校验的原更新 | 使用version校验 |
+| --- | --- | --- |
+| A、B读取同一员工 | 都成功，各持一份旧画面 | 都成功，各持同一旧version |
+| A先提交 | 成功 | UPDATE影响1行，version加1 |
+| B随后提交旧画面 | 可能覆盖A已改字段 | 旧version与数据库不匹配 |
+| B的UPDATE／HTTP结果 | 可能影响1行并返回200 | 影响0行，按规格返回409 Conflict |
+| 最终员工数据 | 可能成为B提交的旧内容 | 保留A成功提交的结果 |
+| 变更履历 | 两次成功更新可能各写一条 | A新增一条；B冲突不新增 |
+
+乐观锁不在用户编辑页面期间持有数据库锁，而是在提交时用最初读取的version做条件判断。若Service在B提交前重新查询最新version并替换B携带的旧值，条件UPDATE可能再次成功，冲突保护就失效。UPDATE影响0行必须按规格区分员工不存在与版本冲突，不能直接返回成功；B冲突分支在履历INSERT之前退出，不能记录一条并未完成的更新。也不能无条件自动重试B的整份旧画面，否则仍可能覆盖A，应该让使用者读取最新数据并确认差异。
+
+**实验改修。** 按方案3的改修清单增加`version`列、Entity/DTO字段、详情响应、请求旧版本、`updateWithVersion` Mapper SQL、Service的0行冲突判断和409映射；**这是增量实验，不是另一份完整`EmployeeServiceImpl`**。A、B都持有相同旧版本`v`：A的`WHERE id=1001 AND version=v`影响1行，数据库版本变为`v+1`；B仍带`v`影响0行，返回409。冲突分支在履历INSERT之前退出，不产生新履历；不能悄悄用最新version重试B的整个更新。
+
+**验证证据。** 保存A、B请求体中的旧version、发送顺序、HTTP状态与响应、每次UPDATE影响行数，以及最终`employees`数据和`employee_change_logs`条数。预期A成功、B为409，最终部门与姓名是A版本、version只增1、仅A新增一条履历；另外测不存在id仍按原规格404。若两请求都成功，先查前端是否真的传旧version、Service有没有重新查询并覆盖它、Mapper XML是否同时匹配id/version，以及测试是否用不同请求。
+
+**恢复。** 按第四节“统一恢复”依次结束事务、对照员工字段与版本、核对API可能新增的履历，再恢复专用实验数据和临时代码。不能只把姓名、部门改回去就宣称实验完全恢复，也不能按员工id模糊删除审计履历。确认没有代码引用`version`后，才可在隔离且允许重建的专用实验库删除临时列；最后运行第13章原事务测试。共享库和生产库不得执行本实验的删列或履历清理。
+
+## 六、事务和并发控制的常见误区
 
 | 误区 | 为什么错误 | 正确方向 |
 | --- | --- | --- |
@@ -313,7 +499,7 @@ B应影响0行。再次查询应看到Development与version=1，不能把B的0�
 | 冲突后自动重试完整用户更新 | 可能再次覆盖别人已经提交的数据 | 让用户重读、比较和确认 |
 | 普通SELECT已经锁住读到的数据 | InnoDB普通一致性读通常使用MVCC快照 | 需要当前锁定读时明确使用 `FOR UPDATE` |
 
-## 六、Review与故障调查清单
+## 七、Review与故障调查清单
 
 看到事务或并发改修时，按下面顺序检查：
 
@@ -347,7 +533,7 @@ B应影响0行。再次查询应看到Development与version=1，不能把B的0�
 - 是否验证409、超时、死锁等失败路径？
 - 测试是否使用专用数据库并清理实验结构？
 
-## 七、练习任务
+## 八、练习任务
 
 ### 练习1：判断应该使用什么机制
 
@@ -376,23 +562,35 @@ B应影响0行。再次查询应看到Development与version=1，不能把B的0�
 
 用两个独立请求或两个数据库会话验证一次并发冲突，证据至少包含：
 
-- 开始数据与version；
+- 建列前员工字段、表结构和履历条数／id；做乐观锁实验时再记录建列后的version起点；
 - A、B的执行顺序；
 - 每次UPDATE影响行数或HTTP状态；
-- 最终数据库记录；
+- 最终员工字段、version（若存在）以及履历变化；标明使用原生SQL还是API；
 - 为什么该结果符合规格；
-- 实验后恢复了哪些结构和代码。
+- 实验后恢复了哪些数据、结构和代码，哪些审计履历按规则保留。
 
-## 八、本附录完成标准
+## 九、重要概念与完成标准
+
+| 容易混淆 | 区别 |
+| --- | --- |
+| 乐观锁与悲观锁 | 前者提交时比较旧版本；后者在短事务内先锁最新行 |
+| 数据库约束与业务校验 | `UNIQUE`/`CHECK`守最终底线；请求与Service校验提供业务语义 |
+| 锁等待与死锁 | 前者可能等到持锁者释放；后者形成循环等待，需要选牺牲事务解除 |
+| 回滚与重试 | 回滚结束失败事务；重试是重新执行业务，需幂等与有限次数 |
+
+### 本附录完成标准
 
 完成本附录后，不要求把所有锁机制加入Employee Management主线。你需要能够根据业务问题选择最小且可验证的机制：用事务保护多步业务原子性，用约束保护最终不变量，用原子SQL、乐观锁或悲观锁处理具体并发竞争，并用隔离级别、索引、锁范围和失败处理解释运行结果。
 
-进一步排查事务未回滚、锁等待或数据库异常时，可结合[B07 Spring Boot常见问题与排查索引](B07_troubleshooting_review_index.md)确定调查入口。
+进一步排查事务未回滚、锁等待或数据库异常时，可结合[B06 Spring Boot常见问题与排查索引](B06_troubleshooting_review_index.md)确定调查入口。
 
-## 九、官方参考资料
+## 十、官方参考资料
 
 - [Spring Framework：使用 `@Transactional`](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)
 - [MySQL 8.4：InnoDB事务模型](https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-model.html)
 - [MySQL 8.4：InnoDB事务隔离级别](https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-isolation-levels.html)
 - [MySQL 8.4：InnoDB锁](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking.html)
 - [MySQL 8.4：InnoDB死锁](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks.html)
+- [MySQL 8.0：死锁调查与重试](https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks-handling.html)
+- [Spring Framework：悲观锁异常层级](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/dao/PessimisticLockingFailureException.html)
+- [MySQL 8.0：锁定读与 `NOWAIT`/`SKIP LOCKED`](https://dev.mysql.com/doc/refman/8.0/en/innodb-locking-reads.html)

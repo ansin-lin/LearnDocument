@@ -1,6 +1,6 @@
 # Spring Boot教学文档第二轮增量修改报告
 
-> 历史说明：第三轮当时把旧项目识读拆为A03，并将原Lombok、JPA两个文件合并为A04；当前分别编号为B03和B04。当前学习入口和有效路径以 `appendix/index.md` 为准；本报告保留第二轮完成时的编号说明，文件路径已同步为现行路径。
+> 历史报告：表中的章节位置和完成状态是当时的记录，并非现行课程验收结论。B01～B06现行顺序与文件路径以 [附录入口](appendix/index.md) 为准；下方文件路径已指向本次重命名后的现行文件，旧章节位置仍只记录当时状态。
 
 ## 一、处理结果
 
@@ -14,7 +14,7 @@
 | P0 | Jackson | `mainline/05_api_spec_and_data_objects.md` | 十一、JSON与Java字段映射常见注解 | 完成 |
 | P0 | Date/Time | `mainline/09_database_and_mybatis.md` | 十二、Java Web项目中的日期与时间 | 完成 |
 | P0 | Filter / Interceptor / AOP | `mainline/11_logging_and_diagnosis.md` | 十三、Spring共通处理机制的位置 | 完成 |
-| P0 | RestClient | `appendix/B01_external_api_restclient.md` | 全文独立专题 | 完成 |
+| P0 | RestClient | `appendix/B05_external_api_restclient.md` | 全文独立专题 | 完成 |
 | P0 | Existing Project Reading | `appendix/B02_existing_project_reading.md` | Step 1～5、调查模板 | 完成 |
 | P0 | Boot 2 / Boot 3 / WAR / XML | `appendix/B02_existing_project_reading.md` | 七、Spring Boot新旧项目常见差异 | 完成 |
 | P1 | CORS | `mainline/16_authorization_and_data_scope.md` | 八、Session、同源与CORS的边界 | 完成 |
@@ -22,9 +22,9 @@
 | P1 | Logical Delete | `mainline/19_japanese_project_change_practice.md` | 十七、追加改修演练 | 完成 |
 | P1 | Lombok | `appendix/lombok_existing_project.md` | 全文识读专题 | 完成 |
 | P1 | JPA | `appendix/jpa_for_mybatis_learners.md` | 全文识读专题 | 完成 |
-| P1 | Annotation Reference | `appendix/B05_spring_annotation_reference.md` | Bean、MVC、Validation、安全、JSON等分类速查 | 完成 |
-| P2 | `@Scheduled` / `@Async` | `appendix/B05_spring_annotation_reference.md` | 八、生命周期与后台执行 | 完成 |
-| P2 | `@PostConstruct` / `@PreDestroy` | `appendix/B05_spring_annotation_reference.md` | 八、生命周期与后台执行 | 完成 |
+| P1 | Annotation Reference | `appendix/Appendix_spring_annotation_reference.md` | Bean、MVC、Validation、安全、JSON等分类速查 | 完成 |
+| P2 | `@Scheduled` / `@Async` | `appendix/Appendix_spring_annotation_reference.md` | 八、生命周期与后台执行 | 完成 |
+| P2 | `@PostConstruct` / `@PreDestroy` | `appendix/Appendix_spring_annotation_reference.md` | 八、生命周期与后台执行 | 完成 |
 | P2 | Actuator | `appendix/A18_02_operations_components_reading.md` | 一、Spring Boot Actuator | 完成 |
 | P2 | Flyway | `appendix/A18_02_operations_components_reading.md` | 二、Flyway | 完成 |
 | P2 | Liquibase | `appendix/A18_02_operations_components_reading.md` | 三、Liquibase | 完成 |
@@ -58,11 +58,11 @@
 
 ### 新增文件
 
-- `appendix/B01_external_api_restclient.md`
+- `appendix/B05_external_api_restclient.md`
 - `appendix/B02_existing_project_reading.md`
 - `appendix/lombok_existing_project.md`
 - `appendix/jpa_for_mybatis_learners.md`
-- `appendix/B05_spring_annotation_reference.md`
+- `appendix/Appendix_spring_annotation_reference.md`
 - `appendix/A18_02_operations_components_reading.md`
 - `SECOND_ROUND_CHANGE_REPORT.md`
 

@@ -89,8 +89,8 @@ Eclipse编写和调试代码
 | 12 | [员工CRUD的分层测试与接口验证](mainline/12_automated_testing_and_regression.md) | 依次完成MySQL/H2 Mapper正常系与异常系、Service单元测试、Controller MockMvc测试和Postman确认，最后验证完整调用链 |
 | 13 | [用事务保证多步写入一致](mainline/13_transaction_and_consistency.md) | 更新员工并写变更履历，用成功与失败测试证明提交和回滚 |
 | 14 | [让员工列表支持条件查询与分页](mainline/14_search_sort_pagination.md) | 实现筛选、稳定排序和分页，验证总件数、空页与非法参数 |
-| 15 | [用Session识别当前登录用户](mainline/15_session_login.md) | 使用数据库账号和BCrypt登录，通过Session完成当前用户识别与安全退出 |
-| 16 | [权限与访问范围](mainline/16_authorization_and_data_scope.md) | 用权限矩阵、URL规则和Service方法检查限制角色操作与本人数据范围 |
+| 15 | [Spring Security认证与Session登录](mainline/15_session_login.md) | 分阶段完成匿名保护、数据库账号认证、SecurityContext保存、CSRF与退出；最终源码见[R15](reference/R15_session_login_complete_source.md) |
+| 16 | [Spring Security权限与数据范围](mainline/16_authorization_and_data_scope.md) | 从权限矩阵到URL角色、本人数据范围和回归测试；最终源码见[R16](reference/R16_authorization_complete_source.md) |
 | 17 | [多环境配置与打包](mainline/17_profiles_configuration_packaging.md) | 理解Profile与环境变量，用Maven生成并在本机运行可执行JAR |
 | 18 | [部署与运行检查](mainline/18_deployment_operations_check.md) | 理解服务器运行、systemd、四层检查、日志调查、发布与回滚 |
 | 19 | [为Vue有給休暇系统实现后台API](mainline/19_paid_leave_vue_backend_practice.md) | 实现与Vue第22章一致的后台，并按第23章改修日期筛选，完成测试、联调和交付 |
@@ -119,19 +119,23 @@ Eclipse编写和调试代码
 | [A13-2 隔离级别与MVCC](appendix/A13_02_isolation_mvcc.md) | 区分并发读取现象、隔离级别、快照读与当前读 |
 | [A13-3 并发更新与锁](appendix/A13_03_concurrent_updates_locks.md) | 选择约束、原子UPDATE、乐观锁或悲观锁，并验证锁等待与死锁 |
 | [A16 跨源Session与CORS实验](appendix/A16_cross_origin_session_cors.md) | 在独立实验中配置浏览器跨源Session访问，并区分CORS、认证、授权和CSRF |
+| [A15-1 认证机制与核心Bean](appendix/A15_01_spring_security_authentication.md) | 补充认证组件关系、调用流程与失败调查，不作为主线前置要求 |
+| [A15-2 Session、Cookie与CSRF](appendix/A15_02_session_cookie_csrf.md) | 深入理解登录态保存、跨请求恢复与令牌生命周期 |
+| [A16-1 方法安全与数据范围](appendix/A16_01_method_security_data_scope.md) | 比较URL、方法与SQL范围控制及代理边界 |
+| [A16-2 安全测试与排障](appendix/A16_02_security_testing_and_troubleshooting.md) | 区分模拟身份与真实Session测试，整理401/403排查和回归证据 |
 | [A17 配置、构建与交付进阶](appendix/A17_configuration_build_delivery_advanced.md) | 调查配置覆盖、构建产物与正式交付检查项 |
 | [A18-1 Linux部署与运维手顺参考](appendix/A18_01_linux_deployment_operations_reference.md) | 查阅systemd Unit、更新、切り戻し和运维记录 |
 | [A18-2 常见运行与数据库迁移组件识读](appendix/A18_02_operations_components_reading.md) | 初步识别Actuator、Flyway和Liquibase |
 
 | 通用附录 | 学习成果 |
 | --- | --- |
-| [B01 Spring Boot调用外部REST API](appendix/B01_external_api_restclient.md) | 用RestClient识别GET、POST、超时和外部异常转换 |
+| [B01 Spring共通处理机制](appendix/B01_spring_common_processing_mechanisms.md) | 区分Filter、Interceptor、Controller Advice与AOP的责任 |
 | [B02 如何阅读一个陌生的Spring项目](appendix/B02_existing_project_reading.md) | 从构建、启动、配置、业务链到共通机制完成调查 |
-| [B03 日本既存Spring项目的新旧结构识读](appendix/B03_legacy_spring_project_reading.md) | 识别Boot 2/3、JAR/WAR、外部Tomcat和XML配置 |
-| [B04 Lombok与Spring Data JPA识读](appendix/B04_lombok_jpa_reading.md) | 识别编译期生成代码、Entity和Repository |
-| [B05 Spring项目常见注解速查](appendix/B05_spring_annotation_reference.md) | 按框架、位置、处理时机和课程场景理解注解 |
-| [B06 Spring共通处理机制](appendix/B06_spring_common_processing_mechanisms.md) | 区分Filter、Interceptor、Controller Advice与AOP的责任 |
-| [B07 常见问题与排查索引](appendix/B07_troubleshooting_review_index.md) | 按失败阶段回到对应内容查找原因 |
+| [B03 Lombok与Spring Data JPA识读](appendix/B03_lombok_jpa_reading.md) | 识别编译期生成代码、Entity和Repository |
+| [B04 日本既存Spring项目的新旧结构识读](appendix/B04_legacy_spring_project_reading.md) | 识别Boot 2/3/4、JAR/WAR、外部Tomcat和XML配置 |
+| [B05 Spring Boot调用外部REST API](appendix/B05_external_api_restclient.md) | 在员工业务中组合本地数据与HR状态，验证外部异常与超时 |
+| [B06 常见问题与排查索引](appendix/B06_troubleshooting_review_index.md) | 按失败阶段调查并提交证据与回归结果 |
+| [Spring项目常见注解速查手册](appendix/Appendix_spring_annotation_reference.md) | 按需查阅，不作为顺序章节 |
 
 基础主线现已形成从系统认识、工程实现、部署基础到前后端联调综合任务的完整学习顺序。附录建议按当前项目实际使用的技术选择阅读，不要求一次背完。
 

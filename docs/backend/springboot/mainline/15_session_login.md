@@ -1,56 +1,49 @@
-# 第15章 用Session识别当前登录用户
+# 第15章 Spring Security认证与Session登录
 
-> 本章目标：在员工管理API中完成真实的账号密码登录，使后续请求能够通过Session识别当前用户，并能验证登录失败、CSRF、退出和会话失效。
+> 从匿名请求到可跨HTTP请求恢复的登录状态。本章在第14章的Employee Management工程上增加数据库账号、JSON登录、Session、CSRF和退出；第16章才收紧USER/ADMIN权限与本人数据范围。技术基线为Java 17、Spring Boot 4.1.1、MyBatis Starter 4.1.0、MySQL 8.0。
 
-## 一、登录要解决的是“后续请求还是谁”
+本章每个阶段沿用上一阶段的文件，不重新建工程。详细认证机制见[A15-1](../appendix/A15_01_spring_security_authentication.md)，Session与CSRF原理见[A15-2](../appendix/A15_02_session_cookie_csrf.md)；二者是深入阅读，不是完成当前操作的前置条件。最终文件核对见[R15](../reference/R15_session_login_complete_source.md)。
 
-HTTP请求彼此独立。第一次请求提交正确密码，不代表第二次请求天然知道同一个用户。本章建立下面的闭环：
+## 一、阶段15-01：为什么一次登录不能自动延续到下一次请求
 
-```text
-GET /auth/csrf          → 取得CSRF令牌
-POST /auth/login        → 验证账号密码，服务器建立Session
-                         ← Set-Cookie: JSESSIONID=随机会话标识
-GET /auth/me            → 客户端携带Cookie，服务器恢复当前用户
-POST /auth/logout       → 清除认证和Session
-GET /auth/me            → 再次访问得到401
-```
+**本阶段要解决的问题：** 用户提交一次正确密码后，第二次HTTP请求为什么还需要识别身份？
 
-本章只回答“用户是谁”，不判断普通用户是否能修改或删除员工。角色和数据范围授权在第16章实现。
-
-## 二、接口规格
-
-| 编号 | 接口 | 输入 | 成功 | 失败 |
-| --- | --- | --- | --- | --- |
-| AUTH-CSRF-01 | `GET /auth/csrf` | 无 | 200，返回令牌名、值和请求头名 | — |
-| AUTH-LOGIN-01 | `POST /auth/login` | JSON账号密码＋CSRF令牌 | 200，返回用户名；建立Session | 400字段错误、401统一登录失败、403缺少CSRF |
-| AUTH-ME-01 | `GET /auth/me` | Session Cookie | 200，返回当前用户名 | 401未登录或会话过期 |
-| AUTH-LOGOUT-01 | `POST /auth/logout` | Session Cookie＋CSRF令牌 | 204，无正文；Session失效 | 403缺少CSRF |
-
-登录失败只返回“用户名或密码错误”，不能分别暴露“用户不存在”和“密码错误”。响应、日志和异常堆栈都不能记录原始密码、密码哈希、JSESSIONID或CSRF令牌。
-
-## 三、按案例建立可跨请求恢复的登录
-
-从第14章的员工项目继续，不重建业务系统。每个案例都保留前一案例已完成的文件；本节在首次操作位置给出所需代码，章末最终文件用于完成后核对。只在个人练习数据库创建账号并生成BCrypt哈希，不使用真实密码或共享账号。
-
-先看组件如何连接；箭头表示调用或注入，不表示所有组件都由Controller手工创建：
+认证（Authentication）回答“你是谁”；授权（Authorization）回答“你能做什么”。本章先实现前者，只要求员工接口已登录，第16章再决定USER和ADMIN的操作范围。HTTP请求本身不会保留上一次Controller方法里的Java变量：
 
 ```text
-POST /auth/login → SecurityFilterChain（先检查CSRF）→ AuthController
-                                                    │ 注入AuthenticationManager
-                                                    ▼
-                                             DaoAuthenticationProvider
-                                              ├─ AppUserDetailsService → AppUserMapper → app_users
-                                              └─ PasswordEncoder（比较原始密码和哈希）
-成功的Authentication → SessionAuthenticationStrategy（更换Session ID并清理旧CSRF令牌）
-                    → SecurityContextRepository（保存到Session）
-后续请求携带JSESSIONID → SecurityFilterChain从Session恢复身份 → /auth/me或员工接口
+客户端发送请求 → 服务器处理 → 返回响应
+下一次请求重新到达服务器，不会自动继承前一次的Java局部变量
 ```
 
-`@Configuration` 中的 `@Bean` 方法把PasswordEncoder、AuthenticationManager、SecurityContextRepository、CsrfTokenRepository和SessionAuthenticationStrategy注册进Spring容器；构造器参数和 `@Bean` 方法参数由容器按类型注入。账号Mapper由MyBatis创建，`AppUserDetailsService` 由 `@Service` 注册。依赖关系不是“Controller自己new所有对象”，缺少其中一个Bean会在启动时暴露，而不是等登录时才随机失效。
+服务器的Session保存登录后的认证状态，客户端Cookie保存会话标识。`JSESSIONID`是随机会话标识，不是用户名、密码或完整用户对象：
 
-### 案例15-01：未登录访问员工接口
+```text
+POST登录 → 服务器验证账号密码 → 把认证状态保存到Session
+     → 响应Set-Cookie: JSESSIONID=随机标识
+后续请求带Cookie → 服务器找到Session → 恢复当前用户
+```
 
-先在第14章 `pom.xml` 的 `<dependencies>` 中追加以下两项，其他原有依赖不删；版本继续交给Spring Boot 4.1.x管理。第一项进入正式应用，第二项只供测试使用：
+本阶段不创建`AuthenticationManager`或Session策略。先在Postman连续发两次现有`GET /health`（无参数、无请求体，预期200与`OK`），观察它们是两个独立请求；员工接口暂时仍按第14章行为工作。
+
+**教师讲解重点：** 认证和授权是两个问题；Cookie在客户端、Session在服务器；JSESSIONID不含密码。
+
+**学员必须完成的操作：** 画出上面两条请求链，指出第二次请求要带回什么。
+
+**常见错误：** 把Controller的局部变量当作可跨请求保存的登录状态。
+
+**本阶段完成标准：** 能解释为何还需要Session与Cookie；工程无改动。
+
+## 二、阶段15-02：加入Security并观察匿名401
+
+**本阶段要解决的问题：** 员工详情请求怎样在进入Controller前要求登录？
+
+`spring-boot-starter-security`提供安全过滤链。`SecurityFilterChain`是过滤链配置结果；`HttpSecurity`在Bean方法中构造它。`@Configuration`把类标记为Spring配置，`@Bean`把方法返回对象交给容器。`authenticated()`要求已有认证身份，`permitAll()`放行匹配请求。401表示当前请求尚无可用身份；关闭默认表单和HTTP Basic后，REST请求不会被引导到登录页面。
+
+**文件变化：**
+
+- 修改：项目根`pom.xml`的`<dependencies>`中追加下列两项，其他依赖和第13～14章业务代码不删。
+- 新增：`src/main/java/com/example/employee/config/SecurityConfig.java`。
+- 保持不变：员工Controller、Service、Mapper、事务和分页。
 
 ```xml
 <dependency>
@@ -64,7 +57,7 @@ POST /auth/login → SecurityFilterChain（先检查CSRF）→ AuthController
 </dependency>
 ```
 
-刷新Eclipse Maven项目依赖，再新建 `config/SecurityConfig.java`，建立只保护员工接口的最小过滤链。此时尚无登录接口，先观察匿名请求不能到达Controller：
+版本由Boot 4.1.1管理。Eclipse刷新Maven依赖，再新建完整配置类：
 
 ```java
 package com.example.employee.config;
@@ -95,13 +88,31 @@ public class SecurityConfig {
 }
 ```
 
-`SecurityFilterChain` 是Spring管理的安全过滤链配置；请求先经过过滤器，再可能到达Spring MVC。这里显式关闭表单登录和Basic认证，给REST请求设置401入口，所以未认证的GET `/employees/1001` 预期401，而不是依赖框架默认登录页可能产生的302。401表示尚未认证；403可能表示CSRF失败或已认证但无权限，不能只凭403判断角色。认证回答“是谁”，授权回答“能访问什么”；本章只做基本登录保护。Postman清除旧Cookie后请求员工详情，确认401且Controller断点未命中。
+`requestMatchers`选择路径；员工请求先经Security过滤器，再可能进入Controller。`anyRequest().permitAll()`暂放行健康接口；POST/PUT/DELETE仍受框架默认CSRF检查，放行URL不等于关闭CSRF。
 
-### 案例15-02：让认证组件能查账号并验证密码
+Eclipse用“Run As → Spring Boot App”启动类；若菜单没有该项，用“Run As → Java Application”。Postman清空旧Cookie，发送`GET http://localhost:8080/employees/1001`（无参数、无请求体），预期401；`GET /health`预期200与`OK`。在员工Controller首行打断点，匿名详情请求不应命中。
 
-按下面四步建立账号加载能力；此阶段还没有登录入口，员工接口继续返回401，但工程应能启动，数据库查询应能找到练习账号。
+**教师讲解重点：** Filter先于Controller；`@Bean`由Spring调用；401不是404。
 
-1. 仅在个人MySQL 8.0练习库执行账号表DDL，确认连接不是共享或生产库：
+**学员必须完成的操作：** 写配置类、运行项目、保存两条请求的状态证据。
+
+**常见错误：** 依赖未刷新；期待框架默认表单登录返回JSON。
+
+**本阶段完成标准：** 员工详情匿名401、健康接口200；此时还没有自定义登录入口。
+
+## 三、阶段15-03：建立数据库账号与密码验证能力
+
+**本阶段要解决的问题：** 系统从哪里找到账号，怎样确认密码而不保存明文？
+
+`app_users`是MySQL 8.0账号表；`AppUser`是表数据对象。MyBatis的`AppUserMapper`按用户名查询。Spring Security的`UserDetailsService`负责把表对象转换成认证资料`UserDetails`，不自行比较密码；`PasswordEncoder`接口的BCrypt实现执行哈希与`matches(raw, encoded)`。`DaoAuthenticationProvider`在下一阶段把查询与密码比较连起来。数据库的`role`暂存`USER`，第16章才用来授权。
+
+**文件变化：**
+
+- 新增：个人库`app_users`表、`entity/AppUser.java`、`mapper/AppUserMapper.java`及XML、`security/AppUserDetailsService.java`。
+- 修改：`SecurityConfig.java`追加`PasswordEncoder` Bean；专用测试库的`src/test/resources/test-data.sql`增加账号表与测试账号。
+- 保持不变：第14章员工表、事务、搜索SQL及当前Security过滤链。
+
+仅在个人练习库确认`employee_db`后执行：
 
 ```sql
 USE employee_db;
@@ -118,7 +129,7 @@ CREATE TABLE app_users (
 );
 ```
 
-`username` 唯一，`password_hash` 只存单向哈希，`employee_id` 是与员工的可空关联，`role` 暂存 `USER`/`ADMIN`，`enabled` 控制是否允许登录；当前物理删除员工规则下不贸然加外键。新建 `src/main/java/com/example/employee/entity/AppUser.java`：
+`username`唯一；`password_hash`只存单向哈希；`employee_id`与业务员工关联但本章不做本人授权；`enabled=false`表示不可登录。当前员工允许物理删除，本章不擅自加外键删除规则。新建完整实体：
 
 ```java
 package com.example.employee.entity;
@@ -145,10 +156,11 @@ public class AppUser {
 }
 ```
 
-2. 新建 `src/main/java/com/example/employee/mapper/AppUserMapper.java` 和 `src/main/resources/mapper/AppUserMapper.xml`：
+新增Mapper接口及独立XML；`#{username}`是参数绑定，沿用第9章下划线转驼峰设置：
 
 ```java
 package com.example.employee.mapper;
+
 import com.example.employee.entity.AppUser;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -171,12 +183,11 @@ public interface AppUserMapper {
 </mapper>
 ```
 
-`#{username}` 是绑定参数，不是拼接SQL；MyBatis按原有下划线转驼峰配置把 `password_hash` 映射到 `passwordHash`。用数据库客户端确认用户名查询恰好一行，未找到时Mapper返回null。
-
-3. 新建 `src/main/java/com/example/employee/security/AppUserDetailsService.java`：
+新增账号加载服务：
 
 ```java
 package com.example.employee.security;
+
 import com.example.employee.entity.AppUser;
 import com.example.employee.mapper.AppUserMapper;
 import org.springframework.security.core.userdetails.User;
@@ -206,9 +217,7 @@ public class AppUserDetailsService implements UserDetailsService {
 }
 ```
 
-`loadUserByUsername` 由认证Provider调用；它只把数据库账号转成Security的 `UserDetails`，不接收HTTP、不比较密码。`.roles("USER")` 会生成 `ROLE_USER` 权限；数据库值不要带 `ROLE_` 前缀。不存在或停用账号对外都应统一为登录失败。
-
-4. 在案例15-01的 `SecurityConfig.java` 增加两个导入，并在类中追加Bean方法，不删除原过滤链：
+`@Service`使Spring创建加载器；认证Provider以后调用`loadUserByUsername`。`roles("USER")`生成`ROLE_USER`，数据库值不带`ROLE_`前缀。`SecurityConfig.java`顶部新增以下导入，并在类内追加Bean，不替换15-02的`securityFilterChain`：
 
 ```java
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -220,122 +229,123 @@ public PasswordEncoder passwordEncoder() {
 }
 ```
 
-在本机临时新建 `src/test/java/com/example/employee/security/TrainingHashTest.java`，用Eclipse作为JUnit Test运行一次，复制控制台的课程专用哈希；完成插入后删除这个临时测试文件，不把哈希生成输出保存进提交记录：
+这段是**导入与Bean增量**：两个`import`放在`package`后，Bean方法放在类大括号内。个人练习库先插入本章账号（只用于本地教学）：
+
+```sql
+INSERT INTO app_users
+    (username, password_hash, employee_id, role, enabled)
+VALUES
+    ('tanaka',
+     '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
+     1001, 'USER', TRUE);
+```
+
+执行前先确认1001员工存在、`tanaka`账号尚不存在。专用测试库的`src/test/resources/test-data.sql`中，先于既有`DROP`加入`DROP TABLE IF EXISTS app_users;`；在员工表建立后追加下面完整表定义，在既有员工初始化后追加上面的`INSERT`。**这些DROP只允许在第12章指定的专用MySQL测试库执行，绝不在个人练习库或共享库执行。**
+
+```sql
+CREATE TABLE app_users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(100) NOT NULL,
+    employee_id BIGINT UNIQUE,
+    role VARCHAR(30) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE
+);
+```
+
+先在数据库客户端核对`SELECT username, employee_id, role, enabled FROM app_users WHERE username = 'tanaka';`应只有一行。然后在Eclipse分别运行下面两个测试：第一个沿用第12章专用MySQL测试库与`MySqlTestGuard`，真正执行Mapper SQL；第二个不启动Spring上下文，只检查样例哈希。此处不需要提前复制R15终版文件。
 
 ```java
 package com.example.employee.security;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import com.example.employee.entity.AppUser;
+import com.example.employee.mapper.AppUserMapper;
+import com.example.employee.support.MySqlTestGuard;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Sql(scripts = "/test-data.sql",
+        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+class AppUserMapperTest extends MySqlTestGuard {
+    @Autowired AppUserMapper appUserMapper;
+
+    @Test
+    void findsKnownAccountAndNotUnknownAccount() {
+        AppUser user = appUserMapper.findByUsername("tanaka");
+        assertThat(user).isNotNull();
+        assertThat(user.getEmployeeId()).isEqualTo(1001L);
+        assertThat(appUserMapper.findByUsername("missing")).isNull();
+    }
+}
+```
+
+```java
+package com.example.employee.security;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
-class TrainingHashTest {
+class PasswordHashTest {
+    private static final String HASH =
+            "$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC";
+
     @Test
-    void printTrainingHash() {
-        System.out.println(new BCryptPasswordEncoder(10)
-                .encode("TrainingPass123!"));
+    void sampleHashMatchesOnlyCorrectPassword() {
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        assertTrue(encoder.matches("TrainingPass123!", HASH));
+        assertFalse(encoder.matches("wrong-password", HASH));
     }
 }
 ```
 
-该测试用与Bean相同的算法和强度生成**练习密码**的哈希；正式登录仍由Spring注入的Bean验证，不从控制台读取。把刚生成的哈希填进个人练习库下面一条INSERT，不要原样插入占位文字：
+生成其他练习账号的哈希可用Eclipse临时JUnit方法调用`encode(...)`；插入后删掉临时打印代码，不记录真实密码或哈希到截图。第15章最终完整测试脚本仍可在[R15](../reference/R15_session_login_complete_source.md)核对。
 
-```sql
-INSERT INTO app_users (username, password_hash, employee_id, role, enabled)
-VALUES ('tanaka', '这里替换为刚生成的BCrypt哈希', 1001, 'USER', TRUE);
-```
+**教师讲解重点：** `AppUser`与`UserDetails`职责不同；BCrypt不能“解密”；加载器不自行验证密码。
 
-`matches(raw, encoded)` 才是认证时的比较方式，重复 `encode()` 得到不同字符串属正常现象。不要在日志、截图或Git中保存真实密码。检查 `app_users` 有一行哈希、哈希不等于明文，并重新启动应用确认无Mapper或Bean创建错误；此时仍不能发起登录，下一案例才接入认证调用。
+**学员必须完成的操作：** 建表、编写四个文件及Bean、在Eclipse运行Mapper和密码匹配测试。
 
-### 案例15-03：完成JSON登录并保存SecurityContext
+**常见错误：** 把明文写进`password_hash`；把`ROLE_`重复存入`role`。
 
-在前一案例基础上，完整替换临时 `SecurityConfig.java`；然后新建请求/响应DTO、`AuthController` 和认证失败处理器。本案例完成时，JSON登录、跨请求恢复和退出已经可用，不必先跳到章末拼接文件。
+**本阶段完成标准：** 可查练习账号，正确/错误密码匹配结果不同；此时尚无登录接口，员工匿名请求仍401。
 
-`src/main/java/com/example/employee/config/SecurityConfig.java` 完整内容：
+## 四、阶段15-04：先完成一次JSON认证
+
+**本阶段要解决的问题：** 正确密码能否被认证组件确认？“认证成功”是否已经等于“后续请求已登录”？
+
+`Authentication`表示认证输入或成功结果；`AuthenticationManager.authenticate`负责交给合适Provider，当前`ProviderManager`使用`DaoAuthenticationProvider`。`UsernamePasswordAuthenticationToken.unauthenticated(...)`只是装载输入，不能自行证明身份。失败会抛`AuthenticationException`，对外统一401。此阶段**故意不保存SecurityContext**，用下一次`/auth/me`的401观察缺口；不是第15章交付状态。
+
+**文件变化：**
+
+- 修改：`SecurityConfig.java`追加认证Bean，保留15-03已有的密码Bean和过滤链；过滤链中把`/auth/me`也加入`authenticated()`匹配。
+- 新增：`LoginRequest.java`、`CurrentUserResponse.java`、`CsrfResponse.java`、`AuthController.java`、`AuthExceptionHandler.java`。
+- 保持不变：账号表、Mapper、Service、员工业务代码。
+
+`SecurityConfig.java`顶部增加下列导入，类内追加Bean，并把原过滤链`requestMatchers("/employees", "/employees/**")`改为`requestMatchers("/auth/me", "/employees", "/employees/**")`：
 
 ```java
-package com.example.employee.config;
-
 import com.example.employee.security.AppUserDetailsService;
-import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
 
-@Configuration
-public class SecurityConfig {
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
-    }
-    @Bean
-    public SecurityContextRepository securityContextRepository() {
-        return new HttpSessionSecurityContextRepository();
-    }
-    @Bean
-    public CsrfTokenRepository csrfTokenRepository() {
-        return new CookieCsrfTokenRepository();
-    }
-    @Bean
-    public SessionAuthenticationStrategy sessionAuthenticationStrategy(
-            CsrfTokenRepository csrfTokenRepository) {
-        return new CompositeSessionAuthenticationStrategy(List.of(
-                new ChangeSessionIdAuthenticationStrategy(),
-                new CsrfAuthenticationStrategy(csrfTokenRepository)));
-    }
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AppUserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder);
-        return new ProviderManager(provider);
-    }
-    @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http, SecurityContextRepository repository,
-            CsrfTokenRepository csrfTokenRepository)
-            throws Exception {
-        http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
-                .securityContext(context -> context
-                    .requireExplicitSave(true)
-                    .securityContextRepository(repository))
-                .authorizeHttpRequests(authorize -> authorize
-                    .requestMatchers("/auth/me", "/employees", "/employees/**")
-                    .authenticated()
-                    .anyRequest().permitAll())
-                .exceptionHandling(exceptions -> exceptions
-                    .authenticationEntryPoint((request, response, exception) ->
-                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .logout(logout -> logout.logoutUrl("/auth/logout")
-                    .deleteCookies("JSESSIONID")
-                    .logoutSuccessHandler((request, response, authentication) ->
-                        response.setStatus(204)));
-        return http.build();
-    }
+@Bean
+public AuthenticationManager authenticationManager(
+        AppUserDetailsService users, PasswordEncoder encoder) {
+    DaoAuthenticationProvider provider = new DaoAuthenticationProvider(users);
+    provider.setPasswordEncoder(encoder);
+    return new ProviderManager(provider);
 }
 ```
 
-过滤链保留CSRF默认防护并明确使用Cookie令牌仓库；`AuthenticationManager` 注入账号加载服务与密码编码器，`SecurityContextRepository` 保存认证。这里把更换Session ID与清理旧CSRF令牌两个策略组合成一个Bean，由自定义登录Controller在认证成功后主动调用；只调用更换ID的策略，不会自动清理旧令牌。`List.of(...)` 提供按顺序执行的两个策略；`CookieCsrfTokenRepository` 负责Cookie存取，`CsrfAuthenticationStrategy` 通过同一个仓库发出清除旧Cookie的响应。过滤链也使用这个仓库。`/auth/login` 和 `/auth/csrf` 由当前 `anyRequest().permitAll()` 放行，但POST登录仍需通过CSRF检查；员工接口及 `/auth/me` 需要登录。
-
-新建 `dto/request/LoginRequest.java`、`dto/response/CurrentUserResponse.java` 和 `dto/response/CsrfResponse.java`：
+以下每个代码块分别是一个**完整新文件**。请求对象用`@NotBlank`与`@Size`校验，`@Valid`在Controller调用前触发；响应`record`只公开用户名或令牌资料：
 
 ```java
 package com.example.employee.dto.request;
@@ -363,11 +373,8 @@ public record CurrentUserResponse(String username) {}
 
 ```java
 package com.example.employee.dto.response;
-public record CsrfResponse(
-        String parameterName, String headerName, String token) {}
+public record CsrfResponse(String parameterName, String headerName, String token) {}
 ```
-
-每个代码块是独立文件；`record` 适合这里的只读响应，JSON请求对象仍使用可绑定的setter。新建 `src/main/java/com/example/employee/controller/AuthController.java`：
 
 ```java
 package com.example.employee.controller;
@@ -376,17 +383,11 @@ import com.example.employee.common.ApiResponse;
 import com.example.employee.dto.request.LoginRequest;
 import com.example.employee.dto.response.CsrfResponse;
 import com.example.employee.dto.response.CurrentUserResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -398,14 +399,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 public class AuthController {
     private final AuthenticationManager authenticationManager;
-    private final SecurityContextRepository contextRepository;
-    private final SessionAuthenticationStrategy sessionStrategy;
-    public AuthController(AuthenticationManager authenticationManager,
-            SecurityContextRepository contextRepository,
-            SessionAuthenticationStrategy sessionStrategy) {
+    public AuthController(AuthenticationManager authenticationManager) {
         this.authenticationManager = authenticationManager;
-        this.contextRepository = contextRepository;
-        this.sessionStrategy = sessionStrategy;
     }
     @GetMapping("/csrf")
     public ResponseEntity<ApiResponse<CsrfResponse>> csrf(CsrfToken token) {
@@ -414,16 +409,11 @@ public class AuthController {
     }
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<CurrentUserResponse>> login(
-            @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+            @Valid @RequestBody LoginRequest request) {
         Authentication input = UsernamePasswordAuthenticationToken.unauthenticated(
                 request.getUsername().trim(), request.getPassword());
         Authentication result = authenticationManager.authenticate(input);
-        sessionStrategy.onAuthentication(result, httpRequest, httpResponse);
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(result);
-        SecurityContextHolder.setContext(context);
-        contextRepository.saveContext(context, httpRequest, httpResponse);
+        // 临时实验：尚未把result保存到Session；15-05完整替换此方法。
         return ResponseEntity.ok(ApiResponse.success(
                 new CurrentUserResponse(result.getName())));
     }
@@ -436,10 +426,11 @@ public class AuthController {
 }
 ```
 
-登录先验证密码，再通过组合策略更换Session ID、清理登录前CSRF令牌，最后设置本次请求的认证并显式保存上下文；仅返回200而未调用 `saveContext()`，下一请求仍会是匿名。退出无需另建Controller方法，交由过滤链处理。最后新建 `src/main/java/com/example/employee/exception/AuthExceptionHandler.java`：
+`/auth/csrf`读取Spring Security提供的`CsrfToken`；POST登录仍受默认CSRF保护。本阶段默认令牌仓库存于HttpSession；15-06才改为Cookie仓库。新增统一登录异常处理器：
 
 ```java
 package com.example.employee.exception;
+
 import com.example.employee.common.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -458,984 +449,253 @@ public class AuthExceptionHandler {
 }
 ```
 
-该处理器只处理进入Controller后的认证异常；用户名不存在、密码错误、停用账号都给同一401消息。未登录的401和缺CSRF的403发生在过滤链，不由此Advice处理。现在用 `GET /auth/csrf` → 带令牌 `POST /auth/login` → 携带同一Cookie的 `GET /auth/me` 检查200、200、200；错误密码应是401，缺令牌的登录请求应是403。
+在Eclipse重启。Postman先`GET /auth/csrf`（无参数/请求体，预期200，保存令牌及Cookie），再`POST /auth/login`（JSON `{"username":"tanaka","password":"TrainingPass123!"}`；以响应`headerName`为请求头名、`token`为值，保留Cookie；预期200、`data.username=tanaka`）。错误密码用同样CSRF流程预期401统一消息；缺令牌登录预期403。紧接着`GET /auth/me`（无请求体）预期401：**这正是本阶段要观察的受控失败**。测试后不用恢复文件，15-05直接增量改进。
 
-登录Controller中的关键顺序可单独读为：
+**教师讲解重点：** `authenticate`只确认这次输入；401与403来源不同；200并不证明Session登录。
 
-```java
-Authentication input =
-        UsernamePasswordAuthenticationToken.unauthenticated(
-                request.getUsername().trim(), request.getPassword());
-Authentication result = authenticationManager.authenticate(input);
-sessionStrategy.onAuthentication(result, httpRequest, httpResponse);
-SecurityContext context = SecurityContextHolder.createEmptyContext();
-context.setAuthentication(result);
-SecurityContextHolder.setContext(context);
-contextRepository.saveContext(context, httpRequest, httpResponse);
-```
+**学员必须完成的操作：** 编写文件，在Eclipse调试认证结果，保存200/401/403和下一请求401证据。
 
-`AuthenticationManager` 协调认证，当前 `DaoAuthenticationProvider` 调用UserDetailsService查用户并让PasswordEncoder验证密码。成功返回的 `Authentication` 放入本次请求的 `SecurityContext`；`saveContext()` 才把它持久化到Session，供下一次请求恢复。这里只拿到认证结果但不保存，不能称为Session登录。认证失败统一返回401“用户名或密码错误”，不暴露账号是否存在。登录前先GET `/auth/csrf`，再带令牌POST登录；成功后GET `/auth/me` 和员工详情均应返回200。
+**常见错误：** 为了临时实验关掉CSRF；将密码或完整`Authentication`返回JSON。
 
-### 案例15-04：观察Session和Cookie如何维持身份
+**本阶段完成标准：** 正确账号认证200、错误密码401、缺令牌403；`/auth/me`仍401。
 
-HTTP请求本身不记住上一个请求。服务器Session保存认证上下文，客户端Cookie中的JSESSIONID只是定位Session的随机标识，不是密码。Postman的Cookie Jar会按域名自动保存 `Set-Cookie` 并在后续请求中发送，因此同一客户端可能无需手填Cookie就保持登录。按照后文Postman步骤检查登录后的Cookie、`/auth/me` 成功、清除Cookie后401、重新登录后恢复。这里必须证明跨请求恢复，不能仅用登录接口200证明。不要把完整Cookie值放进截图或工单。
+## 五、阶段15-05：保存SecurityContext，让下一请求恢复身份
 
-### 案例15-05：用受保护写请求验证CSRF
+**本阶段要解决的问题：** 如何把15-04的一次性认证结果变成真实Session登录？
 
-当前Cookie会被浏览器自动附带，因此恶意页面可能借用户已登录状态发起写请求。Spring Security的CSRF过滤器对当前POST、PUT、DELETE进行令牌检查；Cookie不是CSRF令牌。先在登录会话中不给员工POST附令牌，预期403且业务代码不执行；再GET `/auth/csrf` 取当前令牌，用响应中的headerName发送token并携带同一会话Cookie，预期201且数据库出现练习员工。本例登录和退出都会通知客户端清除旧CSRF Cookie；写请求前按当前会话重新获取令牌。本章不关闭CSRF；具体请求、清理和回归测试见后文。
-
-### 案例15-06：退出并验证旧会话失效
-
-保留最终Security配置中的 `logoutUrl("/auth/logout")`；退出由Security过滤器处理，不写一个只修改自定义布尔值的假接口。以当前会话令牌POST退出，预期204；随后GET `/auth/me` 和员工详情都为401，即使重送旧JSESSIONID也不能恢复原认证。正常退出还需清理服务器端SecurityContext和Session，客户端删除本地练习Cookie。案例完成后运行章末 `SessionLoginTest` 并按后文Postman表保存脱敏证据。
-
-## 四、Filter与SecurityFilterChain
-
-Filter是在请求到达Controller之前执行的Servlet组件。Spring Security把多个安全Filter按顺序组成过滤器链，用于加载Session中的认证、检查CSRF、判断访问规则和执行logout。
-
-`SecurityFilterChain` 是这条链的配置结果。`HttpSecurity` 是构建配置的对象，`build()` 返回最终链。应用中不要在每个Controller复制“从Session取用户”的判断，否则容易漏接口、响应不一致，也无法统一处理退出和攻击防护。
-
-## 五、@Configuration与@Bean怎样注册框架对象
-
-`@Configuration` 标记配置类，Spring启动时读取其中的Bean定义。`@Bean` 写在方法上：Spring调用方法，把返回对象注册进容器，默认Bean名是方法名。
-
-| 方法 | 参数来源 | 返回对象 | 用途 |
-| --- | --- | --- | --- |
-| `passwordEncoder()` | 无 | `PasswordEncoder` | BCrypt哈希与验证 |
-| `authenticationManager(...)` | 容器注入两个Bean | `AuthenticationManager` | 组织账号加载和密码校验 |
-| `csrfTokenRepository()` | 无 | `CsrfTokenRepository` | 保存和读取Cookie令牌；策略通过它清除Cookie |
-| `sessionAuthenticationStrategy(...)` | 容器注入令牌仓库 | `SessionAuthenticationStrategy` | 登录成功时依次更换Session ID、清理旧CSRF令牌 |
-| `securityFilterChain(...)` | 容器注入安全对象 | `SecurityFilterChain` | 生成Web安全过滤器链 |
-
-这些对象确实由Spring Security运行时使用，不是为了展示注解而虚构的空组件。
-
-## 六、密码如何验证
-
-`BCryptPasswordEncoder(10)` 使用bcrypt和强度10。`encode()`生成单向哈希，`matches(raw, encoded)`验证原始输入是否对应已存哈希。密码不能解密，也不能明文保存或用Base64代替哈希。正式系统需要根据服务器性能测量强度，并规划哈希升级。参考[Spring Security密码存储](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html)。
-
-登录过程由 `DaoAuthenticationProvider` 协作完成：调用 `UserDetailsService` 查账号、检查enabled、使用PasswordEncoder比较密码，成功后返回已认证的 `Authentication`。
-
-## 七、Authentication、SecurityContext和Session
-
-`Authentication` 登录前可以承载用户名和密码输入，登录后表示已经确认的用户；返回结果中的凭据会由框架按安全策略处理。`SecurityContext` 保存当前请求的Authentication，`SecurityContextHolder` 让同一请求中的后续代码取得它。
-
-本课程采用Spring Boot 4.1.1管理的Spring Security 7.1.1。自定义Controller完成登录时，需要显式调用 `SecurityContextRepository.saveContext()`，否则当前请求看似成功，下一请求却恢复不到用户。官方流程见[认证持久化与Session管理](https://docs.spring.io/spring-security/reference/servlet/authentication/session-management.html)。
-
-组合的 `SessionAuthenticationStrategy` 在认证成功时先更换Session ID，防止攻击者预先固定会话标识，然后通知客户端清除登录前的CSRF Cookie。JSESSIONID只保存随机会话标识，账号信息保存在服务器Session中；客户端不能从Cookie值推算密码。
-
-由于这是自定义登录Controller，`AuthController.login()` 会主动调用组合策略：先由 `ChangeSessionIdAuthenticationStrategy` 更换ID，再由 `CsrfAuthenticationStrategy` 清除登录前令牌；本例的 `SecurityFilterChain` 不再重复配置 `sessionManagement().sessionAuthenticationStrategy(...)`。自定义认证机制不能假设过滤器会替它调用策略。
-
-## 八、CSRF为什么登录和退出也要检查
-
-浏览器会自动携带目标站点Cookie。攻击者可能诱导已登录用户的浏览器提交修改请求，因此使用Session Cookie的应用必须保留CSRF防护。登录本身也可能遭受“把受害者登录到攻击者账号”的login CSRF，退出也会改变安全状态。
-
-Spring Security对当前Servlet应用默认启用CSRF防护；这里配置 `CookieCsrfTokenRepository` 是选择令牌**存储方式**，不是“打开CSRF”的开关。未配置仓库时默认使用基于HttpSession的令牌仓库；本例改为把令牌存在 `XSRF-TOKEN` Cookie中，而登录认证信息仍通过服务器Session与 `JSESSIONID` 恢复，两种Cookie用途不同。客户端先读取 `/auth/csrf`，从响应Body取 `token`，再按 `headerName` 指定的名称放进写请求头；仅自动携带 `XSRF-TOKEN` Cookie不等于已提交令牌。当前课程不需要浏览器JavaScript直接读取令牌Cookie，因此 `new CookieCsrfTokenRepository()` 保持该Cookie的HttpOnly保护。
-
-本例的自定义登录Controller通过上面的组合策略发出清除旧令牌Cookie的响应；退出则由框架的Logout Filter清理。客户端必须接受这个 `Set-Cookie` 更新，不能故意重送旧Cookie；之后应在**新Session/Cookie状态**下再GET `/auth/csrf`，使用新响应的令牌做POST/PUT/DELETE。缺少、错误或过期令牌时，CSRF过滤器在Controller和URL角色判断之前就可能返回403；这与“已经登录但角色不足”也返回403是两种不同来源。要定位，先核对本次请求是否带有效CSRF，再检查是否已经登录以及是否有角色权限。若将来由前端JavaScript直接读取Cookie，才需评估 `withHttpOnlyFalse()` 与SPA令牌处理；这不意味着可以关闭JSESSIONID的HttpOnly。参考[Spring Security CSRF说明](https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html)和[登出时清理CSRF令牌](https://docs.spring.io/spring-security/reference/servlet/authentication/logout.html)。
-
-## 九、Cookie和会话边界
-
-本地HTTP练习时可观察JSESSIONID；生产环境必须使用HTTPS，并确认Cookie至少具备HttpOnly、Secure及适合业务的SameSite策略。SameSite能降低部分跨站请求风险，但不能替代CSRF令牌。
-
-Session保存在单个应用进程内时，重启会使登录失效，多实例之间也不能自然共享。是否使用Redis等外部Session存储属于部署设计，不能仅修改Cookie解决。
-
-## 十、运行与验证
-
-先执行本章自动化回归：
-
-```powershell
-.\mvnw.cmd clean test
-```
-
-第14章累计15个测试，本章新增7个，预期22个全部通过。这个数字是按文档中的测试方法计算的预期，不是实际执行结果。自动化测试完成后，使用已配置数据库环境变量的Eclipse Run Configuration启动应用，再用Postman观察真实Cookie和Session流程；Postman不能替代上述JUnit和MockMvc回归。
-
-先清除Postman在 `localhost` 的旧练习Cookie，发送未登录的 `GET {{baseUrl}}/employees/1001`（无参数、无请求体），按本章安全配置预期401。第14章以前的员工查询现在都需要登录；员工POST、PUT、DELETE还要携带当前会话的CSRF令牌。这是引入Security后的接口访问前提，不是原CRUD业务响应规则被删除。
-
-### 1. 取得CSRF令牌
-
-| 项目 | 内容 |
-| --- | --- |
-| HTTP方法 | GET |
-| URL | `{{baseUrl}}/auth/csrf` |
-| 查询参数 | 无 |
-| 请求体 | 无 |
-| 预期状态码 | 200 |
-| 预期响应 | `data.headerName` 和 `data.token` 有值 |
-
-发送后Postman会在当前域名的Cookie jar中保存 `XSRF-TOKEN`。从响应Body临时复制 `headerName` 和 `token`；不要把完整令牌保存到共享文档或Git。
-
-### 2. 登录并确认Session
-
-新建登录请求：
-
-| 项目 | 内容 |
-| --- | --- |
-| HTTP方法 | POST |
-| URL | `{{baseUrl}}/auth/login` |
-| 查询参数 | 无 |
-| Headers | 使用上一步返回的 `headerName` 作为名称、`token` 作为值 |
-| Body | **raw → JSON**，见下方 |
-| 预期状态码 | 200 |
-| 预期响应 | `data.username=tanaka`，响应产生 `JSESSIONID` Cookie |
-
-```json
-{
-  "username": "tanaka",
-  "password": "TrainingPass123!"
-}
-```
-
-选择请求 **Send** 按钮下方的 **Cookies**，在Cookie管理器中确认 `localhost` 下存在 `JSESSIONID`，但不要复制其值。Postman会为同一域名自动保存并在后续请求中携带Cookie。
-
-然后发送 `GET {{baseUrl}}/auth/me`，无查询参数、无请求体，预期200且 `data.username=tanaka`。如果得到401，先检查是否仍使用同一个Postman环境、域名和Cookie jar。
-
-再发送 `GET {{baseUrl}}/employees/1001`，无参数和请求体，预期200且 `data.id=1001`；在Postman Cookies管理器临时清除 `JSESSIONID` 后重发，预期401。接着重新GET `/auth/csrf`、带新令牌POST `/auth/login`，重新建立登录会话。本例登录成功会清除登录前的CSRF Cookie；确认Postman已接受该响应后，再GET `/auth/csrf`，使用新响应中的 `headerName` 与 `token` 做后续写请求，不能长期复用登录前复制的令牌。
-
-### 3. 验证错误密码和缺少CSRF
-
-| 场景 | HTTP方法与URL | Headers | 请求体 | 预期状态与响应 |
-| --- | --- | --- | --- | --- |
-| 错误密码 | `POST {{baseUrl}}/auth/login` | 携带有效CSRF请求头 | `{"username":"tanaka","password":"WrongPass123!"}` | 401，统一登录失败消息 |
-| 缺少CSRF | `POST {{baseUrl}}/auth/login` | 临时取消勾选CSRF请求头 | 正确账号密码JSON | 403，不进入登录Controller |
-
-两个请求都使用 **raw → JSON** 与 `Content-Type: application/json`。完成缺少CSRF场景后重新启用请求头，避免影响退出请求。
-
-在当前登录会话下，对受保护的员工写接口发送一次合法练习请求，例如 `POST {{baseUrl}}/employees`，Body为 `{"name":"Sato","department":"Sales","email":"sato-session@example.com"}`。先不带CSRF请求头，预期403且数据库不新增记录；再用刚从 `/auth/csrf` 取得的令牌及同一Cookie重发，预期201、返回新编号和Location，数据库新增一行。完成后在个人练习库按新编号删除该员工；不要对共享库操作。403表示请求在CSRF检查处被拒绝，不等于用户名或密码错误。
-
-### 4. 退出并确认Session失效
-
-退出前再次GET `/auth/csrf` 取得当前会话有效令牌。发送 `POST {{baseUrl}}/auth/logout`，无查询参数、无请求体，携带该CSRF请求头和Postman自动保存的Cookie，预期204且响应Body为空。随后再次发送 `GET {{baseUrl}}/auth/me` 和 `GET {{baseUrl}}/employees/1001`，均预期401；即使手动重送退出前的旧JSESSIONID，也不应恢复原认证身份。
-
-验证证据至少包括：取得CSRF、登录响应的Set-Cookie、同一Cookie访问me、错误密码401、缺少CSRF的403、logout 204，以及退出后me重新变为401。只记录Cookie名称和存在性，不要把完整Cookie、密码或令牌粘贴到共享工单。完成后在Postman Cookies管理器中删除本地练习Cookie，并在Eclipse中停止应用。
-
-## 十一、常见失败
-
-| 现象 | 原因 | 修正 |
-| --- | --- | --- |
-| 登录200但me仍401 | 只设置SecurityContext，未保存 | 调用SecurityContextRepository保存 |
-| 正确密码也失败 | 数据库存了明文或哈希算法不匹配 | 用同一PasswordEncoder生成和matches |
-| POST总是403 | 没先取得或携带CSRF令牌 | 保留Cookie并按headerName发送token |
-| 每次请求产生新会话 | Postman没有保存Cookie，或请求混用了 `localhost` 与 `127.0.0.1` | 统一使用 `{{baseUrl}}` 并检查Cookies管理器 |
-| 日志出现密码或Session ID | 记录了请求体、Cookie或安全对象 | 删除敏感字段，只记录结果和请求编号 |
-| 登录后Session ID不变 | 自定义登录漏掉SessionAuthenticationStrategy | 在保存context前执行策略 |
-
-## 十二、规格理解、影响调查与练习
-
-1. 实现并验证停用账号登录失败，响应不能暴露“账号已停用”。
-2. 用同一个Postman Cookie会话完成csrf→login→me→logout→me，保存脱敏证据。
-3. Review一个把密码写进日志、用MD5保存、关闭CSRF的实现，逐项说明风险和修正。
-4. 调查“会话30分钟无操作后过期”的配置、测试、用户提示和多实例影响，先提交调查表。
-5. 为新增账号功能写规格：谁能创建、密码何时hash、重复用户名、初始enabled及不得返回passwordHash。
-
-## 十三、章末完整代码
-
-### 最终文件清单与完整实现
-
-先在代码前分清这次要建立的关系。HTTP本身不记住用户；服务器Session保存认证状态，客户端Cookie只带会话标识。每个请求先经过Spring Security过滤链，链中的过滤器可在Controller之前检查CSRF并恢复安全上下文。登录时，`AuthController` 把用户名和密码交给 `AuthenticationManager`；`DaoAuthenticationProvider` 调用 `UserDetailsService` 取出 `UserDetails`，再用 `PasswordEncoder` 比对密码哈希。认证成功后，Controller主动执行Session ID更换并把 `SecurityContext` 存进Session；下一次请求由安全过滤链恢复它。数据库账号对象与Security的 `UserDetails` 分开，是因为前者表示表数据，后者是认证组件要求的契约。
-
-本章采用自定义JSON登录Controller，因此认证成功时由Controller显式调用 `SessionAuthenticationStrategy` 和 `SecurityContextRepository.saveContext()`，不依赖 `SessionManagementFilter` 猜测本次是否刚完成认证。CSRF令牌由 `/auth/csrf` 的响应体交给Postman，令牌Cookie保持HttpOnly；认证Cookie `JSESSIONID` 也不能为方便调试而关闭HttpOnly。读完这一条处理链后，再按“账号表与Mapper→账号加载→安全配置→登录接口→CSRF与测试”的顺序写入以下完整文件。
-
-从第14章稳定状态继续，新增安全依赖、账号表和认证代码：
+`SecurityContext`装载已认证的`Authentication`；`SecurityContextHolder`保存当前请求上下文；`SecurityContextRepository`跨请求保存和恢复。本项目使用`HttpSessionSecurityContextRepository`。自定义登录Controller必须显式`saveContext(...)`，并在成功时通过`ChangeSessionIdAuthenticationStrategy`更换会话ID。
 
 ```text
-pom.xml                                                     ← 完整替换
-src/main/java/com/example/employee/
-├── config/SecurityConfig.java                              ← 新建
-├── controller/AuthController.java                          ← 新建
-├── dto/request/LoginRequest.java                           ← 新建
-├── dto/response/CurrentUserResponse.java                   ← 新建
-├── dto/response/CsrfResponse.java                          ← 新建
-├── entity/AppUser.java                                     ← 新建
-├── exception/AuthExceptionHandler.java                    ← 新建
-├── mapper/AppUserMapper.java                               ← 新建
-└── security/AppUserDetailsService.java                    ← 新建
-src/main/resources/mapper/AppUserMapper.xml                 ← 新建
-src/test/java/com/example/employee/
-├── controller/EmployeeControllerWebTest.java              ← 修改写请求
-├── integration/EmployeeCrudIntegrationTest.java            ← 修改写请求
-src/test/java/com/example/employee/security/SessionLoginTest.java ← 新建
-src/test/resources/test-data.sql                            ← 完整替换
+AuthController.login → authenticate → 更换Session ID
+                     → 创建SecurityContext并设置Authentication
+                     → saveContext到HttpSession → 响应Set-Cookie: JSESSIONID
+下一请求带JSESSIONID → Security过滤器恢复Authentication
+                     → GET /auth/me 返回用户名
 ```
 
-### 1. 完整替换pom.xml
+**文件变化：** 只修改`SecurityConfig.java`与`AuthController.java`；账号、员工业务和15-04 DTO/异常处理器保持不变。
 
-完整内容如下：
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
-        <relativePath/>
-    </parent>
-    <groupId>com.example</groupId>
-    <artifactId>employee-management-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>employee-management-api</name>
-    <description>Employee management REST API</description>
-    <properties>
-        <java.version>17</java.version>
-    </properties>
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.mybatis.spring.boot</groupId>
-            <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>4.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
-</project>
-```
-
-第一项把Spring Security加入正式应用；第二项是Boot 4的Security测试Starter，给测试提供 `csrf()` 等安全请求工具。版本由Spring Boot 4.1.1统一管理，不单独填写。
-
-### 2. 在MySQL 8.0创建账号表
-
-只在个人练习数据库执行。`password_hash` 保存单向哈希，不保存原始密码：
-
-```sql
-USE employee_db;
-
-CREATE TABLE app_users (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    username VARCHAR(50) NOT NULL,
-    password_hash VARCHAR(100) NOT NULL,
-    employee_id BIGINT NULL,
-    role VARCHAR(30) NOT NULL,
-    enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    CONSTRAINT pk_app_users PRIMARY KEY (id),
-    CONSTRAINT uk_app_users_username UNIQUE (username),
-    CONSTRAINT uk_app_users_employee_id UNIQUE (employee_id)
-);
-```
-
-账号是“能否登录系统”的安全数据，员工是业务数据。账号可以暂时不关联员工，员工离职也不应直接等同于删除账号；停用账号由 `enabled` 表达。当前员工采用物理删除，因此本章不虚构外键删除规则。
-
-先在本机临时工具中用课程项目的 `PasswordEncoder` 生成哈希，再把输出写入练习库。不要把命令中的练习密码替换成真实密码：
+在`SecurityConfig.java`顶部新增以下导入，在类内追加两个Bean；原`PasswordEncoder`和`AuthenticationManager`不删除：
 
 ```java
-String hash = passwordEncoder.encode("TrainingPass123!");
-System.out.println(hash);
-```
-
-```sql
-INSERT INTO app_users (
-    username, password_hash, employee_id, role, enabled
-) VALUES (
-    'tanaka',
-    '把上一步生成的bcrypt哈希粘贴到这里',
-    1001,
-    'USER',
-    TRUE
-);
-```
-
-BCrypt每次使用随机salt，同一密码产生不同哈希是正常现象；验证应调用 `matches()`，不能重新encode后比较两个字符串。
-
-### 3. 新建AppUser.java
-
-```java
-package com.example.employee.entity;
-
-public class AppUser {
-    private Long id;
-    private String username;
-    private String passwordHash;
-    private Long employeeId;
-    private String role;
-    private boolean enabled;
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-    public Long getEmployeeId() { return employeeId; }
-    public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
-}
-```
-
-### 4. 新建AppUserMapper.java和XML
-
-```java
-package com.example.employee.mapper;
-
-import com.example.employee.entity.AppUser;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-
-@Mapper
-public interface AppUserMapper {
-    AppUser findByUsername(@Param("username") String username);
-}
-```
-
-```xml
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.example.employee.mapper.AppUserMapper">
-    <select id="findByUsername" resultType="AppUser">
-        SELECT id, username, password_hash, employee_id, role, enabled
-        FROM app_users
-        WHERE username = #{username}
-    </select>
-</mapper>
-```
-
-用户名使用 `#{username}` 参数绑定。查询只允许返回唯一的一行，唯一约束同时阻止两个账号使用同一用户名。
-
-### 5. 新建LoginRequest.java和响应类
-
-```java
-package com.example.employee.dto.request;
-
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-
-public class LoginRequest {
-    @NotBlank(message = "用户名不能为空")
-    @Size(max = 50, message = "用户名不能超过50个字符")
-    private String username;
-
-    @NotBlank(message = "密码不能为空")
-    @Size(max = 200, message = "密码不能超过200个字符")
-    private String password;
-
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-}
-```
-
-```java
-package com.example.employee.dto.response;
-
-public record CurrentUserResponse(String username) {
-}
-```
-
-```java
-package com.example.employee.dto.response;
-
-public record CsrfResponse(
-        String parameterName,
-        String headerName,
-        String token) {
-}
-```
-
-`record` 是Java 17的数据载体写法，构造参数同时定义不可重新赋值的组件和同名访问方法。本章响应只有少量只读字段，因此使用record；请求对象仍保留普通类和setter供JSON绑定。
-
-### 6. 新建AppUserDetailsService.java
-
-```java
-package com.example.employee.security;
-
-import com.example.employee.entity.AppUser;
-import com.example.employee.mapper.AppUserMapper;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-
-@Service
-public class AppUserDetailsService implements UserDetailsService {
-    private final AppUserMapper appUserMapper;
-
-    public AppUserDetailsService(AppUserMapper appUserMapper) {
-        this.appUserMapper = appUserMapper;
-    }
-
-    @Override
-    public UserDetails loadUserByUsername(String username) {
-        AppUser appUser = appUserMapper.findByUsername(username);
-        if (appUser == null) {
-            throw new UsernameNotFoundException("login failed");
-        }
-        return User.withUsername(appUser.getUsername())
-                .password(appUser.getPasswordHash())
-                .roles(appUser.getRole())
-                .disabled(!appUser.isEnabled())
-                .build();
-    }
-}
-```
-
-`UserDetailsService` 只负责按用户名加载账号；它不接收HTTP请求，也不自己比较密码。返回的 `UserDetails` 交给认证组件，异常消息使用统一文字，避免泄露账号是否存在。
-
-### 7. 新建SecurityConfig.java
-
-```java
-package com.example.employee.config;
-
-import com.example.employee.security.AppUserDetailsService;
-import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
 
-@Configuration
-public class SecurityConfig {
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
-    }
-
-    @Bean
-    public SecurityContextRepository securityContextRepository() {
-        return new HttpSessionSecurityContextRepository();
-    }
-
-    @Bean
-    public CsrfTokenRepository csrfTokenRepository() {
-        return new CookieCsrfTokenRepository();
-    }
-
-    @Bean
-    public SessionAuthenticationStrategy sessionAuthenticationStrategy(
-            CsrfTokenRepository csrfTokenRepository) {
-        return new CompositeSessionAuthenticationStrategy(List.of(
-                new ChangeSessionIdAuthenticationStrategy(),
-                new CsrfAuthenticationStrategy(csrfTokenRepository)));
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AppUserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder);
-        return new ProviderManager(provider);
-    }
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            SecurityContextRepository repository,
-            CsrfTokenRepository csrfTokenRepository)
-            throws Exception {
-        http
-                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
-                .securityContext(context -> context
-                        .requireExplicitSave(true)
-                        .securityContextRepository(repository))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/auth/me", "/employees", "/employees/**")
-                        .authenticated()
-                        .anyRequest().permitAll())
-                .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint((request, response, exception) ->
-                                response.sendError(
-                                        HttpServletResponse.SC_UNAUTHORIZED)))
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .logout(logout -> logout
-                        .logoutUrl("/auth/logout")
-                        .deleteCookies("JSESSIONID")
-                        .logoutSuccessHandler((request, response, authentication) ->
-                                response.setStatus(204)));
-        return http.build();
-    }
+@Bean
+public SecurityContextRepository securityContextRepository() {
+    return new HttpSessionSecurityContextRepository();
+}
+@Bean
+public SessionAuthenticationStrategy sessionAuthenticationStrategy() {
+    return new ChangeSessionIdAuthenticationStrategy();
 }
 ```
 
-### 8. 新建AuthController.java
+把`securityFilterChain`原参数`(HttpSecurity http)`改为`(HttpSecurity http, SecurityContextRepository repository)`，在原链`.authorizeHttpRequests(...)`之前追加：
 
 ```java
-package com.example.employee.controller;
+.securityContext(context -> context
+    .requireExplicitSave(true)
+    .securityContextRepository(repository))
+```
 
-import com.example.employee.common.ApiResponse;
-import com.example.employee.dto.request.LoginRequest;
-import com.example.employee.dto.response.CsrfResponse;
-import com.example.employee.dto.response.CurrentUserResponse;
+它让过滤器与Controller使用同一Repository；加入时保证调用链仍是`http.securityContext(...).authorizeHttpRequests(...)`，不创建第二个过滤链。`AuthController.java`顶部新增导入：
+
+```java
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextRepository;
-import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+```
 
-@RestController
-@RequestMapping("/auth")
-public class AuthController {
-    private final AuthenticationManager authenticationManager;
-    private final SecurityContextRepository contextRepository;
-    private final SessionAuthenticationStrategy sessionStrategy;
+将原仅接收`AuthenticationManager`的字段和构造器**完整替换**为：
 
-    public AuthController(
-            AuthenticationManager authenticationManager,
-            SecurityContextRepository contextRepository,
-            SessionAuthenticationStrategy sessionStrategy) {
-        this.authenticationManager = authenticationManager;
-        this.contextRepository = contextRepository;
-        this.sessionStrategy = sessionStrategy;
-    }
+```java
+private final AuthenticationManager authenticationManager;
+private final SecurityContextRepository contextRepository;
+private final SessionAuthenticationStrategy sessionStrategy;
 
-    @GetMapping("/csrf")
-    public ResponseEntity<ApiResponse<CsrfResponse>> csrf(CsrfToken token) {
-        return ResponseEntity.ok(ApiResponse.success(new CsrfResponse(
-                token.getParameterName(), token.getHeaderName(), token.getToken())));
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse<CurrentUserResponse>> login(
-            @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
-        Authentication input =
-                UsernamePasswordAuthenticationToken.unauthenticated(
-                        request.getUsername().trim(), request.getPassword());
-        Authentication result = authenticationManager.authenticate(input);
-        sessionStrategy.onAuthentication(result, httpRequest, httpResponse);
-
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(result);
-        SecurityContextHolder.setContext(context);
-        contextRepository.saveContext(context, httpRequest, httpResponse);
-
-        return ResponseEntity.ok(ApiResponse.success(
-                new CurrentUserResponse(result.getName())));
-    }
-
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<CurrentUserResponse>> me(
-            Authentication authentication) {
-        return ResponseEntity.ok(ApiResponse.success(
-                new CurrentUserResponse(authentication.getName())));
-    }
+public AuthController(AuthenticationManager authenticationManager,
+        SecurityContextRepository contextRepository,
+        SessionAuthenticationStrategy sessionStrategy) {
+    this.authenticationManager = authenticationManager;
+    this.contextRepository = contextRepository;
+    this.sessionStrategy = sessionStrategy;
 }
 ```
 
-退出由Security过滤器处理，不再写一个只删除自定义属性的假logout方法。
-
-### 9. 新建AuthExceptionHandler.java
+再把15-04的`login(...)`方法**完整替换**为下方方法；`csrf(...)`和`me(...)`保留：
 
 ```java
-package com.example.employee.exception;
-
-import com.example.employee.common.ApiResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-@RestControllerAdvice
-public class AuthExceptionHandler {
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAuthentication(
-            AuthenticationException exception) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.failure("用户名或密码错误"));
-    }
+@PostMapping("/login")
+public ResponseEntity<ApiResponse<CurrentUserResponse>> login(
+        @Valid @RequestBody LoginRequest request,
+        HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+    Authentication input = UsernamePasswordAuthenticationToken.unauthenticated(
+            request.getUsername().trim(), request.getPassword());
+    Authentication result = authenticationManager.authenticate(input);
+    sessionStrategy.onAuthentication(result, httpRequest, httpResponse);
+    SecurityContext context = SecurityContextHolder.createEmptyContext();
+    context.setAuthentication(result);
+    SecurityContextHolder.setContext(context);
+    contextRepository.saveContext(context, httpRequest, httpResponse);
+    return ResponseEntity.ok(ApiResponse.success(
+            new CurrentUserResponse(result.getName())));
 }
 ```
 
-该处理器只能处理已经进入Controller的登录异常。未登录访问 `/auth/me` 和CSRF失败发生在过滤器链中，不经过ControllerAdvice；它们由Spring Security直接返回401或403。
+注意`onAuthentication`先处理会话ID，再`saveContext`；只设置Holder、不保存Repository，下一请求仍401。Eclipse重启后按15-04方法取得CSRF并登录，检查登录响应的`Set-Cookie`；同一Postman Cookie Jar发送`GET /auth/me`（无请求体），预期200与`data.username=tanaka`；清除JSESSIONID后再发预期401；重新登录后再次200。当前仍使用默认CSRF仓库，下一阶段换Cookie仓库。
 
-### 10. 完整替换test-data.sql
+**教师讲解重点：** 当前请求与跨请求不同；`saveContext`是关键；更换ID不是把密码写入Cookie。
 
-下面哈希对应测试专用密码 `TrainingPass123!`，不得用于真实账号。完整内容如下：
+**学员必须完成的操作：** 修改两文件、分别测试同Cookie和无Cookie的`/auth/me`。
 
-```sql
-DROP TABLE IF EXISTS app_users;
-DROP TABLE IF EXISTS employee_change_logs;
-DROP TABLE IF EXISTS employees;
+**常见错误：** 只得到`Authentication`就认为已登录；配置Bean后忘记在Controller调用策略。
 
-CREATE TABLE employees (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    department VARCHAR(50) NOT NULL,
-    email VARCHAR(100) NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_employees_email UNIQUE (email)
-);
+**本阶段完成标准：** 登录200，同Cookie的下一请求`/auth/me`200，移除Cookie后401。
 
-CREATE TABLE employee_change_logs (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    employee_id BIGINT NOT NULL,
-    action VARCHAR(30) NOT NULL,
-    detail VARCHAR(200) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+## 六、阶段15-06：保留CSRF并验证受保护的写请求
 
-CREATE TABLE app_users (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password_hash VARCHAR(100) NOT NULL,
-    employee_id BIGINT UNIQUE,
-    role VARCHAR(30) NOT NULL,
-    enabled BOOLEAN NOT NULL DEFAULT TRUE
-);
+**本阶段要解决的问题：** 已登录浏览器会自动带Cookie，怎样阻止其他页面借这个Cookie发起写请求？
 
-INSERT INTO employees (
-    id, name, department, email, status
-) VALUES
-    (1001, 'Tanaka', 'Sales', 'tanaka@example.com', 'ACTIVE'),
-    (1002, 'Sato', 'Development', 'sato@example.com', 'ACTIVE');
+CSRF令牌与JSESSIONID职责不同。`CookieCsrfTokenRepository`把令牌存在`XSRF-TOKEN` Cookie；`GET /auth/csrf`把当前令牌及请求头名返回给Postman。仅自动带令牌Cookie还不够，写请求必须主动在指定Header提交值。GET通常不改状态，本项目POST/PUT/DELETE要检查令牌。登录成功会清除登录前令牌，客户端必须再取新的令牌。
 
-INSERT INTO app_users (
-    id, username, password_hash, employee_id, role, enabled
-) VALUES (
-    1,
-    'tanaka',
-    '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
-    1001,
-    'USER',
-    TRUE
-);
+```text
+GET /auth/csrf → XSRF-TOKEN Cookie＋响应体token
+POST /auth/login → 同一Cookie＋CSRF请求头
+登录成功 → 更换Session ID＋清除旧CSRF Cookie
+再次GET /auth/csrf → 新令牌
+员工POST/PUT/DELETE → 登录Session＋当前令牌请求头
 ```
 
-### 11. 为既有写请求测试加入CSRF
-
-启用Spring Security后，`GET /employees`、`GET /employees/{id}` 及员工写接口都需要认证；原有POST、PUT、DELETE测试若没有CSRF令牌还会得到403。`EmployeeControllerWebTest`、`EmployeeCrudIntegrationTest` 和 `EmployeeSearchIntegrationTest` 的原有业务断言仍应保留，但须明确测试身份。三个类都增加 `WithMockUser` 导入及类级 `@WithMockUser(username = "employee-test-user")`；这只供旧业务回归测试使用，不代替本章的真实登录测试。两个包含员工写请求的类还须增加静态import：
+**文件变化：** 只修改`SecurityConfig.java`；15-05的登录Controller不变。先在文件顶部加导入：
 
 ```java
-import static org.springframework.security.test.web.servlet.request
-        .SecurityMockMvcRequestPostProcessors.csrf;
+import java.util.List;
+import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 ```
 
-然后给两个类中的每一个写请求加入 `.with(csrf())`。GET请求不用CSRF，但仍需要上述测试身份：
+类内追加`csrfTokenRepository()`，并**完整替换**15-05的`sessionAuthenticationStrategy()`，仍保留同一个Bean名称：
 
 ```java
-mockMvc.perform(post("/employees")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson));
-
-mockMvc.perform(put("/employees/{id}", employeeId)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(updateJson));
-
-mockMvc.perform(delete("/employees/{id}", employeeId)
-                .with(csrf()));
-```
-
-这不是关闭安全检查，而是让自动化测试具备已认证身份和有效令牌。第13章的两条事务PUT测试也位于 `EmployeeCrudIntegrationTest` 中，必须一起修改。第14章的 `EmployeeSearchIntegrationTest` 只有GET，增加测试身份即可。若把这些修改实际写入测试工程，应逐个运行旧测试，不能仅凭文档声称回归通过。
-
-`@WebMvcTest` 只加载指定的Web切片，不会按完整应用方式加载本章的 `SecurityConfig`，Spring Boot测试支持会为切片提供默认安全配置。因此 `EmployeeControllerWebTest` 的类注解可写成：
-
-```java
-import org.springframework.security.test.context.support.WithMockUser;
-
-@WebMvcTest(EmployeeController.class)
-@ActiveProfiles("test")
-@WithMockUser(username = "web-test-user")
-class EmployeeControllerWebTest {
-    // 保留原有三个测试
+@Bean
+public CsrfTokenRepository csrfTokenRepository() {
+    return new CookieCsrfTokenRepository();
+}
+@Bean
+public SessionAuthenticationStrategy sessionAuthenticationStrategy(
+        CsrfTokenRepository csrfTokenRepository) {
+    return new CompositeSessionAuthenticationStrategy(List.of(
+            new ChangeSessionIdAuthenticationStrategy(),
+            new CsrfAuthenticationStrategy(csrfTokenRepository)));
 }
 ```
 
-`@WithMockUser` 只建立测试用SecurityContext，不执行数据库登录；它适合本来只验证Controller输入输出的切片测试。`SessionLoginTest` 必须走真实AuthenticationManager，不能用它代替登录验证。
+把`securityFilterChain`参数扩为`(HttpSecurity http, SecurityContextRepository repository, CsrfTokenRepository csrfTokenRepository)`，在现有`.securityContext(...)`之前增加`.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))`。不要删除`.securityContext(...)`、认证Bean或现有URL规则，也不要同时保留旧的单策略Bean。`CsrfAuthenticationStrategy`使用**同一个仓库**清除旧令牌；组合策略由`AuthController.login`的`onAuthentication`调用。
 
-两个集成测试类也分别在文件顶部导入 `org.springframework.security.test.context.support.WithMockUser`，并在现有类声明前追加 `@WithMockUser(username = "employee-test-user")`；不要删除原有的 `@SpringBootTest`、`@AutoConfigureMockMvc`、`@ActiveProfiles` 和 `@Sql`。这样第12～14章的业务测试仍验证原契约，而下方 `SessionLoginTest` 另行验证真实账号查询、密码和Session恢复。
+Eclipse运行后，用Postman按下表顺序验证；URL均以`http://localhost:8080`为前缀，未注明参数的请求无查询参数。
 
-### 12. 新建SessionLoginTest.java
+| 方法与URL | Cookie、Header和请求体 | 预期状态及响应/数据 |
+| --- | --- | --- |
+| `POST /auth/login` | 无CSRF；JSON `{"username":"tanaka","password":"TrainingPass123!"}` | 403，未登录 |
+| `GET /auth/csrf` | 无请求体 | 200，响应含当前`token`与Header名称，设置令牌Cookie |
+| `POST /auth/login` | 同一Cookie Jar、正确CSRF请求头；同上JSON | 200，返回用户名并建立Session |
+| `POST /employees` | 登录Session但无CSRF请求头；JSON `{"name":"Csrf Practice","department":"Sales","email":"csrf-practice@example.com"}` | 403，数据库无该邮箱 |
+| `GET /auth/csrf` | 登录后的同一Session；无请求体 | 200，取得新令牌 |
+| `POST /employees` | 同一Session、当前令牌Cookie与`X-XSRF-TOKEN`请求头；同上员工JSON | 201，数据库新增该邮箱 |
+
+接受登录响应对旧Cookie的清除后再取新令牌；另外用旧令牌单独发写请求应为403。测试邮箱须未被占用，实验后在个人练习库清理这条新增记录；不要把完整令牌保存到证据中。`CookieCsrfTokenRepository`的HttpOnly边界和浏览器差异见[A15-2](../appendix/A15_02_session_cookie_csrf.md)。
+
+**教师讲解重点：** CSRF与角色不是一回事；令牌Cookie与请求头是两处；登录后旧令牌不可长期复用。
+
+**学员必须完成的操作：** 修改一个配置文件，保存403、201及数据库新增/未新增的对照。
+
+**常见错误：** 只发送XSRF-TOKEN Cookie不送Header；用15-05旧令牌测试新配置。
+
+**本阶段完成标准：** 登录与员工写请求都受CSRF保护；当前有效令牌允许合法写入。
+
+## 七、阶段15-07：退出并证明旧Session失效
+
+**本阶段要解决的问题：** 退出是否真的让服务器不再认可旧身份？
+
+Logout由Spring Security的Logout Filter处理，`POST /auth/logout`成功时清除`SecurityContext`、失效`HttpSession`并返回204无正文。不能只在前端清一个“已登录”布尔值。写请求退出仍需当前CSRF令牌。
+
+**文件变化：** 只修改`SecurityConfig.java`的过滤链；AuthController不新建logout方法。在现有`.httpBasic(...)`之后、`return http.build()`之前追加：
 
 ```java
-package com.example.employee.security;
+.logout(logout -> logout.logoutUrl("/auth/logout")
+    .deleteCookies("JSESSIONID")
+    .logoutSuccessHandler((request, response, authentication) ->
+        response.setStatus(204)))
+```
 
-import com.jayway.jsonpath.JsonPath;
-import com.example.employee.support.MySqlTestGuard;
-import jakarta.servlet.http.Cookie;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.mock.web.MockHttpSession;
-import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+连在原`http`链上，不能另写第二个`SecurityFilterChain` Bean。Eclipse重启并登录，`GET /auth/me`预期200；登录后重新GET CSRF令牌，用同一Session＋当前令牌`POST /auth/logout`（无请求体）预期204；随后`GET /auth/me`预期401。记录退出前旧JSESSIONID，在受控本地实验重送旧Cookie仍应401；仅在Postman删除Cookie不能证明服务器Session失效。令牌和会话标识不要粘贴到共享资料。
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+**教师讲解重点：** Logout Filter不经过AuthController；204无响应体；必须证明旧Session失效。
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Sql(scripts = "/test-data.sql",
-        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class SessionLoginTest extends MySqlTestGuard {
+**学员必须完成的操作：** 添加配置、执行登录→退出→旧Cookie访问三步。
 
-    @Autowired
-    private MockMvc mockMvc;
+**常见错误：** 忘记退出请求的CSRF；把Postman删Cookie当成服务器端失效证据。
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+**本阶段完成标准：** 退出204，旧会话和新的无身份请求访问`/auth/me`均401。
 
-    @Test
-    void loginSessionIdentifiesCurrentUser() throws Exception {
-        MvcResult login = mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.username").value("tanaka"))
-                .andReturn();
+## 八、阶段15-08：JUnit与Postman完成验收
 
-        MockHttpSession session =
-                (MockHttpSession) login.getRequest().getSession(false);
-        assertThat(session).isNotNull();
+**本阶段要解决的问题：** 如何证明真实账号认证、Session持久化、CSRF和退出都保持可用？
 
-        mockMvc.perform(get("/auth/me").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.username").value("tanaka"));
-        mockMvc.perform(get("/employees/1001").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id").value(1001));
-    }
+**文件变化：** 新建`src/test/java/com/example/employee/security/SessionLoginTest.java`；为`EmployeeControllerWebTest`、`EmployeeCrudIntegrationTest`、`EmployeeSearchIntegrationTest`提供模拟身份，写请求增加`.with(csrf())`；保留原业务断言与事务、分页测试。专用测试库的最终`test-data.sql`和测试类完整文件在[R15](../reference/R15_session_login_complete_source.md)，此时才用来核对最终状态，不能在15-02先复制其最终SecurityConfig。
 
-    @Test
-    void loginClearsPreLoginCsrfCookieAndRequiresFreshToken()
-            throws Exception {
-        MvcResult beforeLogin = mockMvc.perform(get("/auth/csrf"))
-                .andExpect(status().isOk())
-                .andReturn();
-        Cookie oldCookie = beforeLogin.getResponse().getCookie("XSRF-TOKEN");
-        assertThat(oldCookie).isNotNull();
-        String oldToken = JsonPath.read(
-                beforeLogin.getResponse().getContentAsString(),
-                "$.data.token");
+本阶段的停用账号用例要求专用测试脚本中确实有`disabled-user`且`enabled=FALSE`。按R15的最终`test-data.sql`核对这条记录，再运行测试；测试方法先查询数据库断言账号存在且停用，然后才以真实JSON登录路径断言401。否则“用户名不存在也返回401”会掩盖停用逻辑未被验证的问题。第16章替换测试脚本时仍须保留这条账号。
 
-        MvcResult login = mockMvc.perform(post("/auth/login")
-                        .cookie(oldCookie)
-                        .header("X-XSRF-TOKEN", oldToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-        Cookie clearedCookie = login.getResponse().getCookie("XSRF-TOKEN");
-        assertThat(clearedCookie).isNotNull();
-        assertThat(clearedCookie.getMaxAge()).isZero();
-        MockHttpSession session =
-                (MockHttpSession) login.getRequest().getSession(false);
-        assertThat(session).isNotNull();
+`SessionLoginTest`使用`@SpringBootTest`、`@AutoConfigureMockMvc`、`@ActiveProfiles("test")`及`@Sql("/test-data.sql")`，继承第12章的`MySqlTestGuard`。前几项分别加载应用、配置MockMvc、选择专用测试配置、每个方法前准备已知MySQL数据。**测试类和测试方法都不要加`@Transactional`**，以免掩盖真实业务提交或回滚。常用请求处理器`csrf()`仅为MockMvc当前请求提交有效令牌，不证明Postman的真实Cookie生命周期。
 
-        // 模拟客户端接受了清除Cookie的响应：不再发送oldCookie。
-        mockMvc.perform(post("/auth/logout")
-                        .session(session)
-                        .header("X-XSRF-TOKEN", oldToken))
-                .andExpect(status().isForbidden());
-        assertThat(session.isInvalid()).isFalse();
+先在Eclipse“Run As → JUnit Test”运行一个真实登录方法，再运行整个测试类。至少保留下面这段**测试方法片段**（加入R15给出的完整类、导入和字段中）：
 
-        MvcResult refreshed = mockMvc.perform(get("/auth/csrf")
-                        .session(session))
-                .andExpect(status().isOk())
-                .andReturn();
-        Cookie freshCookie = refreshed.getResponse().getCookie("XSRF-TOKEN");
-        assertThat(freshCookie).isNotNull();
-        String freshToken = JsonPath.read(
-                refreshed.getResponse().getContentAsString(),
-                "$.data.token");
-        mockMvc.perform(post("/auth/logout")
-                        .session(session)
-                        .cookie(freshCookie)
-                        .header("X-XSRF-TOKEN", freshToken))
-                .andExpect(status().isNoContent());
-        assertThat(session.isInvalid()).isTrue();
-    }
-
-    @Test
-    void wrongPasswordReturnsSame401Message() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"wrong-password\"}"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message")
-                        .value("用户名或密码错误"));
-    }
-
-    @Test
-    void currentUserWithoutSessionReturns401() throws Exception {
-        mockMvc.perform(get("/auth/me"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void employeeApiRequiresLoginAndWriteRequiresCsrf() throws Exception {
-        mockMvc.perform(get("/employees/1001"))
-                .andExpect(status().isUnauthorized());
-
-        MvcResult login = mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-        MockHttpSession session =
-                (MockHttpSession) login.getRequest().getSession(false);
-        assertThat(session).isNotNull();
-
-        mockMvc.perform(get("/employees/1001").session(session))
-                .andExpect(status().isOk());
-
-        String createJson = "{\"name\":\"Sato\","
-                + "\"department\":\"Sales\","
-                + "\"email\":\"session-new-employee@example.com\"}";
-        assertThat(countByEmail("session-new-employee@example.com"))
-                .isZero();
-        mockMvc.perform(post("/employees")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createJson))
-                .andExpect(status().isForbidden());
-        assertThat(countByEmail("session-new-employee@example.com"))
-                .isZero();
-        mockMvc.perform(post("/employees")
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                .content(createJson))
-                .andExpect(status().isCreated());
-        assertThat(countByEmail("session-new-employee@example.com"))
-                .isEqualTo(1);
-    }
-
-    @Test
-    void loginWithoutCsrfReturns403() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void logoutInvalidatesAuthenticatedSession() throws Exception {
-        MvcResult login = mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-        MockHttpSession session =
-                (MockHttpSession) login.getRequest().getSession(false);
-        assertThat(session).isNotNull();
-
-        mockMvc.perform(get("/auth/me").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.username").value("tanaka"));
-
-        mockMvc.perform(post("/auth/logout")
-                        .session(session)
-                        .with(csrf()))
-                .andExpect(status().isNoContent());
-        assertThat(session.isInvalid()).isTrue();
-        mockMvc.perform(get("/auth/me"))
-                .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/employees/1001"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    private int countByEmail(String email) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM employees WHERE email = ?",
-                Integer.class, email);
-        return count == null ? 0 : count;
-    }
+```java
+@Test
+void loginSessionIdentifiesCurrentUser() throws Exception {
+    MvcResult login = mockMvc.perform(post("/auth/login")
+                    .with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"username\":\"tanaka\","
+                            + "\"password\":\"TrainingPass123!\"}"))
+            .andExpect(status().isOk())
+            .andReturn();
+    MockHttpSession session =
+            (MockHttpSession) login.getRequest().getSession(false);
+    assertThat(session).isNotNull();
+    mockMvc.perform(get("/auth/me").session(session))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.username").value("tanaka"));
 }
 ```
 
-上述测试的创建邮箱不在 `test-data.sql` 的两条员工记录中。`JdbcTemplate` 在请求前、缺CSRF后、成功创建后分别读取数据库件数，避免只看HTTP状态而漏掉持久化结果。令牌更新测试先取得登录前的CSRF Cookie与响应体令牌；登录响应应清除旧Cookie。模拟客户端接受清除响应后，旧请求头单独发起logout会403，重新GET令牌并携带新Cookie与请求头才会204。`JsonPath.read(..., "$.data.token")` 只从测试响应中取令牌，不把值打印或保存到日志。`MockMvc` 中的 `MockHttpSession` 是测试对象；退出后检查它已失效，并让新的受保护请求得到401。旧 `JSESSIONID` 在真实Servlet容器中的重送效果还需按前面的Postman退出步骤验证，不能把MockMvc新请求冒充为旧Cookie重送。
+完整类还应分别测试：匿名员工接口401、错误密码401、不存在账号401、停用账号401、缺CSRF的登录403、登录后CSRF令牌更新、写请求缺令牌时数据库不变、Logout后Session失效。`@WithMockUser`只能模拟测试身份，不能替代上述真实登录。运行顺序为“单个方法 → 整个SessionLoginTest → 受影响的旧Controller/CRUD/分页与事务测试”；Maven打包命令仅作为补充，不要求每次手工验证前先运行。
 
-## 十四、本章稳定状态
+Postman真实验收按下列顺序，用当前Eclipse启动的服务：
 
-完成后，项目能够使用数据库账号和BCrypt真实登录，通过服务器Session识别当前用户，并安全退出。你应能够解释Filter、SecurityFilterChain、Bean注册、账号加载、密码验证、Authentication、SecurityContext、Session、Cookie和CSRF在同一流程中的职责。
+| 步骤 | HTTP方法与URL | 参数、请求体和Cookie | 预期状态与响应 |
+| --- | --- | --- | --- |
+| 1 | `GET http://localhost:8080/auth/csrf` | 无参数/请求体，保留Cookie | 200，`data.headerName`、`data.token`有值 |
+| 2 | `POST http://localhost:8080/auth/login` | JSON账号密码、步骤1令牌请求头及Cookie | 200，`data.username=tanaka`、产生JSESSIONID |
+| 3 | `GET http://localhost:8080/auth/me` | 无请求体，同一Cookie Jar | 200，`data.username=tanaka` |
+| 4 | `GET http://localhost:8080/employees/1001` | 无请求体，同一Cookie | 200，`data.id=1001` |
+| 5 | `GET /auth/csrf`后`POST /auth/logout` | 新令牌请求头、同一Cookie，无请求体 | 204，无正文 |
+| 6 | `GET http://localhost:8080/auth/me` | 重送旧JSESSIONID或不带Cookie | 401 |
 
-员工接口本章要求登录，但尚未区分USER与ADMIN的操作权限或本人数据范围。第16章将按权限矩阵限制不同角色能够访问的HTTP方法和数据。
+错误密码`POST /auth/login`（同一URL、JSON密码改为错误值、带有效CSRF）预期401；缺令牌的POST登录预期403；已登录但员工POST不带令牌预期403且数据库不变。每次保存脱敏的状态、响应与必要数据库证据。
+
+**教师讲解重点：** 模拟身份测试与真实登录测试分工；HTTP成功要结合Session和数据库；新权限在下一章。
+
+**学员必须完成的操作：** 在Eclipse运行JUnit，再按表用Postman验收并整理证据。
+
+**常见错误：** 用`@WithMockUser`证明密码正确；只看登录200不测下一请求。
+
+**本阶段完成标准：** 真实账号登录、跨请求恢复、CSRF、退出及旧业务回归全部通过；USER/ADMIN角色矩阵仍留给第16章。

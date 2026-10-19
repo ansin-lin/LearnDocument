@@ -4,6 +4,26 @@
 
 ## 一、先确定接口规格
 
+先把本章要用的知识连成一条线：客户端把筛选、排序和页码放在URL查询参数中；Spring MVC把参数绑定到请求对象并校验；Service整理可选条件；MyBatis生成查询SQL；数据库按确定顺序取出一页记录，并另外计算符合条件的总件数；最后由分页响应对象把这些结果返回给客户端。
+
+```text
+URL查询参数 → EmployeeSearchRequest（绑定与校验）
+           → Service（整理空白条件）
+           → Mapper/XML（筛选＋稳定排序＋LIMIT/OFFSET）→ 当前页items
+           → Mapper/XML（同一筛选条件＋COUNT）       → 总件数total
+           → PageResponse（items、page、pageSize、total、totalPages）
+```
+
+这里先认识各知识点的任务，后面的案例再逐一实现和解释：
+
+- **条件查询**：`name`、`department`、`status` 是可选输入；`@ModelAttribute` 接收URL参数，校验注解拒绝非法值，MyBatis动态SQL只为有效条件生成 `WHERE` 子句。
+- **稳定排序**：分页前必须先确定顺序；相同创建时间再按唯一 `id` 排序。排序列和方向只从预设白名单选择，不能直接把用户输入拼进SQL。
+- **分页取数**：`page` 是客户端从1开始的页码，`pageSize` 是每页件数；转换成 `OFFSET` 和 `LIMIT` 后，列表SQL只取当前页。
+- **总件数与响应**：`COUNT` 使用与列表相同的筛选条件，但不做分页；`PageResponse` 同时返回当前页 `items` 和全部匹配的 `total`，两者不是同一个数字。
+- **验证与边界**：用Postman和数据库核对筛选、顺序、空页、非法参数与总件数；两条SQL条件一致不等于并发时一定读取同一瞬间的数据。
+
+因此实现顺序是“先筛选，再排序，再分页，最后补COUNT和响应”；每一步都建立在前一步的结果上。
+
 数据增多后，接口不能每次返回全部员工。本章修改 `GET /employees`：
 
 ```text

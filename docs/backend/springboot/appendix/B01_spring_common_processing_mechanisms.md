@@ -1,19 +1,22 @@
-# B06 Spring共通处理机制：Filter、Interceptor、Controller Advice与AOP
+# B01 Spring共通处理机制：Filter、Interceptor、Controller Advice与AOP
 
 本附录用于阅读既存Spring项目中的共通处理。开始前应完成第11章，能够使用 `RequestLoggingFilter`、requestId和全局异常处理器。本附录不改变Employee主线的最终代码；实验文件完成后要删除。
+
+需要核对具体实现时，分别回到[第11章请求日志Filter](../mainline/11_logging_and_diagnosis.md)、[A11-2 Filter执行时机](A11_2_filter_execution_timing.md)、[第13章事务](../mainline/13_transaction_and_consistency.md)、[第16章权限](../mainline/16_authorization_and_data_scope.md)；本章只把这些机制放到同一次请求的观察图中。
 
 ## 一、先按执行位置区分机制
 
 ```text
 HTTP Request
-  → Servlet Filter
-  → Spring Security Filter Chain
+  → Servlet Filter（可能包围Security代理）
+  → Spring Security Filter Chain（本身由Filter进入）
   → DispatcherServlet
   → HandlerInterceptor.preHandle
   → Controller
   → Service上的Spring Proxy / AOP
   → Mapper
-  ← HandlerInterceptor.postHandle / afterCompletion
+  ← HandlerInterceptor.postHandle（正常返回）/ afterCompletion（完成阶段）
+  ← MVC异常解析：匹配时由Controller Advice转换异常
   ← HTTP Response
 ```
 
@@ -25,6 +28,15 @@ HTTP Request
 | HandlerInterceptor | Spring MVC的Handler调用前后 | Controller范围的计时、检查和清理 | 数据库事务、任意Bean方法 |
 | Controller Advice | MVC异常解析与共通响应 | 业务异常到HTTP响应的转换 | Security在Controller前的拒绝 |
 | AOP / Spring Proxy | Spring Bean方法调用 | 事务、方法权限、受控横切逻辑 | 原始HTTP报文处理 |
+
+| 机制 | 作用范围与执行位置 | 依赖Controller | 需要Spring Bean | 常见配置 |
+| --- | --- | --- | --- | --- |
+| Filter（含Security链） | Servlet请求分派；进入MVC前，也包围下游返回 | 否 | Servlet Filter本身不必是Bean，Boot中常由Bean或注册器管理 | `FilterRegistrationBean`、组件注册、`SecurityFilterChain` |
+| Interceptor | 匹配到的MVC Handler前后 | 是，准确说依赖MVC Handler | 实现对象可由配置手动创建，不必单独为Bean | `WebMvcConfigurer#addInterceptors` |
+| Controller Advice | MVC异常解析等阶段，受适用范围限制 | 通常处理MVC链异常 | 是 | `@RestControllerAdvice`、`@ExceptionHandler` |
+| AOP/Proxy | 命中切点且经过代理的Bean方法 | 否 | 是，目标需受Spring管理 | `@Transactional`、`@PreAuthorize`、`@Aspect` |
+
+Filter适合请求入口日志但不适合业务事务；Interceptor适合已匹配Handler的计时但不适合认证主边界；Advice适合把MVC业务异常转为响应但不负责过滤器链提前拒绝；AOP适合方法横切处理但不直接处理原始HTTP。图省略Servlet容器、异常解析器的全部分支，不能按箭头推断所有项目中Filter的绝对顺序。
 
 选择机制前先问：问题发生在HTTP入口、MVC Handler、异常转换，还是Bean方法调用。
 
@@ -155,7 +167,7 @@ public class InterceptorLabConfig implements WebMvcConfigurer {
 
 对于 `@RestController` 和 `ResponseEntity`，响应可能在 `postHandle` 前已经写出，因此不要把修改REST响应正文的关键逻辑放在 `postHandle`。
 
-运行员工详情、404和业务异常请求，比较Filter与Interceptor日志。完成后删除两个 `dilab` 文件并运行全部测试，主线不保留重复计时日志。
+运行员工详情、404和业务异常请求，比较Filter与Interceptor日志。这个计时示例只针对普通同步MVC请求：异步Handler可能先退出原线程再发生异步分派，`postHandle` 不保证按同步案例出现，`afterCompletion` 也可能在异步处理真正结束后触发。需要覆盖异步请求时另查 `AsyncHandlerInterceptor`、分派类型与测试证据，不直接照搬这里的耗时结论。完成后删除两个 `dilab` 文件并运行全部测试，主线不保留重复计时日志。
 
 ## 四、Controller Advice：集中转换MVC异常
 
@@ -182,6 +194,34 @@ Spring AOP常通过代理在Spring Bean方法前后加入处理。主线已经�
 | `@Around` | 在Advice方法上声明：包围目标调用 | 是否正确调用且只调用一次 `proceed()` |
 
 代理只拦截真正经过代理对象的调用。同一个类中使用 `this.someMethod()` 调用另一个带事务或方法安全注解的方法，通常不会再次经过外层代理。这一边界会在第13章事务和第16章方法权限中结合实际代码说明。
+
+识读例：`new EmployeeService(mapper).updateWithHistory()` 创建的对象不由Spring管理，不会得到事务代理；Spring注入的 `employeeService.updateWithHistory()` 才可能经过代理。即便是受管Bean，若其 `update()` 内部用 `this.updateWithHistory()` 调用同类方法，内部调用不会再次穿过代理，标在内部方法上的新事务设置可能不生效。修正应把事务边界放在外部实际调用的公开Service入口，或按设计拆成另一个受管Bean，再用事务测试观察两次写入是否同回滚；不要只检查方法上有没有注解。
+
+### 同步请求观察矩阵
+
+在主线工程的可恢复副本中，先保留第11章 `RequestLoggingFilter`，再添加上面的Interceptor；按第7章查看Advice、按第16章查看Security。以下是**预期观察点**，不是所有项目绝对结果。用每层第一行日志或断点记录实际命中情况，并标记配置和请求。
+
+| 请求 | Filter | Security | Interceptor | Controller/Advice | Service代理 |
+| --- | --- | --- | --- | --- | --- |
+| 已授权的 `GET /employees/1001` | 进入并最终清理MDC | 放行 | 匹配时pre/post/after | Controller进入，通常无Advice | 调用受代理方法时命中 |
+| Controller抛业务异常 | 进入并最终清理 | 放行 | pre、通常after；post不保证 | Controller进入，匹配异常时Advice转换 | 仅实际调用过的Service命中 |
+| 未认证时Security提前拒绝 | 取决于Filter注册顺序，入口日志通常可见 | 拒绝 | 通常不进入 | 不进入；MVC Advice通常不处理 | 不进入 |
+| 不匹配的URL | 入口Filter仍可见 | 视URL规则而定 | 当前 `/employees/**` 配置是否进入取决于MVC Handler匹配 | 业务Controller不进入，404可由框架处理 | 不进入 |
+| 已授权Controller调用被代理的Service | 进入 | 放行 | 匹配时进入 | Controller进入 | AOP/事务/方法安全按各自切点和顺序命中 |
+
+实验时分别请求存在员工、由主线规则引起的业务异常、无Cookie受保护URL、不存在URL；在 `RequestLoggingFilter`、`preHandle`、Controller、Advice、Service首行设置断点。URL不匹配仍可能被静态资源Handler接收，因此不能只凭Interceptor有无日志断定“没匹配”。记录HTTP状态、requestId与断点顺序，最后删除实验文件并运行回归测试。
+
+下面是**教学模拟日志**，不是本仓库实际运行结果。前置条件：测试副本中请求日志Filter在Security链外层、Interceptor只匹配 `/employees/**`，GET需要登录且有读取权限；Service入口有事务代理或方法日志切面。不同Filter注册顺序、Security配置和异常处理会改变细节，先记录实际配置再比较。
+
+| 请求与条件 | 模拟日志先后顺序 | 未进入的组件及原因 |
+| --- | --- | --- |
+| `GET /employees/1001`，已登录且授权，员工存在 → 200 | `Filter enter → Security allow → Interceptor pre → Controller → Service proxy enter/transaction → Mapper → Service return/commit → Interceptor post → Interceptor after → Filter exit` | Advice未进入：没有待转换的异常 |
+| `GET /employees/9999`，已授权，Controller/Service抛业务异常 → 404 | `Filter enter → Security allow → Interceptor pre → Controller → Service proxy → exception → Advice maps 404 → Interceptor after → Filter exit` | `postHandle` 通常不执行：Handler未正常完成；具体仍看MVC异常解析路径 |
+| `GET /employees/1001`，无认证 → 401 | `Filter enter → Security reject 401 → Filter exit` | Interceptor、Controller、MVC Advice、Service代理未进入：Security在MVC前终止；具体401依赖认证入口配置 |
+| `GET /employees/1001`，已认证但无读取权限 → 403 | `Filter enter → Security reject 403 → Filter exit` | 同上；与401的差别是身份已确认但不具所需权限 |
+| `GET /employees/1001`，授权，Service调用被代理方法 → 200 | `Filter enter → Security allow → Interceptor pre → Controller → AOP before/transaction begin → Service → transaction commit/AOP after → Controller return → Interceptor post/after → Filter exit` | 若同类 `this.method()` 自调用，被调用方法上的新AOP/事务Advice不会再次进入代理 |
+
+操作：在专用测试副本给上述组件加不含个人信息的单行日志，以同一个requestId关联五次请求，记录实际HTTP状态和每层是否命中；业务异常、权限条件须按项目现有测试数据准备。提交“实际顺序 vs 模拟顺序”差异及配置依据。清理时移除临时日志/断点、恢复测试数据并执行受影响测试，不能把模拟表当成实测证据。
 
 编写方法日志切面时，应检查密码、Token、个人信息、大对象、异常语义、切点范围和性能影响。完整的递进示例、依赖、自定义 `@MethodLog`、`@Around`、成功/失败/慢调用、自调用边界和验证方式见[A11-3 使用AOP统一记录方法日志](A11_3_aop_method_logging.md)。本附录只负责比较共通机制的位置，不再维护第二份AOP日志实现。
 

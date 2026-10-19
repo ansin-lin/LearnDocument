@@ -15,6 +15,18 @@
 
 CORS通过不等于登录成功；Postman不受浏览器同源限制，因而Postman成功也不能证明CORS配置正确。前端隐藏按钮同样不能代替后端授权。
 
+### Same-Origin与Same-Site不是一回事
+
+Origin由**协议、主机、端口**共同决定；Site主要看站点域名及协议，端口不参与同站判断。下表假设浏览器以所写地址打开页面并访问API；`example.com`只是概念示例，不是本实验允许来源。
+
+| 页面 → API | 同源（Same-Origin） | 同站（Same-Site） |
+| --- | --- | --- |
+| `http://localhost:3000` → `http://localhost:8080` | 否，端口不同 | 通常是，同为HTTP localhost |
+| `https://app.example.com` → `https://api.example.com` | 否，主机不同 | 通常是，同协议且同一站点域 |
+| `https://app.example.com` → `https://other.example.net` | 否 | 否，站点域不同 |
+
+CORS处理跨**源**响应是否可供页面脚本使用；Cookie的`SameSite`约束跨**站**发送，两者不能互相代替。`credentials: "include"`只表示这次跨源fetch允许浏览器携带和接受凭据，并不强制浏览器发送Cookie：还要检查`SameSite`、`Secure`、`Path`、`Domain`、是否已过期及浏览器隐私策略。同站跨源也仍需CORS；本地两个localhost端口的实验不能直接推断不同站点的生产Cookie设置。
+
 ## 二、浏览器请求为什么可能先发OPTIONS
 
 浏览器跨源发送JSON POST、自定义 `X-XSRF-TOKEN` 请求头或PUT、DELETE时，通常会先发送OPTIONS预检。预检询问服务器是否允许当前 `Origin`、方法和请求头；它通常不携带 `JSESSIONID`。预检通过后，浏览器才发送实际请求。预检是浏览器行为，不是后端登录接口，也不会授予ADMIN角色。
@@ -101,6 +113,8 @@ http.cors(withDefaults());
 
 `withDefaults()` 让Security使用已有的MVC CORS规则；`cors(...)` 使预检先于认证授权处理。OPTIONS通常没有Session Cookie，不能靠把员工接口改成 `permitAll()` 来让它通过。允许凭据时，不能把 `allowedOrigins` 改成 `*`；正式环境必须按实际前端Origin逐一评审。
 
+Spring Security 7.x官方的MVC集成方式支持这种组合：在工程具有Spring MVC且**没有另行提供`CorsConfigurationSource`**时，安全链的`.cors(withDefaults())`使用MVC的`addCorsMappings`规则。本实验只使用上面的一个`CorsConfig`，不再叠加Controller的`@CrossOrigin`、第二个`CorsConfigurationSource`或另一条冲突的Security过滤链。预检由CORS处理，不要求登录Session，也不改变实际员工接口的角色规则。当前`/auth/**`覆盖GET取令牌、POST登录／退出；`/employees/**`覆盖GET、POST、PUT、DELETE；`Content-Type`与`X-XSRF-TOKEN`覆盖示例JSON登录及写请求。若浏览器额外发送其他**非简单请求头**，必须先在Network看`Access-Control-Request-Headers`，再按实际需求评审`allowedHeaders`，不要直接改成任意来源或放宽业务授权。
+
 ## 五、用真实浏览器验证，而不只看Postman
 
 在Eclipse启动API，并打开 `http://localhost:3000` 的本地页面。打开浏览器开发者工具的Network和Console；下面代码只在本地实验页面的Console执行，输入课程专用密码，不输入真实账号密码。浏览器地址栏的Origin必须与配置完全一致。
@@ -134,6 +148,19 @@ http.cors(withDefaults());
 这段代码只打印状态码，不打印密码、Cookie或令牌。预期登录和 `/auth/me` 都是200；Network中应能看到登录请求的OPTIONS预检、允许的Origin、允许凭据的响应头，以及后续请求携带Cookie。若浏览器报CORS错误，先检查页面Origin、预检响应和安全链；若请求能到达后端但返回401或403，再按认证、授权和CSRF顺序排查。`prompt()` 被取消时不会得到有效练习密码，需重新执行。
 
 继续从同一页面按第15章流程再GET `/auth/csrf` 取得登录后的令牌，并用 `credentials: "include"` 与对应请求头发送写请求。使用tanaka写员工应按第16章角色规则得到403；改用admin的独立会话并携带有效CSRF，才应允许写操作。Network证据记录方法、URL、Origin、预检结果、实际状态码和脱敏后的响应，不保存 `JSESSIONID`、密码或完整CSRF令牌。Postman可辅助检查后端401/403，但不能代替这一步浏览器验证。
+
+### 排障案例：Postman登录成功，浏览器跨源登录失败
+
+按浏览器Network中的**预检请求、实际请求、后续`/auth/me`**三条记录依次定位，不只看Console一句“CORS error”：
+
+1. 确认页面地址栏的Origin与`allowedOrigins`完全一致；`localhost`与`127.0.0.1`不是相同主机。
+2. 找到`POST /auth/login`之前的OPTIONS：检查`Origin`、`Access-Control-Request-Method`和`Access-Control-Request-Headers`，以及预检状态。预检通常没有`JSESSIONID`；如果在此处被认证拒绝，先检查`.cors(withDefaults())`和是否存在冲突配置，不把员工接口改成`permitAll()`。
+3. 在预检及实际响应中核对`Access-Control-Allow-Origin`是否为页面的**确切**Origin，`Access-Control-Allow-Credentials`是否为`true`；携带凭据时不能用`*`代替明确来源。
+4. 如果实际登录为200，检查浏览器是否接受`Set-Cookie`：在Network的Cookies/Issues中看拒收原因，并核对`SameSite`、`Secure`、`Path`、`Domain`和`credentials: "include"`。不要把完整Cookie值贴进票据。
+5. 检查下一条`GET /auth/me`是否带`JSESSIONID`且返回200。若为401，优先查Session保存、Cookie发送或会话过期，而不是先改角色。
+6. 写请求若为403，检查登录后是否重新`GET /auth/csrf`、Header是否来自新响应体、Cookie是否同一会话；CSRF无误后再查URL角色和`@PreAuthorize`。保存脱敏的响应状态与数据库未变化证据。
+
+本案例的浏览器结果必须在真实页面和真实API启动后观察；只读到配置代码不能声称OPTIONS、Cookie或Session已经联调成功。
 
 ## 六、实验后恢复
 
