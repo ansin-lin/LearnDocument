@@ -31,6 +31,14 @@ AuthController.login()
 
 本项目的`SessionAuthenticationStrategy`组合了`ChangeSessionIdAuthenticationStrategy`与`CsrfAuthenticationStrategy`。前者在认证成功后更换会话ID，降低“攻击者预先固定受害者会话ID”的风险；后者清除登录前CSRF令牌，要求客户端随后重新取得令牌。自定义Controller主动调用组合策略；不能假设过滤器会替Controller自动调用。
 
+逐项核对第15章登录方法依赖的类型与调用结果：
+
+- `AuthenticationManager.authenticate(input)`：`input`是含用户名和原密码的未认证Token；成功返回已认证`Authentication`，错误密码、未知账号或停用账号抛认证异常。它本身不创建浏览器登录态。
+- `SessionAuthenticationStrategy.onAuthentication(result, request, response)`：三个参数分别是认证结果、当前Servlet请求和响应；返回`void`，组合策略按配置顺序更换现有Session ID并清除旧CSRF令牌。前者降低会话固定风险，后者要求下一次写请求先取新令牌。
+- `SecurityContextHolder.createEmptyContext()`返回新的空上下文；`setAuthentication(result)`把身份放进去；`SecurityContextHolder.setContext(context)`使当前请求线程可以读取。Holder不是数据库或跨请求存储。
+- `SecurityContextRepository.saveContext(context, request, response)`返回`void`，把上下文保存到本项目的HttpSession仓库，并让响应带回必要的会话标识。`requireExplicitSave(true)`要求自定义登录代码确实调用这一句；只设置Holder而不保存，下一请求仍可能401。
+- 后续请求由过滤链通过同一`HttpSessionSecurityContextRepository`加载上下文。`JSESSIONID`只负责定位服务器Session；它不直接存储完整`Authentication`，也不是CSRF令牌。
+
 更换Session ID与清除CSRF令牌是不同动作。先前尚无Session时，容器会按需要创建；已有Session时，策略更新ID。下一次请求能否恢复身份，要用另一条请求携带Cookie访问`GET /auth/me`证明，而不能只看登录接口的200。
 
 ## 三、Cookie属性及浏览器、Postman的区别
@@ -40,10 +48,12 @@ AuthController.login()
 | `HttpOnly` | 有／无 | 有时浏览器脚本不能直接读取Cookie；不要为调试JSESSIONID而关闭 |
 | `Secure` | 有／无 | 有时仅经HTTPS发送；生产HTTPS环境应检查 |
 | `SameSite` | `Lax`、`Strict`、`None` | 影响跨站发送Cookie；不能单独替代CSRF令牌 |
-| `Path`、`Domain` | 路径、域名 | 决定哪些请求会附带Cookie；域名或端口联调时要核对 |
+| `Path`、`Domain` | 路径、域名 | 决定哪些请求会附带Cookie；Cookie本身不以端口隔离，同一主机不同端口联调也要核对实际请求 |
 | `Max-Age`／过期时间 | 秒数或会话Cookie | 客户端保存时间不等于服务器Session一定有效 |
 
 Postman的Cookie Jar会按域名保存和发送Cookie，适合观察请求与响应；真实浏览器还受同源、SameSite、Secure及跨源凭据策略影响。Postman能调用成功，不能单独证明浏览器跨源联调正确；扩展实验见[A16 跨源Session与CORS](A16_cross_origin_session_cors.md)。
+
+上表列的是需要检查的Cookie属性，**不是说本章的Java代码逐项设置了这些值**。`JSESSIONID`由Servlet容器/Session配置发出，`XSRF-TOKEN`由`CookieCsrfTokenRepository`发出；应在浏览器开发工具或Postman响应的`Set-Cookie`里核对实际属性。`HttpOnly`只限制浏览器脚本读取，不阻止浏览器随符合规则的请求发送Cookie；`Secure`和`SameSite`也不能替代服务端的认证或CSRF校验。
 
 Session通常保存在应用进程内；应用重启或Session超时后，旧Cookie可能仍在客户端，但服务器找不到有效认证，受保护接口应返回401。多实例部署若要共享Session，必须另设计集中存储或会话路由；复制JSESSIONID字符串不能解决。
 
@@ -62,6 +72,8 @@ POST/PUT/DELETE → 同一会话Cookie＋当前令牌请求头
 `JSESSIONID`用于找到认证Session；`XSRF-TOKEN`用于保存CSRF令牌；请求头如`X-XSRF-TOKEN`是本次写请求主动提交的令牌值。仅自动带上XSRF-TOKEN Cookie不等于提交了正确请求头。项目的`new CookieCsrfTokenRepository()`保留Cookie的HttpOnly属性，Postman从`/auth/csrf`响应体取得令牌，不要求浏览器脚本读取Cookie。若将来由前端JavaScript直接读Cookie，需要另行评审`withHttpOnlyFalse()`与SPA流程，不能因此关闭JSESSIONID的HttpOnly。
 
 `CsrfTokenRepository`接口负责生成、保存和读取令牌，`CookieCsrfTokenRepository`是Cookie实现；`CsrfAuthenticationStrategy`在认证成功时通过相同仓库清除旧令牌。退出由Logout Filter清理认证和Session，客户端仍要遵守当前CSRF检查。没有、错误或过期令牌通常在Controller前得到403；这与第16章“角色不足的403”来源不同。
+
+这些类名相似，但每个方法服务的时机不同：`CookieCsrfTokenRepository`作为Bean交给`.csrf(csrf -> csrf.csrfTokenRepository(repository))`，供`CsrfFilter`在需要保护的请求上加载预期令牌；同一个仓库也交给`new CsrfAuthenticationStrategy(repository)`，在登录成功时清除旧令牌。`new CompositeSessionAuthenticationStrategy(List.of(...))`按列表顺序调用策略，`List.of`的元素是策略对象而非字符串属性。`AuthController.csrf(CsrfToken token)`由当前请求注入令牌，`getHeaderName()`给客户端请求头名称，`getToken()`给应提交的值。Filter负责验证，Controller只负责把令牌交给客户端；仅有仓库Bean或仅有令牌Cookie都不表示已经通过验证。
 
 ### Spring Security的CSRF令牌处理流程
 
@@ -100,6 +112,8 @@ POST/PUT/DELETE → 同一会话Cookie＋当前令牌请求头
 ## 五、退出与旧Session失效
 
 `POST /auth/logout`由`SecurityFilterChain`中的Logout Filter处理。成功时返回204无正文，清除`SecurityContext`、使服务器Session失效并要求客户端删除JSESSIONID。验证要保留退出前的旧会话标识：先登录并确认`/auth/me`为200，再携带有效CSRF令牌退出，最后重送旧Cookie访问`/auth/me`应为401。只在Postman里手动删Cookie，不能证明服务器真的使旧Session失效。
+
+第15章过滤链中的`.logout(...)`配置了三个不同动作：`logoutUrl("/auth/logout")`匹配退出路径，因本项目保留CSRF，客户端以带当前令牌的POST调用；`deleteCookies("JSESSIONID")`要求浏览器清除同名Cookie，但**服务器Session失效**仍由Logout处理，单靠删Cookie不足以证明它；`logoutSuccessHandler((request, response, authentication) -> response.setStatus(204))`在退出处理完成后设置状态，三个参数分别是本次请求、响应与退出前身份（可能为空），不返回业务JSON。`204 No Content`的响应体应为空，不能再要求`ApiResponse.success(...)`。旧Cookie重送仍应401，才是服务器不再接受旧会话的证据。
 
 ## 六、排障顺序
 

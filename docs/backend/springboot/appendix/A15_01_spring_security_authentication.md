@@ -69,6 +69,8 @@ return User.withUsername(appUser.getUsername())
         .build();
 ```
 
+这里每个调用都在**构造认证资料**，不是验证本次输入：`findByUsername(username)`把登录名作为MyBatis绑定参数，查到返回数据库对象、查不到返回`null`；`UsernameNotFoundException`告诉Provider账号加载失败，Controller不应把内部查找结果原样回显。`User.withUsername(...)`返回构建器，后续`password(...)`接收数据库的**编码后哈希**，`roles(...)`接收不带`ROLE_`前缀的角色名并生成权限，`disabled(...)`接收“是否停用”的布尔值，因此传入`!appUser.isEnabled()`；`build()`才返回实现`UserDetails`的对象。加载方法的返回值不是“已经认证成功”，密码核对发生在下面的Provider中。
+
 ```java
 // SecurityConfig中的Bean方法；项目还需第15章已创建的类与导入
 @Bean
@@ -80,7 +82,9 @@ public AuthenticationManager authenticationManager(
 }
 ```
 
-两个代码块是**对应文件中的方法片段**，完整导入和文件内容见R15。`DaoAuthenticationProvider`在`authenticate`时调用加载器，然后使用编码器校验输入；`enabled=false`也应造成认证失败。用户名不存在、密码错误和停用账号对外统一返回401，不能泄露哪个账号存在。不要把原密码、哈希或认证异常堆栈写进对外响应。
+`@Bean`使方法返回的`ProviderManager`注册成`AuthenticationManager` Bean；`users`和`encoder`是容器按类型注入的现有Bean，不是登录时才临时创建。`DaoAuthenticationProvider(users)`指定到哪里加载账号；`setPasswordEncoder(encoder)`指定如何比较原密码与数据库哈希；`ProviderManager(provider)`把它列为可处理用户名密码Token的Provider。调用`authenticate(input)`时，Manager委托Provider，Provider调用`loadUserByUsername`、检查`UserDetails`状态并用`matches(raw, encoded)`校验密码；成功返回已认证`Authentication`，失败抛`AuthenticationException`。`matches`的两个参数不能交换，也不能每次先对原密码`encode`后用字符串相等比较。
+
+两个代码块是**对应文件中的方法片段**，完整导入和文件内容见R15。`enabled=false`应造成认证失败。用户名不存在、密码错误和停用账号对外统一返回401，不能泄露哪个账号存在。不要把原密码、哈希或认证异常堆栈写进对外响应。
 
 BCrypt哈希包含随机salt，`encode("同一密码")`两次结果不同属正常现象；验证用`matches(raw, encoded)`。哈希不是加密后可解开的密码。本课程练习强度为10，真实项目应结合性能与安全要求评估。
 
