@@ -88,7 +88,7 @@ Eclipse编写和调试代码
 | 11 | [用日志定位接口故障](mainline/11_logging_and_diagnosis.md) | 建立请求追踪与关键日志，完成一次故障调查闭环 |
 | 12 | [员工CRUD的分层测试与接口验证](mainline/12_automated_testing_and_regression.md) | 依次完成MySQL/H2 Mapper正常系与异常系、Service单元测试、Controller MockMvc测试和Postman确认，最后验证完整调用链 |
 | 13 | [用事务保证多步写入一致](mainline/13_transaction_and_consistency.md) | 更新员工并写变更履历，用成功与失败测试证明提交和回滚 |
-| 14 | [让员工列表支持条件查询与分页](mainline/14_search_sort_pagination.md) | 实现筛选、稳定排序和分页，验证总件数、空页与非法参数 |
+| 14 | [前后端分离REST列表查询、筛选、排序与分页](mainline/14_search_sort_pagination.md) | 从社員一覧需求设计REST契约与处理链，独立改修筛选、排序、分页及COUNT；最终源码见[R14](reference/R14_search_pagination_complete_source.md) |
 | 15 | [Spring Security认证与Session登录](mainline/15_session_login.md) | 分阶段完成匿名保护、数据库账号认证、SecurityContext保存、CSRF与退出；最终源码见[R15](reference/R15_session_login_complete_source.md) |
 | 16 | [Spring Security权限与数据范围](mainline/16_authorization_and_data_scope.md) | 从权限矩阵到URL角色、本人数据范围和回归测试；最终源码见[R16](reference/R16_authorization_complete_source.md) |
 | 17 | [多环境配置与打包](mainline/17_profiles_configuration_packaging.md) | 理解Profile与环境变量，用Maven生成并在本机运行可执行JAR |
@@ -116,8 +116,8 @@ Eclipse编写和调试代码
 | [A12-2 使用H2完成独立数据库测试实验](appendix/A12_02_h2_test_database.md) | 在MySQL Mapper案例后，用独立profile完成H2正常系与异常系对照实验 |
 | [A12-3 JUnit Jupiter常用注解与方法](appendix/A12_03_junit_jupiter_annotations_methods.md) | 查阅JUnit生命周期、断言和参数化测试写法，并用于第12章各层测试 |
 | [A13-1 事务原理与Spring事务机制](appendix/A13_01_transaction_spring_mechanisms.md) | 深入理解ACID、事务边界、`@Transactional`属性与传播方式 |
-| [A13-2 隔离级别与MVCC](appendix/A13_02_isolation_mvcc.md) | 区分并发读取现象、隔离级别、快照读与当前读 |
-| [A13-3 并发更新与锁](appendix/A13_03_concurrent_updates_locks.md) | 选择约束、原子UPDATE、乐观锁或悲观锁，并验证锁等待与死锁 |
+| [A13-2 并发更新与锁](appendix/A13_02_concurrent_updates_locks.md) | 选择约束、原子UPDATE、乐观锁或悲观锁，并验证锁等待与死锁 |
+| [A13-3 隔离级别与MVCC](appendix/A13_03_isolation_mvcc.md) | 区分并发读取现象、隔离级别、快照读与当前读 |
 | [A16 跨源Session与CORS实验](appendix/A16_cross_origin_session_cors.md) | 在独立实验中配置浏览器跨源Session访问，并区分CORS、认证、授权和CSRF |
 | [A15-1 认证机制与核心Bean](appendix/A15_01_spring_security_authentication.md) | 补充认证组件关系、调用流程与失败调查，不作为主线前置要求 |
 | [A15-2 Session、Cookie与CSRF](appendix/A15_02_session_cookie_csrf.md) | 深入理解登录态保存、跨请求恢复与令牌生命周期 |

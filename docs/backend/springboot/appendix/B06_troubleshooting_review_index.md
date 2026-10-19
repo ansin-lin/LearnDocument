@@ -129,7 +129,7 @@ Controller已进入但业务失败
 
 ### 案例3：员工更新冲突409
 
-**现象与复现**：在采用[A13-3](A13_03_concurrent_updates_locks.md)乐观锁的**实验副本**中，两次读取员工1001都取得 `version=3`；A先保存成功，B使用旧version提交，响应409。模拟证据：`UPDATE employees SET ..., version=version+1 WHERE id=1001 AND version=3`，A影响1行，B影响0行。主线第13章不默认有version列，必须先确认当前仓库SQL。
+**现象与复现**：在采用[A13-2](A13_02_concurrent_updates_locks.md)乐观锁的**实验副本**中，两次读取员工1001都取得 `version=3`；A先保存成功，B使用旧version提交，响应409。模拟证据：`UPDATE employees SET ..., version=version+1 WHERE id=1001 AND version=3`，A影响1行，B影响0行。主线第13章不默认有version列，必须先确认当前仓库SQL。
 
 **调查**：沿[B02](B02_existing_project_reading.md)路径检查前端请求version、Controller DTO、Service事务、Mapper SQL条件、影响行数判断和Advice；用只读SELECT确认当前version已变4，排除员工被删除或权限范围条件。**根因**（此实验）是并发编辑造成旧version被拒绝，这个409是防止覆盖的正确行为，不一定是代码故障。**修正**：按设计书决定提示刷新、保留输入和重试方式；不要删除version条件或自动无条件覆盖。**回归**：正常版本更新1行、旧版本0行且409、员工不存在404、履历与主更新同事务、前端冲突提示。若真实生产证据不足，只能写“推测”，不能套用实验根因。
 

@@ -152,7 +152,7 @@ Exception Handling → Response
 
 ## 十一、改修票 EMP-409：员工保存偶尔返回409
 
-调查目标：在**一个陌生仓库副本**中找出“编辑员工后偶发409”的真实来源。下面是假设的既存项目线索，不能当作当前主线已实现的乐观锁：主线第13章关注员工更新与履历的事务；`version` 乐观锁的可复现实验在[A13-3](A13_03_concurrent_updates_locks.md)。先确认仓库确实有 `version` 列和对应SQL，若没有就不能套用下述结论。
+调查目标：在**一个陌生仓库副本**中找出“编辑员工后偶发409”的真实来源。下面是假设的既存项目线索，不能当作当前主线已实现的乐观锁：主线第13章关注员工更新与履历的事务；`version` 乐观锁的可复现实验在[A13-2](A13_02_concurrent_updates_locks.md)。先确认仓库确实有 `version` 列和对应SQL，若没有就不能套用下述结论。
 
 1. 从浏览器Network或改修票记录 `PUT /employees/1001`、请求体、响应体、时间和requestId。确认409是应用返回，还是代理/外部服务返回；不复制个人信息到报告。
 2. 搜索 `@PutMapping` 与 `/employees` 找到Controller映射，记录Request DTO的 `version` 是否必填、Validation是否在方法进入前发生。IDEA用 Search Everywhere/Find in Files，Eclipse用 Search → File/Java Search；均可在Controller方法设断点。

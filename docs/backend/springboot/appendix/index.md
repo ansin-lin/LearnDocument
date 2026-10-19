@@ -36,8 +36,8 @@
 | [A12-2 使用H2完成独立数据库测试实验](A12_02_h2_test_database.md) | 第12章MySQL Mapper案例后 | H2独立profile、脚本、数据库保护、正常系与异常系Mapper测试及MySQL对照 | 实际运行H2四个场景，并说明它不能替代MySQL测试 |
 | [A12-3 JUnit Jupiter常用注解与方法](A12_03_junit_jupiter_annotations_methods.md) | 第12章 | JUnit生命周期、断言、参数化测试和Spring测试注解的边界 | 独立运行JUnit练习，并为各层正常系与异常系选择准确断言 |
 | [A13-1 事务原理与Spring事务机制](A13_01_transaction_spring_mechanisms.md) | 第13章 | 事务边界、ACID、`@Transactional`默认值、属性与传播方式 | 识别业务事务边界及异常处理风险 |
-| [A13-2 隔离级别与MVCC](A13_02_isolation_mvcc.md) | 第13章 | 并发读取现象、隔离级别、快照读与当前读 | 解释多个事务读取同一数据时的可见结果 |
-| [A13-3 并发更新与锁](A13_03_concurrent_updates_locks.md) | 第13章 | 唯一约束、原子UPDATE、乐观锁、悲观锁、锁等待与死锁 | 根据业务不变量选择并发控制机制，并用两个会话验证结果 |
+| [A13-2 并发更新与锁](A13_02_concurrent_updates_locks.md) | 第13章 | 唯一约束、原子UPDATE、乐观锁、悲观锁、锁等待与死锁 | 根据业务不变量选择并发控制机制，并用两个会话验证结果 |
+| [A13-3 隔离级别与MVCC](A13_03_isolation_mvcc.md) | 第13章 | 并发读取现象、隔离级别、快照读与当前读 | 解释多个事务读取同一数据时的可见结果 |
 | [A15-1 Spring Security认证机制与核心Bean](A15_01_spring_security_authentication.md) | 第15章 | Filter Chain、AuthenticationManager、Provider、UserDetailsService、PasswordEncoder | 解释登录组件调用链并定位Bean或账号认证问题 |
 | [A15-2 Session、Cookie与CSRF机制](A15_02_session_cookie_csrf.md) | 第15章 | SecurityContext持久化、JSESSIONID、Session策略与CSRF令牌生命周期 | 分清登录态和CSRF令牌，定位跨请求401或写请求403 |
 | [A16-1 URL权限、方法权限与数据范围](A16_01_method_security_data_scope.md) | 第16章 | URL/方法授权、代理、可信身份、SQL数据范围设计 | 根据访问目标选择授权位置并发现越权风险 |

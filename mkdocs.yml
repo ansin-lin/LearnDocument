@@ -370,7 +370,7 @@ nav:
       - 11. 用日志定位接口故障: backend/springboot/mainline/11_logging_and_diagnosis.md
       - 12. 员工CRUD的分层测试与接口验证: backend/springboot/mainline/12_automated_testing_and_regression.md
       - 13. 用事务保证多步写入一致: backend/springboot/mainline/13_transaction_and_consistency.md
-      - 14. 让员工列表支持条件查询与分页: backend/springboot/mainline/14_search_sort_pagination.md
+      - 14. 前后端分离REST列表查询、筛选、排序与分页: backend/springboot/mainline/14_search_sort_pagination.md
       - 15. Spring Security认证与Session登录: backend/springboot/mainline/15_session_login.md
       - 16. Spring Security权限与数据范围: backend/springboot/mainline/16_authorization_and_data_scope.md
       - 17. 多环境配置与打包: backend/springboot/mainline/17_profiles_configuration_packaging.md
@@ -400,8 +400,8 @@ nav:
         - A12-2. 使用H2完成独立数据库测试实验: backend/springboot/appendix/A12_02_h2_test_database.md
         - A12-3. JUnit Jupiter常用注解与方法: backend/springboot/appendix/A12_03_junit_jupiter_annotations_methods.md
         - A13-1. 事务原理与Spring事务机制: backend/springboot/appendix/A13_01_transaction_spring_mechanisms.md
-        - A13-2. 隔离级别与MVCC: backend/springboot/appendix/A13_02_isolation_mvcc.md
-        - A13-3. 并发更新与锁: backend/springboot/appendix/A13_03_concurrent_updates_locks.md
+        - A13-2. 并发更新与锁: backend/springboot/appendix/A13_02_concurrent_updates_locks.md
+        - A13-3. 隔离级别与MVCC: backend/springboot/appendix/A13_03_isolation_mvcc.md
         - A15-1. Spring Security认证机制与核心Bean: backend/springboot/appendix/A15_01_spring_security_authentication.md
         - A15-2. Session、Cookie与CSRF机制: backend/springboot/appendix/A15_02_session_cookie_csrf.md
         - A16-1. URL权限、方法权限与数据范围: backend/springboot/appendix/A16_01_method_security_data_scope.md
@@ -411,6 +411,7 @@ nav:
         - A18-1. Linux部署与运维手顺参考: backend/springboot/appendix/A18_01_linux_deployment_operations_reference.md
         - A18-2. 常见运行与数据库迁移组件识读: backend/springboot/appendix/A18_02_operations_components_reading.md
       - 最终源码参考:
+        - R14. 列表查询与分页最终源码: backend/springboot/reference/R14_search_pagination_complete_source.md
         - R15. Session登录最终源码: backend/springboot/reference/R15_session_login_complete_source.md
         - R16. 授权最终源码: backend/springboot/reference/R16_authorization_complete_source.md
       - 通用附录:

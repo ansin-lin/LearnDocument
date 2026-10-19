@@ -1,76 +1,85 @@
-# A13-3 并发更新与锁
+# A13-2 从旧页面覆盖到悲观锁、乐观锁与双请求验证
 
-完成[第13章：用事务保证多步写入一致](../mainline/13_transaction_and_consistency.md)后，本附录处理多个请求同时修改数据时的约束、原子UPDATE、乐观锁、悲观锁、锁等待与死锁。事务基本机制见[A13-1](A13_01_transaction_spring_mechanisms.md)，读取现象、隔离级别和MVCC见[A13-2](A13_02_isolation_mvcc.md)。课程环境按MySQL 8的InnoDB说明；其他数据库的锁范围和异常行为应以项目文档和实测为准。
+建议在[A13-1 事务原理](A13_01_transaction_spring_mechanisms.md)之后学习本篇，再学习[A13-3 隔离级别与MVCC](A13_03_isolation_mvcc.md)。先复现问题和两个数据库连接的等待，再讨论如何在Spring Boot项目中落地，并把记录锁、Gap Lock、死锁等机制放到最后解释。
 
-第13章工程没有 `version` 列和休假余额表；下文相关代码是**独立扩展实验或设计片段**，不能直接追加到主线工程。实验优先在可按初始化脚本重建的专用数据库或独立实验记录上进行；使用个人专用练习库时须先记录原数据，并按第四节核对员工、履历、临时表结构和代码。不得在生产、共享开发或其他学员共用的数据库上做这些写入与删列实验。
+**项目边界：** 主线没有`version`列及休假余额表；它们属于独立扩展实验。不要把片段直接粘贴到主线项目而假定可以编译，不能在共享/生产数据库操作。正式改修必须同步更新DTO、Mapper、Service、异常处理和测试。
 
-| 业务要求 | 主要机制 |
-| --- | --- |
-| 员工更新与履历写入共同成功或失败 | Service业务方法上的 `@Transactional` |
-| 两名用户不能基于旧画面相互覆盖更新 | 原子条件UPDATE、乐观锁或悲观锁等并发控制 |
-| email不能重复 | 数据库 `UNIQUE` 约束 |
-| 余额扣减后不能为负数 | 带条件的原子UPDATE |
+## 一、先复现：两名管理员提交旧表单
 
-`@Transactional` 保护的是一次业务操作的提交/回滚边界，不会自动比较两个用户各自读取的旧数据，也不能单独解决丢失更新。
+**前置知识：** 先完成[A13-1 事务边界](A13_01_transaction_spring_mechanisms.md)。请先在**个人专用、可以重建的MySQL 8 InnoDB练习库**创建独立实验数据，不直接覆盖主线员工、不在共享库执行。若练习库复用了主线`employees`，必须按本章后面的恢复清单记录旧值、履历及表结构。
 
-项目里“加锁”不是先找一个注解贴上去。先写出必须保持的业务不变量（例如余额不能为负、编辑不能覆盖他人改动），确认竞争发生在同一行、同一范围还是多行之间，再决定把并发判断放在数据库约束、单条条件SQL、version条件或事务内的锁定读。最后必须定义失败响应、超时/重试边界及并发验证；只看一个请求成功不能证明设计有效。
-
-## 一、锁的基本概念
-
-### 1. 共享锁与排他锁
-
-| 概念 | 目的 | 直观效果 |
-| --- | --- | --- |
-| 共享锁，S Lock | 保护读取的记录不被冲突方式修改 | 多个事务可共享读取，但与需要修改的排他锁冲突 |
-| 排他锁，X Lock | 保护即将或正在修改的记录 | 其他冲突读写需要等待事务结束 |
-
-下面是同一资源上典型的S/X兼容关系；InnoDB还有意向锁和其他锁模式，不能用这张简表推断全部内部锁：
-
-| 已有锁 | 新S锁 | 新X锁 |
-| --- | --- | --- |
-| S锁 | 兼容 | 冲突 |
-| X锁 | 冲突 | 冲突 |
-
-InnoDB内部还使用表级意向锁来表示事务准备在表内取得哪类行锁。新人阶段不需要手工管理意向锁，但应知道“行锁”和“表上完全没有锁”不是同一件事。
-
-普通 `SELECT` 通常是MVCC一致性读，并不会因为读到某行就替业务长期锁住它；`SELECT ... FOR SHARE` 是共享锁定读，`SELECT ... FOR UPDATE` 是排他锁定读，`UPDATE`/`DELETE` 也会为其写入取得必要的锁。锁的获取由数据库执行SQL时完成，不由Java对象上的 `synchronized` 或 `@Transactional` 注解单独完成。`@Transactional` 的关键作用是让锁定读和后续写入留在**同一个数据库事务**内，直到提交或回滚才释放锁。
-
-### 2. 记录锁、间隙锁和next-key lock
-
-| 锁 | 保护对象 | 常见目的 |
-| --- | --- | --- |
-| Record Lock | 索引中的某条记录 | 阻止同一记录发生冲突修改 |
-| Gap Lock | 两条索引记录之间的间隙 | 阻止其他事务向范围插入新记录 |
-| Next-key Lock | 记录锁加其前方间隙锁 | 在范围扫描中保护已有记录与插入范围 |
-
-InnoDB的“行锁”实际与索引记录密切相关。若 `WHERE` 条件没有合适索引，数据库可能扫描并锁定比预想更多的记录或范围。因此索引不仅影响速度，也会影响并发等待范围。
-
-比较下面三个**MySQL 8.0 InnoDB锁定读设计片段**；不要直接在共享库执行。它们的实际锁数不是固定常量，须结合`EXPLAIN`、表索引、行分布和隔离级别观察：
+| 时间 | A | B | 观察重点 |
+| --- | --- | --- | --- |
+| T0 | 读id=1001 | 读id=1001 | 两个页面均拿到`Tanaka/old@example.com` |
+| T1 | 姓名改为`Tanaka Updated`并提交 | 仍在旧页面 | A提交成功 |
+| T2 | — | 只修改邮箱，连同旧姓名一起完整提交 | B提交成功，A姓名可能被覆盖 |
 
 ```sql
-SELECT id, name, department FROM employees WHERE id = 1001 FOR UPDATE;
-SELECT id, name, department FROM employees
-WHERE department = 'Sales' FOR UPDATE;
-SELECT id, name, department FROM employees
-WHERE name LIKE '%Tanaka%' FOR UPDATE;
+-- 无版本检查的完整更新，只在隔离实验数据执行
+UPDATE employees SET name='Tanaka Updated', email='old@example.com' WHERE id=1001;
+UPDATE employees SET name='Tanaka', email='new@example.com' WHERE id=1001;
+SELECT id,name,email FROM employees WHERE id=1001;
 ```
 
-第一条按主键等值查找，若记录存在，通常能较精确地定位目标索引记录。第二条如果部门索引和条件选择性不同，可能扫描一段索引范围，`REPEATABLE READ`下还可能涉及间隙/next-key锁；第三条前导通配符通常难以利用普通B-tree索引作前缀定位，扫描及锁范围可能扩大。`READ COMMITTED`与`REPEATABLE READ`的间隙锁使用也不同。不能宣称“WHERE id只锁一行”或“LIKE必锁全表”；用执行计划和两个连接的等待现象核对。
+教学结论：**请求没有并行执行也可能发生过期数据覆盖**。`@Transactional`保证每次更新及履历的原子提交，不知道B的请求内容基于旧页面。问学员：“给每个更新方法加事务就安全了吗？”答案是否定的。
 
-### 3. 锁什么时候释放
+## 二、先用两个连接看见悲观锁
 
-写锁和锁定读获得的锁通常保持到事务提交或回滚，而不是Java方法执行完某一行就立刻释放。下列写法会无谓拉长锁时间：
+不急着背锁类型。打开两个MySQL CMD窗口，各建立独立连接；确认数据库为InnoDB、实验记录存在、未启用自动结束的脚本工具。先在A运行：
+
+```sql
+START TRANSACTION;
+SELECT id,name,email FROM employees WHERE id=1001 FOR UPDATE;
+-- 不要COMMIT，保持A持锁
+```
+
+接着在B运行（B的命令会等待，不要误以为客户端坏了）：
+
+```sql
+START TRANSACTION;
+UPDATE employees SET email='new@example.com' WHERE id=1001;
+-- 等待A释放锁，之后再COMMIT或ROLLBACK
+```
+
+回到A：
+
+```sql
+UPDATE employees SET name='Tanaka Updated' WHERE id=1001;
+COMMIT;
+```
+
+观察B的UPDATE恢复执行，然后B显式`COMMIT;`，最后独立查询姓名与邮箱。此实验只演示**同一主键记录上的冲突锁等待**，不是旧页面冲突的解决方案。锁由InnoDB事务获取，通常在`COMMIT/ROLLBACK`释放；普通非锁定SELECT通常仍能读MVCC快照。
+
+**课堂重点：** 谁拿锁？MySQL事务。锁什么？本例通常为主键索引记录，而不是整个Java对象。何时释放？事务结束。为什么不能用Java的`synchronized`代替？它无法跨多个JVM实例协调数据库事务。
+
+## 三、悲观锁保护的是哪段业务操作
+
+把上一节的数据库实验对应到项目代码时，典型流程是：**Spring代理进入Service事务 → Mapper用主键`FOR UPDATE`锁定读取 → 根据最新状态校验 → UPDATE员工和INSERT履历 → 提交或回滚并释放锁**。`FOR UPDATE`与后续写入必须处于同一数据库事务；如果锁定读结束后就提交，后续更新已不再受这次锁保护。
+
+这里先理解事务边界，不需要新增Java方法。第五节“方案4”再对照现有 `EmployeeServiceImpl.update()` 给出Mapper声明、XML和准确的替换位置；原有的部门、邮箱校验、重复键异常转换及履历写入都要保留。
+
+**关键反例：** B在浏览器停留十分钟后提交旧姓名，虽然锁定读能取得最新数据库行，如果仍直接以旧请求体无条件更新整行，照样能覆盖A。锁保护的是当前事务的读-判定-写窗口，不会自动识别旧页面。这就引出`version`。
+
+## 四、乐观锁：用version拒绝旧页面
 
 ```text
-取得FOR UPDATE锁
-  → 调用外部审批API并等待5秒
-  → 写数据库
-  → 提交
+GET详情：A和B都得到 version=0
+A提交 version=0 → UPDATE影响1行，数据库version变成1
+B提交 version=0 → UPDATE影响0行，不修改任何员工字段
+API：A成功，B返回409 Conflict，冲突不写“成功修改履历”
 ```
 
-应先在事务外准备可准备的信息，再进入短事务完成必须原子执行的读取与写入。
+```sql
+UPDATE employees
+SET name = ?, department = ?, email = ?, version = version + 1
+WHERE id = ? AND version = ?;
+```
 
-## 二、四类常用并发控制方案
+这里的`?`表示用于概念说明的JDBC占位符；在MyBatis XML中使用`#{...}`，并且version**必须是客户端详情读取时保存并原样提交的旧值**，不可在更新前从数据库重新取最新version替换，否则冲突检测失效。SQL自身会取得写入所需的数据库锁；“乐观”不是“不加任何数据库锁”。
+
+这一步先观察“成功1行、冲突0行”的效果。第五节“方案3”再按数据库列、DTO、Mapper、Service和异常处理的顺序说明如何改修；只增加一个 `version` 列或只替换一条SQL，都不足以让现有接口完成乐观锁。
+
+## 五、项目实现：约束、条件更新与两种锁
 
 ### 方案1：唯一约束——防止最终重复
 
@@ -193,7 +202,7 @@ A返回成功                      B返回409 Conflict
 
 不要在B失败后静默重试完整UPDATE，否则仍可能覆盖A的变更。正确做法通常是让用户读取最新数据、比较差异并重新决定。
 
-实验前后的员工、履历及临时`version`列按第四节统一记录与恢复。以下删列SQL**仅用于隔离且允许重建的专用实验库**，必须在实验事务全部结束、相关Mapper/DTO/异常映射均已移除且代码不再引用`version`后执行；删除列会丢失实验版本值，不得在共享或生产库执行：
+实验前后的员工、履历及临时`version`列按第八节统一记录与恢复。以下删列SQL**仅用于隔离且允许重建的专用实验库**，必须在实验事务全部结束、相关Mapper/DTO/异常映射均已移除且代码不再引用`version`后执行；删除列会丢失实验版本值，不得在共享或生产库执行：
 
 ```sql
 ALTER TABLE employees DROP COLUMN version;
@@ -306,7 +315,62 @@ if (beforeUpdate == null) {
 | 修改不同员工 | 不应因错误的范围扫描而无谓互相等待 | 只看索引是否存在 |
 | 旧画面提交 | 检测旧version或旧值并拒绝覆盖 | 只确认使用了 `FOR UPDATE` |
 
-## 三、锁等待与死锁
+## 六、锁的底层机制：S/X、Record、Gap、Next-Key
+
+### 1. 共享锁与排他锁
+
+| 概念 | 目的 | 直观效果 |
+| --- | --- | --- |
+| 共享锁，S Lock | 保护读取的记录不被冲突方式修改 | 多个事务可共享读取，但与需要修改的排他锁冲突 |
+| 排他锁，X Lock | 保护即将或正在修改的记录 | 其他冲突读写需要等待事务结束 |
+
+下面是同一资源上典型的S/X兼容关系；InnoDB还有意向锁和其他锁模式，不能用这张简表推断全部内部锁：
+
+| 已有锁 | 新S锁 | 新X锁 |
+| --- | --- | --- |
+| S锁 | 兼容 | 冲突 |
+| X锁 | 冲突 | 冲突 |
+
+InnoDB内部还使用表级意向锁来表示事务准备在表内取得哪类行锁。新人阶段不需要手工管理意向锁，但应知道“行锁”和“表上完全没有锁”不是同一件事。
+
+普通 `SELECT` 通常是MVCC一致性读，并不会因为读到某行就替业务长期锁住它；`SELECT ... FOR SHARE` 是共享锁定读，`SELECT ... FOR UPDATE` 是排他锁定读，`UPDATE`/`DELETE` 也会为其写入取得必要的锁。锁的获取由数据库执行SQL时完成，不由Java对象上的 `synchronized` 或 `@Transactional` 注解单独完成。`@Transactional` 的关键作用是让锁定读和后续写入留在**同一个数据库事务**内，直到提交或回滚才释放锁。
+
+### 2. 记录锁、间隙锁和next-key lock
+
+| 锁 | 保护对象 | 常见目的 |
+| --- | --- | --- |
+| Record Lock | 索引中的某条记录 | 阻止同一记录发生冲突修改 |
+| Gap Lock | 两条索引记录之间的间隙 | 阻止其他事务向范围插入新记录 |
+| Next-key Lock | 记录锁加其前方间隙锁 | 在范围扫描中保护已有记录与插入范围 |
+
+InnoDB的“行锁”实际与索引记录密切相关。若 `WHERE` 条件没有合适索引，数据库可能扫描并锁定比预想更多的记录或范围。因此索引不仅影响速度，也会影响并发等待范围。
+
+比较下面三个**MySQL 8.0 InnoDB锁定读设计片段**；不要直接在共享库执行。它们的实际锁数不是固定常量，须结合`EXPLAIN`、表索引、行分布和隔离级别观察：
+
+```sql
+SELECT id, name, department FROM employees WHERE id = 1001 FOR UPDATE;
+SELECT id, name, department FROM employees
+WHERE department = 'Sales' FOR UPDATE;
+SELECT id, name, department FROM employees
+WHERE name LIKE '%Tanaka%' FOR UPDATE;
+```
+
+第一条按主键等值查找，若记录存在，通常能较精确地定位目标索引记录。第二条如果部门索引和条件选择性不同，可能扫描一段索引范围，`REPEATABLE READ`下还可能涉及间隙/next-key锁；第三条前导通配符通常难以利用普通B-tree索引作前缀定位，扫描及锁范围可能扩大。`READ COMMITTED`与`REPEATABLE READ`的间隙锁使用也不同。不能宣称“WHERE id只锁一行”或“LIKE必锁全表”；用执行计划和两个连接的等待现象核对。
+
+### 3. 锁什么时候释放
+
+写锁和锁定读获得的锁通常保持到事务提交或回滚，而不是Java方法执行完某一行就立刻释放。下列写法会无谓拉长锁时间：
+
+```text
+取得FOR UPDATE锁
+  → 调用外部审批API并等待5秒
+  → 写数据库
+  → 提交
+```
+
+应先在事务外准备可准备的信息，再进入短事务完成必须原子执行的读取与写入。
+
+## 七、锁等待与死锁
 
 ### 1. 锁等待不是死锁
 
@@ -356,7 +420,7 @@ SHOW ENGINE INNODB STATUS;
 
 该结果可能包含表名、SQL和运行信息。正式环境应按权限和脱敏规则保存证据，不要把整段生产信息直接贴入公开票据。
 
-## 四、两个会话怎样验证并发现象
+## 八、两个会话与API的验证实验
 
 并发问题不能只发送一次Postman请求就下结论。优先使用可按已知初始化脚本重建的**专用实验数据库或独立实验记录**；其次才是在个人专用练习库中使用明确标记的实验员工。两个数据库客户端连接A、B必须属于同一被允许的实验库，并明确控制提交顺序。禁止在生产、共享开发或其他学员共用数据库执行清空、DROP、批量DELETE或锁实验。若第12章的测试脚本包含DROP，只能在其既有专用测试库和保护规则下运行，本附录不修改`MySqlTestGuard`或扩大脚本执行范围。
 
@@ -377,7 +441,7 @@ SELECT id, action, detail, created_at
 FROM employee_change_logs WHERE employee_id = 1001 ORDER BY id;
 ```
 
-**主线尚无`version`列，建列前不要执行`SELECT version`。** 按第二节“方案3”在专用实验库建列后，再执行`SELECT id, version FROM employees WHERE id = 1001;`记录本次版本起点；同时保留建列前的表结构记录。若只做`FOR UPDATE`等待实验而不做乐观锁，不需要建列。记录实验前履历条数及id，是为了区分原有履历和可能由真实API新增的履历，**不是授权按id范围批量删除**。
+**主线尚无`version`列，建列前不要执行`SELECT version`。** 按第五节“方案3”在专用实验库建列后，再执行`SELECT id, version FROM employees WHERE id = 1001;`记录本次版本起点；同时保留建列前的表结构记录。若只做`FOR UPDATE`等待实验而不做乐观锁，不需要建列。记录实验前履历条数及id，是为了区分原有履历和可能由真实API新增的履历，**不是授权按id范围批量删除**。
 
 ### 实验1：观察 `FOR UPDATE` 等待
 
@@ -445,7 +509,7 @@ B应影响0行。再次查询应看到Development与version=1，不能把B的0�
 4. 查询该员工`employee_change_logs`的条数和id，与实验前记录逐条对照；若有API新增履历，先确定是保留审计证据，还是在**可重建的专用实验数据库**中按既有初始化流程整体恢复已知状态。
 5. 首选重建专用实验库或从实验前备份恢复独立实验记录；执行初始化脚本前再次核对数据库名称、现有专用测试库保护机制和允许的恢复范围。不得把含DROP的测试脚本拿到个人业务库、共享库或正式库执行。
 6. 如果使用个人练习库，只恢复能明确识别且允许恢复的实验员工值；不要用模糊条件`DELETE FROM employee_change_logs WHERE employee_id = ...`清理履历。无法安全撤销API产生的履历时，保留并标记实验记录，不能声称数据库已回到完全相同的历史状态。
-7. 移除临时Mapper方法、DTO/Entity字段、冲突异常映射和其他实验改动，并确认代码已不再引用`version`。只在隔离且允许重建的专用实验库中按第二节给出的SQL删除临时`version`列；若没有建列，就不要执行删列。
+7. 移除临时Mapper方法、DTO/Entity字段、冲突异常映射和其他实验改动，并确认代码已不再引用`version`。只在隔离且允许重建的专用实验库中按第五节给出的SQL删除临时`version`列；若没有建列，就不要执行删列。
 8. 重新查询员工值、履历条数及id，并对照建列前`SHOW CREATE TABLE employees`确认结构。运行第13章原事务回归测试；记录哪些数据完全恢复、哪些审计履历按规则保留。
 
 只做本节**原生SQL**实验、确认实验前部门确为`Sales`、实验后确为`Development`，且期间没有通过API写入履历时，可在隔离实验库按已记录的id执行以下**定向恢复示意**；先核对实际值，条件不符时停止，不要改成无条件覆盖：
@@ -463,30 +527,24 @@ FROM employees WHERE id = 1001;
 
 **恢复员工当前字段，不代表历史履历自动恢复。正式业务系统中的审计履历通常不能随意删除。** 本实验优先通过专用、可重建的数据环境恢复，而不是让学员对真实业务履历执行DELETE。若只执行了两条原生SQL且没有触发业务Mapper，应如实记录“履历未变化”，不假定每个并发实验都会新增履历。
 
-## 五、综合案例：两名管理员同时修改同一员工
+## 九、综合案例
 
-**起点与问题复现。** 本例只在可重建的专用MySQL 8.0 InnoDB实验库或个人专用练习库、实验用工程分支进行。按第四节记录员工1001原姓名、部门、邮箱、表结构及履历；建列后再记录version起点。A、B分别用Postman或两个测试请求读取相同详情。A修改部门后提交，B仍拿旧画面中的完整员工数据提交。原主线UPDATE仅按id定位时，B可能覆盖A的部门；两个请求各自有`@Transactional`也不会自动识别B的旧画面。
-
-**原因与方案比较。** 竞争窗口跨越“读取详情→用户思考→点击保存”，可能长达数分钟。`FOR UPDATE`只在短数据库事务内锁行，不能在用户编辑期间长期持锁；如果B拿到锁后仍无条件写旧请求体，还是会覆盖A。条件UPDATE可以比较旧字段，但字段较多时version更清晰。因此本场景通常优先采用前文方案3的version，保留`@Transactional`保证员工UPDATE和履历INSERT共同提交。它们解决不同问题，不是二选一。
+**验收起点。** 沿用第一节的员工1001：`Tanaka / Sales / old@example.com`。在可重建的专用MySQL 8.0 InnoDB实验库和实验工程分支中，A、B分别通过Postman或两个测试请求读取同一详情；A把姓名改成`Tanaka Updated`并先提交，B仍用旧完整表单只把邮箱改成`new@example.com`。先按第八节记录原字段、履历和表结构；做乐观锁实验时再记录建列后的version起点。对比原更新与第五节“方案3”改修后的结果：
 
 | 验证项目 | 无version校验的原更新 | 使用version校验 |
 | --- | --- | --- |
 | A、B读取同一员工 | 都成功，各持一份旧画面 | 都成功，各持同一旧version |
 | A先提交 | 成功 | UPDATE影响1行，version加1 |
-| B随后提交旧画面 | 可能覆盖A已改字段 | 旧version与数据库不匹配 |
+| B随后提交旧姓名和新邮箱 | 可能把姓名恢复为`Tanaka` | 旧version与数据库不匹配 |
 | B的UPDATE／HTTP结果 | 可能影响1行并返回200 | 影响0行，按规格返回409 Conflict |
-| 最终员工数据 | 可能成为B提交的旧内容 | 保留A成功提交的结果 |
+| 最终员工数据 | 可能是`Tanaka / new@example.com` | 保留`Tanaka Updated / old@example.com` |
 | 变更履历 | 两次成功更新可能各写一条 | A新增一条；B冲突不新增 |
 
-乐观锁不在用户编辑页面期间持有数据库锁，而是在提交时用最初读取的version做条件判断。若Service在B提交前重新查询最新version并替换B携带的旧值，条件UPDATE可能再次成功，冲突保护就失效。UPDATE影响0行必须按规格区分员工不存在与版本冲突，不能直接返回成功；B冲突分支在履历INSERT之前退出，不能记录一条并未完成的更新。也不能无条件自动重试B的整份旧画面，否则仍可能覆盖A，应该让使用者读取最新数据并确认差异。
+**验证证据。** 保存A、B请求体中的旧version、发送顺序、HTTP状态与响应、每次UPDATE影响行数，以及最终`employees`数据和`employee_change_logs`条数。改修后预期A成功、B为409，最终姓名为`Tanaka Updated`、邮箱仍为`old@example.com`，version只增1、仅A新增一条履历；另外测不存在id仍按原规格404。若两请求都成功，先查请求是否真的携带相同旧version、Service有没有用新查到的version覆盖旧值、Mapper XML是否同时匹配id/version。B的邮箱输入应由前端保留供用户重新确认，不能自动覆盖数据库。
 
-**实验改修。** 按方案3的改修清单增加`version`列、Entity/DTO字段、详情响应、请求旧版本、`updateWithVersion` Mapper SQL、Service的0行冲突判断和409映射；**这是增量实验，不是另一份完整`EmployeeServiceImpl`**。A、B都持有相同旧版本`v`：A的`WHERE id=1001 AND version=v`影响1行，数据库版本变为`v+1`；B仍带`v`影响0行，返回409。冲突分支在履历INSERT之前退出，不产生新履历；不能悄悄用最新version重试B的整个更新。
+**恢复。** 按第八节“统一恢复”依次结束事务、对照姓名、部门、邮箱及版本、核对API可能新增的履历，再恢复专用实验数据和临时代码。不能只把姓名改回去就宣称实验完全恢复，也不能按员工id模糊删除审计履历。确认没有代码引用`version`后，才可在隔离且允许重建的专用实验库删除临时列；最后运行第13章原事务测试。共享库和生产库不得执行本实验的删列或履历清理。
 
-**验证证据。** 保存A、B请求体中的旧version、发送顺序、HTTP状态与响应、每次UPDATE影响行数，以及最终`employees`数据和`employee_change_logs`条数。预期A成功、B为409，最终部门与姓名是A版本、version只增1、仅A新增一条履历；另外测不存在id仍按原规格404。若两请求都成功，先查前端是否真的传旧version、Service有没有重新查询并覆盖它、Mapper XML是否同时匹配id/version，以及测试是否用不同请求。
-
-**恢复。** 按第四节“统一恢复”依次结束事务、对照员工字段与版本、核对API可能新增的履历，再恢复专用实验数据和临时代码。不能只把姓名、部门改回去就宣称实验完全恢复，也不能按员工id模糊删除审计履历。确认没有代码引用`version`后，才可在隔离且允许重建的专用实验库删除临时列；最后运行第13章原事务测试。共享库和生产库不得执行本实验的删列或履历清理。
-
-## 六、事务和并发控制的常见误区
+## 十、事务和并发控制的常见误区
 
 | 误区 | 为什么错误 | 正确方向 |
 | --- | --- | --- |
@@ -499,7 +557,7 @@ FROM employees WHERE id = 1001;
 | 冲突后自动重试完整用户更新 | 可能再次覆盖别人已经提交的数据 | 让用户重读、比较和确认 |
 | 普通SELECT已经锁住读到的数据 | InnoDB普通一致性读通常使用MVCC快照 | 需要当前锁定读时明确使用 `FOR UPDATE` |
 
-## 七、Review与故障调查清单
+## 十一、Review与故障调查清单
 
 看到事务或并发改修时，按下面顺序检查：
 
@@ -533,7 +591,7 @@ FROM employees WHERE id = 1001;
 - 是否验证409、超时、死锁等失败路径？
 - 测试是否使用专用数据库并清理实验结构？
 
-## 八、练习任务
+## 十二、练习任务
 
 ### 练习1：判断应该使用什么机制
 
@@ -569,7 +627,7 @@ FROM employees WHERE id = 1001;
 - 为什么该结果符合规格；
 - 实验后恢复了哪些数据、结构和代码，哪些审计履历按规则保留。
 
-## 九、重要概念与完成标准
+## 十三、重要概念与完成标准
 
 | 容易混淆 | 区别 |
 | --- | --- |
@@ -584,7 +642,7 @@ FROM employees WHERE id = 1001;
 
 进一步排查事务未回滚、锁等待或数据库异常时，可结合[B06 Spring Boot常见问题与排查索引](B06_troubleshooting_review_index.md)确定调查入口。
 
-## 十、官方参考资料
+## 十四、官方参考资料
 
 - [Spring Framework：使用 `@Transactional`](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)
 - [MySQL 8.4：InnoDB事务模型](https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-model.html)

@@ -1,10 +1,40 @@
-# A13-1 事务原理与Spring事务机制
+# A13-1 从旧页面覆盖认识事务与Spring事务机制
 
-完成[第13章：用事务保证多步写入一致](../mainline/13_transaction_and_consistency.md)后，用本附录深入理解事务边界、ACID、Spring代理、默认规则和传播方式。第13章的员工更新与履历写入仍是可运行主线；这里的属性示例是独立说明，不要求改动主线工程。并发读取与更新另见[A13-2 隔离级别与MVCC](A13_02_isolation_mvcc.md)和[A13-3 并发更新与锁](A13_03_concurrent_updates_locks.md)。
+完成[第13章：用事务保证多步写入一致](../mainline/13_transaction_and_consistency.md)后，先复现一个两名管理员编辑同一员工的事故，再解释`@Transactional`究竟能保证什么。后续建议**先学[A13-2 并发更新与锁](A13_02_concurrent_updates_locks.md)，最后学[A13-3 隔离级别与MVCC](A13_03_isolation_mvcc.md)**。本篇除标注为独立实验的SQL外，仍以主线“更新员工+写履历”为基础，不要求更改主线工程。
 
-学完后应能检查一次业务操作的事务边界，解释提交/回滚的依据，并判断异常捕获或传播设置是否可能破坏共同成败。
+**学习目标：** 讲清旧页面覆盖与事务原子性的区别，画出员工与履历共同提交/回滚的边界；认识Spring代理、默认回滚和传播规则。
 
-## 一、先理解事务是什么
+## 一、从两个管理员覆盖数据的事故开始
+
+**业务背景：** `employees(id, name, department, email)` 中员工1001原来是 `Tanaka / Sales / old@example.com`。管理员A和B分别打开同一员工的编辑页面，页面都保存了一份旧数据。
+
+| 时点 | A管理员 | B管理员 | 数据库姓名 / 邮箱 |
+| --- | --- | --- | --- |
+| T0 | GET员工详情 | GET员工详情 | Tanaka / old@example.com |
+| T1 | 修改姓名为Tanaka Updated | 仍停留在旧页面 | Tanaka / old@example.com |
+| T2 | PUT完整表单，成功提交 | 未提交 | Tanaka Updated / old@example.com |
+| T3 | 已结束 | 只修改邮箱，但PUT提交旧姓名Tanaka | Tanaka / new@example.com |
+
+```sql
+-- A的完整表单提交
+UPDATE employees SET name = 'Tanaka Updated',
+    department = 'Sales', email = 'old@example.com' WHERE id = 1001;
+-- B的完整旧表单稍后提交
+UPDATE employees SET name = 'Tanaka',
+    department = 'Sales', email = 'new@example.com' WHERE id = 1001;
+```
+
+**观察：** 两个更新都可能成功提交，但A的姓名被B的旧值覆盖。这是业务上的**旧页面覆盖 / Lost Update**，不要求两条SQL同时执行；两次提交相隔十分钟仍会发生。先问学员：如果这两个Service方法都加了`@Transactional`，为什么仍然挡不住？
+
+**本章分清两件事：** 员工更新和履历插入要共同成功，属于事务原子性；B拿旧表单覆盖A，属于并发版本校验。`@Transactional`不会知道客户端页面何时读取。后者将在[A13-2](A13_02_concurrent_updates_locks.md)用`FOR UPDATE`与`version`完整演示。
+
+### 本节课堂提问
+
+1. A修改姓名、B修改邮箱，期望最终有哪些字段变化？
+2. 为什么B没有主动编辑姓名却把姓名恢复了？
+3. `COMMIT`、`ROLLBACK`能解决“员工更新成功但履历失败”吗？能自动解决旧表单覆盖吗？
+
+## 二、先理解事务是什么
 
 ### 1. 事务是一个业务工作单元
 
@@ -36,7 +66,7 @@ MySQL连接通常启用 `autocommit`。此时每条单独执行的SQL默认各�
 
 事务边界必须对应业务含义。不是SQL越多越应该放在一起，也不是给所有Service方法统一加事务就更安全。
 
-## 二、事务的ACID特点
+## 三、事务的ACID特点
 
 ACID不是四个互不相关的口号，而是事务能够可靠处理数据变化的四个观察角度。
 
@@ -54,7 +84,7 @@ ACID不是四个互不相关的口号，而是事务能够可靠处理数据变�
 - 隔离级别越高通常等待和冲突越多，不应无依据地把所有事务改为最高级别。
 - 持久性是数据库能力与运行配置共同提供的，不能用“接口返回200”代替数据库结果确认。
 
-## 三、项目中设计事务的基本原则
+## 四、项目中设计事务的基本原则
 
 ### 原则1：边界对应一个完整用例
 
@@ -118,7 +148,7 @@ try {
 
 若业务必须更新多名员工或多张表，所有代码路径都按相同顺序访问。例如始终先按较小员工ID加锁，再处理较大ID。相反顺序会增加死锁概率。
 
-## 四、Spring的 `@Transactional`
+## 五、Spring的 `@Transactional`
 
 ### 1. 这个注解由谁处理
 
@@ -282,9 +312,9 @@ public void write(Long id) {
 
 Spring默认规则是运行时异常与`Error`回滚、受检异常不回滚；但Spring Framework支持全局修改默认回滚策略，应以本项目实际配置为准。`rollbackFor`、`noRollbackFor`都匹配时，最具体的匹配规则优先。类名模式是字符串包含匹配而非正则，`"Exception"`过宽会误命中；通常用Class类型更安全。不要给所有方法无差别写`rollbackFor = Exception.class`：它会让本来表示可提交业务告知的受检异常也回滚，改变契约。`noRollbackFor`只有“异常对外报告但已写入仍允许提交”的明确规格才考虑，不能用来掩盖履历失败。
 
-`readOnly = true`主要是对事务基础设施的提示，不是禁止写SQL的权限控制。单条普通SELECT不一定需要显式事务；多次SELECT若业务要求同一一致性视图，才考虑事务及实际隔离级别，详见[A13-2](A13_02_isolation_mvcc.md)。`timeout`与`timeoutString`都是新事务秒数限制，非HTTP客户端超时、数据库锁等待配置，也不能替代慢SQL优化；内层加入已有`REQUIRED`事务时通常沿用外层特征。`label`是标签数组，只有支持它的事务管理器才赋予含义。
+`readOnly = true`主要是对事务基础设施的提示，不是禁止写SQL的权限控制。单条普通SELECT不一定需要显式事务；多次SELECT若业务要求同一一致性视图，才考虑事务及实际隔离级别，详见[A13-3](A13_03_isolation_mvcc.md)。`timeout`与`timeoutString`都是新事务秒数限制，非HTTP客户端超时、数据库锁等待配置，也不能替代慢SQL优化；内层加入已有`REQUIRED`事务时通常沿用外层特征。`label`是标签数组，只有支持它的事务管理器才赋予含义。
 
-## 五、按业务场景决定事务边界
+## 六、按业务场景决定事务边界
 
 | 场景 | 首先确认的问题 | 常见选择 |
 | --- | --- | --- |
@@ -295,7 +325,7 @@ Spring默认规则是运行时异常与`Error`回滚、受检异常不回滚；�
 | 数据库写入＋外部API | 外部调用失败如何补偿 | 本地事务不能自动回滚外部系统；尽量避免持锁等待API |
 | 夜间Batch/定时任务 | 中断后从哪里恢复 | 明确提交批次、幂等键、有限重试及证据 |
 
-## 六、重要概念、Review与验证
+## 七、重要概念、Review与验证
 
 | 容易混淆 | 正确区分 |
 | --- | --- |
@@ -307,11 +337,11 @@ Spring默认规则是运行时异常与`Error`回滚、受检异常不回滚；�
 
 Review时检查事务是否包住完整用例、是否吞异常、是否误用`REQUIRES_NEW`拆散共同成败、是否在锁内等外部API、是否把`readOnly`当权限、是否给了无依据的隔离/超时设置。完成标准：能用实际两表数据解释一次提交/回滚，能按调用关系选择传播值，并能解释内层失败被外层捕获后为何仍可能出现`UnexpectedRollbackException`。
 
-## 七、检查与练习
+## 八、检查与练习
 
 对照第13章的 `EmployeeServiceImpl.update()`，指出事务从哪里开始、哪些Mapper调用在同一边界中，以及履历INSERT抛出运行时异常时员工UPDATE为何回滚。再检查“捕获异常后只记录日志并正常返回”的改动，写出需要核对的HTTP和数据库证据；不要只凭 `catch` 推断最终结果。
 
-## 八、官方参考资料
+## 九、官方参考资料
 
 - [Spring Framework：`@Transactional` 属性与默认值](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/transaction/annotation/Transactional.html)
 - [Spring Framework：`Propagation` 全部枚举值](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/transaction/annotation/Propagation.html)
