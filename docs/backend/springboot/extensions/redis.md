@@ -38,7 +38,7 @@ SCAN 0 MATCH training:employee:* COUNT 50
 
 `PING` 应返回 `PONG`；`SET ... EX 300` 表示保存 300 秒；`GET` 读取，`TTL` 查看剩余秒数，`EXISTS` 判断 Key 是否存在，`TYPE` 查看类型。`TTL=-1` 表示 Key 存在但未设置过期；`-2` 表示 Key 不存在。`SCAN` 需要按返回游标继续遍历直到游标为 0，单次结果不保证包含全部匹配 Key。不要把 `KEYS *` 当作大型生产实例的日常查询方法。
 
-练习结束可用 `DEL training:employee:1001` 只删除自己的 Key。R03～R08 若仍需使用 Redis，请保留容器；专题全部结束后再停止并删除个人练习容器，容器中未持久化的数据可能丢失。
+练习结束可用 `DEL training:employee:1001` 只删除自己的 Key。继续学习后面各节时请保留容器；专题全部结束后再停止并删除个人练习容器，容器中未持久化的数据可能丢失。
 
 ## 3. 五种常见数据类型怎么选
 
@@ -54,7 +54,7 @@ JSON 文本放进 Redis 仍是 String，不会自动变成 Hash。一个 Key 当
 
 ## 4. Spring Boot 如何调用 Redis
 
-先区分两件事：R02 的容器运行的是 Redis **服务器**；Spring Boot 中的依赖只让 Java 程序获得连接 Redis 的**客户端**。本节使用独立的 Spring Boot 4.1.1 / Java 17 练习工程，不接入员工管理项目。Maven `pom.xml` 增加：
+先区分两件事：第 2 节启动的容器运行的是 Redis **服务器**；Spring Boot 中的依赖只让 Java 程序获得连接 Redis 的**客户端**。本节使用独立的 Spring Boot 4.1.1 / Java 17 练习工程，不接入员工管理项目。Maven `pom.xml` 增加：
 
 ```xml
 <dependency>
@@ -74,7 +74,7 @@ spring:
       timeout: 3s
 ```
 
-`host`、`port` 指向 R02 在本机开放的 Redis；`timeout` 限制等待时间，避免故障时长时间卡住。正式环境的认证信息不能写死在教材或仓库中。若应用也在 Docker 容器内，`localhost` 指应用容器自己，应改用可访问的 Redis 服务地址。
+`host`、`port` 指向第 2 节在本机开放的 Redis；`timeout` 限制等待时间，避免故障时长时间卡住。正式环境的认证信息不能写死在教材或仓库中。若应用也在 Docker 容器内，`localhost` 指应用容器自己，应改用可访问的 Redis 服务地址。
 
 先学 `StringRedisTemplate`：它把 Key 和 Value 当作字符串，适合姓名、计数文本或已经转换好的 JSON 文本。Spring 根据依赖和配置创建该 Bean；业务 Service 用构造器接收它，而不是在方法里反复 `new` 客户端。下面是独立练习工程 `com.example.redispractice` 包中 `EmployeeNameStore.java` 的完整类；启动类须位于同包或父包，且 Redis 已启动：
 
@@ -113,7 +113,7 @@ public class EmployeeNameStore {
 
 调用顺序可以是 `save(1001L, "Tanaka")` → `find(1001L)` 得到 `Tanaka` → `remove(1001L)` → 再次 `find(1001L)` 得到 `null`。`opsForValue()` 对应 Redis String；`set(key, value, Duration)` 同时写值与 TTL，过期后不再读到旧值。`get` 返回 `null` 只表示缓存没有这个 Key，不能据此推断数据库中也没有员工。`delete` 的返回值表示本次是否实际删除了 Key，代码用 `Boolean.TRUE.equals(...)` 安全处理可能的 `null`。
 
-学过 R03 的数据类型后，再按需求选择操作入口：Hash 用 `opsForHash()` 读写字段，Set 用 `opsForSet()` 判断成员，计数可用 `opsForValue().increment(key)`。这些方法不会替业务决定 Key 命名、过期时间或数据一致性；先掌握上面的 String 单点示例，再查对应类型的详细 API。
+了解第 3 节的数据类型后，再按需求选择操作入口：Hash 用 `opsForHash()` 读写字段，Set 用 `opsForSet()` 判断成员，计数可用 `opsForValue().increment(key)`。这些方法不会替业务决定 Key 命名、过期时间或数据一致性；先掌握上面的 String 单点示例，再查对应类型的详细 API。
 
 `RedisTemplate<K,V>` 能处理更一般的 Key/Value，但必须明确序列化器。默认 Java 序列化可能使 CLI 看到非直观的字节，也带来兼容性和安全边界；不要把任意 DTO 直接作为长期共享缓存。若要存对象，可先约定 JSON 格式并做字段版本兼容设计。连接失败通常会在实际执行 Redis 命令时暴露；不要捕获异常后伪造“查到员工”的成功结果。
 
@@ -258,5 +258,3 @@ RDB 是快照，AOF 记录写入操作；两者的配置和故障条件会影响
 ## 学完后的判断
 
 面对一个需求，先问四个问题：数据是否被重复读取？能容忍多长时间的旧值？Redis 不可用时业务还能否安全运行？Key 与内容是否涉及权限或敏感数据？能说清这些答案，再决定是否使用 Redis，以及选缓存、Session、计数或其他结构。
-
-需要逐步操作、更多示例与排错说明时，可继续阅读原八章：[R01 基础](redis/R01_redis_overview_and_architecture.md) → [R02 CLI 与 TTL](redis/R02_setup_cli_and_ttl.md) → [R03 数据类型](redis/R03_data_types_and_key_design.md) → [R04 Spring Boot 调用](redis/R04_spring_boot_integration.md) → [R05 缓存](redis/R05_employee_cache_and_spring_cache.md) → [R06 Session](redis/R06_spring_session_redis.md) → [R07 故障模式](redis/R07_cache_consistency_and_failure_modes.md) → [R08 运维](redis/R08_operations_and_capstone.md)。
