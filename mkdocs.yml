@@ -378,7 +378,7 @@ nav:
       - 19. Vue有給休暇后台综合练习: backend/springboot/mainline/19_paid_leave_vue_backend_practice.md
     - 企业扩展:
       - 学习入口: backend/springboot/extensions/index.md
-      - Redis缓存与一致性: backend/springboot/extensions/redis.md
+      - Redis 单文件专题: backend/springboot/extensions/redis.md
       - Spring Batch批处理: backend/springboot/extensions/spring-batch.md
       - 账票处理与文件交付: backend/springboot/extensions/reporting.md
       - 月度员工变更账票项目: backend/springboot/extensions/monthly-report-project.md
