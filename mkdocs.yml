@@ -421,6 +421,7 @@ nav:
         - B04. 日本既存Spring项目的新旧结构识读: backend/springboot/appendix/B04_legacy_spring_project_reading.md
         - B05. Spring Boot调用外部REST API: backend/springboot/appendix/B05_external_api_restclient.md
         - B06. 常见问题与排查索引: backend/springboot/appendix/B06_troubleshooting_review_index.md
+        - B07. Spring Boot跨域问题与解决方案: backend/springboot/appendix/B07_spring_boot_cors_basics.md
         - Spring项目常见注解速查手册: backend/springboot/appendix/Appendix_spring_annotation_reference.md
   - 新主线：WorkHub 任务管理:
     - 学习路线: training_projects/workhub_task_practice/index.md

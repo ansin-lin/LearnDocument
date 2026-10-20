@@ -1,6 +1,6 @@
 # Spring Boot附录学习入口
 
-01～18章是Employee Management教学主线，第19章是与Vue对接的独立结业任务。A开头的附录与主线章号对应，没有专属附录的章号直接跳过；同一章有多个附录时使用 `A03-1`、`A03-2` 这样的子编号。B01～B06是按顺序学习的既存项目与实战专题；注解速查是按需查阅的参考手册。附录实验代码不要求永久加入主线工程。
+01～18章是Employee Management教学主线，第19章是与Vue对接的独立结业任务。A开头的附录与主线章号对应，没有专属附录的章号直接跳过；同一章有多个附录时使用 `A03-1`、`A03-2` 这样的子编号。B01～B06是既存项目与实战专题，B07是可单独学习的跨域基础；注解速查是按需查阅的参考手册。附录实验代码不要求永久加入主线工程。
 
 附录继续使用主线技术基线：Java 17、Spring Boot 4.1.x（示例POM固定4.1.1）、MyBatis Starter与Test Starter 4.1.0。既存项目附录会同时展示Boot 2或Boot 3写法，看到旧写法时应先确认项目版本，不能直接复制到Boot 4主线。
 
@@ -52,6 +52,7 @@
 | [B04 日本既存Spring项目的新旧结构识读](B04_legacy_spring_project_reading.md) | B02 | Boot 2/3/4差异、`javax`与`jakarta`、JAR/WAR、外部Tomcat、XML与Java Config | 根据版本证据识别旧结构，不进行危险的机械迁移 |
 | [B05 Spring Boot调用外部REST API](B05_external_api_restclient.md) | 第4、6、7、11、12章 | `RestClient`、配置、超时、Header与JSON、错误分类、Mock测试 | 在员工业务中组合本地数据与HR状态并提交测试证据 |
 | [B06 Spring Boot常见问题与排查索引](B06_troubleshooting_review_index.md) | 完成相关主线章节及B01～B05 | 构建、启动、HTTP、数据库、安全、外部API、部署的分阶段排查 | 从最早错误和可重复现象定位根因并提交回归结果 |
+| [B07 Spring Boot跨域问题与解决方案](B07_spring_boot_cors_basics.md) | 第3～4章及HTTP基础 | 同源、Origin、局部/全局CORS配置、OPTIONS预检、浏览器验证 | 为指定前端来源开放实验API并排查预检；带Session场景继续A16 |
 | [Spring项目常见注解速查手册](Appendix_spring_annotation_reference.md) | 遇到陌生注解时使用 | Bean、配置、MVC、Validation、异常、事务、安全、JSON、测试和生命周期注解 | 根据import、位置、处理者和触发时机查阅，再回到对应主线章节 |
 
 ## 三、三条常用组合路线

@@ -135,6 +135,7 @@ Eclipse编写和调试代码
 | [B04 日本既存Spring项目的新旧结构识读](appendix/B04_legacy_spring_project_reading.md) | 识别Boot 2/3/4、JAR/WAR、外部Tomcat和XML配置 |
 | [B05 Spring Boot调用外部REST API](appendix/B05_external_api_restclient.md) | 在员工业务中组合本地数据与HR状态，验证外部异常与超时 |
 | [B06 常见问题与排查索引](appendix/B06_troubleshooting_review_index.md) | 按失败阶段调查并提交证据与回归结果 |
+| [B07 Spring Boot跨域问题与解决方案](appendix/B07_spring_boot_cors_basics.md) | 配置指定来源访问API，验证OPTIONS预检并区分CORS与权限 |
 | [Spring项目常见注解速查手册](appendix/Appendix_spring_annotation_reference.md) | 按需查阅，不作为顺序章节 |
 
 基础主线现已形成从系统认识、工程实现、部署基础到前后端联调综合任务的完整学习顺序。附录建议按当前项目实际使用的技术选择阅读，不要求一次背完。
