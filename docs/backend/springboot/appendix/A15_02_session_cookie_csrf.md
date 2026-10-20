@@ -14,12 +14,12 @@ HTTP无状态是指单次请求本身不会继承上一次请求的Java局部变
 下一次HTTP请求 ← Cookie: JSESSIONID=随机标识（客户端）
 ```
 
-`Authentication`表示认证后的身份，`SecurityContext`装载它；`SecurityContextHolder`让当前请求的处理代码取得上下文。`SecurityContextRepository`负责跨请求保存与读取；本项目Bean为`HttpSessionSecurityContextRepository`。自定义`AuthController.login()`若只调用`authenticate()`，即使本次返回200，也不会自然使下一次请求有身份；必须显式`saveContext(context, request, response)`。
+`Authentication`表示认证后的身份，`SecurityContext`装载它；`SecurityContextHolder`让当前请求的处理代码取得上下文。`SecurityContextRepository`负责跨请求保存与读取；本项目Bean为`HttpSessionSecurityContextRepository`。第15章只有JSON登录入口：`AuthController`调用`SessionLoginService`。注册只写入账号表，不建立已认证身份；登录服务若只调用`authenticate()`，即使本次返回200，也不会自然使下一次请求有身份，必须显式`saveContext(context, request, response)`。
 
 ## 二、项目登录调用顺序
 
 ```text
-AuthController.login()
+AuthController.login() → SessionLoginService.login()
   1. AuthenticationManager.authenticate(input)
   2. SessionAuthenticationStrategy.onAuthentication(result, request, response)
   3. SecurityContextHolder.createEmptyContext()
@@ -29,11 +29,11 @@ AuthController.login()
   7. 返回用户名，不返回密码、哈希、Session ID
 ```
 
-本项目的`SessionAuthenticationStrategy`组合了`ChangeSessionIdAuthenticationStrategy`与`CsrfAuthenticationStrategy`。前者在认证成功后更换会话ID，降低“攻击者预先固定受害者会话ID”的风险；后者清除登录前CSRF令牌，要求客户端随后重新取得令牌。自定义Controller主动调用组合策略；不能假设过滤器会替Controller自动调用。
+本项目的`SessionAuthenticationStrategy`组合了`ChangeSessionIdAuthenticationStrategy`与`CsrfAuthenticationStrategy`。前者在认证成功后更换会话ID，降低“攻击者预先固定受害者会话ID”的风险；后者清除登录前CSRF令牌，要求客户端随后重新取得令牌。`SessionLoginService`主动调用组合策略；自定义Controller入口不能假定框架会替它自动完成这些动作。
 
 逐项核对第15章登录方法依赖的类型与调用结果：
 
-- `AuthenticationManager.authenticate(input)`：`input`是含用户名和原密码的未认证Token；成功返回已认证`Authentication`，错误密码、未知账号或停用账号抛认证异常。它本身不创建浏览器登录态。
+- `AuthenticationManager.authenticate(input)`：由`SessionLoginService`调用；`input`是含用户名和原密码的未认证Token；成功返回已认证`Authentication`，错误密码、未知账号或停用账号抛认证异常。它本身不创建浏览器登录态。
 - `SessionAuthenticationStrategy.onAuthentication(result, request, response)`：三个参数分别是认证结果、当前Servlet请求和响应；返回`void`，组合策略按配置顺序更换现有Session ID并清除旧CSRF令牌。前者降低会话固定风险，后者要求下一次写请求先取新令牌。
 - `SecurityContextHolder.createEmptyContext()`返回新的空上下文；`setAuthentication(result)`把身份放进去；`SecurityContextHolder.setContext(context)`使当前请求线程可以读取。Holder不是数据库或跨请求存储。
 - `SecurityContextRepository.saveContext(context, request, response)`返回`void`，把上下文保存到本项目的HttpSession仓库，并让响应带回必要的会话标识。`requireExplicitSave(true)`要求自定义登录代码确实调用这一句；只设置Holder而不保存，下一请求仍可能401。
@@ -63,6 +63,7 @@ Session通常保存在应用进程内；应用重启或Session超时后，旧Coo
 
 ```text
 GET /auth/csrf → 响应体返回headerName与token，设置XSRF-TOKEN Cookie
+POST /auth/register → 带同一Cookie及指定请求头中的token；只写账号，不建立登录Session
 POST /auth/login → 带同一Cookie及指定请求头中的token
 登录成功 → Session ID更新，旧CSRF Cookie被清除
 再次GET /auth/csrf → 取得当前令牌
@@ -98,7 +99,7 @@ POST/PUT/DELETE → 同一会话Cookie＋当前令牌请求头
 
 客户端 POST /auth/login（Cookie＋响应体取得的CSRF Header）
     → CsrfFilter经RequestHandler解析Header，与仓库中的原始值比较
-    → AuthController调用AuthenticationManager认证
+    → AuthController调用SessionLoginService，由服务完成认证与保存
     → 成功时CsrfAuthenticationStrategy清除旧令牌
     ← 客户端接受登录响应中的Cookie更新
 
@@ -125,6 +126,6 @@ POST/PUT/DELETE → 同一会话Cookie＋当前令牌请求头
 | 写请求403 | 先核对CSRF，再核对登录身份与角色 | CSRF Filter或授权规则 |
 | 浏览器失败、Postman成功 | Origin、Cookie凭据、SameSite/Secure与CORS | 浏览器与部署配置 |
 
-在Eclipse调试时可观察`AuthController.login`中`authenticate`、策略调用、`saveContext`三个位置，并用Postman检查脱敏后的`Set-Cookie`、Cookie Jar和响应状态。不要记录完整JSESSIONID、CSRF令牌、明文密码或密码哈希。
+在Eclipse调试时可从`AuthController.login`进入`SessionLoginService.login`，依次观察`authenticate`、策略调用、`saveContext`，并用Postman检查脱敏后的`Set-Cookie`、Cookie Jar和响应状态。不要记录完整JSESSIONID、CSRF令牌、明文密码或密码哈希。
 
 参考：[Spring Security认证持久化与Session管理](https://docs.spring.io/spring-security/reference/servlet/authentication/session-management.html)、[CSRF说明](https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html)、[Logout说明](https://docs.spring.io/spring-security/reference/servlet/authentication/logout.html)。

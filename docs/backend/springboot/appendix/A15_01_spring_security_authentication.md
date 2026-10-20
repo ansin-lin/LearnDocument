@@ -1,6 +1,6 @@
 # A15-1 Spring Security认证机制与核心Bean
 
-本附录以[第15章](../mainline/15_session_login.md)的员工账号登录为对象。主线只需会配置、调用和验证；这里解释过滤器、认证管理器与账号加载组件为何能协作。最终实现见[R15源码参考](../reference/R15_session_login_complete_source.md)，不需要另建一套登录系统。
+本附录以[第15章](../mainline/15_session_login.md)的注册与员工账号登录为对象。主线先把普通账号写入`app_users`，再通过唯一的`POST /auth/login` JSON入口验证账号并建立Session，不进行表单登录实验。这里解释认证管理器与账号加载组件为何能协作，并比较自定义过滤器方案；最终文件见[R15源码参考](../reference/R15_session_login_complete_source.md)。
 
 ## 一、先分清请求处理与账号认证
 
@@ -19,7 +19,7 @@ HTTP请求 → Servlet Filter → SecurityFilterChain
 ## 二、认证组件关系
 
 ```text
-AuthController.login()
+AuthController.login() → SessionLoginService.login()
   → AuthenticationManager（项目中为ProviderManager）
       → DaoAuthenticationProvider
           ├─ AppUserDetailsService.loadUserByUsername()
@@ -46,7 +46,7 @@ AuthController.login()
 | `LoginRequest` | `AuthController`从JSON请求体绑定 | 只接收用户名和本次提交的原始密码，不持久化 |
 | `AppUser` | `AppUserMapper`从`app_users`读取 | 保存账号哈希、角色、启用状态及员工关联 |
 | `UserDetails` | `AppUserDetailsService`把`AppUser`转换后返回 | 向Security提供账号状态、密码哈希和权限 |
-| 未认证`Authentication` | 登录入口调用`UsernamePasswordAuthenticationToken.unauthenticated(...)` | 把待验证的用户名和原始密码交给认证入口，尚不能用于授权 |
+| 未认证`Authentication` | `SessionLoginService`调用`UsernamePasswordAuthenticationToken.unauthenticated(...)` | 把待验证的用户名和原始密码交给认证入口，尚不能用于授权 |
 | 已认证`Authentication` | `DaoAuthenticationProvider`经`ProviderManager`返回 | 表示验证成功的主体与权限；失败则抛认证异常 |
 | `SecurityContext` | `SecurityContextHolder.createEmptyContext()`创建，并由Repository跨请求保存／加载 | 容纳当前认证结果，让后续请求恢复身份 |
 
@@ -88,22 +88,25 @@ public AuthenticationManager authenticationManager(
 
 BCrypt哈希包含随机salt，`encode("同一密码")`两次结果不同属正常现象；验证用`matches(raw, encoded)`。哈希不是加密后可解开的密码。本课程练习强度为10，真实项目应结合性能与安全要求评估。
 
-## 四、自定义JSON登录与框架内建入口
+## 四、本项目的JSON登录与其他内建入口
 
-`formLogin`对应框架提供的表单登录流程，`httpBasic`对应每次请求携带Basic凭据；本项目是JSON登录，所以关闭二者，由`AuthController`接收`LoginRequest`并调用同一个`AuthenticationManager`。这不表示绕过Spring Security：请求仍先经过安全过滤器与CSRF检查，认证仍由Provider完成。
+`formLogin`对应框架提供的表单登录流程，`httpBasic`对应每次请求携带Basic凭据；二者在本项目的`SecurityFilterChain`中均被关闭，不是要求学员再建立两条登录路径。前端自定义页面不等于必须使用这两种入口；本项目约定页面向`POST /auth/login`发送JSON。`AuthController`接收`LoginRequest`，调用`SessionLoginService`；后者使用`AuthenticationManager`验证密码，并显式处理Session。自定义Controller仍经过安全过滤器及CSRF检查，并没有绕过Security。
 
 ```text
 POST /auth/login（JSON＋有效CSRF）
   → Filter检查
-  → AuthController建立未认证UsernamePasswordAuthenticationToken
+  → AuthController绑定JSON并调用SessionLoginService
+  → SessionLoginService建立未认证UsernamePasswordAuthenticationToken
   → AuthenticationManager.authenticate()
-  ├─ 成功：返回Authentication，再保存到Session（A15-2）
+  ├─ 成功：返回Authentication，由服务保存到Session（A15-2）
   └─ 失败：抛AuthenticationException，由AuthExceptionHandler统一返回401
 ```
 
 `UsernamePasswordAuthenticationToken.unauthenticated(...)`只是把输入封装起来，不能自己证明密码正确。`AuthExceptionHandler`只能处理进入Controller后的认证异常；过滤器链的未登录或CSRF拒绝不经过该Advice。
 
-把一次`POST /auth/login`按实际代码追踪：请求先经过`SecurityFilterChain`的CSRF检查，再由`AuthController`把`LoginRequest`转换成未认证Token；`AuthenticationManager`（实际为`ProviderManager`）把它交给`DaoAuthenticationProvider`；Provider调用`AppUserDetailsService`，后者通过MyBatis的`AppUserMapper`查`app_users`并构建`UserDetails`；随后`PasswordEncoder`比较密码。正确密码且账号启用时返回已认证`Authentication`，Controller再调用Session策略并保存`SecurityContext`。错误密码在Provider校验环节失败；不存在账号在`loadUserByUsername`环节失败；停用账号从Mapper查得到，但账号状态检查拒绝认证。三者对外都由第15章约定为同样的401信息，不能暴露账号是否存在。`AppUser`、`UserDetails`、`Authentication`和`SecurityContext`在这条链中不是同一个对象。
+把一次`POST /auth/login`按实际代码追踪：请求先经过`SecurityFilterChain`的CSRF检查，再由`AuthController`绑定`LoginRequest`并调用`SessionLoginService`；服务把输入转换成未认证Token。`AuthenticationManager`（实际为`ProviderManager`）把它交给`DaoAuthenticationProvider`；Provider调用`AppUserDetailsService`，后者通过MyBatis的`AppUserMapper`查`app_users`并构建`UserDetails`；随后`PasswordEncoder`比较密码。正确密码且账号启用时返回已认证`Authentication`，登录服务再调用Session策略并保存`SecurityContext`。错误密码在Provider校验环节失败；不存在账号在`loadUserByUsername`环节失败；停用账号从Mapper查得到，但账号状态检查拒绝认证。三者对外都返回同样的401信息，不能暴露账号是否存在。
+
+如果改用自定义认证过滤器，框架可以在过滤器成功流程中执行会话策略和上下文保存，但开发者仍须实现JSON到认证Token的转换、设置成功与失败的JSON响应、选择匹配路径，并把正确的`SecurityContextRepository`和`SessionAuthenticationStrategy`配置到过滤器。不能把默认表单过滤器读取的`username`、`password`参数称为JSON解析，也不能以为自定义过滤器默认就能跨请求保存。主线选择Controller＋登录服务，是为了让JSON输入和登录状态保存各有一个可打断点的责任位置；这些额外过滤器接入知识不是完成本项目的前置条件。
 
 ## 五、如何调查认证失败
 

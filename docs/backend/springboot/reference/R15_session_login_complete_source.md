@@ -1,34 +1,40 @@
-# R15 第15章Session登录最终源码
+# R15 第15章注册与Session登录最终源码
 
-本文件对应第15章完成后的稳定状态，不包含第16章的角色限制与本人数据授权。按第15章分阶段完成后，用本文件核对全部文件；它不是第一个阶段的起步代码。
+本文件对应第15章完成后的稳定状态：公开注册普通账号、数据库账号JSON登录和Session恢复。不包含第16章的角色限制与本人数据授权。按第15章分阶段完成后，用本文件核对全部文件；它不是第一个阶段的起步代码。
 
 ## 最终源码与变更核对
 
 ### 最终文件清单与完整实现
 
-先在代码前分清这次要建立的关系。HTTP本身不记住用户；服务器Session保存认证状态，客户端Cookie只带会话标识。每个请求先经过Spring Security过滤链，链中的过滤器可在Controller之前检查CSRF并恢复安全上下文。登录时，`AuthController` 把用户名和密码交给 `AuthenticationManager`；`DaoAuthenticationProvider` 调用 `UserDetailsService` 取出 `UserDetails`，再用 `PasswordEncoder` 比对密码哈希。认证成功后，Controller主动执行Session ID更换并把 `SecurityContext` 存进Session；下一次请求由安全过滤链恢复它。数据库账号对象与Security的 `UserDetails` 分开，是因为前者表示表数据，后者是认证组件要求的契约。
+先在代码前分清这次要建立的关系。注册时，`AuthController`把JSON交给`AccountRegistrationService`；服务固定USER角色和空员工关联，用`PasswordEncoder`生成密码哈希，经Mapper写入`app_users`。注册不自动登录。登录时，`AuthController`把JSON交给`SessionLoginService`；后者通过`AuthenticationManager`验证账号密码，并把认证结果保存进服务器Session。客户端Cookie只带会话标识；下一次请求由安全过滤链恢复身份。
 
-本章采用自定义JSON登录Controller，因此认证成功时由Controller显式调用 `SessionAuthenticationStrategy` 和 `SecurityContextRepository.saveContext()`，不依赖 `SessionManagementFilter` 猜测本次是否刚完成认证。CSRF令牌由 `/auth/csrf` 的响应体交给Postman，令牌Cookie保持HttpOnly；认证Cookie `JSESSIONID` 也不能为方便调试而关闭HttpOnly。读完这一条处理链后，再按“账号表与Mapper→账号加载→安全配置→登录接口→CSRF与测试”的顺序写入以下完整文件。
+本章最终只有自定义JSON登录入口；`SessionLoginService`显式调用`SessionAuthenticationStrategy`和`SecurityContextRepository.saveContext()`，不假定框架会替自定义入口自动保存。CSRF令牌由`/auth/csrf`响应体交给Postman，令牌Cookie保持HttpOnly；认证Cookie`JSESSIONID`也不能为方便调试而关闭HttpOnly。主线不进行内置表单登录实验。
 
-从第14章稳定状态继续，新增安全依赖、账号表和认证代码：
+从第14章稳定状态继续，新增安全依赖、账号表、注册和认证代码：
 
 ```text
 pom.xml                                                     ← 完整替换
 src/main/java/com/example/employee/
 ├── config/SecurityConfig.java                              ← 新建
 ├── controller/AuthController.java                          ← 新建
+├── dto/request/RegisterRequest.java                        ← 新建
 ├── dto/request/LoginRequest.java                           ← 新建
+├── dto/response/RegisteredUserResponse.java               ← 新建
 ├── dto/response/CurrentUserResponse.java                   ← 新建
 ├── dto/response/CsrfResponse.java                          ← 新建
 ├── entity/AppUser.java                                     ← 新建
 ├── exception/AuthExceptionHandler.java                    ← 新建
+├── exception/DuplicateUsernameException.java              ← 新建
 ├── mapper/AppUserMapper.java                               ← 新建
-└── security/AppUserDetailsService.java                    ← 新建
+├── security/AccountRegistrationService.java               ← 新建
+├── security/AppUserDetailsService.java                    ← 新建
+└── security/SessionLoginService.java                      ← 新建
 src/main/resources/mapper/AppUserMapper.xml                 ← 新建
 src/test/java/com/example/employee/
 ├── controller/EmployeeControllerWebTest.java              ← 修改写请求
 ├── integration/EmployeeCrudIntegrationTest.java            ← 修改写请求
 src/test/java/com/example/employee/security/SessionLoginTest.java ← 新建
+src/test/java/com/example/employee/security/RegistrationLoginTest.java ← 新建，完整类见主线15-08
 src/test/resources/test-data.sql                            ← 完整替换
 ```
 
@@ -201,6 +207,7 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface AppUserMapper {
     AppUser findByUsername(@Param("username") String username);
+    int insert(AppUser account);
 }
 ```
 
@@ -214,12 +221,43 @@ public interface AppUserMapper {
         FROM app_users
         WHERE username = #{username}
     </select>
+    <insert id="insert" parameterType="AppUser"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO app_users
+            (username, password_hash, employee_id, role, enabled)
+        VALUES
+            (#{username}, #{passwordHash}, #{employeeId}, #{role}, #{enabled})
+    </insert>
 </mapper>
 ```
 
-用户名使用 `#{username}` 参数绑定。查询只允许返回唯一的一行，唯一约束同时阻止两个账号使用同一用户名。
+用户名使用 `#{username}` 参数绑定。查询只允许返回唯一的一行；注册时`insert`返回影响行数，并通过`useGeneratedKeys`把新ID写回`AppUser.id`。唯一约束阻止两个账号使用同一用户名。
 
-### 5. 新建LoginRequest.java和响应类
+### 5. 新建注册、登录请求和响应类
+
+```java
+package com.example.employee.dto.request;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public class RegisterRequest {
+    @NotBlank(message = "用户名不能为空")
+    @Size(max = 50, message = "用户名不能超过50个字符")
+    @Pattern(regexp = "[A-Za-z0-9._-]+", message = "用户名格式错误")
+    private String username;
+
+    @NotBlank(message = "密码不能为空")
+    @Size(min = 12, max = 64, message = "密码长度应为12到64个字符")
+    private String password;
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+}
+```
 
 ```java
 package com.example.employee.dto.request;
@@ -246,6 +284,13 @@ public class LoginRequest {
 ```java
 package com.example.employee.dto.response;
 
+public record RegisteredUserResponse(Long id, String username) {
+}
+```
+
+```java
+package com.example.employee.dto.response;
+
 public record CurrentUserResponse(String username) {
 }
 ```
@@ -260,7 +305,66 @@ public record CsrfResponse(
 }
 ```
 
-`record` 是Java 17的数据载体写法，构造参数同时定义不可重新赋值的组件和同名访问方法。本章响应只有少量只读字段，因此使用record；请求对象仍保留普通类和setter供JSON绑定。
+`record` 是Java 17的数据载体写法，构造参数同时定义不可重新赋值的组件和同名访问方法。本章响应只有少量只读字段，因此使用record；请求对象仍保留普通类和setter供JSON绑定。注册请求不包含角色、员工ID和启用状态。
+
+### 5.5 新建注册服务和用户名冲突异常
+
+`src/main/java/com/example/employee/exception/DuplicateUsernameException.java`：
+
+```java
+package com.example.employee.exception;
+
+public class DuplicateUsernameException extends RuntimeException {
+    public DuplicateUsernameException() {
+        super("用户名已存在");
+    }
+}
+```
+
+`src/main/java/com/example/employee/security/AccountRegistrationService.java`：
+
+```java
+package com.example.employee.security;
+
+import com.example.employee.dto.request.RegisterRequest;
+import com.example.employee.dto.response.RegisteredUserResponse;
+import com.example.employee.entity.AppUser;
+import com.example.employee.exception.DuplicateUsernameException;
+import com.example.employee.mapper.AppUserMapper;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AccountRegistrationService {
+    private final AppUserMapper mapper;
+    private final PasswordEncoder encoder;
+
+    public AccountRegistrationService(AppUserMapper mapper, PasswordEncoder encoder) {
+        this.mapper = mapper;
+        this.encoder = encoder;
+    }
+
+    public RegisteredUserResponse register(RegisterRequest request) {
+        AppUser account = new AppUser();
+        account.setUsername(request.getUsername());
+        account.setPasswordHash(encoder.encode(request.getPassword()));
+        account.setRole("USER");
+        account.setEmployeeId(null);
+        account.setEnabled(true);
+        try {
+            if (mapper.insert(account) != 1) {
+                throw new IllegalStateException("account insert affected no row");
+            }
+        } catch (DuplicateKeyException exception) {
+            throw new DuplicateUsernameException();
+        }
+        return new RegisteredUserResponse(account.getId(), account.getUsername());
+    }
+}
+```
+
+角色与员工关联只由服务器赋值。MySQL用户名唯一约束是并发注册的最终防线；Service把冲突转换为业务异常，不对外返回数据库细节。注册成功只返回ID与用户名，不自动建立Session。
 
 ### 6. 新建AppUserDetailsService.java
 
@@ -277,22 +381,22 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AppUserDetailsService implements UserDetailsService {
-    private final AppUserMapper appUserMapper;
+    private final AppUserMapper mapper;
 
-    public AppUserDetailsService(AppUserMapper appUserMapper) {
-        this.appUserMapper = appUserMapper;
+    public AppUserDetailsService(AppUserMapper mapper) {
+        this.mapper = mapper;
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) {
-        AppUser appUser = appUserMapper.findByUsername(username);
-        if (appUser == null) {
+        AppUser account = mapper.findByUsername(username);
+        if (account == null) {
             throw new UsernameNotFoundException("login failed");
         }
-        return User.withUsername(appUser.getUsername())
-                .password(appUser.getPasswordHash())
-                .roles(appUser.getRole())
-                .disabled(!appUser.isEnabled())
+        return User.withUsername(account.getUsername())
+                .password(account.getPasswordHash())
+                .roles(account.getRole())
+                .disabled(!account.isEnabled())
                 .build();
     }
 }
@@ -375,6 +479,8 @@ public class SecurityConfig {
                         .requireExplicitSave(true)
                         .securityContextRepository(repository))
                 .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/auth/csrf", "/auth/register",
+                                "/auth/login", "/health").permitAll()
                         .requestMatchers("/auth/me", "/employees", "/employees/**")
                         .authenticated()
                         .anyRequest().permitAll())
@@ -394,19 +500,15 @@ public class SecurityConfig {
 }
 ```
 
-### 8. 新建AuthController.java
+### 8. 新建SessionLoginService.java与AuthController.java
+
+`src/main/java/com/example/employee/security/SessionLoginService.java`是登录流程的唯一业务入口。Controller不再直接操作认证管理器、会话策略或Security上下文：
 
 ```java
-package com.example.employee.controller;
+package com.example.employee.security;
 
-import com.example.employee.common.ApiResponse;
-import com.example.employee.dto.request.LoginRequest;
-import com.example.employee.dto.response.CsrfResponse;
-import com.example.employee.dto.response.CurrentUserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -414,6 +516,58 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.stereotype.Service;
+
+@Service
+public class SessionLoginService {
+    private final AuthenticationManager authenticationManager;
+    private final SessionAuthenticationStrategy sessionStrategy;
+    private final SecurityContextRepository contextRepository;
+
+    public SessionLoginService(AuthenticationManager authenticationManager,
+            SessionAuthenticationStrategy sessionStrategy,
+            SecurityContextRepository contextRepository) {
+        this.authenticationManager = authenticationManager;
+        this.sessionStrategy = sessionStrategy;
+        this.contextRepository = contextRepository;
+    }
+
+    public String login(String username, String password,
+            HttpServletRequest request, HttpServletResponse response) {
+        Authentication input = UsernamePasswordAuthenticationToken.unauthenticated(
+                username.trim(), password);
+        Authentication result = authenticationManager.authenticate(input);
+        sessionStrategy.onAuthentication(result, request, response);
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(result);
+        SecurityContextHolder.setContext(context);
+        contextRepository.saveContext(context, request, response);
+        return result.getName();
+    }
+}
+```
+
+服务返回已认证用户名，Controller只把它放进统一响应。它不返回原密码、哈希、完整`Authentication`或Session ID。此处`saveContext`不能省略，组合策略中的会话ID更换与登录后CSRF令牌清除也不能省略。
+
+`src/main/java/com/example/employee/controller/AuthController.java`的完整内容：
+
+```java
+package com.example.employee.controller;
+
+import com.example.employee.common.ApiResponse;
+import com.example.employee.dto.request.LoginRequest;
+import com.example.employee.dto.request.RegisterRequest;
+import com.example.employee.dto.response.CsrfResponse;
+import com.example.employee.dto.response.CurrentUserResponse;
+import com.example.employee.dto.response.RegisteredUserResponse;
+import com.example.employee.security.AccountRegistrationService;
+import com.example.employee.security.SessionLoginService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -424,17 +578,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-    private final AuthenticationManager authenticationManager;
-    private final SecurityContextRepository contextRepository;
-    private final SessionAuthenticationStrategy sessionStrategy;
+    private final AccountRegistrationService registrationService;
+    private final SessionLoginService loginService;
 
-    public AuthController(
-            AuthenticationManager authenticationManager,
-            SecurityContextRepository contextRepository,
-            SessionAuthenticationStrategy sessionStrategy) {
-        this.authenticationManager = authenticationManager;
-        this.contextRepository = contextRepository;
-        this.sessionStrategy = sessionStrategy;
+    public AuthController(AccountRegistrationService registrationService,
+            SessionLoginService loginService) {
+        this.registrationService = registrationService;
+        this.loginService = loginService;
     }
 
     @GetMapping("/csrf")
@@ -443,24 +593,22 @@ public class AuthController {
                 token.getParameterName(), token.getHeaderName(), token.getToken())));
     }
 
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<RegisteredUserResponse>> register(
+            @Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(registrationService.register(request)));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<CurrentUserResponse>> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
-        Authentication input =
-                UsernamePasswordAuthenticationToken.unauthenticated(
-                        request.getUsername().trim(), request.getPassword());
-        Authentication result = authenticationManager.authenticate(input);
-        sessionStrategy.onAuthentication(result, httpRequest, httpResponse);
-
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(result);
-        SecurityContextHolder.setContext(context);
-        contextRepository.saveContext(context, httpRequest, httpResponse);
-
+        String username = loginService.login(request.getUsername(),
+                request.getPassword(), httpRequest, httpResponse);
         return ResponseEntity.ok(ApiResponse.success(
-                new CurrentUserResponse(result.getName())));
+                new CurrentUserResponse(username)));
     }
 
     @GetMapping("/me")
@@ -488,6 +636,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class AuthExceptionHandler {
+    @ExceptionHandler(DuplicateUsernameException.class)
+    public ResponseEntity<ApiResponse<Void>> duplicateUsername(
+            DuplicateUsernameException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.failure(exception.getMessage()));
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiResponse<Void>> handleAuthentication(
             AuthenticationException exception) {
@@ -497,7 +652,7 @@ public class AuthExceptionHandler {
 }
 ```
 
-该处理器只能处理已经进入Controller的登录异常。未登录访问 `/auth/me` 和CSRF失败发生在过滤器链中，不经过ControllerAdvice；它们由Spring Security直接返回401或403。
+该处理器处理进入Controller后的注册冲突与认证异常。未登录访问 `/auth/me` 和CSRF失败发生在过滤器链中，不经过ControllerAdvice；它们由Spring Security直接返回401或403。
 
 ### 10. 完整替换test-data.sql
 
@@ -605,6 +760,73 @@ class EmployeeControllerWebTest {
 `@WithMockUser` 只建立测试用SecurityContext，不执行数据库登录；它适合本来只验证Controller输入输出的切片测试。`SessionLoginTest` 必须走真实AuthenticationManager，不能用它代替登录验证。
 
 两个集成测试类也分别在文件顶部导入 `org.springframework.security.test.context.support.WithMockUser`，并在现有类声明前追加 `@WithMockUser(username = "employee-test-user")`；不要删除原有的 `@SpringBootTest`、`@AutoConfigureMockMvc`、`@ActiveProfiles` 和 `@Sql`。这样第12～14章的业务测试仍验证原契约，而下方 `SessionLoginTest` 另行验证真实账号查询、密码和Session恢复。
+
+### 11.5 先验证账号查询与BCrypt样例
+
+第15章15-03阶段尚未创建HTTP登录入口，可先分别运行下面两个完整测试文件。`AppUserMapperTest`继承第12章的`MySqlTestGuard`，只允许连接专用MySQL测试库；`test-data.sql`必须已包含启用的`tanaka`和停用的`disabled-user`。另一个测试不启动Spring，也不访问数据库。不要通过打印真实密码或哈希来收集证据。
+
+`src/test/java/com/example/employee/security/AppUserMapperTest.java`：
+
+```java
+package com.example.employee.security;
+
+import com.example.employee.entity.AppUser;
+import com.example.employee.mapper.AppUserMapper;
+import com.example.employee.support.MySqlTestGuard;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Sql(scripts = "/test-data.sql",
+        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+class AppUserMapperTest extends MySqlTestGuard {
+    @Autowired AppUserMapper mapper;
+
+    @Test
+    void readsKnownMissingAndDisabledAccounts() {
+        AppUser tanaka = mapper.findByUsername("tanaka");
+        assertThat(tanaka).isNotNull();
+        assertThat(tanaka.getEmployeeId()).isEqualTo(1001L);
+        assertThat(tanaka.isEnabled()).isTrue();
+        assertThat(mapper.findByUsername("missing")).isNull();
+        AppUser disabled = mapper.findByUsername("disabled-user");
+        assertThat(disabled).isNotNull();
+        assertThat(disabled.isEnabled()).isFalse();
+    }
+}
+```
+
+`src/test/java/com/example/employee/security/PasswordHashTest.java`：
+
+```java
+package com.example.employee.security;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class PasswordHashTest {
+    private static final String HASH =
+            "$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC";
+
+    @Test
+    void sampleHashMatchesOnlyCorrectPassword() {
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        assertTrue(encoder.matches("TrainingPass123!", HASH));
+        assertFalse(encoder.matches("wrong-password", HASH));
+    }
+}
+```
+
+第一个测试证明Mapper读取及`enabled`字段映射，第二个测试证明BCrypt样例密码匹配；两者都**不能代替**下面的真实HTTP登录与Session测试。
 
 ### 12. 新建SessionLoginTest.java
 
@@ -860,6 +1082,8 @@ class SessionLoginTest extends MySqlTestGuard {
 
 上述测试的创建邮箱不在 `test-data.sql` 的两条员工记录中。`JdbcTemplate` 在请求前、缺CSRF后、成功创建后分别读取数据库件数，避免只看HTTP状态而漏掉持久化结果。令牌更新测试先取得登录前的CSRF Cookie与响应体令牌；登录响应应清除旧Cookie。模拟客户端接受清除响应后，旧请求头单独发起logout会403，重新GET令牌并携带新Cookie与请求头才会204。`JsonPath.read(..., "$.data.token")` 只从测试响应中取令牌，不把值打印或保存到日志。`MockMvc` 中的 `MockHttpSession` 是测试对象；退出后检查它已失效，并让新的受保护请求得到401。旧 `JSESSIONID` 在真实Servlet容器中的重送效果还需按前面的Postman退出步骤验证，不能把MockMvc新请求冒充为旧Cookie重送。
 
+`RegistrationLoginTest.java`的完整代码位于[主线15-08](../mainline/15_session_login.md#15-08-从注册到退出的测试与交接)，先注册一个初始化脚本中不存在的用户名，再用同一用户名真实登录；不要用本节只覆盖预置账号的`SessionLoginTest`代替注册验收。
+
 ### 13. 配置文件与第15章完成核对
 
 本章沿用第14章的`application.yml`、`application-test.yml`、数据源、MyBatis Mapper路径和日志设置，不为登录另建一份重复配置。测试库仍须由第12章的`MySqlTestGuard`限制为专用MySQL库；不得让`test-data.sql`的`DROP TABLE`落到个人或共享库。会话超时、Cookie的Secure/SameSite等配置不是本章新建登录所必需，按部署环境评审，原理见[A15-2](../appendix/A15_02_session_cookie_csrf.md)。
@@ -867,6 +1091,7 @@ class SessionLoginTest extends MySqlTestGuard {
 | 核对点 | 第15章末应观察到 |
 | --- | --- |
 | 匿名员工详情 | 401；未进入Controller业务方法 |
+| 公开注册 | 新用户名201，数据库只存密码哈希、固定USER角色与空员工关联；重复用户名409，非法输入400 |
 | 正确/错误/不存在/停用账号 | 正确200；其余统一401，不泄露账号是否存在 |
 | Session恢复 | 登录响应设置JSESSIONID；同Cookie访问`/auth/me`为200，无Cookie为401 |
 | CSRF | 无令牌写请求403；登录后旧令牌失效，新令牌可用 |
