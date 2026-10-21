@@ -95,7 +95,7 @@ Eclipse编写和调试代码
 | 18 | [部署与运行检查](mainline/18_deployment_operations_check.md) | 理解服务器运行、systemd、四层检查、日志调查、发布与回滚 |
 | 19 | [为Vue有給休暇系统实现后台API](mainline/19_paid_leave_vue_backend_practice.md) | 实现与Vue第22章一致的后台，并按第23章改修日期筛选，完成测试、联调和交付 |
 
-完成第18章后，使用第19章独立完成一次前后端联调综合练习。需要缓存、批量任务或账票交付时，再进入[Spring Boot 企业扩展](extensions/index.md)：先学[Redis](extensions/redis.md)、[Spring Batch](extensions/spring-batch.md)，再从[账票基础](extensions/01_report_overview.md)开始完成六章账票课程，最后完成[月度员工变更账票项目](extensions/monthly-report-project.md)。企业扩展从第18章员工管理稳定成果的独立副本开始，不改变主线最终状态。进入既存项目时可按需要使用附录补足代码识读能力：
+完成第18章后，使用第19章独立完成一次前后端联调综合练习。需要缓存、批量任务或账票交付时，再进入[Spring Boot 企业扩展](extensions/index.md)：先学[Redis](extensions/redis.md)和[Spring Batch六章专题](extensions/spring-batch-training/README.md)，再从[账票基础](extensions/01_report_overview.md)开始完成六章账票课程，最后完成[月度员工变更账票项目](extensions/monthly-report-project.md)。Batch专题使用独立考勤工程，进入月度账票项目时需把学到的机制应用于员工变更履历，不直接复用考勤业务代码。企业扩展从第18章员工管理稳定成果的独立副本开始，不改变主线最终状态。进入既存项目时可按需要使用附录补足代码识读能力：
 
 完整入口见[附录学习入口](appendix/index.md)。A开头的附录与01～18章的章号对应；一章没有专属附录时直接跳号，同一章有多个附录时使用 `A03-1` 这样的子编号。B开头的是跨章节通用附录。
 

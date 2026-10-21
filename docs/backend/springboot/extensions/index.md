@@ -1,6 +1,6 @@
 # Spring Boot 企业扩展：Redis、批处理与账票
 
-这里提供可分别学习的企业扩展方向。Redis 专题独立讲概念、常用调用与适用场景；Spring Batch、账票及其综合项目可从[第18章的员工管理 API](../mainline/18_deployment_operations_check.md)继续。另有一套以考勤日次汇总为背景的[Spring Batch + Scheduling 六章专题](spring-batch-training/README.md)，自带独立工程、练习和运行手册。它们都不是完成普通 CRUD 的先修条件。
+这里提供可分别学习的企业扩展方向。Redis 专题独立讲概念、常用调用与适用场景；[Spring Batch + Scheduling 六章专题](spring-batch-training/README.md)以考勤日次汇总为背景，自带独立工程、练习和运行手册。账票教材及月度账票项目可从[第18章的员工管理 API](../mainline/18_deployment_operations_check.md)继续，并将Batch专题学到的机制应用到员工变更履历。它们都不是完成普通 CRUD 的先修条件。
 
 ## 学完能做到什么
 
@@ -9,8 +9,7 @@ Redis 专题的目标是会解释、会调用、会判断，不要求项目交�
 | 顺序 | 内容 | 阶段成果 |
 | --- | --- | --- |
 | 1 | [Redis 单文件专题](redis.md) | 理解数据类型、TTL、Spring Boot 调用、缓存与 Session 使用条件；无需接入员工项目 |
-| 2 | [Spring Batch：从 Job 到可重启任务](spring-batch.md) | 批量读取履历，理解分块事务、参数、重启、幂等、跳过与重试 |
-| 独立专题 | [Spring Batch + Scheduling：六章考勤批处理](spring-batch-training/README.md) | 在独立工程中学习 Tasklet、Chunk、失败恢复、定时触发与 CSV 交付；不依赖月度账票项目 |
+| 2 | [Spring Batch + Scheduling：六章考勤批处理](spring-batch-training/README.md) | 在独立工程中学习 Job、Step、Tasklet、Chunk、参数、重启、定时触发与 CSV 交付；进入月度账票项目时迁移处理思路，不复用考勤代码 |
 | 3 | [账票基础](01_report_overview.md) | 从日本项目业务场景判断格式、模板方式和在线/Batch 输出 |
 | 4 | [账票设计与架构](02_report_design_and_architecture.md) | 阅读抽出条件、字段映射和分层架构，理解设计书如何对应代码 |
 | 5 | [无模板账票](03_report_without_template.md) | 理解 CSV、POI 对象和従業員一覧表的查询、生成与下载流程 |

@@ -2,7 +2,7 @@
 
 ## 交付目标与开始状态
 
-在[第18章完成运行检查的员工管理API](../mainline/18_deployment_operations_check.md)的独立副本中，实现管理员申请指定月份的员工变更账票、查询处理状态和下载XLSX。已有`employees`、`employee_change_logs`、`app_users`及登录/权限链保持不变。先通过[Redis](redis.md)、[Spring Batch](spring-batch.md)和[六章账票课程](01_report_overview.md)的单点练习，再开始整合；不要在主线仓库中直接做破坏性实验。
+在[第18章完成运行检查的员工管理API](../mainline/18_deployment_operations_check.md)的独立副本中，实现管理员申请指定月份的员工变更账票、查询处理状态和下载XLSX。已有`employees`、`employee_change_logs`、`app_users`及登录/权限链保持不变。先通过[Redis](redis.md)、[Spring Batch六章专题](spring-batch-training/README.md)和[六章账票课程](01_report_overview.md)的单点练习，再开始整合；Batch专题的考勤数据与工程只用于学习机制，不直接复制进本项目。不要在主线仓库中直接做破坏性实验。
 
 完成标准：从干净的个人环境部署后，给定同一组履历能得到件数、顺序和时间均正确的文件；并发同月请求只产生一项有效申请；失败有证据、可恢复；Redis 停机不损害申请和下载；未授权者不能获取文件。所有账号、履历和截图用虚构或脱敏数据。
 
@@ -23,7 +23,7 @@
 
 ## 2. 数据模型和迁移
 
-在个人练习库通过一次受控迁移增加以下表；不删除主线表或已有数据。Batch 自身的 `BATCH_*` 元数据按[上一章](spring-batch.md)初始化。
+在个人练习库通过一次受控迁移增加以下表；不删除主线表或已有数据。Batch 自身的 `BATCH_*` 元数据参照[Batch运行手册](spring-batch-training/runbook.md)的“首次空库初始化”原则，在本项目的独立练习库按当前依赖附带的MySQL脚本初始化；不要把考勤专题的业务表或样例数据导入本项目。
 
 ```sql
 CREATE TABLE report_requests (

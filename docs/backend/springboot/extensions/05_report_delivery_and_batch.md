@@ -168,7 +168,7 @@ try (OutputStream output = fileWriter.open(reportId)) {
 }
 ```
 
-该片段只说明职责连接。Job、Step、chunk、JobRepository 和重启请复习[Spring Batch 专题](spring-batch.md)，本章不重复实现。
+该片段只说明职责连接。Job、Step、chunk、JobRepository 和重启请复习[Spring Batch 六章专题](spring-batch-training/README.md)，本章不重复实现。
 
 ## 7. 大文件的基本判断
 

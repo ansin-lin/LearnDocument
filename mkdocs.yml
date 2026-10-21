@@ -379,7 +379,6 @@ nav:
     - 企业扩展:
       - 学习入口: backend/springboot/extensions/index.md
       - Redis 单文件专题: backend/springboot/extensions/redis.md
-      - Spring Batch批处理: backend/springboot/extensions/spring-batch.md
       - Spring Batch + Scheduling 独立专题:
         - 学习入口: backend/springboot/extensions/spring-batch-training/README.md
         - 01. Batch 与项目实现方式: backend/springboot/extensions/spring-batch-training/docs/01_batch_overview.md
