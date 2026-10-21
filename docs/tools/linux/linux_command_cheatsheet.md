@@ -1,6 +1,8 @@
 # Linux 命令速查表
 
 本页只收录 Web/批处理项目 PG 在授权范围内常用的命令。执行修改类命令前先确认 `whoami`、`hostname`、`pwd` 和目标路径。
+第一次使用时先阅读对应章节，理解输入、结果和风险；这里用于回看写法，不代替正文解释。尖括号内是必须替换的占位内容。
+需要逐项查看功能、语法、常用选项、项目场景和风险时，参见两门课共用的 [Linux 与 Bash 新人速查表](../shell/linux_shell_quick_reference.md)。
 
 ## 环境与路径
 
@@ -81,11 +83,9 @@ journalctl -u <known-unit> --since '<start>' --until '<end>' --no-pager
 
 ```bash
 crontab -l
-crontab -l > <backup-file> 2>/dev/null || true
-crontab -e
 ```
 
-只删除自己添加的任务行，不使用清空全部任务的命令。
+`crontab -l` 只读查看当前用户任务；`crontab -e` 会修改实际调度，仅在独立练习环境和项目授权下使用，详见[选学章节](05_crontab_scheduler.md)。
 
 ## Vim 最小操作
 

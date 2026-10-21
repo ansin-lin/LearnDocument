@@ -278,6 +278,7 @@ nav:
     - 5. 错误处理、日志与清理: tools/shell/05_error_logging.md
     - 6. 日志检查脚本: tools/shell/06_log_checker.md
     - 7. 日本项目改修与交付: tools/shell/07_project_task.md
+    - Linux 与 Bash 新人速查表: tools/shell/linux_shell_quick_reference.md
 - 数据库:
   - SQL:
     - 0. 数据库与 SQL 入门: database/sql/00_database_introduction.md
