@@ -36,7 +36,7 @@
 
 | 机制 | 进入条件和时机 | 返回或失败时的表现 |
 | --- | --- | --- |
-| Spring Security过滤器链 | 作为Servlet过滤器链的一部分，在Controller之前检查认证、CSRF和URL权限 | 可直接返回401/403，使Controller、MVC拦截器和Service不执行；本项目具体配置见[第15章](../mainline/15_session_login.md) |
+| Spring Security过滤器链 | 作为Servlet过滤器链的一部分，在Controller之前检查Bearer身份和URL权限 | 可直接返回401/403，使Controller、MVC拦截器和Service不执行；本项目具体配置见[第15章](../mainline/15_session_login.md) |
 | `HandlerInterceptor` | Spring MVC已经找到匹配的Handler后，`preHandle` 在Controller前执行 | 正常调用后可进入 `postHandle`；请求完成阶段执行 `afterCompletion`。它不覆盖所有被更早Filter拒绝的请求 |
 | `@RestControllerAdvice`＋`@ExceptionHandler` | MVC处理Controller或Handler阶段的可匹配异常时参与异常解析 | 把业务异常转换为HTTP响应；不会自然接管Security过滤器在Controller之前作出的拒绝 |
 | Spring AOP / 代理 | 对匹配的Spring Bean方法、且调用确实经过代理时执行；本项目事务与方法权限主要作用于Service调用 | Advice可在目标方法前后运行；同类对象内部 `this.method()` 调用通常绕过代理，不等同于Servlet Filter |
@@ -176,7 +176,7 @@ Service抛EmployeeNotFoundException
 
 1. `GET {{baseUrl}}/employees/1001`：记录HTTP状态、`X-Request-Id` 和对应的 `request_complete` 日志。预期请求到达Controller/Service，Filter在链返回后记录完成信息。
 2. `GET {{baseUrl}}/employees/999999`：记录404响应和相同requestId的完成日志。指出业务异常由MVC全局异常处理转换，Filter仍会走退出清理。
-3. 完成第15章登录内容后，清除Cookie并再次请求受保护的员工详情：预期未登录响应为401，Controller断点不命中；若最外层日志Filter已覆盖该分派，仍可观察请求完成日志。由此区分“Filter运行”与“Controller运行”。
+3. 完成第15章登录内容后，移除Authorization Bearer头并再次请求受保护的员工详情：预期未认证响应为401，Controller断点不命中；若最外层日志Filter已覆盖该分派，仍可观察请求完成日志。由此区分“Filter运行”与“Controller运行”。
 4. 发送字段错误的POST：预期400；在Controller方法体设置断点，确认参数绑定失败时方法体不一定进入。
 5. 使用不存在路径：预期路由404；与“员工不存在”的业务404比较Advice日志和Service断点差异。
 

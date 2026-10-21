@@ -2,7 +2,7 @@
 
 > 本章目标：理解开发、测试和生产环境为什么需要不同配置，掌握Profile与环境变量的基础用法，了解Maven构建过程，并把项目打包成可以脱离Eclipse运行的JAR。
 
-从第16章稳定工程继续。本章不改变员工API、Session登录和权限规则。生产交付的深入做法见附录 [A17 配置、构建与交付进阶](../appendix/A17_configuration_build_delivery_advanced.md)。
+从第16章稳定工程继续。本章不改变员工API、JWT Bearer登录和权限规则。生产交付的深入做法见附录 [A17 配置、构建与交付进阶](../appendix/A17_configuration_build_delivery_advanced.md)。
 
 ## 一、为什么不同环境需要不同配置
 
@@ -262,7 +262,7 @@ java -jar target/employee-management-api-0.0.1-SNAPSHOT.jar --spring.profiles.ac
 | 预期状态码 | 200 |
 | 预期响应 | `OK` |
 
-再按第15章执行 `GET /auth/csrf`、`POST /auth/login`，保留Cookie后访问 `GET /employees/1001`。tanaka读取本人应按第16章规格返回200。
+再按第15章执行 `POST /auth/login`（JSON账号密码，预期200及`accessToken`），用`Authorization: Bearer <accessToken>`访问 `GET /employees/1001`（无查询参数、无请求体）。tanaka读取本人应按第16章规格返回200；无Token预期401。
 
 ### 3. 正常停止
 
@@ -277,7 +277,7 @@ java -jar target/employee-management-api-0.0.1-SNAPSHOT.jar --spring.profiles.ac
 | 端口占用 | Eclipse旧进程仍运行 | 停止旧应用 |
 | 缺少DB_PASSWORD | 必填环境变量未提供 | 检查Run Configuration或终端 |
 | 数据库连接失败 | 地址、账号、密码或MySQL状态错误 | 查看启动日志 |
-| 员工接口401 | 尚未登录 | 按第15章建立Session |
+| 员工接口401 | 缺失、过期或无效Bearer Token | 按第15章重新登录取得Token，核对Authorization请求头 |
 | 员工列表403 | USER没有列表权限 | 按第16章核对身份 |
 
 ## 九、练习与完成标准

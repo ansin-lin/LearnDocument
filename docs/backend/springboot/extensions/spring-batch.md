@@ -4,7 +4,7 @@
 
 一次处理数万条员工变更履历时，HTTP 请求可能超时；处理中途失败后，也不能只凭一条“500”判断处理了多少。Spring Batch 把一次批量执行表示为 `Job`，由一个或多个 `Step` 组成，并用 `JobRepository` 保存执行元数据。一个 Step 可按固定数量读取、处理、写出并提交，这叫 chunk；每个 chunk 是独立事务。`JobLauncher` 启动 Job，`JobExplorer` 可查询执行状态。它们分别解决执行、记录和观察问题，不会自动替业务保证“同月只生成一份”。
 
-本章在[扩展入口](index.md)的独立员工项目副本中练习，仍用 MySQL 与 MyBatis 管理员工业务。Batch 的元数据表与业务表同库但不同表；不直接改写主线员工数据。先做 3 行 CSV 导入的最小例子，再把 `employee_change_logs` 分块写入报表临时明细。文件生成放到[账票章节](reporting.md)。
+本章在[扩展入口](index.md)的独立员工项目副本中练习，仍用 MySQL 与 MyBatis 管理员工业务。Batch 的元数据表与业务表同库但不同表；不直接改写主线员工数据。先做 3 行 CSV 导入的最小例子，再把 `employee_change_logs` 分块写入报表临时明细。文件生成与交付放到[无模板账票](03_report_without_template.md)和[账票交付与 Batch](05_report_delivery_and_batch.md)。如需从零系统学习 Batch 与 Scheduling，并运行完整的考勤练习工程，可另选[六章独立专题](spring-batch-training/README.md)；两者的业务数据和工程不要混用。
 
 ## 2. Job、Step、Execution、Instance 的关系
 

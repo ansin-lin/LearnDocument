@@ -2,7 +2,7 @@
 
 > 从第13章的 Employee Management API 稳定状态继续，只改修现有 `GET /employees` 列表能力。完成后，你应能依据一张社員一覧改修票，设计接口契约，定位 Controller→Service→Mapper→MySQL 的改动，独立实现并以测试证据交付；详情、新增、修改、删除、事务及履历保持不变。技术基线为 Java 17、Spring Boot 4.1.1、Spring MVC、MyBatis、MySQL 8.0 InnoDB。
 
-本章面向独立前端应用调用 REST API。前端可由 React、Vue 或其他技术实现；本章只展示一个简短请求，不要求编写完整页面。第15章才加入 Session 登录，第16章才收紧列表角色权限。完整源码只供完成练习后在[R14最终源码](../reference/R14_search_pagination_complete_source.md)核对，不应先复制答案。
+本章面向独立前端应用调用 REST API。前端可由 React、Vue 或其他技术实现；本章只展示一个简短请求，不要求编写完整页面。第15章才加入JWT Bearer认证，第16章才收紧列表角色权限。完整源码只供完成练习后在[R14最终源码](../reference/R14_search_pagination_complete_source.md)核对，不应先复制答案。
 
 ## 一、从员工列表画面理解REST API
 
@@ -220,7 +220,7 @@ ORDER BY created_at DESC, id ASC LIMIT 20 OFFSET 0;
 
 推荐顺序：确认契约→查现有 `GET /employees` 及前端调用方→定请求/响应→定筛选和排序→定分页与COUNT→改Mapper→改Service→接Controller→写测试→回归CRUD/事务。团队可调整实现顺序，但不能省略影响调查与验收。
 
-Review时逐项核对：默认值与参数白名单、非法输入400、`#{...}`绑定与无 `${...}` 注入、列表/COUNT的WHERE一致、同值排序的唯一补充列、空页真实total、前端是否能消费分页JSON、旧CRUD与履历是否保留。第15章Session认证可用于前后端分离REST API，并不要求服务端渲染HTML；第16章给 `GET /employees` 加ADMIN限制后，列表测试需补合适身份，同时保留本章所有分页断言。
+Review时逐项核对：默认值与参数白名单、非法输入400、`#{...}`绑定与无 `${...}` 注入、列表/COUNT的WHERE一致、同值排序的唯一补充列、空页真实total、前端是否能消费分页JSON、旧CRUD与履历是否保留。第15章JWT Bearer认证可用于前后端分离REST API，并不要求服务端渲染HTML；第16章给 `GET /employees` 加ADMIN限制后，列表测试需补合适身份，同时保留本章所有分页断言。
 
 ## 六、测试设计与综合改修实践
 
@@ -256,6 +256,6 @@ mockMvc.perform(get("/employees").param("page", "2").param("pageSize", "20"))
 
 **综合任务：独立完成 `GET /employees` 改修。** 交付API请求/响应规格、处理流程图、影响文件表、修改后的源码、必要JUnit/MockMvc测试、Postman请求与脱敏响应、测试结果表及简短Review记录。至少展示默认列表、组合筛选、同值排序、第二页、空页、越界页、非法参数、COUNT一致性，以及第13章CRUD和事务回归。R14只用于做完之后对照。
 
-在应用目录构建时可先执行 `.\mvnw.cmd -DskipTests package` 检查编译。完整集成测试会使用 `@Sql` 重建专用测试数据，执行 `.\mvnw.cmd test` **前必须核实连接的是可重建的专用MySQL测试库**；不能因教材给出命令就对未知库执行。Postman使用本章版本的匿名接口；进入第15章后需带Session，写请求还需CSRF。测试结束保留脱敏证据，按项目规则恢复/重建专用测试数据，不手工清理生产数据。
+在应用目录构建时可先执行 `.\mvnw.cmd -DskipTests package` 检查编译。完整集成测试会使用 `@Sql` 重建专用测试数据，执行 `.\mvnw.cmd test` **前必须核实连接的是可重建的专用MySQL测试库**；不能因教材给出命令就对未知库执行。Postman使用本章版本的匿名接口；进入第15章后，受保护请求需带Bearer Token，不再使用认证Cookie和CSRF Header。测试结束保留脱敏证据，按项目规则恢复/重建专用测试数据，不手工清理生产数据。
 
 完成后，`GET /employees` 从原列表数组升级为分页JSON，详情与写接口及事务履历仍保持第13章行为。你应能说明一次页面操作如何成为查询参数、两条SQL与分页响应，并能以证据证明筛选、排序、COUNT和边界行为。下一章在此稳定状态上增加Session身份识别，不提前实现第16章的角色限制。

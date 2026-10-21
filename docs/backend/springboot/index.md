@@ -89,13 +89,13 @@ Eclipse编写和调试代码
 | 12 | [员工CRUD的分层测试与接口验证](mainline/12_automated_testing_and_regression.md) | 依次完成MySQL/H2 Mapper正常系与异常系、Service单元测试、Controller MockMvc测试和Postman确认，最后验证完整调用链 |
 | 13 | [用事务保证多步写入一致](mainline/13_transaction_and_consistency.md) | 更新员工并写变更履历，用成功与失败测试证明提交和回滚 |
 | 14 | [前后端分离REST列表查询、筛选、排序与分页](mainline/14_search_sort_pagination.md) | 从社員一覧需求设计REST契约与处理链，独立改修筛选、排序、分页及COUNT；最终源码见[R14](reference/R14_search_pagination_complete_source.md) |
-| 15 | [Spring Security认证与Session登录](mainline/15_session_login.md) | 分阶段完成匿名保护、数据库账号认证、SecurityContext保存、CSRF与退出；最终源码见[R15](reference/R15_session_login_complete_source.md) |
-| 16 | [Spring Security权限与数据范围](mainline/16_authorization_and_data_scope.md) | 从权限矩阵到URL角色、本人数据范围和回归测试；最终源码见[R16](reference/R16_authorization_complete_source.md) |
+| 15 | [Spring Security：注册与JWT Bearer认证](mainline/15_session_login.md) | 数据库注册、JSON登录、短期JWT签发与Bearer验签；最终源码见[R15](reference/R15_session_login_complete_source.md) |
+| 16 | [JWT角色授权与本人数据范围](mainline/16_authorization_and_data_scope.md) | 从roles声明到URL角色、本人范围和Postman权限验证；最终源码见[R16](reference/R16_authorization_complete_source.md) |
 | 17 | [多环境配置与打包](mainline/17_profiles_configuration_packaging.md) | 理解Profile与环境变量，用Maven生成并在本机运行可执行JAR |
 | 18 | [部署与运行检查](mainline/18_deployment_operations_check.md) | 理解服务器运行、systemd、四层检查、日志调查、发布与回滚 |
 | 19 | [为Vue有給休暇系统实现后台API](mainline/19_paid_leave_vue_backend_practice.md) | 实现与Vue第22章一致的后台，并按第23章改修日期筛选，完成测试、联调和交付 |
 
-完成第18章后，使用第19章独立完成一次前后端联调综合练习。需要缓存、批量任务或账票交付时，再进入[Spring Boot 企业扩展](extensions/index.md)：先学[Redis](extensions/redis.md)、[Spring Batch](extensions/spring-batch.md)与[账票处理](extensions/reporting.md)，最后完成[月度员工变更账票项目](extensions/monthly-report-project.md)。企业扩展从第18章员工管理稳定成果的独立副本开始，不改变主线最终状态。进入既存项目时可按需要使用附录补足代码识读能力：
+完成第18章后，使用第19章独立完成一次前后端联调综合练习。需要缓存、批量任务或账票交付时，再进入[Spring Boot 企业扩展](extensions/index.md)：先学[Redis](extensions/redis.md)、[Spring Batch](extensions/spring-batch.md)，再从[账票基础](extensions/01_report_overview.md)开始完成六章账票课程，最后完成[月度员工变更账票项目](extensions/monthly-report-project.md)。企业扩展从第18章员工管理稳定成果的独立副本开始，不改变主线最终状态。进入既存项目时可按需要使用附录补足代码识读能力：
 
 完整入口见[附录学习入口](appendix/index.md)。A开头的附录与01～18章的章号对应；一章没有专属附录时直接跳号，同一章有多个附录时使用 `A03-1` 这样的子编号。B开头的是跨章节通用附录。
 
@@ -118,11 +118,6 @@ Eclipse编写和调试代码
 | [A13-1 事务原理与Spring事务机制](appendix/A13_01_transaction_spring_mechanisms.md) | 深入理解ACID、事务边界、`@Transactional`属性与传播方式 |
 | [A13-2 并发更新与锁](appendix/A13_02_concurrent_updates_locks.md) | 选择约束、原子UPDATE、乐观锁或悲观锁，并验证锁等待与死锁 |
 | [A13-3 隔离级别与MVCC](appendix/A13_03_isolation_mvcc.md) | 区分并发读取现象、隔离级别、快照读与当前读 |
-| [A16 跨源Session与CORS实验](appendix/A16_cross_origin_session_cors.md) | 在独立实验中配置浏览器跨源Session访问，并区分CORS、认证、授权和CSRF |
-| [A15-1 认证机制与核心Bean](appendix/A15_01_spring_security_authentication.md) | 补充认证组件关系、调用流程与失败调查，不作为主线前置要求 |
-| [A15-2 Session、Cookie与CSRF](appendix/A15_02_session_cookie_csrf.md) | 深入理解登录态保存、跨请求恢复与令牌生命周期 |
-| [A16-1 方法安全与数据范围](appendix/A16_01_method_security_data_scope.md) | 比较URL、方法与SQL范围控制及代理边界 |
-| [A16-2 安全测试与排障](appendix/A16_02_security_testing_and_troubleshooting.md) | 区分模拟身份与真实Session测试，整理401/403排查和回归证据 |
 | [A17 配置、构建与交付进阶](appendix/A17_configuration_build_delivery_advanced.md) | 调查配置覆盖、构建产物与正式交付检查项 |
 | [A18-1 Linux部署与运维手顺参考](appendix/A18_01_linux_deployment_operations_reference.md) | 查阅systemd Unit、更新、切り戻し和运维记录 |
 | [A18-2 常见运行与数据库迁移组件识读](appendix/A18_02_operations_components_reading.md) | 初步识别Actuator、Flyway和Liquibase |

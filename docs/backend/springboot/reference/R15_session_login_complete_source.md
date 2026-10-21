@@ -1,44 +1,10 @@
-# R15 第15章注册与Session登录最终源码
+# R15 第15章JWT Bearer认证最终参考源码
 
-本文件对应第15章完成后的稳定状态：公开注册普通账号、数据库账号JSON登录和Session恢复。不包含第16章的角色限制与本人数据授权。按第15章分阶段完成后，用本文件核对全部文件；它不是第一个阶段的起步代码。
+本文件对应第15章稳定状态。沿用第14章员工CRUD、事务和分页；账号来自MySQL，注册固定USER；登录签发15分钟JWT，后续请求以Bearer头访问。第16章再加入角色与本人范围规则。所有片段按路径放入同一工程，不复制第二份同名类。
 
-## 最终源码与变更核对
+这是[第15章正文](../mainline/15_session_login.md)完成15-08后的**最终代码快照**，不是15-02临时过滤链或15-04仅注册Controller的阶段代码。正文首次出现的Bean、方法及请求流程应在对应小节学习；这里按文件路径核对最终状态。第16章会完整替换本文件中的`SecurityConfig`，其他注册、登录、密钥和JWT签发类继续使用。
 
-### 最终文件清单与完整实现
-
-先在代码前分清这次要建立的关系。注册时，`AuthController`把JSON交给`AccountRegistrationService`；服务固定USER角色和空员工关联，用`PasswordEncoder`生成密码哈希，经Mapper写入`app_users`。注册不自动登录。登录时，`AuthController`把JSON交给`SessionLoginService`；后者通过`AuthenticationManager`验证账号密码，并把认证结果保存进服务器Session。客户端Cookie只带会话标识；下一次请求由安全过滤链恢复身份。
-
-本章最终只有自定义JSON登录入口；`SessionLoginService`显式调用`SessionAuthenticationStrategy`和`SecurityContextRepository.saveContext()`，不假定框架会替自定义入口自动保存。CSRF令牌由`/auth/csrf`响应体交给Postman，令牌Cookie保持HttpOnly；认证Cookie`JSESSIONID`也不能为方便调试而关闭HttpOnly。主线不进行内置表单登录实验。
-
-从第14章稳定状态继续，新增安全依赖、账号表、注册和认证代码：
-
-```text
-pom.xml                                                     ← 完整替换
-src/main/java/com/example/employee/
-├── config/SecurityConfig.java                              ← 新建
-├── controller/AuthController.java                          ← 新建
-├── dto/request/RegisterRequest.java                        ← 新建
-├── dto/request/LoginRequest.java                           ← 新建
-├── dto/response/RegisteredUserResponse.java               ← 新建
-├── dto/response/CurrentUserResponse.java                   ← 新建
-├── dto/response/CsrfResponse.java                          ← 新建
-├── entity/AppUser.java                                     ← 新建
-├── exception/AuthExceptionHandler.java                    ← 新建
-├── exception/DuplicateUsernameException.java              ← 新建
-├── mapper/AppUserMapper.java                               ← 新建
-├── security/AccountRegistrationService.java               ← 新建
-├── security/AppUserDetailsService.java                    ← 新建
-└── security/SessionLoginService.java                      ← 新建
-src/main/resources/mapper/AppUserMapper.xml                 ← 新建
-src/test/java/com/example/employee/
-├── controller/EmployeeControllerWebTest.java              ← 修改写请求
-├── integration/EmployeeCrudIntegrationTest.java            ← 修改写请求
-src/test/java/com/example/employee/security/SessionLoginTest.java ← 新建
-src/test/java/com/example/employee/security/RegistrationLoginTest.java ← 新建，完整类见主线15-08
-src/test/resources/test-data.sql                            ← 完整替换
-```
-
-### 1. 完整替换pom.xml
+## 1. 完整替换pom.xml
 
 完整内容如下：
 
@@ -87,6 +53,10 @@ src/test/resources/test-data.sql                            ← 完整替换
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
@@ -98,6 +68,12 @@ src/test/resources/test-data.sql                            ← 完整替换
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter-test</artifactId>
+            <version>4.1.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -112,9 +88,9 @@ src/test/resources/test-data.sql                            ← 完整替换
 </project>
 ```
 
-第一项把Spring Security加入正式应用；第二项是Boot 4的Security测试Starter，给测试提供 `csrf()` 等安全请求工具。版本由Spring Boot 4.1.1统一管理，不单独填写。
+`spring-boot-starter-security`提供核心安全功能；`spring-boot-starter-security-oauth2-resource-server`提供Bearer JWT验证及JOSE实现。测试Starter保留第12章自动化测试所需依赖，本章主线只做Postman手工验证。Spring Boot依赖由4.1.1统一管理，MyBatis Starter及其测试Starter沿用4.1.0。
 
-### 2. 在MySQL 8.0创建账号表
+## 2. 在MySQL 8.0创建账号表
 
 只在个人练习数据库执行。`password_hash` 保存单向哈希，不保存原始密码：
 
@@ -167,7 +143,7 @@ INSERT INTO app_users (
 
 BCrypt每次使用随机salt，同一密码产生不同哈希是正常现象；验证应调用 `matches()`，不能重新encode后比较两个字符串。
 
-### 3. 新建AppUser.java
+## 3. 新建AppUser.java
 
 ```java
 package com.example.employee.entity;
@@ -195,7 +171,7 @@ public class AppUser {
 }
 ```
 
-### 4. 新建AppUserMapper.java和XML
+## 4. 新建AppUserMapper.java和XML
 
 ```java
 package com.example.employee.mapper;
@@ -233,7 +209,7 @@ public interface AppUserMapper {
 
 用户名使用 `#{username}` 参数绑定。查询只允许返回唯一的一行；注册时`insert`返回影响行数，并通过`useGeneratedKeys`把新ID写回`AppUser.id`。唯一约束阻止两个账号使用同一用户名。
 
-### 5. 新建注册、登录请求和响应类
+## 5. 新建注册、登录请求和响应类
 
 ```java
 package com.example.employee.dto.request;
@@ -295,19 +271,9 @@ public record CurrentUserResponse(String username) {
 }
 ```
 
-```java
-package com.example.employee.dto.response;
-
-public record CsrfResponse(
-        String parameterName,
-        String headerName,
-        String token) {
-}
-```
-
 `record` 是Java 17的数据载体写法，构造参数同时定义不可重新赋值的组件和同名访问方法。本章响应只有少量只读字段，因此使用record；请求对象仍保留普通类和setter供JSON绑定。注册请求不包含角色、员工ID和启用状态。
 
-### 5.5 新建注册服务和用户名冲突异常
+## 5.5 新建注册服务和用户名冲突异常
 
 `src/main/java/com/example/employee/exception/DuplicateUsernameException.java`：
 
@@ -364,9 +330,9 @@ public class AccountRegistrationService {
 }
 ```
 
-角色与员工关联只由服务器赋值。MySQL用户名唯一约束是并发注册的最终防线；Service把冲突转换为业务异常，不对外返回数据库细节。注册成功只返回ID与用户名，不自动建立Session。
+角色与员工关联只由服务器赋值。MySQL用户名唯一约束是并发注册的最终防线；Service把冲突转换为业务异常，不对外返回数据库细节。注册成功只返回ID与用户名，不自动签发令牌。
 
-### 6. 新建AppUserDetailsService.java
+## 6. 新建AppUserDetailsService.java
 
 ```java
 package com.example.employee.security;
@@ -404,171 +370,268 @@ public class AppUserDetailsService implements UserDetailsService {
 
 `UserDetailsService` 只负责按用户名加载账号；它不接收HTTP请求，也不自己比较密码。返回的 `UserDetails` 交给认证组件，异常消息使用统一文字，避免泄露账号是否存在。
 
-### 7. 新建SecurityConfig.java
+
+## 7. 配置签名密钥与JWT编解码
+
+`application.yml`保留第14章的数据库、MyBatis等配置，只新增以下字段。运行前在Eclipse的Run Configuration中设置`EMPLOYEE_JWT_SECRET_BASE64`；用本地Java代码`byte[] bytes = new byte[32]; new java.security.SecureRandom().nextBytes(bytes); System.out.println(java.util.Base64.getEncoder().encodeToString(bytes));`生成随机值。不要把真实密钥提交仓库，也不要将示例值用于实际环境。更换密钥会令旧Token无法验证。
+
+```yaml
+app:
+  security:
+    jwt:
+      secret-base64: ${EMPLOYEE_JWT_SECRET_BASE64}
+      issuer: employee-management
+      audience: employee-api
+```
+
+`src/main/java/com/example/employee/config/JwtConfig.java`：
+
+```java
+package com.example.employee.config;
+
+import java.util.Base64;
+import java.util.List;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+
+@Configuration
+public class JwtConfig {
+    @Bean
+    public SecretKey jwtSecretKey(
+            @Value("${app.security.jwt.secret-base64}") String encoded) {
+        byte[] bytes;
+        try {
+            bytes = Base64.getDecoder().decode(encoded);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("JWT secret must be Base64", ex);
+        }
+        if (bytes.length < 32) {
+            throw new IllegalStateException("JWT HS256 secret must be at least 32 bytes");
+        }
+        return new SecretKeySpec(bytes, "HmacSHA256");
+    }
+
+    @Bean
+    public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
+        return NimbusJwtEncoder.withSecretKey(jwtSecretKey)
+                .algorithm(MacAlgorithm.HS256).build();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder(SecretKey jwtSecretKey,
+            @Value("${app.security.jwt.issuer}") String issuer,
+            @Value("${app.security.jwt.audience}") String audience) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSecretKey)
+                .macAlgorithm(MacAlgorithm.HS256).build();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(issuer),
+                new JwtClaimValidator<List<String>>(JwtClaimNames.AUD,
+                        values -> values != null && values.contains(audience))));
+        return decoder;
+    }
+}
+```
+
+`JwtEncoder`签名，`JwtDecoder`验签并检查时间、issuer与audience。`JwtValidators.createDefaultWithIssuer`包含标准时间校验；audience另加。密钥只从环境配置读取，启动时长度不足直接失败。生产环境还须经HTTPS传输并由密钥管理系统保管。
+
+## 8. 配置认证组件和Bearer过滤链
+
+`src/main/java/com/example/employee/config/SecurityConfig.java`：
 
 ```java
 package com.example.employee.config;
 
 import com.example.employee.security.AppUserDetailsService;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
 
 @Configuration
 public class SecurityConfig {
-
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
-    }
-
-    @Bean
-    public SecurityContextRepository securityContextRepository() {
-        return new HttpSessionSecurityContextRepository();
-    }
-
-    @Bean
-    public CsrfTokenRepository csrfTokenRepository() {
-        return new CookieCsrfTokenRepository();
-    }
-
-    @Bean
-    public SessionAuthenticationStrategy sessionAuthenticationStrategy(
-            CsrfTokenRepository csrfTokenRepository) {
-        return new CompositeSessionAuthenticationStrategy(List.of(
-                new ChangeSessionIdAuthenticationStrategy(),
-                new CsrfAuthenticationStrategy(csrfTokenRepository)));
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AppUserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder);
+            AppUserDetailsService users, PasswordEncoder encoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(users);
+        provider.setPasswordEncoder(encoder);
         return new ProviderManager(provider);
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            SecurityContextRepository repository,
-            CsrfTokenRepository csrfTokenRepository)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
         http
-                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
-                .securityContext(context -> context
-                        .requireExplicitSave(true)
-                        .securityContextRepository(repository))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/auth/csrf", "/auth/register",
-                                "/auth/login", "/health").permitAll()
-                        .requestMatchers("/auth/me", "/employees", "/employees/**")
-                        .authenticated()
-                        .anyRequest().permitAll())
-                .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint((request, response, exception) ->
-                                response.sendError(
-                                        HttpServletResponse.SC_UNAUTHORIZED)))
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .logout(logout -> logout
-                        .logoutUrl("/auth/logout")
-                        .deleteCookies("JSESSIONID")
-                        .logoutSuccessHandler((request, response, authentication) ->
-                                response.setStatus(204)));
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .formLogin(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .logout(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(a -> a
+                .requestMatchers("/health", "/error",
+                        "/auth/register", "/auth/login").permitAll()
+                .requestMatchers("/auth/me", "/employees", "/employees/**")
+                    .authenticated()
+                .anyRequest().denyAll())
+            .exceptionHandling(e -> e.authenticationEntryPoint((request, response, ex) ->
+                writeUnauthorized(response)))
+            .oauth2ResourceServer(o -> o
+                .authenticationEntryPoint((request, response, ex) ->
+                    writeUnauthorized(response))
+                .jwt(Customizer.withDefaults()));
         return http.build();
+    }
+
+    private static void writeUnauthorized(HttpServletResponse response)
+            throws java.io.IOException {
+        response.setStatus(401);
+        response.setHeader("WWW-Authenticate", "Bearer");
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("{\"success\":false,\"message\":\"请先登录\",\"data\":null}");
     }
 }
 ```
 
-### 8. 新建SessionLoginService.java与AuthController.java
+此配置属于第15章阶段状态。`AuthenticationManager`只在登录时用数据库账号验证；`oauth2ResourceServer().jwt()`在后续请求验证Bearer签名、时间和声明。`STATELESS`禁止用Session保存SecurityContext。因为本工程**只**使用Authorization请求头承载Token，不靠浏览器自动附加认证Cookie，所以此处关闭CSRF；不能将这条结论套用于仍使用Cookie认证的项目。第16章将替换此文件的访问规则与错误处理。
 
-`src/main/java/com/example/employee/security/SessionLoginService.java`是登录流程的唯一业务入口。Controller不再直接操作认证管理器、会话策略或Security上下文：
+## 9. 签发JWT与唯一JSON登录
+
+`src/main/java/com/example/employee/dto/response/LoginResponse.java`：
+
+```java
+package com.example.employee.dto.response;
+public record LoginResponse(String accessToken, String tokenType, long expiresIn) {}
+```
+
+`src/main/java/com/example/employee/security/JwtTokenService.java`：
 
 ```java
 package com.example.employee.security;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import com.example.employee.dto.response.LoginResponse;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
 @Service
-public class SessionLoginService {
-    private final AuthenticationManager authenticationManager;
-    private final SessionAuthenticationStrategy sessionStrategy;
-    private final SecurityContextRepository contextRepository;
+public class JwtTokenService {
+    private static final long LIFETIME_SECONDS = 900;
+    private final JwtEncoder encoder;
+    private final String issuer;
+    private final String audience;
 
-    public SessionLoginService(AuthenticationManager authenticationManager,
-            SessionAuthenticationStrategy sessionStrategy,
-            SecurityContextRepository contextRepository) {
-        this.authenticationManager = authenticationManager;
-        this.sessionStrategy = sessionStrategy;
-        this.contextRepository = contextRepository;
+    public JwtTokenService(JwtEncoder encoder,
+            @Value("${app.security.jwt.issuer}") String issuer,
+            @Value("${app.security.jwt.audience}") String audience) {
+        this.encoder = encoder;
+        this.issuer = issuer;
+        this.audience = audience;
     }
 
-    public String login(String username, String password,
-            HttpServletRequest request, HttpServletResponse response) {
-        Authentication input = UsernamePasswordAuthenticationToken.unauthenticated(
-                username.trim(), password);
-        Authentication result = authenticationManager.authenticate(input);
-        sessionStrategy.onAuthentication(result, request, response);
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(result);
-        SecurityContextHolder.setContext(context);
-        contextRepository.saveContext(context, request, response);
-        return result.getName();
+    public LoginResponse issue(Authentication authenticated) {
+        Instant now = Instant.now();
+        List<String> roles = authenticated.getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .filter(a -> a.startsWith("ROLE_"))
+                .map(a -> a.substring("ROLE_".length()))
+                .toList();
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(issuer)
+                .subject(authenticated.getName())
+                .audience(List.of(audience))
+                .issuedAt(now)
+                .notBefore(now)
+                .expiresAt(now.plusSeconds(LIFETIME_SECONDS))
+                .claim("roles", roles)
+                .build();
+        String token = encoder.encode(JwtEncoderParameters.from(claims))
+                .getTokenValue();
+        return new LoginResponse(token, "Bearer", LIFETIME_SECONDS);
     }
 }
 ```
 
-服务返回已认证用户名，Controller只把它放进统一响应。它不返回原密码、哈希、完整`Authentication`或Session ID。此处`saveContext`不能省略，组合策略中的会话ID更换与登录后CSRF令牌清除也不能省略。
+`src/main/java/com/example/employee/security/JwtLoginService.java`：
 
-`src/main/java/com/example/employee/controller/AuthController.java`的完整内容：
+```java
+package com.example.employee.security;
+
+import com.example.employee.dto.request.LoginRequest;
+import com.example.employee.dto.response.LoginResponse;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+
+@Service
+public class JwtLoginService {
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenService tokens;
+
+    public JwtLoginService(AuthenticationManager authenticationManager,
+            JwtTokenService tokens) {
+        this.authenticationManager = authenticationManager;
+        this.tokens = tokens;
+    }
+
+    public LoginResponse login(LoginRequest request) {
+        Authentication input = UsernamePasswordAuthenticationToken.unauthenticated(
+                request.getUsername(), request.getPassword());
+        Authentication result = authenticationManager.authenticate(input);
+        return tokens.issue(result);
+    }
+}
+```
+
+`src/main/java/com/example/employee/controller/AuthController.java`：
 
 ```java
 package com.example.employee.controller;
 
-import com.example.employee.common.ApiResponse;
 import com.example.employee.dto.request.LoginRequest;
 import com.example.employee.dto.request.RegisterRequest;
-import com.example.employee.dto.response.CsrfResponse;
 import com.example.employee.dto.response.CurrentUserResponse;
+import com.example.employee.dto.response.LoginResponse;
 import com.example.employee.dto.response.RegisteredUserResponse;
+import com.example.employee.common.ApiResponse;
 import com.example.employee.security.AccountRegistrationService;
-import com.example.employee.security.SessionLoginService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import com.example.employee.security.JwtLoginService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -578,37 +641,26 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-    private final AccountRegistrationService registrationService;
-    private final SessionLoginService loginService;
+    private final AccountRegistrationService registration;
+    private final JwtLoginService login;
 
-    public AuthController(AccountRegistrationService registrationService,
-            SessionLoginService loginService) {
-        this.registrationService = registrationService;
-        this.loginService = loginService;
-    }
-
-    @GetMapping("/csrf")
-    public ResponseEntity<ApiResponse<CsrfResponse>> csrf(CsrfToken token) {
-        return ResponseEntity.ok(ApiResponse.success(new CsrfResponse(
-                token.getParameterName(), token.getHeaderName(), token.getToken())));
+    public AuthController(AccountRegistrationService registration,
+            JwtLoginService login) {
+        this.registration = registration;
+        this.login = login;
     }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<RegisteredUserResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(registrationService.register(request)));
+                .body(ApiResponse.success(registration.register(request)));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<CurrentUserResponse>> login(
-            @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse) {
-        String username = loginService.login(request.getUsername(),
-                request.getPassword(), httpRequest, httpResponse);
-        return ResponseEntity.ok(ApiResponse.success(
-                new CurrentUserResponse(username)));
+    public ResponseEntity<ApiResponse<LoginResponse>> login(
+            @Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(login.login(request)));
     }
 
     @GetMapping("/me")
@@ -620,9 +672,11 @@ public class AuthController {
 }
 ```
 
-退出由Security过滤器处理，不再写一个只删除自定义属性的假logout方法。
+`ApiResponse.success`沿用第7章`common`包中的定义，不创建第二份包装类。`Authentication`在`/auth/me`来自已验证的Bearer Token，而不是Session。注册不签发令牌。不要增加服务器端`/auth/logout`；前端退出只删除本地Token。
 
-### 9. 新建AuthExceptionHandler.java
+## 10. 注册和登录异常
+
+`src/main/java/com/example/employee/exception/AuthExceptionHandler.java`：
 
 ```java
 package com.example.employee.exception;
@@ -637,465 +691,25 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class AuthExceptionHandler {
     @ExceptionHandler(DuplicateUsernameException.class)
-    public ResponseEntity<ApiResponse<Void>> duplicateUsername(
-            DuplicateUsernameException exception) {
+    public ResponseEntity<ApiResponse<Void>> duplicate() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.failure(exception.getMessage()));
+                .body(ApiResponse.failure("用户名已存在"));
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAuthentication(
-            AuthenticationException exception) {
+    public ResponseEntity<ApiResponse<Void>> loginFailed() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.failure("用户名或密码错误"));
     }
 }
 ```
 
-该处理器处理进入Controller后的注册冲突与认证异常。未登录访问 `/auth/me` 和CSRF失败发生在过滤器链中，不经过ControllerAdvice；它们由Spring Security直接返回401或403。
-
-### 10. 完整替换test-data.sql
-
-下面哈希对应测试专用密码 `TrainingPass123!`，不得用于真实账号。完整内容如下：
-
-```sql
-DROP TABLE IF EXISTS app_users;
-DROP TABLE IF EXISTS employee_change_logs;
-DROP TABLE IF EXISTS employees;
-
-CREATE TABLE employees (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    department VARCHAR(50) NOT NULL,
-    email VARCHAR(100) NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_employees_email UNIQUE (email)
-);
-
-CREATE TABLE employee_change_logs (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    employee_id BIGINT NOT NULL,
-    action VARCHAR(30) NOT NULL,
-    detail VARCHAR(200) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE app_users (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password_hash VARCHAR(100) NOT NULL,
-    employee_id BIGINT UNIQUE,
-    role VARCHAR(30) NOT NULL,
-    enabled BOOLEAN NOT NULL DEFAULT TRUE
-);
-
-INSERT INTO employees (
-    id, name, department, email, status
-) VALUES
-    (1001, 'Tanaka', 'Sales', 'tanaka@example.com', 'ACTIVE'),
-    (1002, 'Sato', 'Development', 'sato@example.com', 'ACTIVE');
-
-INSERT INTO app_users (
-    id, username, password_hash, employee_id, role, enabled
-) VALUES (
-    1,
-    'tanaka',
-    '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
-    1001,
-    'USER',
-    TRUE
-), (
-    4,
-    'disabled-user',
-    '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
-    NULL,
-    'USER',
-    FALSE
-);
-```
-
-### 11. 为既有写请求测试加入CSRF
-
-启用Spring Security后，`GET /employees`、`GET /employees/{id}` 及员工写接口都需要认证；原有POST、PUT、DELETE测试若没有CSRF令牌还会得到403。`EmployeeControllerWebTest`、`EmployeeCrudIntegrationTest` 和 `EmployeeSearchIntegrationTest` 的原有业务断言仍应保留，但须明确测试身份。三个类都增加 `WithMockUser` 导入及类级 `@WithMockUser(username = "employee-test-user")`；这只供旧业务回归测试使用，不代替本章的真实登录测试。两个包含员工写请求的类还须增加静态import：
-
-```java
-import static org.springframework.security.test.web.servlet.request
-        .SecurityMockMvcRequestPostProcessors.csrf;
-```
-
-然后给两个类中的每一个写请求加入 `.with(csrf())`。GET请求不用CSRF，但仍需要上述测试身份：
-
-```java
-mockMvc.perform(post("/employees")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestJson));
-
-mockMvc.perform(put("/employees/{id}", employeeId)
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(updateJson));
-
-mockMvc.perform(delete("/employees/{id}", employeeId)
-                .with(csrf()));
-```
-
-这不是关闭安全检查，而是让自动化测试具备已认证身份和有效令牌。第13章的两条事务PUT测试也位于 `EmployeeCrudIntegrationTest` 中，必须一起修改。第14章的 `EmployeeSearchIntegrationTest` 只有GET，增加测试身份即可。若把这些修改实际写入测试工程，应逐个运行旧测试，不能仅凭文档声称回归通过。
-
-`@WebMvcTest` 只加载指定的Web切片，不会按完整应用方式加载本章的 `SecurityConfig`，Spring Boot测试支持会为切片提供默认安全配置。因此 `EmployeeControllerWebTest` 的类注解可写成：
-
-```java
-import org.springframework.security.test.context.support.WithMockUser;
-
-@WebMvcTest(EmployeeController.class)
-@ActiveProfiles("test")
-@WithMockUser(username = "web-test-user")
-class EmployeeControllerWebTest {
-    // 保留原有三个测试
-}
-```
-
-`@WithMockUser` 只建立测试用SecurityContext，不执行数据库登录；它适合本来只验证Controller输入输出的切片测试。`SessionLoginTest` 必须走真实AuthenticationManager，不能用它代替登录验证。
-
-两个集成测试类也分别在文件顶部导入 `org.springframework.security.test.context.support.WithMockUser`，并在现有类声明前追加 `@WithMockUser(username = "employee-test-user")`；不要删除原有的 `@SpringBootTest`、`@AutoConfigureMockMvc`、`@ActiveProfiles` 和 `@Sql`。这样第12～14章的业务测试仍验证原契约，而下方 `SessionLoginTest` 另行验证真实账号查询、密码和Session恢复。
-
-### 11.5 先验证账号查询与BCrypt样例
-
-第15章15-03阶段尚未创建HTTP登录入口，可先分别运行下面两个完整测试文件。`AppUserMapperTest`继承第12章的`MySqlTestGuard`，只允许连接专用MySQL测试库；`test-data.sql`必须已包含启用的`tanaka`和停用的`disabled-user`。另一个测试不启动Spring，也不访问数据库。不要通过打印真实密码或哈希来收集证据。
-
-`src/test/java/com/example/employee/security/AppUserMapperTest.java`：
-
-```java
-package com.example.employee.security;
-
-import com.example.employee.entity.AppUser;
-import com.example.employee.mapper.AppUserMapper;
-import com.example.employee.support.MySqlTestGuard;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.jdbc.Sql;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-@SpringBootTest
-@ActiveProfiles("test")
-@Sql(scripts = "/test-data.sql",
-        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class AppUserMapperTest extends MySqlTestGuard {
-    @Autowired AppUserMapper mapper;
-
-    @Test
-    void readsKnownMissingAndDisabledAccounts() {
-        AppUser tanaka = mapper.findByUsername("tanaka");
-        assertThat(tanaka).isNotNull();
-        assertThat(tanaka.getEmployeeId()).isEqualTo(1001L);
-        assertThat(tanaka.isEnabled()).isTrue();
-        assertThat(mapper.findByUsername("missing")).isNull();
-        AppUser disabled = mapper.findByUsername("disabled-user");
-        assertThat(disabled).isNotNull();
-        assertThat(disabled.isEnabled()).isFalse();
-    }
-}
-```
-
-`src/test/java/com/example/employee/security/PasswordHashTest.java`：
-
-```java
-package com.example.employee.security;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-class PasswordHashTest {
-    private static final String HASH =
-            "$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC";
-
-    @Test
-    void sampleHashMatchesOnlyCorrectPassword() {
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        assertTrue(encoder.matches("TrainingPass123!", HASH));
-        assertFalse(encoder.matches("wrong-password", HASH));
-    }
-}
-```
-
-第一个测试证明Mapper读取及`enabled`字段映射，第二个测试证明BCrypt样例密码匹配；两者都**不能代替**下面的真实HTTP登录与Session测试。
-
-### 12. 新建SessionLoginTest.java
-
-```java
-package com.example.employee.security;
-
-import com.jayway.jsonpath.JsonPath;
-import com.example.employee.support.MySqlTestGuard;
-import jakarta.servlet.http.Cookie;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.mock.web.MockHttpSession;
-import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Sql(scripts = "/test-data.sql",
-        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class SessionLoginTest extends MySqlTestGuard {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @Test
-    void loginSessionIdentifiesCurrentUser() throws Exception {
-        MvcResult login = mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.username").value("tanaka"))
-                .andReturn();
-
-        MockHttpSession session =
-                (MockHttpSession) login.getRequest().getSession(false);
-        assertThat(session).isNotNull();
-
-        mockMvc.perform(get("/auth/me").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.username").value("tanaka"));
-        mockMvc.perform(get("/employees/1001").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id").value(1001));
-    }
-
-    @Test
-    void loginClearsPreLoginCsrfCookieAndRequiresFreshToken()
-            throws Exception {
-        MvcResult beforeLogin = mockMvc.perform(get("/auth/csrf"))
-                .andExpect(status().isOk())
-                .andReturn();
-        Cookie oldCookie = beforeLogin.getResponse().getCookie("XSRF-TOKEN");
-        assertThat(oldCookie).isNotNull();
-        String oldToken = JsonPath.read(
-                beforeLogin.getResponse().getContentAsString(),
-                "$.data.token");
-
-        MvcResult login = mockMvc.perform(post("/auth/login")
-                        .cookie(oldCookie)
-                        .header("X-XSRF-TOKEN", oldToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-        Cookie clearedCookie = login.getResponse().getCookie("XSRF-TOKEN");
-        assertThat(clearedCookie).isNotNull();
-        assertThat(clearedCookie.getMaxAge()).isZero();
-        MockHttpSession session =
-                (MockHttpSession) login.getRequest().getSession(false);
-        assertThat(session).isNotNull();
-
-        // 模拟客户端接受了清除Cookie的响应：不再发送oldCookie。
-        mockMvc.perform(post("/auth/logout")
-                        .session(session)
-                        .header("X-XSRF-TOKEN", oldToken))
-                .andExpect(status().isForbidden());
-        assertThat(session.isInvalid()).isFalse();
-
-        MvcResult refreshed = mockMvc.perform(get("/auth/csrf")
-                        .session(session))
-                .andExpect(status().isOk())
-                .andReturn();
-        Cookie freshCookie = refreshed.getResponse().getCookie("XSRF-TOKEN");
-        assertThat(freshCookie).isNotNull();
-        String freshToken = JsonPath.read(
-                refreshed.getResponse().getContentAsString(),
-                "$.data.token");
-        mockMvc.perform(post("/auth/logout")
-                        .session(session)
-                        .cookie(freshCookie)
-                        .header("X-XSRF-TOKEN", freshToken))
-                .andExpect(status().isNoContent());
-        assertThat(session.isInvalid()).isTrue();
-    }
-
-    @Test
-    void wrongPasswordReturnsSame401Message() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"wrong-password\"}"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message")
-                        .value("用户名或密码错误"));
-    }
-
-    @Test
-    void nonexistentAccountReturnsSame401Message() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"nobody\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message")
-                        .value("用户名或密码错误"));
-    }
-
-    @Test
-    void disabledAccountReturnsSame401Message() throws Exception {
-        Integer accountCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM app_users WHERE username = ?",
-                Integer.class, "disabled-user");
-        Integer disabledCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM app_users WHERE username = ? AND enabled = FALSE",
-                Integer.class, "disabled-user");
-        assertThat(accountCount).isEqualTo(1);
-        assertThat(disabledCount).isEqualTo(1);
-
-        mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"disabled-user\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message")
-                        .value("用户名或密码错误"));
-    }
-
-    @Test
-    void currentUserWithoutSessionReturns401() throws Exception {
-        mockMvc.perform(get("/auth/me"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void employeeApiRequiresLoginAndWriteRequiresCsrf() throws Exception {
-        mockMvc.perform(get("/employees/1001"))
-                .andExpect(status().isUnauthorized());
-
-        MvcResult login = mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-        MockHttpSession session =
-                (MockHttpSession) login.getRequest().getSession(false);
-        assertThat(session).isNotNull();
-
-        mockMvc.perform(get("/employees/1001").session(session))
-                .andExpect(status().isOk());
-
-        String createJson = "{\"name\":\"Sato\","
-                + "\"department\":\"Sales\","
-                + "\"email\":\"session-new-employee@example.com\"}";
-        assertThat(countByEmail("session-new-employee@example.com"))
-                .isZero();
-        mockMvc.perform(post("/employees")
-                        .session(session)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createJson))
-                .andExpect(status().isForbidden());
-        assertThat(countByEmail("session-new-employee@example.com"))
-                .isZero();
-        mockMvc.perform(post("/employees")
-                        .session(session)
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                .content(createJson))
-                .andExpect(status().isCreated());
-        assertThat(countByEmail("session-new-employee@example.com"))
-                .isEqualTo(1);
-    }
-
-    @Test
-    void loginWithoutCsrfReturns403() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void logoutInvalidatesAuthenticatedSession() throws Exception {
-        MvcResult login = mockMvc.perform(post("/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"tanaka\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-        MockHttpSession session =
-                (MockHttpSession) login.getRequest().getSession(false);
-        assertThat(session).isNotNull();
-
-        mockMvc.perform(get("/auth/me").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.username").value("tanaka"));
-
-        mockMvc.perform(post("/auth/logout")
-                        .session(session)
-                        .with(csrf()))
-                .andExpect(status().isNoContent());
-        assertThat(session.isInvalid()).isTrue();
-        mockMvc.perform(get("/auth/me"))
-                .andExpect(status().isUnauthorized());
-        mockMvc.perform(get("/employees/1001"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    private int countByEmail(String email) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM employees WHERE email = ?",
-                Integer.class, email);
-        return count == null ? 0 : count;
-    }
-}
-```
-
-上述测试的创建邮箱不在 `test-data.sql` 的两条员工记录中。`JdbcTemplate` 在请求前、缺CSRF后、成功创建后分别读取数据库件数，避免只看HTTP状态而漏掉持久化结果。令牌更新测试先取得登录前的CSRF Cookie与响应体令牌；登录响应应清除旧Cookie。模拟客户端接受清除响应后，旧请求头单独发起logout会403，重新GET令牌并携带新Cookie与请求头才会204。`JsonPath.read(..., "$.data.token")` 只从测试响应中取令牌，不把值打印或保存到日志。`MockMvc` 中的 `MockHttpSession` 是测试对象；退出后检查它已失效，并让新的受保护请求得到401。旧 `JSESSIONID` 在真实Servlet容器中的重送效果还需按前面的Postman退出步骤验证，不能把MockMvc新请求冒充为旧Cookie重送。
-
-`RegistrationLoginTest.java`的完整代码位于[主线15-08](../mainline/15_session_login.md#15-08-从注册到退出的测试与交接)，先注册一个初始化脚本中不存在的用户名，再用同一用户名真实登录；不要用本节只覆盖预置账号的`SessionLoginTest`代替注册验收。
-
-### 13. 配置文件与第15章完成核对
-
-本章沿用第14章的`application.yml`、`application-test.yml`、数据源、MyBatis Mapper路径和日志设置，不为登录另建一份重复配置。测试库仍须由第12章的`MySqlTestGuard`限制为专用MySQL库；不得让`test-data.sql`的`DROP TABLE`落到个人或共享库。会话超时、Cookie的Secure/SameSite等配置不是本章新建登录所必需，按部署环境评审，原理见[A15-2](../appendix/A15_02_session_cookie_csrf.md)。
-
-| 核对点 | 第15章末应观察到 |
-| --- | --- |
-| 匿名员工详情 | 401；未进入Controller业务方法 |
-| 公开注册 | 新用户名201，数据库只存密码哈希、固定USER角色与空员工关联；重复用户名409，非法输入400 |
-| 正确/错误/不存在/停用账号 | 正确200；其余统一401，不泄露账号是否存在 |
-| Session恢复 | 登录响应设置JSESSIONID；同Cookie访问`/auth/me`为200，无Cookie为401 |
-| CSRF | 无令牌写请求403；登录后旧令牌失效，新令牌可用 |
-| Logout | 204；旧Session ID不能再恢复认证 |
-| 员工业务 | 第13章事务、第14章搜索分页和既有CRUD测试保留 |
-
-R15仅是第15章末状态；第16章才加入USER/ADMIN的URL角色矩阵、`@EnableMethodSecurity`与`EmployeeAccess`。
+与第8章现有全局异常处理并存，参数校验400继续沿用原有映射；本类只处理重名409与登录失败401。JWT过滤链中的401由`SecurityConfig`处理，不会进入MVC的`@RestControllerAdvice`。
+
+## 11. 手工验收
+
+先在Eclipse启动，再用Postman：
+- `POST /auth/register`，JSON用户名/密码，成功201；MySQL的`password_hash`不等于明文，`role=USER`且`employee_id=NULL`。同名409，非法输入400。
+- `POST /auth/login`，正确密码200且`data.accessToken`、`data.tokenType=Bearer`、`data.expiresIn=900`；错误密码或停用账号401。
+- 新请求`GET /auth/me`加`Authorization: Bearer <accessToken>`，预期200；不带令牌401，改动令牌任一字符401，过期401。`GET /employees/1001`带令牌，未进入第16章前只要求认证通过，业务结果依员工数据。
+- 本地退出删除Postman变量中的Token；重送已签发且未过期的旧Token仍可能成功，这是无状态方案的边界，不能声称服务器已吊销。

@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: ${BATCH_DB_URL:jdbc:mysql://localhost:3306/attendance_batch_training?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Tokyo}
+    username: ${BATCH_DB_USER:batch_training}
+    password: ${BATCH_DB_PASSWORD:}
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: never
+app:
+  batch:
+    output-dir: ${BATCH_OUTPUT_DIR:./output}
+    skip-invalid: false
+  schedule:
+    enabled: false

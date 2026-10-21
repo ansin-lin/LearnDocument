@@ -1,6 +1,6 @@
 # B07 Spring Boot 跨域问题与解决方案
 
-前置：了解 [HTTP 请求与响应](../../../web_basics/01_http_rest_cookie_cors.md)，并完成 Spring Boot 第 3～4 章的 Controller 基础。本章用一个**不登录的独立实验接口**认识 CORS；若实际项目使用 Session、Cookie 和 CSRF，继续阅读 [A16 跨源 Session 与 CORS 实验](A16_cross_origin_session_cors.md)，不要直接套用本章的无凭据配置。
+前置：了解 [HTTP 请求与响应](../../../web_basics/01_http_rest_cookie_cors.md)，并完成 Spring Boot 第 3～4 章的 Controller 基础。本章用一个**不登录的独立实验接口**认识 CORS；若实际项目使用 Session、Cookie 和 CSRF，必须另行评审浏览器凭据、Cookie属性和安全链配置，不要直接套用本章的无凭据配置。
 
 完成本章后，你应能从浏览器 Network 判断问题是否真的属于跨域，给指定前端来源开放必要的 API，并证明允许与未允许的来源得到不同结果。
 
@@ -111,7 +111,7 @@ Access-Control-Request-Headers: content-type
 
 这里 `Access-Control-Request-Method` 是浏览器要发送的**实际方法**，不是说业务接口应改成 OPTIONS。服务端规则若只允许 GET，POST 预检就不能通过。要开放 POST，应先确认业务接口确实存在，再把该路径的 `allowedMethods` 加入 `POST`，根据实际预检头审查 `allowedHeaders`。预检成功也不代表实际请求一定成功：后续仍可能因为参数、认证或业务规则返回 400、401、403 等。
 
-若工程启用了 Spring Security，预检可能在 MVC 处理前被安全过滤器链拒绝。此时需要使 Security 的 CORS 处理与 MVC 规则协作；不能用 `permitAll()` 开放业务接口来“修复跨域”。带 Session 的完整配置、`http.cors(withDefaults())` 的位置、Cookie 和 CSRF 验证见 [A16](A16_cross_origin_session_cors.md)。
+若工程启用了 Spring Security，预检可能在 MVC 处理前被安全过滤器链拒绝。此时需要使 Security 的 CORS 处理与 MVC 规则协作；不能用 `permitAll()` 开放业务接口来“修复跨域”。带 Session 的跨源请求还需单独核对`http.cors(...)`、浏览器Cookie策略和CSRF，本基础实验不提供可直接套用的配置。
 
 ## 五、按证据排查，而不是先加通配符
 

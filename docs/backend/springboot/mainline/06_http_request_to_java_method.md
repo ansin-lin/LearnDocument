@@ -577,7 +577,7 @@ Spring的singleton描述Bean在容器中的复用范围，不等于要求开发�
 | Response Status | 显示200、400等状态 | 判断HTTP层结果 |
 | Response Body | 显示返回文本或JSON | 核对业务数据 |
 | Response Headers | 查看 `Content-Type` 等响应头 | 核对响应元数据 |
-| Cookies | 查看当前域名保存的Cookie | 第15章用于观察Session；不要把会话值写入共享证据 |
+| Cookies | 查看当前域名保存的Cookie | 本章用于观察普通Cookie；第15章JWT认证使用Authorization Bearer，不靠Cookie恢复身份 |
 
 选择Body的 **raw → JSON** 时，Postman通常会自动加入 `Content-Type: application/json`；仍要到Headers中确认实际发送值。Postman界面版本可能略有不同，但方法、URL、Params、Headers、Body和响应区的职责不变。
 

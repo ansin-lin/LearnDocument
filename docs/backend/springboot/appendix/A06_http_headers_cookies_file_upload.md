@@ -1,6 +1,6 @@
 # A06 Header、Cookie与文件上传
 
-本附录只讲三类HTTP扩展输入：请求头、Cookie和multipart文件。路径参数、查询参数与JSON请求体仍以第6章为主；认证授权、Session登录和文件持久化不在本附录中展开。
+本附录只讲三类HTTP扩展输入：请求头、Cookie和multipart文件。路径参数、查询参数与JSON请求体仍以第6章为主；第15章的JWT Bearer认证与文件持久化不在本附录中展开。
 
 ## 一、前置知识与完成结果
 
@@ -117,7 +117,7 @@ HTTP Header名称在协议语义上不区分大小写，但项目仍应统一写
 
 `@CookieValue` 同样属于Spring Web注解，写在Controller方法参数上。本例从请求的Cookie头中读取名为 `language` 的Cookie值。`value` 是Cookie名称，`required = false` 表示缺少时允许进入方法并得到null；默认 `required = true` 时缺少Cookie通常返回400。
 
-Cookie由浏览器保存并随符合规则的请求发送，但仍是HTTP请求数据。第15章登录使用的JSESSIONID通常由Servlet容器和Spring Security读取并恢复Session，业务Controller不需要自行读取、解析或记录JSESSIONID。
+Cookie由浏览器保存并随符合规则的请求发送，但仍是HTTP请求数据。本附录的`language` Cookie仅作输入绑定实验；第15章认证使用显式`Authorization: Bearer`请求头，不使用`JSESSIONID`恢复身份。
 
 ### 4. multipart/form-data与@RequestPart
 

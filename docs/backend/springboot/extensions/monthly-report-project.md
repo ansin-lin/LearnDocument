@@ -2,7 +2,7 @@
 
 ## 交付目标与开始状态
 
-在[第18章完成运行检查的员工管理API](../mainline/18_deployment_operations_check.md)的独立副本中，实现管理员申请指定月份的员工变更账票、查询处理状态和下载XLSX。已有`employees`、`employee_change_logs`、`app_users`及登录/权限链保持不变。先通过[Redis](redis.md)、[Spring Batch](spring-batch.md)、[账票](reporting.md)的单点练习，再开始整合；不要在主线仓库中直接做破坏性实验。
+在[第18章完成运行检查的员工管理API](../mainline/18_deployment_operations_check.md)的独立副本中，实现管理员申请指定月份的员工变更账票、查询处理状态和下载XLSX。已有`employees`、`employee_change_logs`、`app_users`及登录/权限链保持不变。先通过[Redis](redis.md)、[Spring Batch](spring-batch.md)和[六章账票课程](01_report_overview.md)的单点练习，再开始整合；不要在主线仓库中直接做破坏性实验。
 
 完成标准：从干净的个人环境部署后，给定同一组履历能得到件数、顺序和时间均正确的文件；并发同月请求只产生一项有效申请；失败有证据、可恢复；Redis 停机不损害申请和下载；未授权者不能获取文件。所有账号、履历和截图用虚构或脱敏数据。
 
@@ -17,7 +17,7 @@
 | 数据 | `employee_change_logs` 的 `id, employee_id, action, detail, created_at`；按时间、ID 升序 |
 | 空月 | 正常完成，表头保留，件数 0 |
 | 重复 | 同月同格式版本只允许一个有效申请；已完成直接返回已有 ID，失败可显式重试，不生成第二份“有效结果” |
-| 输出 | `monthly-employee-changes-YYYY-MM-v1.xlsx`，工作表“员工变更”，内容规则遵照[账票规格](reporting.md) |
+| 输出 | `monthly-employee-changes-YYYY-MM-v1.xlsx`，工作表“员工变更”，内容规则遵照[账票设计](02_report_design_and_architecture.md)和[交付规则](05_report_delivery_and_batch.md) |
 
 若实际项目需要“历史快照名称”“申请者仅可看本人账票”或“报表截止日补录”，先改规格、数据模型与测试，不用实现者临场猜测。
 

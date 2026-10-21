@@ -11,11 +11,11 @@
 | 接口与数据表达扩展 | 调用外部API、调整JSON、读取Header/Cookie、上传文件、返回HTML、使用校验分组、处理日期时间或独立MyBatis配置 | B05、A03-1、A05、A06、A08、A09-1、A09-2 |
 | 既存项目识读与Spring机制 | 接手陌生项目、识别旧结构、阅读Lombok/JPA、查注解、多Bean排错、判断共通处理放在哪一层 | B01～B04、注解速查、A04 |
 | 质量保证、开发效率与故障排查 | 调整日志、辨认请求处理时机、使用AOP记录方法耗时、补充测试断言、比较H2与MySQL测试、使用JUnit生命周期与参数化测试、使用本地开发辅助工具，或根据现象定位构建、HTTP、数据库、安全及部署问题 | A03-2、A11-1、A11-2、A11-3、A12-1、A12-2、A12-3、B06 |
-| 认证、授权与跨源联调 | 深入理解Session登录、方法安全、权限测试，或排查浏览器跨源Cookie | A15-1、A15-2、A16-1、A16-2、A16跨源实验 |
+| 跨域基础 | 用不登录的独立接口识别浏览器同源限制与CORS配置 | B07 |
 | 事务与并发控制 | 调查多步写入、隔离现象、丢失更新、锁等待和死锁，选择约束、原子UPDATE、乐观锁或悲观锁 | A13-1～A13-3、B06 |
 | 配置、交付与运维识读 | 调查配置覆盖、检查构建产物、阅读Linux部署手顺、识别Actuator和数据库迁移组件 | A17、A18-1、A18-2 |
 
-同一个现场任务可能跨越多条路线。例如“服务器上的更新接口返回403”应先用B06确定是Security还是部署问题，再回到第15～16章检查认证、CSRF和权限；只有证据指向服务器配置时才进入A17和A18-1。
+同一个现场任务可能跨越多条路线。例如“服务器上的更新接口返回403”应先用B06确定是Security还是部署问题，再回到第15～16章检查Bearer认证、角色与本人权限；只有证据指向服务器配置时才进入A17和A18-1。
 
 ## 二、附录知识点与完成成果
 
@@ -38,11 +38,6 @@
 | [A13-1 事务原理与Spring事务机制](A13_01_transaction_spring_mechanisms.md) | 第13章 | 事务边界、ACID、`@Transactional`默认值、属性与传播方式 | 识别业务事务边界及异常处理风险 |
 | [A13-2 并发更新与锁](A13_02_concurrent_updates_locks.md) | 第13章 | 唯一约束、原子UPDATE、乐观锁、悲观锁、锁等待与死锁 | 根据业务不变量选择并发控制机制，并用两个会话验证结果 |
 | [A13-3 隔离级别与MVCC](A13_03_isolation_mvcc.md) | 第13章 | 并发读取现象、隔离级别、快照读与当前读 | 解释多个事务读取同一数据时的可见结果 |
-| [A15-1 Spring Security认证机制与核心Bean](A15_01_spring_security_authentication.md) | 第15章 | Filter Chain、AuthenticationManager、Provider、UserDetailsService、PasswordEncoder | 解释登录组件调用链并定位Bean或账号认证问题 |
-| [A15-2 Session、Cookie与CSRF机制](A15_02_session_cookie_csrf.md) | 第15章 | SecurityContext持久化、JSESSIONID、Session策略与CSRF令牌生命周期 | 分清登录态和CSRF令牌，定位跨请求401或写请求403 |
-| [A16-1 URL权限、方法权限与数据范围](A16_01_method_security_data_scope.md) | 第16章 | URL/方法授权、代理、可信身份、SQL数据范围设计 | 根据访问目标选择授权位置并发现越权风险 |
-| [A16-2 安全测试、回归与排障](A16_02_security_testing_and_troubleshooting.md) | 第15～16章 | Security Test、MockMvc、401/403来源、旧测试影响调查 | 为权限规格编写可解释的测试并整理回归证据 |
-| [A16 跨源Session与CORS实验](A16_cross_origin_session_cors.md) | 第15～16章 | Origin、OPTIONS预检、MVC与Security CORS配置、携带Cookie的跨源请求 | 在浏览器中验证跨源登录、权限与CSRF的独立边界，实验后恢复同源主线 |
 | [A17 配置、构建与交付进阶](A17_configuration_build_delivery_advanced.md) | 第17章 | 配置覆盖调查、`@ConfigurationProperties`、产物摘要、外部配置模板、交付清单 | 确认最终生效配置和构建来源，整理不含秘密的交付资料 |
 | [A18-1 Linux部署与运维手顺参考](A18_01_linux_deployment_operations_reference.md) | 第18章及Linux基础 | systemd、目录权限、发布检查、切り戻し、端口/日志调查、反向代理与HTTPS边界 | 阅读和执行受控部署手顺，保留发布、验证和回退记录 |
 | [A18-2 常见运行与数据库迁移组件识读](A18_02_operations_components_reading.md) | 第9、17、18章 | Actuator、Flyway、Liquibase、管理端点安全、迁移历史与职责冲突 | 在既存项目中找到监控和迁移入口，说明当前组件及其替代流程 |
@@ -52,7 +47,7 @@
 | [B04 日本既存Spring项目的新旧结构识读](B04_legacy_spring_project_reading.md) | B02 | Boot 2/3/4差异、`javax`与`jakarta`、JAR/WAR、外部Tomcat、XML与Java Config | 根据版本证据识别旧结构，不进行危险的机械迁移 |
 | [B05 Spring Boot调用外部REST API](B05_external_api_restclient.md) | 第4、6、7、11、12章 | `RestClient`、配置、超时、Header与JSON、错误分类、Mock测试 | 在员工业务中组合本地数据与HR状态并提交测试证据 |
 | [B06 Spring Boot常见问题与排查索引](B06_troubleshooting_review_index.md) | 完成相关主线章节及B01～B05 | 构建、启动、HTTP、数据库、安全、外部API、部署的分阶段排查 | 从最早错误和可重复现象定位根因并提交回归结果 |
-| [B07 Spring Boot跨域问题与解决方案](B07_spring_boot_cors_basics.md) | 第3～4章及HTTP基础 | 同源、Origin、局部/全局CORS配置、OPTIONS预检、浏览器验证 | 为指定前端来源开放实验API并排查预检；带Session场景继续A16 |
+| [B07 Spring Boot跨域问题与解决方案](B07_spring_boot_cors_basics.md) | 第3～4章及HTTP基础 | 同源、Origin、局部/全局CORS配置、OPTIONS预检、浏览器验证 | 为指定前端来源开放不登录的实验API并排查预检；带Session的跨源配置不在此基础实验内 |
 | [Spring项目常见注解速查手册](Appendix_spring_annotation_reference.md) | 遇到陌生注解时使用 | Bean、配置、MVC、Validation、异常、事务、安全、JSON、测试和生命周期注解 | 根据import、位置、处理者和触发时机查阅，再回到对应主线章节 |
 
 ## 三、三条常用组合路线

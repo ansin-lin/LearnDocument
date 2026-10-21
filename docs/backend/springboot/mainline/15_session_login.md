@@ -1,83 +1,52 @@
-# 第15章 Spring Security：注册、认证与Session登录
+# 第15章 Spring Security：数据库注册与JWT Bearer认证
 
-第14章完成后，Employee Management的员工接口仍没有登录保护。本章在原工程中完成一条连续的路径：创建数据库账号表 → 注册普通账号 → 用这个账号提交JSON登录 → 在后续请求中恢复身份 → 退出。第16章才根据角色和员工关联决定“能做什么、能看谁”。本章使用Java 17、Spring Boot 4.1.1、MyBatis Starter 4.1.0和MySQL 8.0；在Eclipse启动，用Postman验证。最终文件可在完成各阶段后与[R15源码](../reference/R15_session_login_complete_source.md)核对；认证组件和Session机制的深入讨论分别见[A15-1](../appendix/A15_01_spring_security_authentication.md)与[A15-2](../appendix/A15_02_session_cookie_csrf.md)。
+第14章的Employee Management已能查询、修改员工，但任何请求都没有身份检查。本章沿用同一工程和数据库，完成“公开注册USER账号→用户名密码登录→签发短期JWT→后续请求带Bearer证明身份”。第16章再决定角色能做什么、能读哪一名员工。环境为Java 17、Spring Boot 4.1.1、MyBatis Starter 4.1.0、MySQL 8；Eclipse启动、Postman观察响应、数据库客户端核对记录。最终源码在[R15](../reference/R15_session_login_complete_source.md)，正文可以独立完成，不需要先阅读参考文件。
 
-本章只有`POST /auth/login`这一条JSON登录入口，不启用内置表单登录或HTTP Basic。注册接口是本地教学项目的公开自助注册示例；实际项目是否开放注册，需要按业务规格决定。
-
-## 15-01 Spring Security在项目中做什么
-
-原来的请求直接进入业务代码：
-
-```text
-客户端 → EmployeeController → Service → Mapper → MySQL
-```
-
-只在前端隐藏“员工列表”按钮，并不能阻止别人直接发送`GET /employees`。Spring Security是Spring应用的安全框架。在本项目中，它提供四类能力：在Controller之前检查HTTP请求、验证账号密码并建立身份、按身份决定接口是否可访问、处理CSRF保护与退出。
-
-Spring Security使用Servlet过滤器参与请求处理。过滤器可以继续传递请求，也可以在Controller之前拒绝它。为了先理解位置，把一次请求简化为：
-
-```text
-Postman或浏览器 → Spring Security过滤器 → Spring MVC Controller → 业务层
-                                  └─ 拒绝时直接返回401/403
-```
-
-**现在需要理解：** 安全过滤器位于Controller之前，可以让请求继续，也可以拒绝请求；认证确认“是谁”，授权判断“能做什么、能看哪条数据”。本章先让项目知道请求是谁，第16章再按角色和本人数据限制操作。
-
-**先认识名称，暂不展开内部机制：** `HttpSecurity`用于配置安全规则，`SecurityFilterChain`是构建后的过滤链；标有`@Bean`的方法在启动时创建它，不是每次请求都重新创建。第2章已介绍Bean与依赖注入，15-02会结合代码解释这三个名称。更底层的协作见[A15-1](../appendix/A15_01_spring_security_authentication.md)。
-
-登录成功还要解决一个问题：**下一次独立请求怎样知道刚才是谁登录的？** 本项目会用服务器会话（`HttpSession`）和客户端Cookie（`JSESSIONID`）连接两次请求。这里先记住两者的名称；如何保存、恢复和验证身份留到15-06。Cookie不是密码，也不是完整用户对象。
-
-本章将沿着同一条问题链推进：
-
-```text
-为什么需要登录？
-       ↓
-如何阻止未登录请求？
-       ↓
-账号数据从哪里来？
-       ↓
-如何验证密码？
-       ↓
-如何保存登录状态？
-       ↓
-下一次请求如何恢复？
-       ↓
-如何安全退出？
-```
-
-本节不修改文件。画出匿名员工请求进入Controller之前被拒绝的路径，并说出认证与授权分别回答什么问题；跨请求身份恢复将在15-06实际验证。
-
-## 15-02 完整案例：先让匿名员工请求返回401
-
-这一阶段只有一个目标：`GET /health`仍可访问，匿名`GET /employees/1001`在进入Controller之前返回401。先在`EmployeeController`详情方法首行打断点，记录加入Security前的结果。
-
-先把要实现的访问规则写成业务语言，后面再找对应代码：
-
-- `employees`相关请求必须先登录。
-- 其他请求暂时允许匿名访问，例如`GET /health`；这只是当前阶段的规则。
-- 未登录却访问员工接口时返回HTTP 401，不进入`EmployeeController`。
-
-在根目录`pom.xml`的`<dependencies>`中加入以下两个依赖并在Eclipse刷新Maven项目；运行依赖参与应用，测试依赖只供后面的MockMvc测试使用。版本由Spring Boot 4.1.1管理：
+先在第14章工程的`pom.xml`现有`<dependencies>`中增加下面两项，保留原有依赖：
 
 ```xml
-<!-- 功能：为应用加入Spring Security的请求过滤与认证能力；版本由Spring Boot管理。 -->
+<!-- 功能：加入请求过滤、密码编码等Spring Security基础能力。 -->
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-security</artifactId>
 </dependency>
-<!-- 功能：只在测试时提供Security与MockMvc的测试辅助工具。 -->
+<!-- 功能：加入Bearer JWT验证能力，并传递引入JOSE与OAuth2 Core模块。 -->
 <dependency>
     <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-security-test</artifactId>
-    <scope>test</scope>
+    <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
 </dependency>
 ```
 
-**功能说明：** 两个`dependency`均由`groupId`和`artifactId`标识；`spring-boot-starter-security`在应用运行时加入安全能力，`spring-boot-starter-security-test`通过`scope=test`限定在测试代码中使用。
+- `dependency`：放在原有`<dependencies>`内部，`groupId`和`artifactId`共同确定要加入的库；这里是新增项，不替换第14章依赖。
+- `spring-boot-starter-security`：提供Spring Security的请求过滤、认证与密码编码基础能力。
+- `spring-boot-starter-security-oauth2-resource-server`：提供Bearer JWT认证所需的资源服务器，并间接引入`spring-security-oauth2-jose`和`spring-security-oauth2-core`；`JwtDecoder`与`OAuth2TokenValidator`分别来自后两个模块。
 
-**理解要点：** 刷新Maven依赖后还需重启应用，安全过滤链才会参与请求；加入测试依赖不代表已经完成认证测试。
+本章使用Spring Boot 4.1.1父工程管理这些依赖的版本，不要自行给两项Starter指定版本。保存后在Eclipse中右键项目，选择**Maven → Update Project**，等待下载完成，再重新启动项目。如果`JwtDecoder`无法导入，或启动时报找不到`OAuth2TokenValidator`，先确认当前启动工程的Maven Dependencies中包含上述模块。完整`pom.xml`可对照[R15](../reference/R15_session_login_complete_source.md)。
 
-新建`src/main/java/com/example/employee/config/SecurityConfig.java`，这是本阶段的**完整文件**：
+## 15-01 Security是什么，为什么要放在Controller之前
+
+没有后端保护时，即使前端隐藏了员工列表按钮，任何人仍可直接发送`GET /employees`。Spring Security把检查放在Controller之前：**认证（Authentication）**确认“请求是谁”，**授权（Authorization）**判断“这个身份能否做当前操作”。本章先建立身份，第16章再按角色和员工归属限制操作。
+
+```text
+客户端HTTP请求
+    ↓
+Spring Security FilterChain【框架内部】
+    ├─ 缺身份或权限不足 → 401或403，不进入Controller
+    ↓
+DispatcherServlet【Spring MVC内部】
+    ↓
+Controller【项目代码】→ Service【项目代码】→ Mapper【MyBatis代理】→ MySQL
+```
+
+这是简化的请求路径，不表示每个请求都会访问数据库。尚未登录访问受保护接口是401；第16章中已登录USER访问仅ADMIN可用的接口是403；已登录ADMIN且业务查询成功才可能得到200。401表示需要有效身份，403表示已有身份但当前操作被拒绝。`HttpSecurity`、`SecurityFilterChain`、`@Bean`此时先认识名称：前者在启动时配置规则，`http.build()`建立过滤链，`@Bean`交给Spring管理；15-02结合代码说明。它们都不是一次登录请求的账号密码。
+
+学习路线：匿名请求被挡住 → 账号来自MySQL → 注册时哈希密码 → 用数据库资料验证登录 → 签发JWT → 新请求验证Bearer → 过期与退出。JWT只是带签名的声明，不是加密保险箱；不要存密码或敏感员工资料。
+
+## 15-02 先让匿名员工请求返回401
+
+先立三条规则：`/health`与`/error`可访问；`/auth/register`与`/auth/login`稍后允许匿名；其余请求暂时必须有身份。确认已在本章开头为原第14章工程加入两项Security依赖，其他依赖不删。下列阶段配置在JWT编解码器尚未建立时也能启动；到15-08**整体替换**为最终配置，不能并存两条`SecurityFilterChain`。
+
+`src/main/java/com/example/employee/config/SecurityConfig.java`：
 
 ```java
 package com.example.employee.config;
@@ -85,129 +54,152 @@ package com.example.employee.config;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
-// 功能：声明本类提供Spring容器使用的安全配置。
+// 功能：标记安全配置类，供Spring在启动时读取其中的Bean定义。
 @Configuration
 public class SecurityConfig {
-    // 功能：把方法返回的过滤链注册为Bean。
+    // 功能：建立密码编码器；注册时生成BCrypt哈希，认证时核对密码。
     @Bean
-    // 功能：接收Spring提供的配置对象，在应用启动时组装请求规则。
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    // 功能：把下方HTTP访问规则构建成应用实际使用的过滤链。
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
-        // 功能：先规定需要登录的路径，再允许其余路径匿名访问。
-        http.authorizeHttpRequests(authorize -> authorize
-                    .requestMatchers("/auth/me", "/employees", "/employees/**")
+        // 功能：本项目使用显式Bearer头而非认证Cookie，故不使用CSRF令牌。
+        http.csrf(AbstractHttpConfigurer::disable)
+            // 功能：不在服务器Session中保存每次请求的认证身份。
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // 功能：关闭框架自动提供的表单登录和HTTP Basic入口。
+            .formLogin(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            // 功能：按顺序声明匿名、需认证和兜底拒绝的路径。
+            .authorizeHttpRequests(a -> a
+                .requestMatchers("/health", "/error",
+                        "/auth/register", "/auth/login").permitAll()
+                .requestMatchers("/auth/me", "/employees", "/employees/**")
                     .authenticated()
-                    .anyRequest().permitAll())
-                // 功能：未登录访问受保护路径时发送HTTP 401。
-                .exceptionHandling(exceptions -> exceptions
-                    .authenticationEntryPoint((request, response, exception) ->
-                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
-                // 功能：关闭本项目不用的内置表单登录入口。
-                .formLogin(AbstractHttpConfigurer::disable)
-                // 功能：关闭本项目不用的HTTP Basic认证入口。
-                .httpBasic(AbstractHttpConfigurer::disable);
-        // 功能：把上面的规则构建成供请求使用的安全过滤链。
+                .anyRequest().denyAll())
+            // 功能：匿名访问受保护路径时返回401 JSON，而不是跳转登录页。
+            .exceptionHandling(e -> e.authenticationEntryPoint((request, response, ex) -> {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                response.setCharacterEncoding("UTF-8");
+                response.getWriter().write("{\"success\":false,\"message\":\"请先登录\",\"data\":null}");
+            }));
+        // 功能：完成配置并将过滤链交给Spring。
         return http.build();
     }
 }
 ```
 
-**功能说明：本例的类型、对象、注解和方法**
+- `@Configuration`、`@Bean`：前者标记启动时读取的配置类；后者把方法返回值注册为Spring Bean。`passwordEncoder()`产生一个`PasswordEncoder`，`securityFilterChain(...)`产生一个`SecurityFilterChain`，不是每次HTTP请求都执行这两个Bean方法。
+- `HttpSecurity http`、`SecurityFilterChain`：前者是Spring传入的规则配置对象；`http.build()`把规则建成后者，供后续HTTP请求通过。`throws Exception`使配置失败直接表现为启动失败。
+- `PasswordEncoder`、`BCryptPasswordEncoder`：前者是密码编码接口，后者是本例的BCrypt实现；注册服务会调用`encode(...)`，认证组件会调用`matches(...)`。
+- `csrf(AbstractHttpConfigurer::disable)`、`sessionManagement(...)`：前者关闭CSRF过滤，理由仅限本项目不使用自动附加的认证Cookie；后者用`SessionCreationPolicy.STATELESS`要求不把认证身份存入Session。`AbstractHttpConfigurer::disable`是调用该配置器`disable()`的简写。
+- `formLogin(...)`、`httpBasic(...)`：关闭两种不属于本项目规格的内置登录入口；本章后面只提供JSON登录，并让后续请求带Bearer。
+- `authorizeHttpRequests(...)`、`requestMatchers(...)`：按书写顺序选择路径；`permitAll()`允许匿名，`authenticated()`要求已认证，`denyAll()`拒绝其余未列出的路径。这些规则不负责读取登录JSON或验证密码。
+- `exceptionHandling(...)`、`authenticationEntryPoint(...)`：指定“尚未认证却访问受保护接口”的HTTP出口；回调中的`response`是本次响应，`SC_UNAUTHORIZED`是401，`MediaType.APPLICATION_JSON_VALUE`表示JSON内容类型。它不处理业务Controller内部异常。
+- 当前状态：现在还没有登录接口，匿名员工请求必为401。`STATELESS`表示不把身份存Session；最终请求将使用Bearer头。关闭CSRF只适用于本项目不使用认证Cookie的最终方案，不是“所有REST接口都无需CSRF”的通则。
+- 验证：Eclipse运行启动类。Postman请求`GET http://localhost:8080/health`（无参数/请求体）预期200和原健康响应；`GET http://localhost:8080/employees/1001`（无参数/请求体）预期401 JSON。在`EmployeeController`详情方法首行设断点，匿名请求不应命中；若命中，先检查是否启动了更新依赖后的工程和当前`SecurityConfig`。
 
-`@Configuration`告诉Spring这是配置类；`@Bean`使返回的`SecurityFilterChain`成为容器对象。方法名`securityFilterChain`只是Bean方法名称，不是HTTP接口。参数`HttpSecurity http`是Spring注入的配置对象；`throws Exception`让构建配置的错误导致启动失败；`http.build()`生成过滤链并返回。
+## 15-03 登录账号与员工资料分开
 
-再按代码顺序读每个配置调用：
+`employees`是业务员工，`app_users`是系统账号；一个账号可暂时没有员工关联。注册不能自选ADMIN，密码只保存BCrypt哈希。按下列顺序准备MySQL账号表、实体和Mapper；这些代码沿用前面MyBatis知识，重点看`role`、`enabled`、`employee_id`的业务意义。
 
-- `authorizeHttpRequests(authorize -> ...)`接收一个配置回调；`authorize`是在这里添加访问规则的对象，不是登录用户。该方法让过滤链按照后面的规则检查请求。
-- `requestMatchers(String... paths)`在此接收三个路径字符串。`/employees`匹配列表路径，`/employees/**`匹配其子路径，`/auth/me`是稍后新增的身份查询接口。此处没有限定HTTP方法，因此匹配路径上的GET、POST等请求；它只选择请求，后面的`authenticated()`才指定要求。
-- `authenticated()`不接收参数，含义是“匹配请求必须已有认证身份”。它**不会自行读取本次JSON密码并执行登录**。目前还没有登录接口，所以匿名员工请求必然不能通过。
-- `anyRequest().permitAll()`让前面没有匹配的请求暂时可匿名访问，例如`/health`。规则从上到下匹配；如果把兜底规则放在前面，员工路径就不能按预期受保护。`permitAll()`只是不要求登录，不表示跳过CSRF等其他过滤器。第16章会按最终授权规格收紧兜底规则。
-- `exceptionHandling(exceptions -> ...)`配置安全异常如何变成HTTP响应。它不是业务层的`@RestControllerAdvice`。
-- `authenticationEntryPoint(...)`接收一个`AuthenticationEntryPoint`实现。内层Lambda的`request`是当前`HttpServletRequest`，`response`是当前`HttpServletResponse`，`exception`是认证异常。当前只使用`response`；当匿名用户请求必须登录的资源时，`sendError(SC_UNAUTHORIZED)`发送401。常量`SC_UNAUTHORIZED`的整数值是401；这一行不验证密码，也不保证生成项目统一JSON。它明确选择API的401响应，而不是跳转HTML登录页面。
-- `formLogin(AbstractHttpConfigurer::disable)`关闭框架内置的表单认证入口。方法引用`AbstractHttpConfigurer::disable`可先理解成`form -> form.disable()`；关闭的是这一种登录方式，不是整个Security。项目最终使用自己的JSON登录接口，本章不创建表单入口。
-- `httpBasic(AbstractHttpConfigurer::disable)`关闭HTTP Basic入口。Basic让客户端在请求头提交账号密码，不是本项目的“登录一次、后续使用Session”流程。
-
-**理解要点：配置时机与请求结果**
-
-这份配置分别回答三个问题：**哪些路径要求身份**、**没有身份时返回什么**、**当前不开放哪两种内置登录入口**。Lambda用于启动时配置规则，不是每次请求都重新执行整个Bean方法。它没有关闭默认CSRF检查；缺令牌的写请求可能先得到403，不能把所有403都解释为“账号密码错”。
-
-Eclipse重启后清理Postman本站点旧Cookie，验证下表；请求均无查询参数和请求体：
-
-| HTTP方法与URL | 预期状态与响应 |
+| `app_users`字段 | 本项目用途 |
 | --- | --- |
-| `GET http://localhost:8080/health` | 200，正文`OK` |
-| `GET http://localhost:8080/employees` | 401，不返回员工列表 |
-| `GET http://localhost:8080/employees/1001` | 401，Controller断点不命中 |
+| `id` | 登录账号主键，不等于员工ID |
+| `username` | 唯一登录名；认证时按它查询 |
+| `password_hash` | BCrypt哈希；不保存明文密码 |
+| `employee_id` | 关联的业务员工ID，可为空，供第16章本人判断 |
+| `role` | 服务端指定的`USER`或`ADMIN`，登录时进入身份权限 |
+| `enabled` | 能否通过新的密码认证 |
 
-若员工接口仍返回200，检查Maven依赖、配置类包扫描和是否重启；若出现HTML登录页，检查`formLogin`是否仍启用。本阶段不要求输入账号密码。
+### 在MySQL 8.0创建账号表
 
-## 15-03 建立账号表：业务员工与登录账号不是一回事
-
-员工记录回答“这名员工的业务资料是什么”，登录账号回答“谁可以进入系统”。两者不能简单合成一张表：员工可能尚未开通账号，公开注册的人也可能尚未关联员工。接下来保留原有`employees`表，另建`app_users`表；先在MySQL 8.0的**个人练习库**确认表尚不存在，再执行：
+只在个人练习数据库执行。`password_hash` 保存单向哈希，不保存原始密码：
 
 ```sql
--- 功能：选择本地练习数据库，避免在其他数据库中建表。
 USE employee_db;
--- 功能：建立登录账号表；员工业务资料仍留在employees表。
+
+-- 功能：独立保存登录账号，不把密码和角色塞进业务员工表。
 CREATE TABLE app_users (
-    -- 功能：为每个账号生成独立主键。
-    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    -- 功能：限制登录名唯一，并为密码哈希预留存储空间。
-    username VARCHAR(50) NOT NULL UNIQUE,
+    -- 功能：用数据库生成账号主键，并保证用户名和员工关联不重复。
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
     password_hash VARCHAR(100) NOT NULL,
-    -- 功能：关联员工记录可为空；角色与启用标志由服务器控制。
-    employee_id BIGINT NULL UNIQUE,
+    employee_id BIGINT NULL,
     role VARCHAR(30) NOT NULL,
-    enabled BOOLEAN NOT NULL DEFAULT TRUE
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT pk_app_users PRIMARY KEY (id),
+    CONSTRAINT uk_app_users_username UNIQUE (username),
+    CONSTRAINT uk_app_users_employee_id UNIQUE (employee_id)
 );
 ```
 
-**功能说明：表中的字段和约束**
+- `app_users`、`employees`：前者保存登录资料，后者保存业务员工资料；两者分开才能允许“有员工但无账号”或“账号暂未绑定员工”。
+- `password_hash`：保存BCrypt哈希而非原始密码；`VARCHAR(100)`为编码结果留出空间。
+- `employee_id BIGINT NULL`：账号可以暂时不关联员工；唯一约束防止两名账号同时绑定同一员工。
+- `role`、`enabled`：分别保存服务端指定的角色和是否允许新登录；公开注册不可由客户端设置这两列。
+- `UNIQUE`、`PRIMARY KEY`：由MySQL检查重复；即使应用层先查询用户名，也必须保留数据库唯一约束来挡住并发重复注册。
 
-- `id`是`BIGINT`主键，`AUTO_INCREMENT`由MySQL生成新值。
-- `username`是登录名，`UNIQUE`防止重复；仅在Java里“先查再插”不能代替数据库约束。
-- `password_hash`存单向BCrypt哈希，注册时生成、登录时核对，不存明文。
-- `employee_id`允许为空并设唯一约束；`role`保存角色；`enabled`控制账号能否进行新的登录。
+当前员工采用物理删除，因此本章不虚构外键删除规则。只在个人练习库建表；已有表不要重复执行`CREATE TABLE`。
 
-**理解要点：为什么分开设计？**
+先在本机临时工具中用课程项目的 `PasswordEncoder` 生成哈希，再把输出写入练习库。不要把命令中的练习密码替换成真实密码：
 
-- `employees`继续保存姓名、部门等业务资料；`app_users`只保存认证和授权所需的账号资料。员工没有账号时仍能保留业务记录，账号停用也不必删除员工资料。
-- 公开注册的新账号尚未确认对应哪名员工，所以`employee_id=NULL`。若允许请求体自行填`1001`，注册者就能冒充该员工；员工关联应由受信任的管理流程完成。
-- 注册请求不能自行指定`ADMIN`或启用状态；服务端固定`role=USER`、`enabled=true`。否则任何人都可能注册管理员账号。
-- 密码不能以明文或可逆形式存入数据库；只保存哈希，登录时用`matches`核对。`enabled=false`阻止新的登录，但不会自动撤销已经建立的Session。
-
-为第16章的“本人”实验保留课程练习账号`tanaka`，并为本章的停用测试保留一行数据。它们是**数据库测试资料**，不是写死在Java认证代码里的账号。执行前先检查这些用户名和ID是否存在；已有内容时不要重复插入或覆盖：
-
-```sql
--- 功能：仅在个人练习库中准备一个启用账号和一个停用账号。
-INSERT INTO app_users (id, username, password_hash, employee_id, role, enabled)
-VALUES
-    -- 功能：为第16章的本人数据实验关联员工1001。
-    (1, 'tanaka',
-     '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
-     1001, 'USER', TRUE),
-    -- 功能：保留一条可读取但不可登录的账号记录。
-    (4, 'disabled-user',
-     '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
-     NULL, 'USER', FALSE);
+```java
+// 功能：将练习密码编码一次，得到可写入password_hash列的BCrypt字符串。
+String hash = passwordEncoder.encode("TrainingPass123!");
+System.out.println(hash);
 ```
 
-**功能说明：** `INSERT INTO ... VALUES`一次插入两条预置数据；`password_hash`是BCrypt哈希，不是明文。两行的本地练习密码均为`TrainingPass123!`。
+- `passwordEncoder`、`encode(...)`：使用15-02创建的编码器；`encode`接收原始密码，返回带随机盐的哈希字符串。它不把原密码写入数据库。
+- `System.out.println(...)`：仅用于本地练习时观察生成值；真实密码和哈希都不应输出到项目日志。
 
-**理解要点：** 这些密码只供本地练习，不得用于真实环境。个人练习库保留此表以进入第16章；第12章的`test-data.sql`含`DROP`，只可由`MySqlTestGuard`限制的**专用测试库**使用，绝不能导入个人或共享库。
+```sql
+-- 功能：准备一名可登录账号和一名停用账号，供本章及第16章验证。
+INSERT INTO app_users (
+    id, username, password_hash, employee_id, role, enabled
+) VALUES (
+    1, 'tanaka',
+    '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
+    1001,
+    'USER',
+    TRUE
+),
+(
+    4,
+    'disabled-user',
+    '$2a$10$nljJFXRpHlZ2gPsH7lM12eIan96c0Y03Y/YCucFA/SA6z.1Lv7UTC',
+    NULL,
+    'USER',
+    FALSE
+);
+```
 
-新建`src/main/java/com/example/employee/entity/AppUser.java`，以下是完整文件：
+- `INSERT INTO app_users`：只写入练习库；示例哈希对应练习密码，不要替换为真实密码。
+- `id=1`、`id=4`：分别保留给tanaka与停用账号，使第16章可使用`id=2`、`id=3`新增sato、admin。若个人练习库已存在tanaka，不要再次执行整段`INSERT`，只补尚不存在的停用账号。
+- `TRUE`、`FALSE`：分别表示允许和禁止该账号进行新的认证；它们不删除账号记录。
+
+BCrypt每次使用随机salt，同一密码产生不同哈希是正常现象；验证应调用 `matches()`，不能重新encode后比较两个字符串。
+
+### 新建AppUser.java
 
 ```java
 package com.example.employee.entity;
 
-// 功能：承载app_users表的一行数据，不直接执行认证。
+// 功能：承载app_users中的一行账号资料，不直接作为HTTP响应返回。
 public class AppUser {
-    // 功能：字段分别保存主键、登录名、密码哈希、员工关联、角色和启用状态。
     private Long id;
     private String username;
     private String passwordHash;
@@ -215,7 +207,6 @@ public class AppUser {
     private String role;
     private boolean enabled;
 
-    // 功能：getter供业务代码和MyBatis读取字段，setter供其写入字段。
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getUsername() { return username; }
@@ -231,11 +222,11 @@ public class AppUser {
 }
 ```
 
-**功能说明：** `AppUser`承载`app_users`的一行数据；字段与表列对应。沿用第9章的下划线转驼峰与类型别名配置，`password_hash`映射到`passwordHash`。getter/setter仍是已学的普通Java方法。
+- `AppUser`：与`app_users`表对应的持久化对象；`passwordHash`只供认证使用，不能作为注册或查询接口的响应字段。
+- `Long employeeId`：可为`null`，表示尚未绑定业务员工；`boolean enabled`对应数据库启用标志。
+- getter/setter：沿用前面章节的Java Bean写法，供MyBatis读取、写入属性；这里不再次把它们当作新的Spring Security机制。
 
-**理解要点：** 这是数据库账号对象，不是“当前已登录用户”；不要把`employees`业务对象直接交给认证组件。没有映射配置时先补齐第9章设置，不要把查询得到的空哈希当成正确账号。
-
-新建`src/main/java/com/example/employee/mapper/AppUserMapper.java`：
+### 新建AppUserMapper.java和XML
 
 ```java
 package com.example.employee.mapper;
@@ -244,30 +235,32 @@ import com.example.employee.entity.AppUser;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-// 功能：让MyBatis为接口创建数据库访问实现。
+// 功能：让MyBatis为接口生成访问app_users的实现。
 @Mapper
 public interface AppUserMapper {
-    // 功能：把方法参数命名为username，供XML中的#{username}绑定。
+    // 功能：按唯一用户名查询账号，供认证组件加载资料。
     AppUser findByUsername(@Param("username") String username);
-    // 功能：插入一条账号记录，返回受影响行数。
+    // 功能：注册成功时插入一行并把生成的主键写回account.id。
     int insert(AppUser account);
 }
 ```
 
-再新建`src/main/resources/mapper/AppUserMapper.xml`：
+- `@Mapper`：沿用MyBatis章节的注解，使该接口成为可注入的Mapper代理，不需要手写实现类。
+- `@Param("username")`、`findByUsername(...)`：把方法参数命名为XML中的`username`，查询成功返回`AppUser`，未找到时返回`null`；方法本身不验证密码。
+- `insert(AppUser account)`：接收注册服务创建的账号，返回受影响行数；数据库唯一约束可能使重复用户名插入失败。
 
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.employee.mapper.AppUserMapper">
-    <!-- 功能：按用户名查询账号；查询列供AppUser映射使用。 -->
+    <!-- 功能：按用户名读取认证所需字段，#{username}作为绑定参数。 -->
     <select id="findByUsername" resultType="AppUser">
         SELECT id, username, password_hash, employee_id, role, enabled
         FROM app_users
         WHERE username = #{username}
     </select>
-    <!-- 功能：插入账号并把MySQL生成的id回填到对象。 -->
+    <!-- 功能：插入账号并把数据库生成的id回填到AppUser.id。 -->
     <insert id="insert" parameterType="AppUser"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO app_users
@@ -278,89 +271,64 @@ public interface AppUserMapper {
 </mapper>
 ```
 
-**功能说明：** `@Mapper`让MyBatis创建接口实现；`@Param("username")`把方法参数交给XML的`#{username}`。`namespace`、`id`分别对应接口和方法；`findByUsername`查不到时返回`null`，`insert`返回影响行数，并通过`useGeneratedKeys`把MySQL生成的ID写回对象。这些映射写法沿用第9章。
+- `namespace`、`id`：把XML语句绑定到`AppUserMapper`及其同名方法；这些是MyBatis映射关系，不是Security配置。
+- `resultType="AppUser"`、`parameterType="AppUser"`：分别指定查询结果与插入参数的类型别名，沿用前面工程的MyBatis类型别名配置。
+- `#{username}`等占位写法：让MyBatis绑定参数，不把用户输入直接拼进SQL；查询在唯一约束下最多返回一行。
+- `useGeneratedKeys="true"`、`keyProperty="id"`：让`insert`执行后把MySQL生成的主键写回`AppUser.id`，注册响应才能返回新ID。
 
-**理解要点：** 账号Mapper只负责从`app_users`读写资料，不验证密码，也不决定谁是管理员。用户名必须参数绑定，不能拼进SQL。此阶段只创建代码，暂不发送注册请求。
+登录时不是Controller直接查这张表：15-05的`DaoAuthenticationProvider`调用`AppUserDetailsService.loadUserByUsername()`，该方法再调用`AppUserMapper.findByUsername()`。公开注册请求也不能任意指定`role`、`enabled`和`employee_id`，否则可自行创建ADMIN或冒用其他员工。`enabled=false`能阻止**下一次账号密码认证**，但本项目已签发的JWT在到期前不会因为这一列变化而自动撤销。
 
-## 15-04 完成公开注册：JSON到数据库
 
-### 15-04-1 先确定注册业务
+## 15-04 注册：把JSON安全地写进账号表
 
-`POST /auth/register`接收JSON中的`username`和`password`。成功时返回201和新账号的ID、用户名，但**不自动登录**；客户端之后仍需调用`POST /auth/login`。缺字段或格式不合适返回400，同名返回409。请求中的`role`、`employeeId`、`enabled`不能决定数据库值：公开注册由服务端固定`role=USER`、`employee_id=NULL`、`enabled=true`，不能让注册者自行获得ADMIN身份或冒充某名员工。
-
-这一步的可检查结果是：`app_users`新增一行，`password_hash`不是明文，返回体没有密码；重复注册不新增第二行。Controller负责HTTP输入输出，Service负责账号规则与密码编码，15-03的Mapper负责写库。注册成功只代表账号写入，不代表已经建立登录Session。
-
-### 15-04-2 注册请求怎样被处理
-
-请求先经过Security过滤链的CSRF检查；通过后才进入`AuthController.register(...)`，由JSON绑定和`@Valid`检查用户名、密码，再交给`AccountRegistrationService.register(...)`。Service创建`AppUser`，只从请求读取用户名和原始密码；密码经编码后才写入`password_hash`，角色、员工关联和启用状态由服务端决定。`AppUserMapper.insert(...)`把账号存入`app_users`，生成的ID随响应返回。各失败出口按发生的位置分别处理：
+规格：`POST /auth/register`接收`username`与`password`；成功201且仅返回ID/用户名；重名409；校验失败400。服务器固定`role=USER`、`employee_id=null`、`enabled=true`，不信任客户端给出的角色。处理顺序：请求绑定与校验 → `PasswordEncoder.encode`生成带盐BCrypt哈希 → Mapper写入；数据库唯一约束负责并发重名的最后防线。
 
 ```text
 POST /auth/register
-         ↓
-Security过滤链：CSRF检查
-    ├─ 失败 → 403（Controller尚未执行）
-    └─ 通过
-         ↓
-JSON绑定＋@Valid
-    ├─ 失败 → 400
-    └─ 通过
-         ↓
-AccountRegistrationService
-         ↓
-PasswordEncoder.encode()
-         ↓
-AppUserMapper.insert()
-    ├─ 用户名重复 → 409
-    └─ 成功 → 201
+  → SecurityFilterChain允许匿名【Spring Security内部】
+  → JSON绑定RegisterRequest、@Valid校验【Spring MVC内部】
+      ├─ 输入不合法 → 第8章异常处理返回400
+      ↓
+  → AuthController.register()【项目代码】
+  → AccountRegistrationService.register()【项目代码】
+  → PasswordEncoder.encode(原始密码)【Security库调用】
+  → AppUserMapper.insert()【项目接口／MyBatis代理】
+  → MySQL INSERT；唯一键冲突 → 409
+  → 回填账号ID；Controller返回201
 ```
 
-图中只标出本节重点的请求结果；403、400、409和201分别对应不同检查点，不能统称为“注册失败”。
+从网络上看请求先通过过滤链，再由Spring MVC绑定JSON并执行校验，最后才进入Controller方法；图中把绑定和方法调用展开，是为了指出失败出口，不代表Controller手动调用JSON解析器。注册完成只产生数据库账号，不产生已认证`Authentication`或JWT。
 
-下面是即将创建的`AccountRegistrationService.register(...)`中的**关键语句片段**，完整方法和异常处理在后面的操作代码中：
+| 操作 | 输入 | 输出 | 发生时机 |
+| --- | --- | --- | --- |
+| `encoder.encode(raw)` | 注册时的原始密码 | 带随机盐的BCrypt哈希 | 写入`password_hash`之前 |
+| `encoder.matches(raw, hash)` | 登录原始密码和数据库已有哈希 | `true`或`false` | `DaoAuthenticationProvider`验证密码时 |
 
-```java
-// 功能：对本次输入密码生成单向哈希，保存到账号对象。
-account.setPasswordHash(encoder.encode(request.getPassword()));
-// 功能：由服务端指定普通角色和暂未关联员工的状态。
-account.setRole("USER");
-account.setEmployeeId(null);
-account.setEnabled(true);
-// 功能：通过Mapper将账号写入app_users表；完整方法还要检查影响行数与重名异常。
-mapper.insert(account);
-```
+`matches()`不是“解密哈希”；BCrypt根据已存哈希中的参数核对输入。同一密码多次`encode()`结果可能不同，因此不能再次`encode()`后用字符串`equals()`比较。
 
-**功能说明：** `encoder`是构造器注入的`PasswordEncoder` Bean，不是此处临时创建的对象；`request.getPassword()`取得本次原始输入，`encode(...)`返回可存储的BCrypt哈希，`setPasswordHash(...)`只把哈希放进`AppUser`。`setRole(...)`、`setEmployeeId(...)`和`setEnabled(...)`写入服务器确定的值，不读取客户端同名字段。`mapper.insert(account)`调用15-03的MyBatis接口执行INSERT，并将数据库生成的ID回填到对象。
+注册代码及异常类如下；其中`PasswordEncoder`由15-02的Bean构造并注入，不是注册时新建。`encode`返回可保存的哈希，登录时用`matches`验证而不是再次`encode`做字符串比较。
 
-**为什么要编码密码？** 原始密码只用于这次注册请求，不能存进账号表。`PasswordEncoder`提供`encode(原始密码)`和`matches(原始密码, 已保存的哈希)`两项不同操作：前者返回要保存的哈希字符串，后者返回是否匹配的`boolean`，不“解密”哈希。本项目的`BCryptPasswordEncoder`使用随机盐与可调工作因子，哈希文本包含以后核对所需的信息；相同密码多次编码，文本通常也不同。15-05配置的认证Provider会在15-06登录时使用`matches(...)`，不能重新`encode(...)`后比较两个字符串。密码哈希降低数据库内容泄露时直接暴露原始密码的风险，但不能替代访问控制、传输保护和妥善管理数据库。
-
-**理解要点：** 密码哈希与角色赋值都必须在服务端完成；Mapper只负责保存，不负责决定注册者能否成为ADMIN。注册名的唯一约束由数据库最终保证；完整Service会把同名插入异常转换为409，不能只靠“先查询有没有”防重复。
-
-### 15-04-3 编写完整注册代码
-
-新建请求和响应类，均为完整文件：
+### 新建注册请求和响应类
 
 ```java
-// src/main/java/com/example/employee/dto/request/RegisterRequest.java
 package com.example.employee.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-// 功能：接收注册JSON中的用户名和密码，不接收角色或员工ID。
 public class RegisterRequest {
-    // 功能：拒绝空用户名、超长用户名和不符合本例字符规则的用户名。
+    // 功能：先拒绝空用户名，再限制长度与允许字符。
     @NotBlank(message = "用户名不能为空")
     @Size(max = 50, message = "用户名不能超过50个字符")
     @Pattern(regexp = "[A-Za-z0-9._-]+", message = "用户名格式错误")
     private String username;
 
-    // 功能：拒绝空密码和超出本例长度范围的密码。
+    // 功能：拒绝空密码，并限制本注册接口接受的长度。
     @NotBlank(message = "密码不能为空")
     @Size(min = 12, max = 64, message = "密码长度应为12到64个字符")
     private String password;
 
-    // 功能：供JSON绑定和业务服务读写请求字段。
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
     public String getPassword() { return password; }
@@ -368,42 +336,38 @@ public class RegisterRequest {
 }
 ```
 
+- `RegisterRequest`：Spring MVC把本次注册JSON绑定到这个请求对象；它没有`role`、`employeeId`或`enabled`字段，客户端不能通过请求对象决定权限。
+- `@NotBlank`、`@Size`、`@Pattern`：沿用第8章校验；分别检查非空白、长度和用户名字符格式。`message`是校验失败时的提示，`min`/`max`是长度边界，`regexp`是允许字符的正则表达式；这些检查在Controller的`@Valid`触发后运行。
+
 ```java
-// src/main/java/com/example/employee/dto/response/RegisteredUserResponse.java
 package com.example.employee.dto.response;
-// 功能：注册成功时只返回账号ID和用户名。
-public record RegisteredUserResponse(Long id, String username) {}
-```
 
-`AuthController`还要返回CSRF令牌资料，先新增这个完整响应类；令牌怎样取得、怎样提交见本节“CSRF要求”：
-
-```java
-// src/main/java/com/example/employee/dto/response/CsrfResponse.java
-package com.example.employee.dto.response;
-// 功能：保存本次CSRF令牌的参数名、请求头名和提交值。
-public record CsrfResponse(String parameterName, String headerName, String token) {}
-```
-
-**功能说明：** `RegisterRequest`只接收用户名和密码：用户名不能为空、最多50位且限于示例中的字符；密码不能为空且为12～64位。Controller中的`@Valid`触发这些规则，非法输入返回400。`RegisteredUserResponse`只返回ID和用户名，不包含密码或哈希。
-
-**理解要点：** 请求DTO不包含`role`或`employeeId`，不能让客户端决定权限。这里的密码长度只是本地输入规则，不等于完整生产密码策略。响应不含密码哈希；第8章的400处理继续适用。
-
-在`SecurityConfig.java`中再增加以下Bean及`BCryptPasswordEncoder`、`PasswordEncoder`导入，供注册和后续登录共用同一个编码方案：
-
-```java
-// 功能：把密码编码器注册为Spring Bean，供注册和认证共用。
-@Bean
-public PasswordEncoder passwordEncoder() {
-    // 功能：创建工作因子为10的BCrypt实现。
-    return new BCryptPasswordEncoder(10);
+// 功能：成功注册只返回账号ID与用户名，不泄露密码哈希和角色配置。
+public record RegisteredUserResponse(Long id, String username) {
 }
 ```
 
-**功能说明：** `@Bean`注册返回对象；`PasswordEncoder`是编码与核对接口，`BCryptPasswordEncoder`是本项目的实现；构造器参数`10`是本地练习的BCrypt工作因子，允许范围为4～31。工作因子越高，编码和核对所需计算量通常越大；它不是“密码长度10位”或“加密10次”。注册时`encode(rawPassword)`产生哈希，登录时`matches(rawPassword, storedHash)`核对并返回布尔值；两次操作使用相同编码方案，但不要求使用同一个Java实例。真实项目应结合机器性能与安全要求测量后确定工作因子。
+- `record`：Java 17的数据载体写法；`id`、`username`是组件，构造器接收同名参数并自动生成访问方法。这里用它表达只读响应，而不是数据库实体。
+- `RegisteredUserResponse`：Controller成功时放入`ApiResponse.data`；不包含`passwordHash`。请求对象仍保留普通类和setter供JSON绑定。
 
-**理解要点：** 同一密码每次生成的哈希文本可能不同；不能在登录时重新`encode`后比较字符串。
+### 新建注册服务和用户名冲突异常
 
-新建`src/main/java/com/example/employee/security/AccountRegistrationService.java`：
+`src/main/java/com/example/employee/exception/DuplicateUsernameException.java`：
+
+```java
+package com.example.employee.exception;
+
+// 功能：把数据库用户名冲突转换为明确的注册业务错误。
+public class DuplicateUsernameException extends RuntimeException {
+    public DuplicateUsernameException() {
+        super("用户名已存在");
+    }
+}
+```
+
+- `DuplicateUsernameException`：注册服务抛出的非受检业务异常；构造器调用`super(...)`设置异常消息，后面的异常处理器将其转换为HTTP 409。
+
+`src/main/java/com/example/employee/security/AccountRegistrationService.java`：
 
 ```java
 package com.example.employee.security;
@@ -417,132 +381,96 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-// 功能：让Spring创建负责注册业务的服务对象。
+// 功能：把注册流程封装为业务服务，由Controller调用。
 @Service
 public class AccountRegistrationService {
     private final AppUserMapper mapper;
     private final PasswordEncoder encoder;
 
-    // 功能：接收数据库访问对象和密码编码对象，不在方法中临时创建它们。
+    // 功能：取得Spring已创建的Mapper和密码编码器，不在每次注册时重新创建。
     public AccountRegistrationService(AppUserMapper mapper, PasswordEncoder encoder) {
         this.mapper = mapper;
         this.encoder = encoder;
     }
 
-    // 功能：把已校验的注册输入转换为固定USER角色的数据库账号。
+    // 功能：固定账号初始角色和状态，编码密码后写入MySQL。
     public RegisteredUserResponse register(RegisterRequest request) {
-        // 功能：只从请求中读取用户名和密码；角色、员工ID、状态由服务器决定。
         AppUser account = new AppUser();
         account.setUsername(request.getUsername());
+        // 功能：只保存BCrypt哈希，绝不保存请求中的原始密码。
         account.setPasswordHash(encoder.encode(request.getPassword()));
         account.setRole("USER");
         account.setEmployeeId(null);
         account.setEnabled(true);
-        // 功能：写入数据库并检查影响行数。
+        // 功能：把唯一键冲突转换为对外可理解的重名异常。
         try {
             if (mapper.insert(account) != 1) {
                 throw new IllegalStateException("account insert affected no row");
             }
-        // 功能：把同名账号的数据库约束冲突转换为业务异常。
         } catch (DuplicateKeyException exception) {
             throw new DuplicateUsernameException();
         }
-        // 功能：只返回新账号ID和用户名，不返回哈希。
         return new RegisteredUserResponse(account.getId(), account.getUsername());
     }
 }
 ```
 
-**功能说明：** 构造器取得前面准备的Mapper与密码编码器。注册方法把哈希和服务端确定的账号属性写入数据库，检查影响行数，再返回不含密码的摘要；数据库唯一约束触发的`DuplicateKeyException`转换为`DuplicateUsernameException`，由HTTP处理器返回409。
+- `@Service`、构造器参数：Spring创建注册服务并注入`AppUserMapper`与`PasswordEncoder`；前者写库，后者编码密码，职责不同。
+- `encoder.encode(request.getPassword())`：接收请求中的原始密码，返回BCrypt哈希；本方法不调用`matches(...)`，因为此时还未登录。
+- `setRole("USER")`、`setEmployeeId(null)`、`setEnabled(true)`：服务端指定初始角色、未绑定员工和启用状态；不能改为从注册JSON读取ADMIN等值。
+- `mapper.insert(account)`：写入一行并回填账号ID；返回值为影响行数，`!= 1`说明写入结果不符合预期。
+- `DuplicateKeyException`：Spring数据库异常，表示唯一键等约束冲突；此处转换成`DuplicateUsernameException`供HTTP层返回409，不向客户端暴露SQL细节。MySQL唯一约束是并发注册的最终防线。
+- `RegisteredUserResponse`：只携带回填的ID和用户名；成功注册**不会**自动签发JWT。
 
-**理解要点：** Service不从HTTP请求取得角色或员工ID；数据库唯一约束才是并发重名的最终保障。不能把SQL与堆栈返回客户端。此例只插入账号表一行，不需要额外引入多写事务；实际开放注册还需防滥用、账号验证或审批，不能把教学接口直接上线。
 
-新建`src/main/java/com/example/employee/controller/AuthController.java`，本阶段的**完整文件**只有CSRF与注册两个接口：
+先创建仅注册的Controller；15-07会一次性替换为含登录和`/auth/me`的最终文件。
 
 ```java
 package com.example.employee.controller;
 
 import com.example.employee.common.ApiResponse;
 import com.example.employee.dto.request.RegisterRequest;
-import com.example.employee.dto.response.CsrfResponse;
 import com.example.employee.dto.response.RegisteredUserResponse;
 import com.example.employee.security.AccountRegistrationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// 功能：把返回值写成HTTP响应体，并给两个端点统一加/auth前缀。
+// 功能：提供/auth下的JSON接口；本阶段只开放注册。
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-    private final AccountRegistrationService registrationService;
+    private final AccountRegistrationService registration;
 
-    // 功能：注入注册服务；Controller不直接写数据库。
-    public AuthController(AccountRegistrationService registrationService) {
-        this.registrationService = registrationService;
+    public AuthController(AccountRegistrationService registration) {
+        this.registration = registration;
     }
 
-    // 功能：向客户端返回当前请求可用的CSRF Header名和令牌值。
-    @GetMapping("/csrf")
-    public ResponseEntity<ApiResponse<CsrfResponse>> csrf(CsrfToken token) {
-        return ResponseEntity.ok(ApiResponse.success(new CsrfResponse(
-                token.getParameterName(), token.getHeaderName(), token.getToken())));
-    }
-
-    // 功能：校验注册JSON，调用服务并返回201与账号摘要。
+    // 功能：校验注册JSON，调用服务，成功时返回201与安全的响应字段。
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<RegisteredUserResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(registrationService.register(request)));
+                .body(ApiResponse.success(registration.register(request)));
     }
 }
 ```
 
-**功能说明：** `csrf(CsrfToken token)`把当前请求的令牌资料交给客户端；`register(...)`接收并校验JSON，调用注册服务，把成功结果包装为201响应。`@RestController`、`@RequestBody`、`@Valid`和`ResponseEntity`的基础用法沿用第3、4、8章。
+- `@RestController`、`@RequestMapping("/auth")`：沿用Spring MVC章节的JSON Controller和类级路径；这里不创建HTML登录页。
+- `@PostMapping("/register")`：把HTTP POST `/auth/register`交给该方法，方法名`register`不决定URL。
+- `@RequestBody`、`@Valid`：前者把JSON绑定成`RegisterRequest`，后者触发对象上的校验注解；不合法时由第8章已有异常处理返回400，服务方法不会执行。
+- `AccountRegistrationService registration`：构造器注入业务服务；Controller不直接计算BCrypt或操作Mapper。
+- `ResponseEntity.status(HttpStatus.CREATED).body(...)`：明确返回201及JSON响应；`ApiResponse.success(...)`沿用第7章统一包装，不是新的认证对象。
 
-**理解要点：** Controller只负责HTTP输入输出并调用服务，不直接拼SQL或编码密码；匿名允许访问不等于POST免除CSRF检查。
+先建立注册重名的409处理；参数400继续沿用第8章的校验异常处理。登录失败的401方法等到15-07再加入。
 
-### 15-04-4 看清注册代码的依赖关系
+### 注册重名的错误处理
 
-```text
-AuthController
-    └─ AccountRegistrationService
-         ├─ AppUserMapper → app_users表
-         └─ PasswordEncoder → BCryptPasswordEncoder
-```
-
-- `AppUserMapper`在15-03由MyBatis创建，负责执行INSERT与回填ID；它不知道原始密码怎样处理，也不决定角色。
-- `PasswordEncoder`由本节`SecurityConfig.passwordEncoder()`注册为Spring Bean。Spring创建`AccountRegistrationService`时把这个对象传给构造器的`encoder`参数；`encoder.encode(request.getPassword())`返回哈希，再由Mapper保存。它不是Service每次收到请求时`new`出来的，也不是数据库自动提供的功能。
-- Spring创建`AuthController`时注入`AccountRegistrationService`。Controller不持有Mapper或编码器，因此输入校验、业务规则与写库职责不会混在HTTP方法里。
-
-这条链也是15-06登录的前置条件：本节必须先在`app_users`成功写入带BCrypt哈希的`learner15`，15-05才能从数据库读取其认证资料，15-06才能用同一编码方案验证密码。若只是复制账号表结构而没有完成注册，后面的登录请求没有可认证的练习账号。
-
-### 15-04-5 处理重名与非法输入
-
-新建`src/main/java/com/example/employee/exception/DuplicateUsernameException.java`：
-
-```java
-package com.example.employee.exception;
-
-// 功能：把数据库唯一约束冲突转换成可被HTTP异常处理器识别的业务异常。
-public class DuplicateUsernameException extends RuntimeException {
-    // 功能：固定对外可理解的冲突消息，不暴露SQL细节。
-    public DuplicateUsernameException() {
-        super("用户名已存在");
-    }
-}
-```
-
-**功能说明：** `DuplicateUsernameException`表示注册名冲突；Service捕获数据库的`DuplicateKeyException`后抛出它。数据库唯一约束是并发注册同名时的最终保障，仅先查询用户名是否存在不能代替约束。
-
-新建`src/main/java/com/example/employee/exception/AuthExceptionHandler.java`，本阶段先处理用户名冲突；15-06会加入认证失败处理：
+`src/main/java/com/example/employee/exception/AuthExceptionHandler.java`：
 
 ```java
 package com.example.employee.exception;
@@ -553,97 +481,102 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-// 功能：集中把Controller中的业务异常转换为HTTP响应。
+// 功能：把注册业务异常统一映射为JSON HTTP响应。
 @RestControllerAdvice
 public class AuthExceptionHandler {
-    // 功能：捕获注册重名异常，返回409与统一失败响应体。
+    // 功能：用户名唯一约束导致的注册冲突返回409。
     @ExceptionHandler(DuplicateUsernameException.class)
-    public ResponseEntity<ApiResponse<Void>> duplicateUsername(
-            DuplicateUsernameException exception) {
+    public ResponseEntity<ApiResponse<Void>> duplicate() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.failure(exception.getMessage()));
+                .body(ApiResponse.failure("用户名已存在"));
     }
 }
 ```
 
-**功能说明：** `@ExceptionHandler(DuplicateUsernameException.class)`把注册重名转换为409与统一失败响应；`@Valid`发现请求字段不合法时沿用第8章已有的校验异常处理，返回400。不要把密码校验失败的401、输入错误的400与重名的409混为一谈。
+- `@RestControllerAdvice`：由Spring MVC处理进入Controller后的异常；可与第8章已有的校验异常处理并存。
+- `@ExceptionHandler(DuplicateUsernameException.class)`：只匹配此类型的注册冲突；`HttpStatus.CONFLICT`对应409，`ApiResponse.failure(...)`生成统一失败响应。
+- 异常边界：参数校验400仍由原处理器负责；请求在Security过滤链里被拒绝的匿名401不会进入这个MVC异常处理器。
 
-**理解要点：** 这里不处理Security过滤器在进入Controller前给出的CSRF 403；认证失败的401处理要在15-06加入。
 
-### 15-04-6 匿名注册为什么仍需CSRF令牌
 
-15-02允许匿名访问注册接口，但“无需登录”不等于“写请求无需安全检查”。如果直接`POST /auth/register`而不提交有效CSRF令牌，请求会在进入Controller前得到403；此时数据库不应新增账号。这与`@Valid`产生的400、重名产生的409是不同原因。
+Postman调用`POST /auth/register`，Body为`{"username":"learner15","password":"TrainingPass123!"}`，无查询参数，预期201、`data.username=learner15`；MySQL检查`password_hash`不是明文且`role=USER`。注册未签发Token。当前工程不使用认证Cookie，POST无需先请求CSRF令牌。注册成功后，不带Token直接调用`GET /auth/me`仍应401。请求JSON即使附加`role=ADMIN`也不能创建管理员：若多余字段被忽略，数据库仍应是USER；若JSON绑定拒绝多余字段，则预期400。
 
-本项目让客户端先`GET /auth/csrf`，读取响应体中的`data.headerName`与`data.token`，保留Cookie；再把令牌放进指定请求头发送注册POST。前面完整`AuthController`中的`csrf(CsrfToken token)`负责返回这些资料，`CsrfResponse`只承载输出值，不保存登录身份。CSRF为什么需要请求头、令牌如何更新，见[15-07](#15-07-csrf与退出区分令牌和登录会话)及[A15-2](../appendix/A15_02_session_cookie_csrf.md)。
+## 15-05 谁验证数据库账号密码
 
-在现有`SecurityConfig.java`顶部增加`CookieCsrfTokenRepository`和`CsrfTokenRepository`的导入，在类内追加以下Bean，后续阶段继续使用同一仓库：
+**当前阶段完成状态：**15-04的注册接口可以运行并验证BCrypt入库；本节的调用位置代码只是示意，`AuthenticationManager` Bean是向现有配置类添加的方法片段。此时尚未建立`JwtLoginService`、JWT签发及完整登录接口，不能直接按本节片段请求`POST /auth/login`。到15-07完成登录签发后再执行该请求。
 
-```java
-// 功能：把本项目选择的Cookie令牌仓库注册为Spring Bean。
-@Bean
-public CsrfTokenRepository csrfTokenRepository() {
-    // 功能：创建负责保存与读取预期CSRF令牌的实现。
-    return new CookieCsrfTokenRepository();
-}
-```
-
-**功能说明：** `CsrfTokenRepository`是令牌仓库接口，`CookieCsrfTokenRepository`是本项目的实现。这个Bean只提供仓库对象；还须让过滤链使用它。保存CSRF令牌的Cookie与记录登录会话的`JSESSIONID`用途不同。
-
-再用下面的**完整方法**替换15-02的`securityFilterChain`方法，类中其余内容不变：
-
-```java
-// 功能：保留原有访问规则，并为写请求指定CSRF令牌仓库。
-@Bean
-public SecurityFilterChain securityFilterChain(
-        HttpSecurity http, CsrfTokenRepository csrfTokenRepository)
-        throws Exception {
-    // 功能：让过滤链用上面创建的仓库检查CSRF令牌。
-    http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
-            // 功能：保留15-02的匿名与登录要求。
-            .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/auth/me", "/employees", "/employees/**")
-                    .authenticated()
-                .anyRequest().permitAll())
-            // 功能：匿名访问受保护资源时仍返回401。
-            .exceptionHandling(exceptions -> exceptions
-                .authenticationEntryPoint((request, response, exception) ->
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
-            // 功能：继续关闭两种不用的内置登录入口。
-            .formLogin(AbstractHttpConfigurer::disable)
-            .httpBasic(AbstractHttpConfigurer::disable);
-    // 功能：构建更新后的过滤链。
-    return http.build();
-}
-```
-
-**功能说明：** 方法参数`csrfTokenRepository`是Spring注入的上一个Bean；`http.csrf(...)`把它交给过滤链，`http.build()`完成配置。其余访问规则沿用15-02。配置在启动时生效，不是在调用`GET /auth/csrf`时才创建安全过滤链。缺少或提交错误的令牌会在Controller之前得到403。
-
-### 15-04-7 用Postman和数据库验证注册
-
-按顺序在Postman实验。先`GET http://localhost:8080/auth/csrf`（无参数、无请求体），保留Cookie并读出`data.headerName`和`data.token`；本阶段后续POST都把该值放入对应Header：
-
-| HTTP方法与URL | JSON请求体或条件 | 预期状态、响应与数据库证据 |
+| 完成阶段 | 当前能够验证的功能 | 尚未完成 |
 | --- | --- | --- |
-| `POST http://localhost:8080/auth/register` | `{"username":"learner15","password":"TrainingPass123!"}`，有效CSRF | 201；`data.username=learner15`且有ID；库中只有哈希、`role=USER`、`employee_id=NULL` |
-| 再次`POST /auth/register` | 同一个用户名、有效CSRF | 409；账号仍只有一行 |
-| `POST /auth/register` | `{"username":"","password":"short"}`，有效CSRF | 400；数据库不新增 |
-| `POST /auth/register` | 正确JSON但没有CSRF Header | 403；数据库不新增 |
+| 15-04 | 注册账号、BCrypt入库、重复注册检查 | JWT登录 |
+| 15-05 | 认证组件组装与代码调用链学习 | 完整JWT签发 |
+| 15-07 | `POST /auth/login`取得JWT | 后续Bearer验证尚未完成 |
+| 15-08 | Bearer访问`/auth/me`、员工接口身份验证 | USER/ADMIN权限 |
+| 第16章 | 角色与本人数据权限 | 本基础课程以外的高级安全功能 |
 
-在个人练习库执行下面的**MySQL 8.0查询**，确认成功注册得到一行；重复注册、400及403场景之后仍只应有这一行。`password_hash`应有值且不等于请求中的明文密码，`role`必须是`USER`，`employee_id`必须是`NULL`：
+### 15-05-1 从一次登录请求找认证入口
 
-```sql
-SELECT id, username, password_hash, employee_id, role, enabled
-FROM app_users
-WHERE username = 'learner15';
+前端将`POST http://localhost:8080/auth/login`的`Content-Type`设为`application/json`，Body为`{"username":"tanaka","password":"TrainingPass123!"}`。接收JSON不等于密码已通过验证；必须查到账号、确认启用、核对BCrypt哈希，才可签发JWT。
+
+下面是**调用位置示意片段，暂不可单独复制运行**；15-07会给出完整`LoginRequest`、`JwtLoginService`和`AuthController`，此处先找清谁调用谁：
+
+```java
+// 【项目代码：AuthController.login】Spring MVC已把JSON绑定为请求对象并触发字段校验。
+public ResponseEntity<ApiResponse<LoginResponse>> login(
+        @Valid @RequestBody LoginRequest request) {
+    return ResponseEntity.ok(ApiResponse.success(login.login(request)));
+}
+
+// 【项目代码：JwtLoginService.login】创建本次待认证输入，不意味着登录成功。
+Authentication input = UsernamePasswordAuthenticationToken.unauthenticated(
+        request.getUsername(), request.getPassword());
+// 【项目代码】这一行才真正调用认证组件；失败会抛异常，不会继续签发JWT。
+Authentication result = authenticationManager.authenticate(input);
 ```
 
-每次重做成功场景换一个未使用的练习用户名，或只在个人练习库核对实际ID后删除本次临时账号；不要删除`tanaka`及`disabled-user`。不能把完整Cookie、明文密码或哈希放进共享测试证据。**注册成功并没有建立登录Session**：在没有旧登录Cookie的Postman会话中，注册后调用`GET /auth/me`应仍为401；如果Postman原来已登录，先清除旧Cookie再做这个检查，避免把旧身份误认为注册自动登录。
+- `@RequestBody`由Spring MVC处理，接收JSON并形成`LoginRequest`；`@Valid`只检查该对象上的非空、长度等格式规则，不查MySQL、不比较数据库密码。
+- `request.getUsername()`、`request.getPassword()`读取本次输入；`unauthenticated(...)`包装成尚未认证的`Authentication input`，`isAuthenticated()`此时为`false`。
+- `authenticationManager.authenticate(input)`才开始用户名密码认证；成功返回`isAuthenticated()==true`的`Authentication result`，其中可读取可信用户名和权限，但**不会自动签发JWT**。认证失败时不会得到可用的`result`。
 
-## 15-05 从数据库账号得到认证资料
+### 15-05-2 认证组件怎样向数据库走
 
-现在数据库已有`learner15`，但Spring Security还不知道怎样读取它。本节先实现“按用户名取得账号资料”，再把这个读取对象与密码编码器交给认证组件。取得账号资料与验证本次密码是两个不同动作。
+```text
+AuthController.login()【项目代码】
+  → JwtLoginService.login()【项目代码】
+  → AuthenticationManager.authenticate(input)【项目调用入口】
+  → ProviderManager选择支持UsernamePasswordAuthenticationToken的Provider【Security内部】
+  → DaoAuthenticationProvider【Security内部】
+      ├─ AppUserDetailsService.loadUserByUsername()【项目代码】
+      │    → AppUserMapper.findByUsername()【项目接口】
+      │    → MyBatis参数绑定与SELECT【MyBatis内部】→ MySQL
+      └─ PasswordEncoder.matches(原始密码, 数据库哈希)【Security内部调用】
+  → 返回已认证Authentication，或抛认证异常
+```
 
-新建`src/main/java/com/example/employee/security/AppUserDetailsService.java`，这是完整文件：
+`AuthenticationManager`是统一入口接口；本项目Bean返回的`ProviderManager`是它的实现。`ProviderManager`按输入的认证类型选择`DaoAuthenticationProvider`；该Provider把“取账号资料”“检查停用状态”“核对密码”组合起来。**启动时创建Bean**只是在准备这些协作对象，不会查询tanaka；只有HTTP登录调用`authenticate(input)`时才沿此链执行。
+
+| 登录结果 | 内部发生什么 | 对外结果 |
+| --- | --- | --- |
+| 用户名不存在 | Mapper查不到记录，`UserDetailsService`抛`UsernameNotFoundException` | 统一401，不告知账号是否存在 |
+| 密码错误 | 找到账号，但`matches(raw, hash)`为`false` | 统一401，不签发Token |
+| `enabled=false` | 找到停用账号，Provider拒绝认证 | 统一401，不签发Token |
+| 账号启用且密码正确 | 返回已认证`Authentication`，含用户名和权限 | 下一步才能交给签发服务 |
+
+**密码验证不是SQL中的字符串比较。** 查询只按用户名取回密码哈希；Provider使用BCrypt编码器根据已存哈希核对原始输入，不把数据库哈希“解密”。
+
+```text
+AuthenticationManager → DaoAuthenticationProvider
+                         ├─ AppUserDetailsService → AppUserMapper → MySQL
+                         └─ PasswordEncoder.matches()
+```
+
+| 对象 | 创建或取得时机 | 作用与输入/输出 |
+| --- | --- | --- |
+| `AppUserMapper` | Spring启动时创建Mapper代理 | 按用户名查MySQL，返回`AppUser` |
+| `UserDetailsService`、`DaoAuthenticationProvider`、`PasswordEncoder` | 启动时作为Bean建立/注入 | 前者转换账号资料；Provider用编码器核验密码 |
+| 待认证`Authentication` | 每次登录请求由登录服务创建 | 输入用户名和原始密码，不能代表已登录 |
+| 已认证`Authentication` | `authenticate`成功时返回 | 输出可信用户名与数据库加载的角色；供JWT签发 |
+
+### 15-05-3 在哪一行触发MyBatis查询
 
 ```java
 package com.example.employee.security;
@@ -656,25 +589,24 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-// 功能：将数据库账号转换为Spring Security需要的账号资料。
+// 功能：把数据库账号转换成Spring Security认证组件需要的资料。
 @Service
 public class AppUserDetailsService implements UserDetailsService {
     private final AppUserMapper mapper;
 
-    // 功能：注入按用户名查询账号的Mapper。
     public AppUserDetailsService(AppUserMapper mapper) {
         this.mapper = mapper;
     }
 
-    // 功能：按用户名加载账号资料；此处不核对本次输入的密码。
+    // 功能：按用户名加载账号；找不到时通知认证组件登录失败。
     @Override
     public UserDetails loadUserByUsername(String username) {
-        // 功能：查询账号；不存在时告诉认证器无法取得该用户。
+        // 功能：此处触发MyBatis代理执行按用户名查询的SELECT。
         AppUser account = mapper.findByUsername(username);
         if (account == null) {
             throw new UsernameNotFoundException("login failed");
         }
-        // 功能：把哈希、角色和启用状态转换为UserDetails。
+        // 功能：转换用户名、已有密码哈希、角色和停用状态，不在这里比较密码。
         return User.withUsername(account.getUsername())
                 .password(account.getPasswordHash())
                 .roles(account.getRole())
@@ -684,74 +616,114 @@ public class AppUserDetailsService implements UserDetailsService {
 }
 ```
 
-**功能说明：** `@Service`让Spring创建对象，`UserDetailsService`是Security读取账号的接口，`@Override`表示这里实现其`loadUserByUsername(String)`方法。输入参数仅是用户名，返回`UserDetails`资料；查不到时抛`UsernameNotFoundException`。`User.withUsername(...)`开始构建资料，`password(...)`接收数据库哈希，`roles("USER")`产生`ROLE_USER`权限，`disabled(!enabled)`把启用标志取反为停用标志，`build()`返回`UserDetails`。
+- `@Service`、`AppUserDetailsService`：Spring创建此服务，供后面的`DaoAuthenticationProvider`使用；构造器注入`AppUserMapper`，不会自己创建Mapper。
+- `UserDetailsService`、`loadUserByUsername(String username)`：Security规定的账号加载接口与方法；输入登录名，输出`UserDetails`账号资料，**不等于已经登录**，也不直接比较原始密码。
+- `@Override`：说明该方法实现接口定义；名称和参数签名必须符合`UserDetailsService`要求。
+- `UsernameNotFoundException`：Mapper未查到账号时通知认证组件失败；对客户端仍使用统一401消息，不暴露“账号是否存在”。
+- `User.withUsername(...).password(...).roles(...).disabled(...).build()`：把数据库字段转换为Security的`UserDetails`。`password(...)`放已存哈希；`roles("USER")`建立`ROLE_USER`权限；`disabled(true)`使停用账号不能通过认证。此处只准备资料，密码核验由Provider完成。
 
-**理解要点：** `UserDetails`不表示“已登录”；密码核对发生在后面的Provider中。表里的`role`不存`ROLE_`前缀；第16章才实际用角色判断接口访问。
+对应的**MyBatis Mapper SQL片段**由15-03的XML提供；其中`#{username}`需由MyBatis绑定，不能把下列文本原样粘贴到MySQL客户端执行：
 
-在`SecurityConfig.java`类中新增下面的认证Bean及对应导入，保留15-04的`PasswordEncoder`：
+```sql
+-- 功能：只按用户名查询账号及认证需要的字段，不在SQL中比较原始密码。
+SELECT id, username, password_hash, employee_id, role, enabled
+FROM app_users
+WHERE username = #{username};
+```
+
+- `#{username}`是MyBatis参数绑定占位符，不是让SQL比较原始密码。MyBatis把结果映射为`AppUser`；查不到时Mapper返回`null`，随后由项目代码抛认证用异常。
+- 查询有数据库唯一约束，最多取得一个账号。`UserDetails`返回Provider后，Provider才核对启用状态与密码；`loadUserByUsername()`返回不等于登录成功。
+
+
+
+### 15-05-4 启动时建立认证入口，请求时才执行认证
+
+在15-02的`src/main/java/com/example/employee/config/SecurityConfig.java`里增加以下Bean方法（15-08最终配置已包含它）。先在原文件导入`org.springframework.context.annotation.Bean`、`org.springframework.security.authentication.AuthenticationManager`、`org.springframework.security.authentication.ProviderManager`、`org.springframework.security.authentication.dao.DaoAuthenticationProvider`、`org.springframework.security.crypto.password.PasswordEncoder`和`com.example.employee.security.AppUserDetailsService`；已有的导入不要重复写。将方法放在`SecurityConfig`类的两个大括号**内部**，例如放在`passwordEncoder()`之后、`securityFilterChain()`之前，不要放到`securityFilterChain()`方法内部。这是**增量方法片段**，不是第二个完整配置类；仅添加Bean还没有可请求的登录接口。登录失败时对外统一返回401，不区分账号不存在和密码错误：
 
 ```java
-// 功能：把方法返回的认证管理器交给Spring容器管理。
+// 功能：建立统一认证入口，供登录服务调用。
 @Bean
-// 功能：接收容器提供的账号读取对象和密码核对对象，组装认证入口。
 public AuthenticationManager authenticationManager(
         AppUserDetailsService users, PasswordEncoder encoder) {
-    // 功能：指定由哪个对象按用户名读取账号资料。
+    // 功能：让Provider从数据库加载账号，并使用相同编码器核对原始密码。
     DaoAuthenticationProvider provider = new DaoAuthenticationProvider(users);
-    // 功能：指定用哪种密码编码方案核对本次输入与数据库哈希。
     provider.setPasswordEncoder(encoder);
-    // 功能：让管理器把用户名／密码认证请求交给上面的Provider。
+    // 功能：把当前Provider交给Manager统一调度。
     return new ProviderManager(provider);
 }
 ```
 
-**功能说明：示例中出现的类型、对象、注解和方法**
+- `@Bean`、`AuthenticationManager`：启动时由Spring保存的统一认证入口；它不是某一次登录的身份对象。后面的`JwtLoginService`通过构造器取得它。
+- `AppUserDetailsService users`、`PasswordEncoder encoder`：两个参数由Spring按类型注入；前者供Provider加载账号资料，后者供Provider调用`matches(原始密码, 数据库哈希)`。
+- `DaoAuthenticationProvider`：用户名密码认证的具体执行者；`new DaoAuthenticationProvider(users)`指定账号资料来源，`setPasswordEncoder(encoder)`指定密码核验器。
+- `ProviderManager`：`AuthenticationManager`的一种实现；本例只持有上述一个Provider。之后的`authenticate(input)`每次请求执行，成功返回含用户名和角色的已认证`Authentication`，失败或停用则抛认证异常。
 
-- `@Bean`是Spring注解，标在配置类的方法上。Spring启动时调用该方法，将返回对象注册到容器，供其他Bean注入；它不会在每次登录时执行。
-- `AuthenticationManager`是Spring Security的认证入口接口，定义`authenticate(...)`方法：传入待验证的`Authentication`，成功返回已认证的`Authentication`，失败抛认证异常。本方法声明返回这个接口类型，15-06的登录服务也依赖这个接口。
-- `AppUserDetailsService`是本项目实现`UserDetailsService`的类；参数`users`是它的Bean对象。它通过Mapper按用户名读取数据库账号，并转换成`UserDetails`，不核对本次输入的密码。
-- `PasswordEncoder`是密码编码与核对接口；参数`encoder`是15-04配置的`BCryptPasswordEncoder`对象。注册使用`encode(原始密码)`生成哈希；认证时使用`matches(本次原始密码, 数据库哈希)`返回是否匹配。它不查询账号。
-- `DaoAuthenticationProvider`是Spring Security提供的用户名／密码认证器，实现`AuthenticationProvider`接口；局部变量`provider`指向这个新建对象。构造器`DaoAuthenticationProvider(users)`指定账号资料来源；`setPasswordEncoder(encoder)`指定密码核对方式。收到认证请求后，它读取`UserDetails`、检查账号状态并核对密码；它不直接编写SQL。
-- `ProviderManager`是`AuthenticationManager`的实现类。`new ProviderManager(provider)`把这个Provider交给管理器；本例只有一种用户名／密码认证方式。管理器负责转交请求，本身不查数据库或核对密码。
+### 15-05-5 用Eclipse跟踪一次认证
 
-把两个示例放在一起看，登录时的对象协作关系是：
+先在Postman准备上述tanaka登录请求，Eclipse以Debug方式启动项目。**不要在调试截图、Console或交接材料中公开原始密码**；只观察是否有输入、长度和认证状态。
+
+| 断点位置 | 要观察的内容 |
+| --- | --- |
+| 15-07完整`AuthController.login()`方法首行 | `LoginRequest.username`已由JSON绑定；`@Valid`通过后才进入方法 |
+| `JwtLoginService.login()`中创建`input`之后 | `input.isAuthenticated()==false`，仅是待认证请求 |
+| `authenticationManager.authenticate(input)`调用行 | 从这里进入认证链；此时没有JWT |
+| `AppUserDetailsService.loadUserByUsername()`入口 | 收到查询用的`username`，不是密码哈希 |
+| `mapper.findByUsername(username)`调用行 | Step Over后看到`AppUser`字段；SQL由MyBatis代理执行 |
+| `UserDetails`的`build()`返回行 | 可看到角色、启用状态和哈希已转为Security资料 |
+| `authenticate(input)`返回后的下一行 | `result.isAuthenticated()==true`、`getName()`和`getAuthorities()`；密码错误时不会到此行 |
+
+若要Step Into `ProviderManager`或`DaoAuthenticationProvider`的框架源码，Eclipse可能需要下载Maven Sources；即使看不到第三方源码，以上项目代码断点也足以证实调用顺序。完成本节时，应能从Controller输入一路指出SQL触发、BCrypt核对和认证结果各在何处，而不是把Bean创建误认成一次登录。
+
+## 15-06 认识JWT，不先写签名代码
+
+HTTP请求彼此独立：登录请求认证成功，不会让下一条请求天然带有身份。Session方案通常靠浏览器自动携带Cookie连接请求；本课程选择客户端**显式**携带Access Token，并用JWT（JSON Web Token）作为格式。后续请求使用`Authorization: Bearer <token>`头。JWT是令牌格式，OAuth2是授权框架；虽然资源服务器组件可验证Bearer JWT，本项目并未实现OAuth2授权码流程。
+
+一个JWT由`Header.Payload.Signature`三段构成。Header声明签名算法（本课HS256）；Payload包含`iss`签发者、`aud`目标API、`sub`用户名、`iat`签发时间、`nbf`生效时间、`exp`过期时间及`roles`。两段编码文本不是加密，任何拿到Token的人都可能读到内容，因此不放密码、哈希或个人敏感信息。Signature让服务器发现内容被篡改；只解码Payload而不验证签名，绝不能据此信任角色。
+
+| Claim | 在本项目中的含义与来源 |
+| --- | --- |
+| `sub` | 用户名，来自认证成功的`Authentication.getName()` |
+| `roles` | 角色列表，来自数据库账号经认证后形成的权限，不来自登录JSON |
+| `exp` | 过期时间，签发时的当前时间加900秒 |
+| `iss` | 签发者，与本项目配置的`issuer`一致 |
+| `aud` | 目标API，与本项目配置的`audience`一致 |
+| `iat`、`nbf` | 签发时间、生效时间；15-07签发代码会设置 |
 
 ```text
-待验证的用户名和原始密码
-           ↓
-AuthenticationManager（统一入口接口）
-           ↓
-ProviderManager（本项目的实现）
-           ↓
-DaoAuthenticationProvider（执行用户名／密码认证）
-     ├─ AppUserDetailsService（实现UserDetailsService）
-     │   ├─ AppUserMapper → MySQL的app_users表
-     │   │  ← 返回AppUser数据库对象
-     │   └─ 转换成UserDetails：账号哈希、状态、角色
-     └─ PasswordEncoder.matches(原始密码, 数据库哈希)
-           ↓
-认证成功：返回已认证的Authentication；失败：抛认证异常
+登录成功 → 服务器签发JWT → 响应体交给客户端 → 客户端在当前使用场景中保存
+         → 下一次请求显式加Bearer头 → 服务器验签与校验声明
+         → 合格才建立本次Authentication；过期或篡改则401
 ```
 
-**理解要点：为什么不能只保留Mapper或PasswordEncoder？**
+客户端改`roles`或`exp`会破坏签名；过期后必须重新登录。本课不引入Refresh Token或撤销表。HS256密钥是至少32字节的安全随机值，以Base64通过环境变量注入；Token泄露在有效期内仍有风险。
 
-- `AppUserMapper`只负责查询数据库，返回项目的`AppUser`，不知道Spring Security需要什么账号格式。
-- `AppUserDetailsService`调用Mapper，再把`AppUser`转换成`UserDetails`。这一步只是**提供账号资料**；即使找到了用户，也不代表本次密码正确或已经登录。
-- `PasswordEncoder`只会编码或比较密码，不负责查找用户、检查账号是否停用。`DaoAuthenticationProvider`把账号资料、状态检查和密码比较组合成一次认证；`ProviderManager`通过`AuthenticationManager`入口把认证请求交给它。只有认证成功返回的`Authentication`才表示本次身份已经验证。
+## 15-07 一次完成JSON登录与JWT签发
 
-**理解要点：区分组装与认证**
+15-05已经找到`authenticate(input)`这一行：现在的问题是“账号密码正确后，怎样把已认证身份交给前端，并让下一条请求能证明身份？”登录输入对象和当前身份响应对象现在进入工程；请求对象由Spring MVC每次绑定JSON创建，响应对象由Controller按已验证用户名创建。
 
-运行这段`@Bean`方法是在**应用启动时组装对象**：`users`和`encoder`由Spring按类型传入，方法创建Provider和Manager，并把Manager注册为Bean。15-06调用`authenticationManager.authenticate(...)`才是**处理一次登录**，顺序为`ProviderManager → DaoAuthenticationProvider → AppUserDetailsService／PasswordEncoder`。因此不能把`new ProviderManager(...)`理解为每次请求新建登录对象，也不能把返回Manager理解为已经登录成功。
+一次登录可按以下五步观察输入、处理和结果：
 
-认证失败在这里表现为异常，认证组件不会自行生成HTTP 401；15-06的异常处理器才将异常转换为对外的401，且不区分“用户名不存在”和“密码错误”。此时还没有HTTP登录接口；Mapper测试和密码匹配测试可在[R15的独立测试节](../reference/R15_session_login_complete_source.md)核对。
+1. **阶段A：认证成功。** 输入是`LoginRequest`的用户名和密码；`JwtLoginService.login()`调用`AuthenticationManager.authenticate(input)`，得到已认证的`Authentication`，再交给签发服务。认证失败则直接进入401出口。
+2. **阶段B：准备JWT内容。** 输入是已认证身份；`JwtTokenService.issue()`读取`getName()`和`getAuthorities()`，生成`sub`与`roles`，并设置`iss`、`aud`、`iat`、`nbf`、`exp`，得到待签名的`JwtClaimsSet`。
+3. **阶段C：签名生成JWT。** 输入是`JwtClaimsSet`；`JwtEncoder.encode(...)`用服务端密钥签名，得到JWT文本，交给`LoginResponse`。
+4. **阶段D：返回登录响应。** 输入是JWT文本和900秒有效期；`AuthController.login()`返回`ApiResponse<LoginResponse>`，客户端取得`data.accessToken`。
+5. **阶段E：验证错误情况。** 再输入错误密码；`authenticate(...)`抛认证异常，不调用`issue()`，`AuthExceptionHandler`返回401且没有Token。
 
-## 15-06 实现唯一JSON登录并保存Session
+下方`JwtConfig`、DTO、服务、Controller和异常处理器的Java代码块分别是**完整文件**；`application.yml`展示的是向原配置**增量添加**的字段，生成密钥的临时`main`代码是**示意片段**，不能当作业务类直接复制。
 
-目标请求是`POST /auth/login`，请求体为`{"username":"learner15","password":"TrainingPass123!"}`。认证成功必须同时满足两件事：本次密码验证通过；**另一条请求**仍能识别当前用户名。只返回200而不保存身份不是完成登录。
+```text
+启动时：JwtConfig → SecretKey → JwtEncoder（注入JwtTokenService）
+                        └→ JwtDecoder（留给15-08后续Bearer验签）
+        AuthenticationManager → JwtLoginService ← JwtTokenService
+请求时：AuthController.login() → JwtLoginService.login()
+        → authenticate(input)得到已认证Authentication
+        → JwtTokenService.issue(result) → JwtEncoder签名 → LoginResponse
+        → AuthController返回ApiResponse<LoginResponse>
+```
 
-一次成功登录的业务过程是：客户端提交JSON；`AuthController`把用户名、密码交给`SessionLoginService`；登录服务请Spring Security验证；验证成功后处理会话并保存身份；接口只返回用户名。客户端在下一次请求带回`JSESSIONID`，服务器才能找到先前保存的身份。密码不正确时不会进入保存身份的步骤，而是返回401。本项目只有这一条`POST /auth/login`登录入口，不另做一套表单登录。
+`SecretKey`是HS256签名及验签共用的密钥对象。启动时建立Encoder/Decoder Bean；每次登录请求才新建`Authentication input`、`JwtClaimsSet`、JWT文本和`LoginResponse`。仅仅创建`JwtEncoder`不等于已经签发Token。
 
-先新增`src/main/java/com/example/employee/dto/request/LoginRequest.java`：
+### 新建LoginRequest.java与CurrentUserResponse.java
 
 ```java
 package com.example.employee.dto.request;
@@ -759,18 +731,17 @@ package com.example.employee.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-// 功能：接收一次登录请求提交的用户名和原始密码。
 public class LoginRequest {
-    // 功能：拒绝空白或过长的用户名。
+    // 功能：拒绝空用户名，并避免超长输入进入认证流程。
     @NotBlank(message = "用户名不能为空")
     @Size(max = 50, message = "用户名不能超过50个字符")
     private String username;
-    // 功能：拒绝空白或过长的密码；不修改密码内容。
+
+    // 功能：只校验登录输入是否存在及长度；正确性由认证组件判断。
     @NotBlank(message = "密码不能为空")
     @Size(max = 200, message = "密码不能超过200个字符")
     private String password;
 
-    // 功能：供JSON绑定和登录服务读取字段。
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
     public String getPassword() { return password; }
@@ -778,322 +749,313 @@ public class LoginRequest {
 }
 ```
 
-再新增只返回用户名的完整响应类：
+- `LoginRequest`：每次`POST /auth/login`由Spring MVC从JSON创建的输入对象；只含用户名和原始密码，不接收角色或令牌。
+- `@NotBlank`、`@Size(max = ...)`：分别拒绝空白和超长输入；`message`指定校验提示。注册时的最小密码长度是创建规则，登录时不以长度判断密码是否正确，最终仍由认证组件核对。
 
 ```java
-// src/main/java/com/example/employee/dto/response/CurrentUserResponse.java
 package com.example.employee.dto.response;
-// 功能：成功响应只包含当前用户名。
-public record CurrentUserResponse(String username) {}
+
+// 功能：/auth/me只返回从当前已认证身份取得的用户名。
+public record CurrentUserResponse(String username) {
+}
 ```
 
-**功能说明：** `LoginRequest`是JSON请求DTO，`CurrentUserResponse`是只含用户名的响应`record`。`@NotBlank`拒绝空白，`@Size(max = 50/200)`限制长度，getter/setter供JSON绑定和服务读取；15-06的Controller用`@Valid`触发校验，失败沿用已有400处理。
+- `CurrentUserResponse`：只读响应对象，构造参数`username`来自已验证的`Authentication`，不能直接信任请求参数。
 
-**理解要点：** 登录时不返回密码、哈希、完整认证对象或Session ID。`LoginRequest`只装本次输入；密码不做`trim()`，因为首尾空格可能是密码的一部分。
+`POST /auth/login`的业务顺序为JSON输入 → `authenticate`查库验密码 → `issue`签发JWT → 返回Token类型与秒数。如下完整代码先配置密钥和编解码器，再写登录服务与Controller；到15-08替换过滤链后整体验证。
 
-先看`SessionLoginService.login(...)`如何完成登录，再看它依赖哪些配置。下面三段均为**同一个方法中的关键片段**，不是三个可分别运行的登录版本；稍后会给出包含导入、构造器和完整方法的文件。
+### 配置签名密钥与JWT编解码
 
-**第一步：验证本次输入。**
+`application.yml`保留第14章的数据库、MyBatis等配置，只新增以下字段。运行前先在本机的临时代码中生成随机值，再在Eclipse的Run Configuration中设置`EMPLOYEE_JWT_SECRET_BASE64`。下面是**生成值的代码片段**，可放在本机临时`main`方法内执行，不应留在业务代码中：
 
 ```java
-// 这只是待验证的用户名密码，不代表已经登录。
-Authentication input = UsernamePasswordAuthenticationToken.unauthenticated(
-        username, password);
-// 验证失败会抛出认证异常；成功才返回已认证结果。
-Authentication result = authenticationManager.authenticate(input);
+// 功能：生成32字节随机密钥，并输出供本机环境变量使用的Base64文本。
+byte[] bytes = new byte[32];
+new java.security.SecureRandom().nextBytes(bytes);
+System.out.println(java.util.Base64.getEncoder().encodeToString(bytes));
 ```
 
-- `Authentication`是Spring Security表示一次认证输入或结果的接口。`input`尚未通过验证；`result`是认证成功后返回的身份，包含认证后的用户名等资料。
-- `AuthenticationManager`是登录服务需要的认证入口。这里调用`authenticate(input)`，实际查账号、检查状态和核对密码的工作沿用15-05组装的Provider，而不是由Controller或Mapper单独完成。
+- `byte[32]`、`SecureRandom.nextBytes(bytes)`：创建32字节数组并填入密码学随机值，不使用固定示例密钥。
+- `Base64.getEncoder().encodeToString(bytes)`：把随机字节转成便于设置环境变量的文本；Base64不增加密钥强度，也不是加密。
+- `System.out.println(...)`：只在本机临时运行以复制环境变量值；不要将真实密钥提交仓库或写进项目日志。更换密钥会令旧Token无法验证。
 
-**第二步：处理认证成功后的会话。**
-
-```java
-// 使用已验证的身份及当前HTTP请求、响应执行会话安全动作。
-sessionStrategy.onAuthentication(result, request, response);
+```yaml
+app:
+  security:
+    jwt:
+      # 功能：运行时从环境变量取得Base64编码的签名密钥，不写死在仓库中。
+      secret-base64: ${EMPLOYEE_JWT_SECRET_BASE64}
+      # 功能：标识本项目签发者及令牌预期使用的API。
+      issuer: employee-management
+      audience: employee-api
 ```
 
-- `SessionAuthenticationStrategy`不是密码验证器；它在认证成功后处理会话安全事项，例如更换已有Session ID，避免沿用登录前的标识。
-- `request`和`response`是当前的`HttpServletRequest`、`HttpServletResponse`。会话策略可能需要读取或更新本次会话，并让客户端获知更新后的Cookie，所以不能只传入用户名。此步骤**不等于**已经保存跨请求身份。
+- `app.security.jwt.secret-base64`：由`@Value`读取的配置项；`${EMPLOYEE_JWT_SECRET_BASE64}`要求启动环境提供该变量，缺失时应停止启动，而不是使用教材中的固定密钥。
+- `issuer`、`audience`：签发时分别写入JWT的`iss`、`aud`，后续验签时也必须检查相同值；本地示例分别为`employee-management`和`employee-api`，正式项目应按系统规格配置。
 
-**第三步：设置本次身份，并保存供后续请求恢复。**
-
-```java
-// 建立当前请求可读取的安全上下文。
-SecurityContext context = SecurityContextHolder.createEmptyContext();
-context.setAuthentication(result);
-SecurityContextHolder.setContext(context);
-// 显式保存到Session仓库，供另一条请求恢复身份。
-contextRepository.saveContext(context, request, response);
-```
-
-- `SecurityContext`装着已认证的`Authentication`；`SecurityContextHolder.setContext(...)`使本次请求能读取它，但不能代替跨请求保存。
-- `SecurityContextRepository`负责保存和读取这个上下文。`saveContext(...)`接收上下文及当前请求、响应，将身份保存到服务器会话。下一次请求带回`JSESSIONID`时，安全过滤链从同一仓库恢复身份；少了这一步，就可能出现“登录200，随后`/auth/me`仍为401”。
-
-这是一项**直接参与HTTP认证生命周期的服务**，因此`login(...)`接收Servlet请求和响应；普通业务Service不应照搬这种参数设计。三个依赖由Spring通过构造器提供，完整服务文件见下文。现在再查看它们由哪些Bean提供。
-
-把`SecurityConfig.java`**完整替换**为下方本阶段快照。它保留注册与CSRF设置，为上述三个动作提供认证管理器、会话策略和身份仓库；第七阶段再增加Logout设置：
+`src/main/java/com/example/employee/config/JwtConfig.java`：
 
 ```java
 package com.example.employee.config;
 
-import com.example.employee.security.AppUserDetailsService;
-import jakarta.servlet.http.HttpServletResponse;
+import java.util.Base64;
 import java.util.List;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
-import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 
-// 功能：集中提供本阶段所需的密码、CSRF、认证与Session相关Bean。
+// 功能：集中建立本项目使用的JWT签名密钥、签发器和验证器。
 @Configuration
-public class SecurityConfig {
-    // 功能：注册与登录共用同一种BCrypt密码编码方案。
+public class JwtConfig {
+    // 功能：从配置读取Base64文本，解码并检查HS256密钥长度。
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
+    public SecretKey jwtSecretKey(
+            @Value("${app.security.jwt.secret-base64}") String encoded) {
+        byte[] bytes;
+        try {
+            bytes = Base64.getDecoder().decode(encoded);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException("JWT secret must be Base64", ex);
+        }
+        if (bytes.length < 32) {
+            throw new IllegalStateException("JWT HS256 secret must be at least 32 bytes");
+        }
+        // 功能：把合格的原始字节包装为供签名和验签共用的密钥对象。
+        return new SecretKeySpec(bytes, "HmacSHA256");
     }
 
-    // 功能：保存和读取预期CSRF令牌。
+    // 功能：建立签发JWT的编码器，供JwtTokenService使用。
     @Bean
-    public CsrfTokenRepository csrfTokenRepository() {
-        return new CookieCsrfTokenRepository();
+    public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
+        return NimbusJwtEncoder.withSecretKey(jwtSecretKey)
+                .algorithm(MacAlgorithm.HS256).build();
     }
 
-    // 功能：把认证身份存入服务器HttpSession，供后续请求恢复。
+    // 功能：建立Bearer请求使用的解码器，并同时检查签名、时间和声明。
     @Bean
-    public SecurityContextRepository securityContextRepository() {
-        return new HttpSessionSecurityContextRepository();
-    }
-
-    // 功能：把数据库账号读取器和密码编码器组装成认证入口。
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AppUserDetailsService users, PasswordEncoder encoder) {
-        // 功能：用户名密码Provider负责实际账号状态与密码检查。
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(users);
-        provider.setPasswordEncoder(encoder);
-        return new ProviderManager(provider);
-    }
-
-    // 功能：认证成功后依次更换已有Session ID并清除旧CSRF令牌。
-    @Bean
-    public SessionAuthenticationStrategy sessionAuthenticationStrategy(
-            CsrfTokenRepository csrfTokenRepository) {
-        return new CompositeSessionAuthenticationStrategy(List.of(
-                new ChangeSessionIdAuthenticationStrategy(),
-                new CsrfAuthenticationStrategy(csrfTokenRepository)));
-    }
-
-    // 功能：把CSRF、Session恢复、路径要求和401响应组装成过滤链。
-    @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http, SecurityContextRepository repository,
-            CsrfTokenRepository csrfTokenRepository) throws Exception {
-        // 功能：写请求检查令牌，并让过滤链使用与登录服务相同的身份仓库。
-        http.csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository))
-                .securityContext(context -> context
-                    .requireExplicitSave(true)
-                    .securityContextRepository(repository))
-                // 功能：公开注册与登录路径，保护身份查询和员工接口。
-                .authorizeHttpRequests(authorize -> authorize
-                    .requestMatchers("/auth/csrf", "/auth/register",
-                            "/auth/login", "/health").permitAll()
-                    .requestMatchers("/auth/me", "/employees", "/employees/**")
-                        .authenticated()
-                    .anyRequest().permitAll())
-                // 功能：匿名访问受保护资源时返回401。
-                .exceptionHandling(exceptions -> exceptions
-                    .authenticationEntryPoint((request, response, exception) ->
-                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
-                // 功能：仍不开放表单登录和HTTP Basic两种入口。
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable);
-        // 功能：创建供请求使用的过滤链。
-        return http.build();
+    public JwtDecoder jwtDecoder(SecretKey jwtSecretKey,
+            @Value("${app.security.jwt.issuer}") String issuer,
+            @Value("${app.security.jwt.audience}") String audience) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSecretKey)
+                .macAlgorithm(MacAlgorithm.HS256).build();
+        // 功能：组合默认时间/签发者检查和本项目目标API检查。
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(issuer),
+                new JwtClaimValidator<List<String>>(JwtClaimNames.AUD,
+                        values -> values != null && values.contains(audience))));
+        return decoder;
     }
 }
 ```
 
-**功能说明：本快照中的类型、对象和方法**
+- `@Configuration`、`@Bean`：启动时创建并注册三个可注入对象：`SecretKey`、`JwtEncoder`、`JwtDecoder`。`@Value("${...}")`把`application.yml`中的值作为方法参数注入，不是从HTTP请求读取。
+- `Base64.getDecoder().decode(encoded)`、`SecretKeySpec`：把环境变量中的Base64文本还原为密钥字节，再包装成HMAC密钥。Base64只是编码，不是加密；非法编码或不足32字节都让应用启动失败。
+- `JwtEncoder`、`NimbusJwtEncoder.withSecretKey(...).algorithm(MacAlgorithm.HS256).build()`：建立签发器；`JwtTokenService`之后调用它把声明签成JWT。`HS256`表示使用同一密钥做HMAC签名与验签。
+- `JwtDecoder`、`NimbusJwtDecoder.withSecretKey(...).macAlgorithm(...).build()`：建立后续Bearer请求的验签器；错误密钥或被篡改的Token不能通过。
+- `setJwtValidator(...)`、`DelegatingOAuth2TokenValidator`：给Decoder设置一组声明校验器；只有各项都通过，JWT才被接受。类名中的“Delegating”表示组合校验，不会跳过验签。
+- `JwtValidators.createDefaultWithIssuer(issuer)`：在默认时间规则基础上检查`iss`；`JwtClaimValidator<List<String>>(JwtClaimNames.AUD, ...)`检查`aud`列表包含本项目`audience`。这里的`List<String>`是该声明在本例中的值类型。
 
-- `@Configuration`声明配置类；各`@Bean`方法在启动时提供容器对象。`PasswordEncoder`与`AuthenticationManager`的具体作用见15-04和15-05。
-- `CsrfTokenRepository`仍是15-04的**令牌仓库**，不是登录状态仓库。`SecurityContextRepository`是另一个接口；这里的`HttpSessionSecurityContextRepository`实现负责在服务器Session中保存和加载`SecurityContext`。过滤链与下方登录服务使用同一个仓库Bean。
-- `SessionAuthenticationStrategy`是登录成功后处理会话的接口。这里组合了更换已有Session ID与清除登录前CSRF令牌两个动作；`CompositeSessionAuthenticationStrategy(List.of(...))`按列表顺序调用它们。本节只需知道组合的顺序和可观察结果，内部更新过程见[A15-2](../appendix/A15_02_session_cookie_csrf.md)。
-- `http.securityContext(...)`配置身份仓库；`requireExplicitSave(true)`要求自定义登录代码显式调用`saveContext`。`requestMatchers(...).permitAll()`只允许匿名访问列出的路径，`authenticated()`要求身份，`authenticationEntryPoint(...)`负责匿名401，`build()`返回过滤链。
+生产环境还须经HTTPS传输Token，并由密钥管理系统保管密钥；更换密钥会使旧Token无法通过验签。
 
-**理解要点：** 令牌仓库与身份仓库不能互换；会话策略也不会验证密码或代替`saveContext`。公开的`/auth/register`和`/auth/login`虽允许匿名调用，仍必须通过CSRF写请求检查。
+### 签发JWT与唯一JSON登录
 
-三个新依赖与登录服务的关系如下；箭头表示“提供给／由其使用”，不是每次请求重新创建Bean：
+`src/main/java/com/example/employee/dto/response/LoginResponse.java`：
 
-```text
-SecurityConfig
-├─ AuthenticationManager Bean ──────── 验证本次用户名和密码
-├─ SessionAuthenticationStrategy Bean ─ 登录成功后处理会话安全动作
-└─ SecurityContextRepository Bean ───── 保存并恢复跨请求身份
-             └─ 以上三个Bean经构造器注入SessionLoginService
-                                      ↓
-                              AuthController调用登录服务
+```java
+package com.example.employee.dto.response;
+// 功能：登录成功时把令牌、类型和有效秒数返回给客户端。
+public record LoginResponse(String accessToken, String tokenType, long expiresIn) {}
 ```
 
-把图中的对象按创建时机再对照一次：
+- `LoginResponse`：只读登录响应；`accessToken`是签发的JWT，`tokenType`固定为`Bearer`，`expiresIn`是剩余有效秒数。客户端须保管令牌，后续显式放入`Authorization`头，不通过Cookie自动提交。
 
-| 对象 | 在什么时候创建或取得 | 谁使用 |
-| --- | --- | --- |
-| `AuthenticationManager` | 应用启动时创建Bean | `SessionLoginService` |
-| `SessionAuthenticationStrategy` | 应用启动时创建Bean | `SessionLoginService` |
-| `SecurityContextRepository` | 应用启动时创建Bean | `SessionLoginService`及Security过滤链 |
-| `Authentication input` | 每次登录请求中创建 | `AuthenticationManager` |
-| `Authentication result` | 本次认证成功时返回 | `SessionLoginService` |
-| `SecurityContext` | 登录成功后为本次身份创建并保存 | Security过滤链及读取当前身份的代码 |
-
-前三行是Spring管理的依赖对象，后面三行是一次登录过程产生或处理的对象；不要把“Bean已创建”理解成“用户已经登录”。
-
-`SecurityConfig`负责创建和配置对象；`SessionLoginService`的构造器接收Spring已有的Bean，不自行`new`出认证管理器、会话策略或身份仓库。`AuthController`只调用登录服务并返回结果。这里的`SecurityContextRepository`与15-04的`CsrfTokenRepository`都叫Repository，但前者保存**身份**，后者保存**CSRF令牌**，用途不同。
-
-新建`src/main/java/com/example/employee/security/SessionLoginService.java`，完整文件如下：
+`src/main/java/com/example/employee/security/JwtTokenService.java`：
 
 ```java
 package com.example.employee.security;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import com.example.employee.dto.response.LoginResponse;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 
-// 功能：把一次成功的密码认证结果保存为可跨请求恢复的Session身份。
+// 功能：根据认证成功的身份签发短期JWT。
 @Service
-public class SessionLoginService {
-    private final AuthenticationManager authenticationManager;
-    private final SessionAuthenticationStrategy sessionStrategy;
-    private final SecurityContextRepository contextRepository;
+public class JwtTokenService {
+    // 功能：统一设置本项目Access Token的15分钟有效期。
+    private static final long LIFETIME_SECONDS = 900;
+    private final JwtEncoder encoder;
+    private final String issuer;
+    private final String audience;
 
-    // 功能：注入认证入口、登录成功后的会话策略和身份保存仓库。
-    public SessionLoginService(AuthenticationManager authenticationManager,
-            SessionAuthenticationStrategy sessionStrategy,
-            SecurityContextRepository contextRepository) {
-        this.authenticationManager = authenticationManager;
-        this.sessionStrategy = sessionStrategy;
-        this.contextRepository = contextRepository;
+    // 功能：注入签发器及令牌声明所需的issuer和audience。
+    public JwtTokenService(JwtEncoder encoder,
+            @Value("${app.security.jwt.issuer}") String issuer,
+            @Value("${app.security.jwt.audience}") String audience) {
+        this.encoder = encoder;
+        this.issuer = issuer;
+        this.audience = audience;
     }
 
-    // 功能：完成验证密码、处理Session、保存身份，并返回当前用户名。
-    public String login(String username, String password,
-            HttpServletRequest request, HttpServletResponse response) {
-        // 功能：仅封装本次输入，此时尚未证明密码正确。
-        Authentication input = UsernamePasswordAuthenticationToken.unauthenticated(
-                username, password);
-        // 功能：交给认证管理器验证，失败时抛认证异常。
-        Authentication result = authenticationManager.authenticate(input);
-        // 功能：认证成功后应用Session ID与CSRF令牌更新策略。
-        sessionStrategy.onAuthentication(result, request, response);
-        // 功能：建立本次请求使用的身份上下文。
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(result);
-        SecurityContextHolder.setContext(context);
-        // 功能：显式保存上下文，使下一条携带会话Cookie的请求能恢复身份。
-        contextRepository.saveContext(context, request, response);
-        // 功能：只把认证后的用户名交给Controller作为响应数据。
-        return result.getName();
+    // 功能：只接受认证成功的身份，从中取用户名及角色生成JWT。
+    public LoginResponse issue(Authentication authenticated) {
+        Instant now = Instant.now();
+        // 功能：把Security的ROLE_前缀权限转换成本项目Token中的roles值。
+        List<String> roles = authenticated.getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .filter(a -> a.startsWith("ROLE_"))
+                .map(a -> a.substring("ROLE_".length()))
+                .toList();
+        // 功能：写入签发者、使用目标、身份、时间边界与角色声明。
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(issuer)
+                .subject(authenticated.getName())
+                .audience(List.of(audience))
+                .issuedAt(now)
+                .notBefore(now)
+                .expiresAt(now.plusSeconds(LIFETIME_SECONDS))
+                .claim("roles", roles)
+                .build();
+        // 功能：签名后取出可交给客户端的三段式JWT文本。
+        String token = encoder.encode(JwtEncoderParameters.from(claims))
+                .getTokenValue();
+        return new LoginResponse(token, "Bearer", LIFETIME_SECONDS);
     }
 }
 ```
 
-**功能说明：完整服务如何落实前面三个动作**
+- `@Service`、`JwtTokenService`：Spring创建的签发服务；构造器得到`JwtEncoder`以及配置中的`issuer`、`audience`，不负责查询数据库或核验原始密码。
+- `issue(Authentication authenticated)`：输入是`AuthenticationManager.authenticate(...)`返回的已认证对象；`getName()`得到可信用户名，`getAuthorities()`得到认证时从数据库账号转换来的权限。不能改为使用登录请求里的角色。
+- `Instant.now()`、`LIFETIME_SECONDS`：取得当前时间并把到期点设为900秒后；`iat`、`nbf`、`exp`由同一时间基准生成。
+- `getAuthorities().stream()`及`ROLE_`处理：只取以`ROLE_`开头的权限，并移除前缀，存入JWT的`roles`列表；第16章会把这些值重新转换为角色权限。
+- `JwtClaimsSet.builder()`：依次设置`iss`、`sub`、`aud`、`iat`、`nbf`、`exp`和自定义`roles`。`audience(List.of(audience))`传入目标API列表，`claim("roles", roles)`传入数据库认证结果的角色列表。
+- `JwtEncoderParameters.from(claims)`、`encoder.encode(...).getTokenValue()`：把声明交给编码器签名，返回JWT文本；`LoginResponse`附上`Bearer`类型及有效秒数。
 
-- `@Service`让Spring创建服务；构造器把上图三个Bean交给它。这里不另行创建登录入口。
-- `authenticate(input)`负责验证；只有成功返回`result`后，才依次执行`onAuthentication(...)`、`SecurityContextHolder.setContext(...)`和`saveContext(...)`。异常会中断后续保存动作。
-- `return result.getName()`只把认证后的用户名交给Controller；不返回密码或整个`Authentication`对象。
+签名数据来自已认证身份：`ROLE_USER`被写成JWT的`roles=["USER"]`，第16章再把它转换回`ROLE_USER`。这不是从注册或登录JSON中读取角色。`JwtTokenService.issue(...)`是本项目唯一签发位置；15-08的`JwtDecoder`只负责验证。
 
-**理解要点：** Holder只供当前请求使用，不是跨请求存储。少了`saveContext`可能出现“登录200、下一请求`/auth/me`401”；后续请求须带回`JSESSIONID`，过滤链才会从同一仓库恢复身份。
+| 执行阶段 | 示例值 |
+| --- | --- |
+| MySQL `app_users.role` | `USER` |
+| `UserDetails`中的权限 | `ROLE_USER` |
+| 已认证`Authentication`中的权限 | `ROLE_USER` |
+| `JwtTokenService`提取的角色 | `USER` |
+| JWT `roles`声明 | `["USER"]` |
+| 第16章第二次请求转换后的`GrantedAuthority` | `ROLE_USER` |
 
-把15-04的`AuthController.java`**完整替换**为下方文件；注册和CSRF方法保持原行为，只新增登录与身份查询：
+数据库只存业务角色名`USER`，避免把框架的`ROLE_`前缀写进业务数据；`UserDetails.roles("USER")`补上前缀，供Security识别。签发时移除前缀，让JWT的`roles`仍是业务角色名；第16章的`JwtGrantedAuthoritiesConverter`读取该声明并重新加`ROLE_`，才能让`hasRole("USER")`或`hasRole("ADMIN")`按预期匹配。
+
+`src/main/java/com/example/employee/security/JwtLoginService.java`：
+
+```java
+package com.example.employee.security;
+
+import com.example.employee.dto.request.LoginRequest;
+import com.example.employee.dto.response.LoginResponse;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+
+// 功能：接收登录输入，调用Security认证后再签发JWT。
+@Service
+public class JwtLoginService {
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenService tokens;
+
+    // 功能：注入认证入口和签发服务，两者都不是每次请求新建。
+    public JwtLoginService(AuthenticationManager authenticationManager,
+            JwtTokenService tokens) {
+        this.authenticationManager = authenticationManager;
+        this.tokens = tokens;
+    }
+
+    // 功能：先验证用户名密码；只有成功才继续签发令牌。
+    public LoginResponse login(LoginRequest request) {
+        // 功能：创建本次请求的“待认证”输入，不能把它当作已登录身份。
+        Authentication input = UsernamePasswordAuthenticationToken.unauthenticated(
+                request.getUsername(), request.getPassword());
+        // 功能：让Provider查库、核验BCrypt与停用状态，取得可信认证结果。
+        Authentication result = authenticationManager.authenticate(input);
+        return tokens.issue(result);
+    }
+}
+```
+
+- `JwtLoginService`：把“认证”和“签发”串起来的服务；`AuthenticationManager`来自15-05的Bean，`JwtTokenService`来自上一个示例，均由Spring构造器注入。
+- `UsernamePasswordAuthenticationToken.unauthenticated(username, password)`：为**本次登录请求**创建待认证`Authentication`，参数分别来自`LoginRequest`；此对象携带原始密码，不能返回给客户端或写日志。
+- `authenticationManager.authenticate(input)`：由Provider加载MySQL账号、调用`PasswordEncoder.matches(...)`并检查是否停用；成功返回可信`Authentication result`，失败抛`AuthenticationException`，不会签发令牌。
+- `tokens.issue(result)`：只把认证成功的结果交给签发服务，返回`LoginResponse`；这一步不创建服务器Session。
+
+如果密码错误、账号不存在或账号停用，`authenticate(input)`抛出认证异常，下面的`tokens.issue(result)`不会执行，客户端拿不到有效JWT。15-07的`AuthExceptionHandler`把这类登录失败统一映射成401。
+
+`src/main/java/com/example/employee/controller/AuthController.java`：
 
 ```java
 package com.example.employee.controller;
 
-import com.example.employee.common.ApiResponse;
 import com.example.employee.dto.request.LoginRequest;
 import com.example.employee.dto.request.RegisterRequest;
-import com.example.employee.dto.response.CsrfResponse;
 import com.example.employee.dto.response.CurrentUserResponse;
+import com.example.employee.dto.response.LoginResponse;
 import com.example.employee.dto.response.RegisteredUserResponse;
+import com.example.employee.common.ApiResponse;
 import com.example.employee.security.AccountRegistrationService;
-import com.example.employee.security.SessionLoginService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import com.example.employee.security.JwtLoginService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// 功能：提供注册、CSRF令牌、登录和当前身份的JSON接口。
+// 功能：提供注册、JSON登录及Bearer身份查询三个HTTP接口。
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-    private final AccountRegistrationService registrationService;
-    private final SessionLoginService loginService;
+    private final AccountRegistrationService registration;
+    private final JwtLoginService login;
 
-    // 功能：注入注册与登录服务，Controller不直接访问账号表。
-    public AuthController(AccountRegistrationService registrationService,
-            SessionLoginService loginService) {
-        this.registrationService = registrationService;
-        this.loginService = loginService;
+    public AuthController(AccountRegistrationService registration,
+            JwtLoginService login) {
+        this.registration = registration;
+        this.login = login;
     }
 
-    // 功能：把当前请求的CSRF令牌资料交给客户端。
-    @GetMapping("/csrf")
-    public ResponseEntity<ApiResponse<CsrfResponse>> csrf(CsrfToken token) {
-        return ResponseEntity.ok(ApiResponse.success(new CsrfResponse(
-                token.getParameterName(), token.getHeaderName(), token.getToken())));
-    }
-
-    // 功能：校验注册输入，返回201和新账号摘要。
+    // 功能：保留15-04已完成的公开注册接口。
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<RegisteredUserResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(registrationService.register(request)));
+                .body(ApiResponse.success(registration.register(request)));
     }
 
-    // 功能：接收登录JSON，调用服务保存Session，返回用户名。
+    // 功能：把登录JSON交给服务验证并签发JWT，成功返回200。
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<CurrentUserResponse>> login(
-            @Valid @RequestBody LoginRequest request,
-            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
-        String username = loginService.login(request.getUsername(),
-                request.getPassword(), httpRequest, httpResponse);
-        return ResponseEntity.ok(ApiResponse.success(
-                new CurrentUserResponse(username)));
+    public ResponseEntity<ApiResponse<LoginResponse>> login(
+            @Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(login.login(request)));
     }
 
-    // 功能：从当前请求已恢复的身份中读取用户名。
+    // 功能：从本次已验签的请求身份读取用户名，而非信任请求参数。
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<CurrentUserResponse>> me(
             Authentication authentication) {
@@ -1103,11 +1065,75 @@ public class AuthController {
 }
 ```
 
-**功能说明：** `@RestController`返回JSON，`@RequestMapping("/auth")`提供公共路径。`@PostMapping("/login")`限定POST登录；`@RequestBody`把JSON映射到`LoginRequest`，`@Valid`触发校验。`HttpServletRequest`和`HttpServletResponse`是本次HTTP请求、响应，传给登录服务处理Session；`ResponseEntity.ok(...)`返回200。`@GetMapping("/me")`限定GET；`Authentication`参数来自本次请求由过滤链恢复的身份，`getName()`取得用户名。注册与CSRF方法保持15-04的行为。
+- `AuthController`、构造器：通过Spring注入注册服务与登录服务；本节**整体替换**15-04的同名Controller，不能在项目中留下两份。
+- `@PostMapping("/register")`、`@PostMapping("/login")`、`@GetMapping("/me")`：分别对应注册、登录和当前身份查询；类级`@RequestMapping("/auth")`组成完整路径。
+- `@Valid @RequestBody`：把JSON绑定为对应请求对象并触发校验；登录密码不正确属于认证失败401，不属于字段校验400。
+- `ResponseEntity.ok(...)`、`ApiResponse.success(...)`：返回200与第7章已有的统一成功包装，不创建第二份`ApiResponse`。
+- `Authentication authentication`：由Security从**本次Bearer Token**验签后提供给`/auth/me`；`getName()`取当前用户名，不从Session恢复，也不能改用前端传来的用户名。
 
-**理解要点：** Controller只调用登录服务并包装用户名，不在这里验证哈希或直接操作Session仓库。匿名`GET /auth/me`在进入方法前得到401；认证失败也不应分别暴露未知用户名、错误密码和停用账号的内部原因。
+注册不签发令牌。不要增加服务器端`/auth/logout`；前端退出只删除本地Token。
 
-把15-04的`AuthExceptionHandler.java`**完整替换**为下方最终文件，保留注册冲突并新增认证失败处理：
+`POST /auth/login`成功时，响应Body结构如下；`accessToken`是**示意文本，不能用于实际请求**，实际值必须从Postman收到的响应复制。`message`来自第7章`ApiResponse.success(...)`，当前实现固定为`"OK"`：
+
+```json
+{
+  "success": true,
+  "message": "OK",
+  "data": {
+    "accessToken": "<此处为本次登录实际签发的JWT>",
+    "tokenType": "Bearer",
+    "expiresIn": 900
+  }
+}
+```
+
+完整登录时序如下。带【内部】的消息是Spring MVC、Spring Security或MyBatis的行为，不是额外要编写的项目类；失败分支不会调用签发器：
+
+```mermaid
+sequenceDiagram
+    participant C as Postman/前端
+    participant F as SecurityFilterChain
+    participant MVC as Spring MVC【内部】
+    participant AC as AuthController
+    participant LS as JwtLoginService
+    participant AM as AuthenticationManager/ProviderManager【内部】
+    participant DP as DaoAuthenticationProvider【内部】
+    participant UD as AppUserDetailsService
+    participant MP as AppUserMapper/MyBatis【内部】
+    participant DB as MySQL
+    participant TS as JwtTokenService
+    participant JE as JwtEncoder
+    C->>F: POST /auth/login + JSON
+    F->>MVC: 路径允许匿名
+    MVC->>AC: 绑定LoginRequest并执行@Valid
+    AC->>LS: login(request)
+    LS->>AM: authenticate(input)
+    AM->>DP: 选择用户名密码Provider
+    DP->>UD: loadUserByUsername(username)
+    UD->>MP: findByUsername(username)
+    MP->>DB: SELECT app_users
+    DB-->>MP: 账号/哈希/角色/启用状态
+    MP-->>UD: AppUser
+    UD-->>DP: UserDetails
+    DP->>DP: 检查状态、PasswordEncoder.matches()
+    alt 账号不存在、停用或密码错误
+        DP-->>LS: 认证异常
+        LS-->>AC: 认证异常
+        AC-->>C: AuthExceptionHandler返回401，不签发JWT
+    else 认证成功
+        DP-->>AM: 已认证Authentication
+        AM-->>LS: result
+        LS->>TS: issue(result)
+        TS->>JE: encode(JwtClaimsSet)
+        JE-->>TS: JWT
+        TS-->>AC: LoginResponse
+        AC-->>C: 200 + ApiResponse.data.accessToken
+    end
+```
+
+在Eclipse启动后，用Postman发送正确登录JSON并查看`data.accessToken`、`data.tokenType=Bearer`、`data.expiresIn=900`；用错误密码再发一次，应401且无Token。此阶段的完整`JwtConfig`、服务、Controller和异常处理器都创建后，再按15-08替换过滤链启用后续Bearer验证。
+
+现在把15-04的`AuthExceptionHandler`**整体替换**为最终版本，增加`AuthenticationException`的401处理。用户名不存在、密码错误、账号停用均不向外区分细节；这是登录Controller内部认证失败的出口，非法Bearer的401仍由过滤链处理：
 
 ```java
 package com.example.employee.exception;
@@ -1119,172 +1145,274 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-// 功能：把进入Controller后的注册冲突与认证异常转换为统一JSON错误。
+// 功能：把Controller内部的注册冲突和登录认证失败转换成统一JSON。
 @RestControllerAdvice
 public class AuthExceptionHandler {
-    // 功能：保留注册重名时的409处理。
+    // 功能：保留重名409处理。
     @ExceptionHandler(DuplicateUsernameException.class)
-    public ResponseEntity<ApiResponse<Void>> duplicateUsername(
-            DuplicateUsernameException exception) {
+    public ResponseEntity<ApiResponse<Void>> duplicate() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.failure(exception.getMessage()));
+                .body(ApiResponse.failure("用户名已存在"));
     }
 
-    // 功能：对账号不存在、密码错误和停用等认证失败统一返回401。
+    // 功能：账号不存在、密码错误和停用账号对外统一返回401。
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ApiResponse<Void>> authenticationFailed(
-            AuthenticationException exception) {
+    public ResponseEntity<ApiResponse<Void>> loginFailed() {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.failure("用户名或密码错误"));
     }
 }
 ```
 
-**功能说明：** `@RestControllerAdvice`集中处理Controller异常；`@ExceptionHandler(AuthenticationException.class)`匹配认证异常，`AuthenticationException`参数承载内部错误，但方法固定以`HttpStatus.UNAUTHORIZED`返回401及统一失败响应体。另一个方法继续处理`DuplicateUsernameException`并返回409。
+- `@RestControllerAdvice`、`@ExceptionHandler(...)`：只处理进入MVC Controller后抛出的匹配异常；本节**整体替换**15-04版本，不能另建第二个同名类。
+- `AuthenticationException`：Spring Security认证失败的共同父类型；`JwtLoginService`调用`authenticate(...)`失败后由这里返回401，客户端不应获知究竟是账号不存在、密码错误还是停用。
+- `DuplicateUsernameException`、`HttpStatus.CONFLICT`：保留注册重名409，不受登录处理新增影响。
+- 过滤链与MVC边界：缺失或无效Bearer发生在Controller之前，由下节`SecurityFilterChain`处理401，不由此类处理。
 
-**理解要点：** 过滤链中的匿名401、CSRF403不经过这个Advice。账号不存在、密码错误或停用都向调用方返回相同的401消息，避免暴露账号存在性。
+| 对象 | 谁创建 | 谁使用、何时使用 |
+| --- | --- | --- |
+| `JwtEncoder`、`JwtDecoder` | `JwtConfig`在启动时建Bean | 签发服务用Encoder；后续请求的资源服务器用Decoder |
+| `JwtLoginService`、`JwtTokenService` | Spring启动时建Service Bean | Controller收到登录JSON后调用；前者认证，后者签名 |
+| `LoginRequest`、待认证`Authentication` | 每次登录请求创建 | Manager核验用户名密码 |
+| 已认证`Authentication`、`LoginResponse` | 认证成功后产生 | Token服务从身份取用户名/角色并返回Token |
+| `JwtClaimsSet` | 每次签发时创建 | 交给Encoder，包含iss、sub、aud、iat、nbf、exp与roles |
 
-在Postman保留同一Cookie Jar，先`GET /auth/csrf`取当前Header名和令牌，再`POST /auth/login`提交上面JSON。预期200且`data.username=learner15`；接受登录响应中的Cookie更新后，再发一条独立`GET /auth/me`，预期200且用户名仍是`learner15`。清掉`JSESSIONID`后重发`GET /auth/me`应401。登录后再`GET /auth/csrf`取得**新令牌**，不要沿用登录前的值。登录200而下一请求401时，依次查`authenticate`、`onAuthentication`、`saveContext`及Postman Cookie；不要关闭Security来让请求通过。
+**15-07阶段自检：**在本节全部完整文件创建、异常处理器替换并配置本机密钥后，`POST /auth/login`应返回200、`data.accessToken`非空、`data.tokenType`为`Bearer`、`data.expiresIn`为900；错误密码应401且不签发Token。应用日志不得输出完整JWT。此时尚未用15-08的过滤链验证后续Bearer请求，不能把“取得JWT”当作“员工接口已可使用”。
 
-## 15-07 CSRF与退出：区分令牌和登录会话
+## 15-08 在每个后续请求验证Bearer
 
-浏览器在符合Cookie规则时可能自动带上`JSESSIONID`；恶意页面可能诱导用户浏览器发送写请求。CSRF令牌要求客户端除了自动发送的Cookie，还主动提交当前令牌。本章从注册开始保留CSRF，因此`POST /auth/register`、`POST /auth/login`、员工写请求和退出都需要有效令牌。Postman从`GET /auth/csrf`响应体读取`headerName`和`token`，再把值放进对应请求头。只带Cookie不够；`JSESSIONID`也不是CSRF令牌。浏览器的SameSite等因素会影响攻击是否可行，不能简单声称所有跨站请求都会成功。
+此前已建立MySQL账号、BCrypt认证、`JwtEncoder`签发、`JwtDecoder` Bean和`POST /auth/login`；现在要**完整替换现有的一个`SecurityConfig.java`文件**，启用资源服务器的Bearer过滤链，才可验证下一次请求。下方前端代码只是**调用示意**，HTTP报文是**请求示例**，`SecurityConfig`代码块才是本阶段**完整文件**。15-07的登录响应只把Token交给客户端；服务器并没有为下一次请求保存Session身份。先从响应`data.accessToken`取得本次真实JWT，下一次请求必须显式发：
 
-登录成功时15-06的组合策略更换已有Session ID并清除登录前令牌。客户端必须接受服务器的Cookie更新，再次`GET /auth/csrf`取当前令牌。此处`CookieCsrfTokenRepository`保存预期令牌，默认请求处理器可能向响应体暴露带掩码的提交值；不要假设`XSRF-TOKEN` Cookie文本必然等于响应体的`token`。深入处理流程见[A15-2](../appendix/A15_02_session_cookie_csrf.md)。
-
-界面显示“退出”不等于服务器Session失效。本项目用Spring Security的Logout过滤器处理`POST /auth/logout`。只修改15-06的`SecurityConfig.java`：在`.httpBasic(AbstractHttpConfigurer::disable)`后、`return http.build()`前，把原分号改成下面的链式调用与分号：
-
-```java
-// 功能：保留关闭HTTP Basic的设置，继续添加退出路径配置。
-.httpBasic(AbstractHttpConfigurer::disable)
-// 功能：让Security过滤器处理POST /auth/logout，并清除客户端会话Cookie。
-.logout(logout -> logout.logoutUrl("/auth/logout")
-    .deleteCookies("JSESSIONID")
-    // 功能：退出成功时只返回204，不返回响应体。
-    .logoutSuccessHandler((request, response, authentication) ->
-        response.setStatus(204)));
+```http
+GET /auth/me HTTP/1.1
+Authorization: Bearer <本次登录得到的accessToken>
 ```
 
-**功能说明：** 这是`SecurityConfig.securityFilterChain(...)`中原调用链的**替换片段**，不是独立Java语句。`logoutUrl("/auth/logout")`设置退出路径；`deleteCookies("JSESSIONID")`让退出响应删除会话Cookie；`logoutSuccessHandler(...)`接收成功处理回调，Lambda的`request`、`response`、`authentication`依次是本次请求、响应和退出前身份。`response.setStatus(204)`使成功响应没有正文。
+在Postman有两种做法：
 
-**理解要点：** CSRF仍启用，所以客户端须用POST并带当前令牌。删除客户端Cookie和使服务器Session失效不是同一件事，不能用“在Postman里手动删Cookie”代替退出验证。
+1. 打开登录响应，复制`data.accessToken`的值；新建`GET http://localhost:8080/auth/me`，到Authorization页选择**Bearer Token**，只粘贴Token值，不再手动加`Bearer `前缀。Postman最终发送的Header是`Authorization: Bearer <JWT>`。
+2. 创建仅供本机练习的Postman环境变量`accessToken`，把登录响应中的值复制进去；后续请求的Bearer Token字段填写`{{accessToken}}`。换账号登录后要替换变量值；不要把带真实Token的环境导出或提交仓库。
 
-按下表验证；员工新增体为`{"name":"Csrf Practice","department":"Sales","email":"csrf-practice@example.com"}`，先确认邮箱未使用。各POST均无查询参数：
+下面是**轻量前端调用示意，不是完整前端工程**。仅把Token保存在当前页面的内存变量中；浏览器跨Origin调用还需要第16章之外的CORS配置，不能把它当作已完成的部署示例：
 
-| HTTP方法与URL | 条件和请求体 | 预期状态、响应与数据库证据 |
-| --- | --- | --- |
-| `POST http://localhost:8080/auth/login` | 登录JSON，缺CSRF Header | 403，不建立登录身份 |
-| `POST /auth/login` | 登录JSON，当前令牌和Cookie | 200，返回用户名 |
-| `POST /employees` | 员工JSON、登录Cookie，缺令牌 | 403，库中无该邮箱 |
-| `GET /auth/csrf` | 登录后同一Cookie，无请求体 | 200，取得登录后令牌 |
-| `POST /employees` | 员工JSON、登录Cookie、新令牌 | 201，库中新增该邮箱 |
-| `POST /auth/logout` | 登录Cookie、新令牌、无请求体 | 204、无正文；重送旧会话标识访问`GET /auth/me`仍为401 |
+```javascript
+// 功能：仅在当前页面运行期间暂存本次登录的Access Token。
+let accessToken;
 
-再用登录前旧令牌配合当前Header名单独发送写请求，应为403。员工新增实验完成后，仅在个人练习库核对实际ID再清理本次数据；不要运行测试库的`DROP`。已登录仍403时，先核对CSRF令牌和Cookie，再判断是否为第16章角色授权拒绝。
+// 功能：把账号密码发给JSON登录接口，从统一响应中取出JWT。
+async function login(username, password) {
+  const response = await fetch("http://localhost:8080/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+  if (!response.ok) throw new Error("登录失败");
+  const body = await response.json();
+  accessToken = body.data.accessToken;
+}
 
-## 15-08 从注册到退出的测试与交接
+// 功能：下一次请求主动附上Bearer头；服务器会重新验证JWT。
+async function loadMe() {
+  const response = await fetch("http://localhost:8080/auth/me", {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  return response.json();
+}
+```
 
-自动化测试与Postman承担不同职责。真实登录测试必须使用MySQL账号、BCrypt、JSON请求与另一次HTTP请求；`@WithMockUser`或`user(...)`只能模拟已登录身份，不能证明密码正确。测试数据库必须由第12章`MySqlTestGuard`限制为专用MySQL库；[R15的`test-data.sql`](../reference/R15_session_login_complete_source.md)含`DROP`，绝不可导入个人库。
+- `fetch()`：浏览器发送HTTP请求；登录请求使用JSON Body，后续`GET`不再发送密码。
+- `response.json()`、`body.data.accessToken`：读取项目统一响应中的JWT；只在响应成功后保存。
+- `Authorization`：由前端显式设置为`Bearer <token>`。这里只用内存变量演示调用关系；正式前端须按XSS风险、有效期及是否需要Refresh Token等要求设计存储方式，不无条件推荐`localStorage`。
 
-下面是一个**完整的最小集成测试类**。它沿用第12章已有的`MySqlTestGuard`与R15测试数据；真实注册账号`registered-in-test`与初始化账号不同，避免“注册并未写入，登录却碰巧使用已有账号”的假通过：
+现在用下方完整配置**替换**15-02临时`SecurityConfig`，不要留下两个同名类或两条过滤链。登录走`AuthenticationManager`，后续请求走Resource Server的JWT验证：先取`Authorization`头，再验HS256签名、`iss`、`aud`、`nbf`、`exp`，合格后才让Controller读到`Authentication`。
+
+### 配置认证组件和Bearer过滤链
+
+`src/main/java/com/example/employee/config/SecurityConfig.java`：
 
 ```java
-package com.example.employee.security;
+package com.example.employee.config;
 
-import com.example.employee.support.MySqlTestGuard;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import com.example.employee.security.AppUserDetailsService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mock.web.MockHttpSession;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-// 功能：启动真实Spring上下文与MockMvc，选用test配置，并在每次测试前准备专用测试库。
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Sql(scripts = "/test-data.sql",
-        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class RegistrationLoginTest extends MySqlTestGuard {
-    // 功能：注入模拟HTTP请求工具与直接核对数据库的工具。
-    @Autowired MockMvc mockMvc;
-    @Autowired JdbcTemplate jdbcTemplate;
-
-    // 功能：证明新注册账号写入MySQL后，能够真实登录且跨请求恢复身份。
-    @Test
-    void registeredAccountCanLoginOnNextRequest() throws Exception {
-        // 功能：提交带有效CSRF的注册JSON，检查201与返回用户名。
-        mockMvc.perform(post("/auth/register").with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"registered-in-test\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.username").value("registered-in-test"));
-        // 功能：直接查库，证明保存的是哈希而非明文密码。
-        String hash = jdbcTemplate.queryForObject(
-                "SELECT password_hash FROM app_users WHERE username = ?",
-                String.class, "registered-in-test");
-        assertThat(hash).isNotEqualTo("TrainingPass123!");
-
-        // 功能：对刚注册的账号发送真实登录请求，取得本次响应结果。
-        MvcResult login = mockMvc.perform(post("/auth/login").with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"registered-in-test\","
-                                + "\"password\":\"TrainingPass123!\"}"))
-                .andExpect(status().isOk())
-                .andReturn();
-        // 功能：从登录请求取得已存在的Session，不凭空创建一个。
-        MockHttpSession session =
-                (MockHttpSession) login.getRequest().getSession(false);
-        assertThat(session).isNotNull();
-        // 功能：在另一条请求携带该Session，检查身份能否恢复。
-        mockMvc.perform(get("/auth/me").session(session))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.username").value("registered-in-test"));
+// 功能：用最终Bearer规则整体替换15-02的临时安全配置。
+@Configuration
+public class SecurityConfig {
+    // 功能：保留注册与认证共用的BCrypt密码编码器。
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
-    // 功能：重复注册应返回409，数据库仍只有一条账号。
-    @Test
-    void duplicateRegistrationDoesNotCreateSecondAccount() throws Exception {
-        String body = "{\"username\":\"duplicate-in-test\","
-                + "\"password\":\"TrainingPass123!\"}";
-        // 功能：先成功注册，再用相同请求体触发重名错误。
-        mockMvc.perform(post("/auth/register").with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isCreated());
-        mockMvc.perform(post("/auth/register").with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isConflict());
-        // 功能：用COUNT核对没有产生第二行，不能只看HTTP状态。
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM app_users WHERE username = ?",
-                Integer.class, "duplicate-in-test");
-        assertThat(count).isEqualTo(1);
+    // 功能：保留15-05的数据库用户名密码认证入口。
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AppUserDetailsService users, PasswordEncoder encoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(users);
+        provider.setPasswordEncoder(encoder);
+        return new ProviderManager(provider);
+    }
+
+    // 功能：注册/登录允许匿名，其他本章接口必须提交有效Bearer JWT。
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+        http
+            // 功能：本项目不用认证Cookie，并且不保存服务器端登录会话。
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // 功能：关闭表单、Basic及框架内置的Session退出入口。
+            .formLogin(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .logout(AbstractHttpConfigurer::disable)
+            // 功能：按顺序匹配公开接口、需认证接口和其他拒绝路径。
+            .authorizeHttpRequests(a -> a
+                .requestMatchers("/health", "/error",
+                        "/auth/register", "/auth/login").permitAll()
+                .requestMatchers("/auth/me", "/employees", "/employees/**")
+                    .authenticated()
+                .anyRequest().denyAll())
+            // 功能：为没有身份的请求指定统一401 JSON出口。
+            .exceptionHandling(e -> e.authenticationEntryPoint((request, response, ex) ->
+                writeUnauthorized(response)))
+            // 功能：启用框架的Bearer解析与JWT验证，不自行编写解析Filter。
+            .oauth2ResourceServer(o -> o
+                .authenticationEntryPoint((request, response, ex) ->
+                    writeUnauthorized(response))
+                .jwt(Customizer.withDefaults()));
+        return http.build();
+    }
+
+    // 功能：对需要认证却没有有效Bearer的请求写出401 JSON与Bearer提示头。
+    private static void writeUnauthorized(HttpServletResponse response)
+            throws java.io.IOException {
+        response.setStatus(401);
+        response.setHeader("WWW-Authenticate", "Bearer");
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("{\"success\":false,\"message\":\"请先登录\",\"data\":null}");
     }
 }
 ```
 
-**功能说明：本例的注解、对象、方法和断言**
+- `SecurityConfig`、三个`@Bean`：本文件**整体替换**15-02的临时版本；保留`PasswordEncoder`、`AuthenticationManager`，并生成最终`SecurityFilterChain`，不能并存两条同名过滤链。
+- `AuthenticationManager`、`DaoAuthenticationProvider`：只处理`POST /auth/login`交来的用户名密码；数据库查询和BCrypt核验沿用15-05，不在每个Bearer请求重新验证密码。
+- `csrf(AbstractHttpConfigurer::disable)`、`SessionCreationPolicy.STATELESS`：此工程只由客户端显式提交`Authorization`头，不使用自动附加的认证Cookie，因此此处关闭CSRF且不把认证身份存Session；不能套用于Cookie认证项目。
+- `formLogin(...)`、`httpBasic(...)`、`logout(...)`：关闭框架内置的其他登录/退出入口；本项目只有JSON登录，客户端退出只删除自己持有的Token。
+- `requestMatchers(...)`、`permitAll()`、`authenticated()`、`denyAll()`：公开健康、错误、注册和登录路径；`/auth/me`及员工接口需要有效身份；其他路径兜底拒绝。它们只决定访问条件，不负责签发JWT。
+- `oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()))`：启用Spring Security内置的Bearer读取与JWT认证；`Customizer.withDefaults()`表示采用已注册`JwtDecoder`等默认协作，不是跳过签名验证。
+- `exceptionHandling(...authenticationEntryPoint(...))`与Resource Server的`authenticationEntryPoint(...)`：分别把一般未认证请求和Bearer认证失败导向`writeUnauthorized(...)`；后者用`HttpServletResponse`设置401、JSON内容类型和`WWW-Authenticate: Bearer`响应头。该方法不属于MVC的`@RestControllerAdvice`。
 
-- `@SpringBootTest`启动应用上下文，`@AutoConfigureMockMvc`配置MockMvc，`@ActiveProfiles("test")`选择测试配置；`@Sql(..., BEFORE_TEST_METHOD)`在每个`@Test`方法前执行初始化脚本。`MySqlTestGuard`限制只能连接专用测试库。
-- `@Autowired`注入`MockMvc`与`JdbcTemplate`。`MockMvc.perform(...)`发送模拟HTTP请求；静态导入的`post(...)`、`get(...)`创建请求，`.with(csrf())`仅给该请求附上有效令牌，`.contentType(MediaType.APPLICATION_JSON)`声明JSON请求体，`.content(...)`设置内容。
-- `.andExpect(status().isCreated()/isOk()/isConflict())`检查HTTP状态；`jsonPath("$.data.username").value(...)`检查响应字段。`.andReturn()`返回`MvcResult`，用于取得本次请求的`MockHttpSession`测试会话；`getSession(false)`在没有Session时返回`null`，不会创建假的会话。另一条请求的`.session(session)`显式携带它。
-- `JdbcTemplate.queryForObject(sql, type, value)`在此执行带`?`参数的查询；`assertThat(hash).isNotEqualTo(...)`检查没有存明文，`assertThat(session).isNotNull()`检查会话存在，`assertThat(count).isEqualTo(1)`检查重复注册只留下单行。
+此配置属于第15章阶段状态；第16章会替换其中的访问规则与错误处理。
 
-**理解要点：** 第一个测试的账号与初始化账号不同，分别证明数据库有哈希、密码可用于真实登录、另一条请求能恢复身份；第二个测试同时检查409和数据库行数。`.with(csrf())`不能代替Postman的真实Cookie/令牌生命周期检查。更全面的停用账号、旧令牌和退出测试见[R15](../reference/R15_session_login_complete_source.md)，但完成本例不依赖先阅读R15。
+```text
+Authorization: Bearer <JWT>
+  → BearerTokenAuthenticationFilter读取请求头
+  → JwtAuthenticationProvider调用JwtDecoder验证签名和声明
+  → JwtAuthenticationConverter生成本次请求的Authentication
+  → SecurityContext保存本次请求身份
+  → 授权规则通过后进入AuthController.me()
+```
 
-人工验收按“取令牌→注册→数据库查哈希与固定USER角色→JSON登录→另一请求`/auth/me`→重新取令牌→退出→重送旧Cookie”的顺序进行。另验证错误密码、不存在账号、停用账号统一401；缺令牌POST为403；注册重复409；校验失败400；原员工CRUD、事务和分页测试仍通过。Eclipse单独运行`RegistrationLoginTest`与R15的`SessionLoginTest`，再运行受影响的旧业务测试；旧Controller切片测试可模拟身份，写请求加`.with(csrf())`，但保留原业务断言。日志与证据只记录状态、脱敏响应、必要数据库字段，不记录密码、哈希、完整Cookie或令牌。
+- `BearerTokenAuthenticationFilter`：框架创建的过滤器，读取本次请求的`Authorization: Bearer <JWT>`；学员不需自行编写JWT解析Filter。
+- `JwtAuthenticationProvider`、`JwtDecoder`：前者调用15-07已注册的Decoder验签并检查时间、`iss`、`aud`；`JwtEncoder`只用于登录签发，不参与后续请求验签。
+- `JwtAuthenticationConverter`、`Authentication`：框架默认转换器把验证过的JWT变成当前请求身份；第16章才定制`roles`到角色权限的转换。
+- `SecurityContext`：保存**当前请求**的身份，供授权和Controller读取；`STATELESS`表示不把它放入HttpSession供下一次请求恢复。下一次请求必须重新带Bearer。
 
-本章结束时只有一个JSON登录入口；注册账号来自MySQL，角色由服务器固定为USER，关联员工ID为空。它能登录并访问`/auth/me`，但还没有“本人员工资料”资格。第16章再讲角色与员工关联如何影响授权；公开注册接口不能用于修改角色或停用账号。
+下面的图是**框架内部流程示意**。`BearerTokenAuthenticationFilter`把Header中的文本包装为待验证凭据，资源服务器的`JwtAuthenticationProvider`通过15-07注册的`JwtDecoder`验签和检查声明；验证成功才转换身份并继续进入MVC。此过程不调用`JwtLoginService.login()`，也不每次重新调用BCrypt核对数据库密码。
+
+```mermaid
+sequenceDiagram
+    participant C as Postman/前端
+    participant F as BearerTokenAuthenticationFilter【Security内部】
+    participant P as JwtAuthenticationProvider【Security内部】
+    participant D as JwtDecoder
+    participant V as JwtAuthenticationConverter【Security内部】
+    participant S as SecurityContext【当前请求】
+    participant A as AuthController.me()
+    C->>F: GET /auth/me + Authorization Bearer
+    alt 缺失Bearer
+        F-->>C: 401，不进入Controller
+    else 有Bearer
+        F->>P: 提交BearerTokenAuthenticationToken
+        P->>D: decode(token)
+        alt 签名错误或声明无效
+            D-->>F: 验证失败
+            F-->>C: 401，不进入Controller
+        else 验证合格
+            D-->>P: 已验证Jwt
+            P->>V: 把Jwt转为Authentication
+            V-->>S: 当前用户名及权限
+            S->>A: authenticated()通过
+            A-->>C: 200 + 当前用户名
+        end
+    end
+```
+
+`@GetMapping("/me")`的`Authentication authentication`参数来自本次安全上下文；`authentication.getName()`读取已验证JWT的`sub`，不是前端另传的用户名。只解码Payload并看到`sub`不能证明身份，必须先通过`JwtDecoder`的签名、时间和声明检查。无Token、错误Token、改动Payload、过期Token和只带旧Cookie均应401；正确Bearer应200。第16章才把JWT的`roles`转换为`ROLE_USER`或`ROLE_ADMIN`并检查权限。
+
+
+本章只要求“必须认证”，第16章再配置角色转换与URL/本人授权。`/auth/me`必须带Bearer；不能因为刚登录返回200，就假定下一次请求已自动恢复身份。
+
+**签发与验证是两次不同请求：**首次`POST /auth/login`走`AuthenticationManager → DaoAuthenticationProvider → AppUserDetailsService → MyBatis/MySQL → PasswordEncoder.matches() → JwtTokenService → JwtEncoder`；后续`GET /auth/me`走`BearerTokenAuthenticationFilter → JwtAuthenticationProvider → JwtDecoder → JwtAuthenticationConverter → SecurityContext → Controller`。`JwtDecoder`验证签名、时间和声明，Converter生成当前请求的`Authentication`；不会重新调用`DaoAuthenticationProvider`或核对原始密码。JWT里的角色是登录时的快照；第16章本人数据判断可能另查`app_users.employee_id`，但那不是再次验证密码。
+
+**15-08阶段自检：**无Bearer访问`/auth/me`为401；正确Bearer返回当前用户名；无效Bearer、修改Payload后的JWT均为401。后续请求只带Token、不带原始密码；仅带旧`JSESSIONID`不能维持认证。完成这些检查后再进入第16章角色权限。
+
+## 15-09 过期、错误与“退出”
+
+- 缺Bearer、签名改动、错误issuer/audience、未到`nbf`、超过`exp`：预期401，业务Controller不执行。
+- 已认证但无权限：第16章才会出现403，不能将401与403混同。
+- 客户端退出：删除内存中的Token并停止发送Authorization。服务器没有`POST /auth/logout`，也不维持撤销列表；**已签发且未过期的旧Token仍可能有效**。生产系统如果要求即时撤销，需要另设计短期Token、撤销机制或密钥轮换；不假称本课已实现。
+- Token泄露等同于短时身份泄露；只经HTTPS发送，不写日志和截图，不放入URL或数据库。浏览器JavaScript可读存储存在XSS窃取风险，不能把localStorage说成绝对安全的默认方案；正式前端应按威胁模型选择保存方式。MySQL账号停用不立即让旧Token失效。
+- 正式项目还应按安全要求设计登录限流、防暴力尝试、审计与异常告警；本章没有实现这些机制，不能把示例直接视为完整生产认证平台。
+
+## 15-10 Postman与MySQL综合实操
+
+先在Eclipse设置`EMPLOYEE_JWT_SECRET_BASE64`并运行启动类；Postman的Authorization选Bearer Token，或显式设置`Authorization: Bearer <token>`。不使用Cookie Jar、CSRF Header或`/auth/csrf`。所有请求无查询参数，除标明JSON者外无请求体。
+
+| 顺序 | HTTP方法与URL | 请求体/请求头 | 预期状态与响应 |
+| --- | --- | --- | --- |
+| 1 | POST `http://localhost:8080/auth/register` | JSON `{"username":"learner15","password":"TrainingPass123!"}` | 201，ID/用户名 |
+| 2 | 同上重复 | 同JSON | 409，用户名已存在 |
+| 3 | 同上无效参数 | JSON `{"username":"","password":"short"}` | 400，字段错误 |
+| 4 | POST `http://localhost:8080/auth/login` | JSON `{"username":"learner15","password":"TrainingPass123!"}` | 200，Bearer Token与900秒 |
+| 5 | 同上错误密码 | JSON `{"username":"learner15","password":"wrong"}` | 401，统一错误 |
+| 6 | GET `http://localhost:8080/auth/me` | Bearer Token | 200，用户名为learner15 |
+| 7 | 同上 | 无Token | 401 JSON |
+| 8 | 同上 | 篡改Token | 401 JSON |
+| 8a | 同上 | 另一密钥签发的Token | 401 JSON |
+| 8b | 同上 | 超过`exp`的旧Token | 401 JSON；重新登录获取新Token |
+| 8c | 同上 | 仅带旧`JSESSIONID` Cookie，不带Bearer | 401 JSON |
+| 9 | GET `http://localhost:8080/employees/1001` | Bearer Token | 已认证；业务状态由员工记录决定 |
+| 10 | 本地删除Token后GET `/auth/me` | 无Token | 401 |
+| 11 | 重新发送本地保存且未过期旧Token | Bearer旧Token | 仍可能200，说明客户端退出不等于服务器撤销 |
+
+在MySQL核对`app_users`：新账号只有`USER`，`employee_id`为NULL，`password_hash`不是原密码。记录脱敏的状态码、响应、数据库前后值作为证据；不分享Token或密钥。第16章继续用此工程，不再配置Session和CSRF。
+
+按“注册→查库→登录→读取JWT响应→带Bearer访问`/auth/me`→改坏Token再请求”的顺序做一次Eclipse Debug。观察点如下；第一次可只在项目代码设断点，不要求进入所有框架内部源码：
+
+| 断点 | 应观察的输入或结果 |
+| --- | --- |
+| `AuthController.login()` | `LoginRequest`来自JSON，`@Valid`通过后才进入方法 |
+| `JwtLoginService.login()`的`authenticate(input)`前后 | 前者是未认证输入，后者是已认证结果；不要在证据中记录原始密码 |
+| `AppUserDetailsService.loadUserByUsername()`与`mapper.findByUsername()` | 登录名、MyBatis查询得到的账号状态；不截取完整密码哈希 |
+| `JwtTokenService.issue()` | 从已认证身份取得的用户名、`ROLE_`权限和900秒有效期 |
+| `encoder.encode(...)`之后 | 得到JWT文本；只检查非空和结构，不复制到日志或提交材料 |
+| `AuthController.login()`返回前 | `LoginResponse`进入`ApiResponse.data`，最终200返回客户端 |
+| `AuthController.me()` | 正确Bearer进入且`Authentication.getName()`是刚登录的账号；错误Bearer不命中 |
+
+进阶观察可在`JwtGrantedAuthoritiesConverter`（第16章启用后）或Resource Server过滤器处断点；第三方源码需要Eclipse已下载相应Maven Sources。自测时分别画出账号密码认证、JWT签发和下一次Bearer验证三条链，每条标出输入、项目代码、框架内部处理和HTTP结果。

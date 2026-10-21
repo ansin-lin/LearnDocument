@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:attendance_batch_test;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+app:
+  batch:
+    output-dir: ./target/test-output
+  schedule:
+    enabled: false

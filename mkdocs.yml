@@ -371,8 +371,8 @@ nav:
       - 12. 员工CRUD的分层测试与接口验证: backend/springboot/mainline/12_automated_testing_and_regression.md
       - 13. 用事务保证多步写入一致: backend/springboot/mainline/13_transaction_and_consistency.md
       - 14. 前后端分离REST列表查询、筛选、排序与分页: backend/springboot/mainline/14_search_sort_pagination.md
-      - 15. Spring Security认证与Session登录: backend/springboot/mainline/15_session_login.md
-      - 16. Spring Security权限与数据范围: backend/springboot/mainline/16_authorization_and_data_scope.md
+      - 15. Spring Security注册与JWT Bearer认证: backend/springboot/mainline/15_session_login.md
+      - 16. JWT角色授权与本人数据范围: backend/springboot/mainline/16_authorization_and_data_scope.md
       - 17. 多环境配置与打包: backend/springboot/mainline/17_profiles_configuration_packaging.md
       - 18. 部署与运行检查: backend/springboot/mainline/18_deployment_operations_check.md
       - 19. Vue有給休暇后台综合练习: backend/springboot/mainline/19_paid_leave_vue_backend_practice.md
@@ -380,7 +380,26 @@ nav:
       - 学习入口: backend/springboot/extensions/index.md
       - Redis 单文件专题: backend/springboot/extensions/redis.md
       - Spring Batch批处理: backend/springboot/extensions/spring-batch.md
-      - 账票处理与文件交付: backend/springboot/extensions/reporting.md
+      - Spring Batch + Scheduling 独立专题:
+        - 学习入口: backend/springboot/extensions/spring-batch-training/README.md
+        - 01. Batch 与项目实现方式: backend/springboot/extensions/spring-batch-training/docs/01_batch_overview.md
+        - 02. Spring Batch 架构与 Tasklet: backend/springboot/extensions/spring-batch-training/docs/02_batch_architecture_and_tasklet.md
+        - 03. Chunk 数据处理: backend/springboot/extensions/spring-batch-training/docs/03_chunk_processing.md
+        - 04. 事务、重启与执行管理: backend/springboot/extensions/spring-batch-training/docs/04_transaction_restart_and_job_management.md
+        - 05. Scheduling 与 Batch 整合: backend/springboot/extensions/spring-batch-training/docs/05_scheduling_and_batch_integration.md
+        - 06. 勤怠日次集計・CSV連携: backend/springboot/extensions/spring-batch-training/docs/06_comprehensive_practice.md
+        - 学员练习: backend/springboot/extensions/spring-batch-training/exercises/assignments.md
+        - 教师参考: backend/springboot/extensions/spring-batch-training/exercises/instructor_answers.md
+        - 运行手册: backend/springboot/extensions/spring-batch-training/runbook.md
+        - 验证报告: backend/springboot/extensions/spring-batch-training/verification_report.md
+      - 账票处理教材:
+        - 1. 账票基础: backend/springboot/extensions/01_report_overview.md
+        - 2. 账票设计与架构: backend/springboot/extensions/02_report_design_and_architecture.md
+        - 3. 无模板账票: backend/springboot/extensions/03_report_without_template.md
+        - 4. 有模板账票: backend/springboot/extensions/04_report_with_template.md
+        - 5. 账票交付与Batch: backend/springboot/extensions/05_report_delivery_and_batch.md
+        - 6. 综合理解与代码阅读: backend/springboot/extensions/06_report_comprehensive_practice.md
+        - 进阶参考代码: backend/springboot/extensions/reporting-reference/README.md
       - 月度员工变更账票项目: backend/springboot/extensions/monthly-report-project.md
     - 附录:
       - 附录学习入口: backend/springboot/appendix/index.md
@@ -402,18 +421,13 @@ nav:
         - A13-1. 事务原理与Spring事务机制: backend/springboot/appendix/A13_01_transaction_spring_mechanisms.md
         - A13-2. 并发更新与锁: backend/springboot/appendix/A13_02_concurrent_updates_locks.md
         - A13-3. 隔离级别与MVCC: backend/springboot/appendix/A13_03_isolation_mvcc.md
-        - A15-1. Spring Security认证机制与核心Bean: backend/springboot/appendix/A15_01_spring_security_authentication.md
-        - A15-2. Session、Cookie与CSRF机制: backend/springboot/appendix/A15_02_session_cookie_csrf.md
-        - A16-1. URL权限、方法权限与数据范围: backend/springboot/appendix/A16_01_method_security_data_scope.md
-        - A16-2. 安全测试、回归与排障: backend/springboot/appendix/A16_02_security_testing_and_troubleshooting.md
-        - A16. 跨源Session与CORS实验: backend/springboot/appendix/A16_cross_origin_session_cors.md
         - A17. 配置、构建与交付进阶: backend/springboot/appendix/A17_configuration_build_delivery_advanced.md
         - A18-1. Linux部署与运维手顺参考: backend/springboot/appendix/A18_01_linux_deployment_operations_reference.md
         - A18-2. 常见运行与数据库迁移组件识读: backend/springboot/appendix/A18_02_operations_components_reading.md
       - 最终源码参考:
         - R14. 列表查询与分页最终源码: backend/springboot/reference/R14_search_pagination_complete_source.md
-        - R15. Session登录最终源码: backend/springboot/reference/R15_session_login_complete_source.md
-        - R16. 授权最终源码: backend/springboot/reference/R16_authorization_complete_source.md
+        - R15. JWT Bearer认证最终源码: backend/springboot/reference/R15_session_login_complete_source.md
+        - R16. JWT授权最终源码: backend/springboot/reference/R16_authorization_complete_source.md
       - 通用附录:
         - B01. Spring共通处理机制: backend/springboot/appendix/B01_spring_common_processing_mechanisms.md
         - B02. 如何阅读一个陌生的Spring项目: backend/springboot/appendix/B02_existing_project_reading.md

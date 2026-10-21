@@ -123,11 +123,11 @@ Java进程运行
 | 顺序 | HTTP方法与URL | 预期 |
 | --- | --- | --- |
 | 1 | `GET http://server:8080/health` | 200、`OK` |
-| 2 | `GET /auth/csrf` | 200、取得令牌 |
-| 3 | `POST /auth/login` | 200、建立Session |
-| 4 | `GET /employees/1001` | tanaka本人查询200 |
+| 2 | `POST /auth/login` | JSON账号密码；200，取得`accessToken`及`tokenType=Bearer` |
+| 3 | `GET /auth/me` | Bearer Token；200，返回当前用户名 |
+| 4 | `GET /employees/1001` | Bearer Token，无参数和请求体；tanaka本人查询200 |
 
-登录请求必须按第15章携带CSRF令牌，后续请求保留同一Cookie；不能为部署验证关闭Security。真实服务器可能不允许直接访问应用端口，届时应按项目提供的正式URL验证。
+后续受保护请求必须携带`Authorization: Bearer <accessToken>`；不使用认证Cookie或CSRF令牌，不能为部署验证关闭Security。真实服务器可能不允许直接访问应用端口，届时应按项目提供的正式URL验证。
 
 ## 六、日志与基本故障调查
 
@@ -190,7 +190,7 @@ sudo journalctl -u employee-api
 | systemd显示失败 | 进程/配置 | 看启动日志和Java版本 |
 | 进程存在但无法连接 | 端口/网络 | 核对监听端口和访问路径 |
 | 健康接口200但员工接口500 | 数据库/业务 | 按requestId查应用日志 |
-| 员工接口401 | 认证 | 检查是否已登录及Session |
+| 员工接口401 | 认证 | 检查Bearer Token是否缺失、过期、签名或issuer/audience无效 |
 | USER访问列表403 | 授权 | 对照第16章权限矩阵 |
 | 新版本异常 | 发布 | 评估影响并按批准手顺切り戻し |
 
