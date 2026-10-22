@@ -260,25 +260,30 @@ nav:
     - Git 命令速查表: tools/git/cheatsheet.md
   - Linux:
     - 课程入口: tools/linux/index.md
-    - 1. Linux 基础入门: tools/linux/01_linux_intro.md
-    - 2. 文件与目录操作: tools/linux/02_file_dir_command.md
-    - 3. 身份与文件权限: tools/linux/03_user_permission.md
-    - 4. 进程确认与资源观察: tools/linux/04_process_system.md
-    - 5. 用户级定时任务: tools/linux/05_crontab_scheduler.md
-    - 6. 应用日志调查: tools/linux/06_log_management.md
-    - 7. Vim 最小编辑操作: tools/linux/07_vi_vim_basic.md
-    - 8. Web 与批处理障碍调查: tools/linux/08_web_batch_investigation.md
+    - 1. Linux 基础认识与环境准备: tools/linux/01_linux_intro.md
+    - 2. Linux 目录结构与基础文件操作: tools/linux/02_file_dir_command.md
+    - 3. 用户、用户组与文件权限: tools/linux/03_user_permission.md
+    - 4. 文本处理、日志查看与 Shell 基础: tools/linux/04_text_log_shell_basic.md
+    - 5. 进程管理与系统服务: tools/linux/05_process_system.md
+    - 6. Linux 网络、SSH 与远程服务器操作: tools/linux/06_network_ssh.md
+    - 7. 软件安装、运行环境与 Spring Boot 项目部署: tools/linux/07_java_deployment.md
+    - 8. Linux 综合实战与常见故障排查: tools/linux/08_integrated_troubleshooting.md
+    - 补充阅读:
+      - Vim 常用编辑操作: tools/linux/supplement/02_vi_vim_basic.md
+    - 选学专题：用户级定时任务: tools/linux/crontab_scheduler_optional.md
     - Linux 命令速查表: tools/linux/linux_command_cheatsheet.md
   - Shell:
     - 课程入口: tools/shell/index.md
-    - 1. 脚本结构与执行方式: tools/shell/01_shell_basic.md
-    - 2. 变量、引用与参数: tools/shell/02_variables_arguments.md
-    - 3. 输入输出、重定向与管道: tools/shell/03_io_pipelines.md
-    - 4. 条件、循环与函数: tools/shell/04_control_functions.md
-    - 5. 错误处理、日志与清理: tools/shell/05_error_logging.md
-    - 6. 日志检查脚本: tools/shell/06_log_checker.md
-    - 7. 日本项目改修与交付: tools/shell/07_project_task.md
-    - Linux 与 Bash 新人速查表: tools/shell/linux_shell_quick_reference.md
+    - 1. Shell 基础与脚本执行: tools/shell/01_shell_basic.md
+    - 2. 变量、参数与环境变量: tools/shell/02_variables_arguments.md
+    - 3. 条件判断、循环与函数: tools/shell/03_control_functions.md
+    - 4. 文件、文本与输入输出: tools/shell/04_file_text_processing.md
+    - 5. Shell 与 Java Batch 联动: tools/shell/05_batch_execution.md
+    - 6. 返回码、日志与异常处理: tools/shell/06_error_logging.md
+    - 7. Job 调度与日本项目运用: tools/shell/07_job_scheduling.md
+    - 8. 销售数据日次导入综合实战: tools/shell/08_batch_project_practice.md
+    - 日志调查附录: tools/shell/appendix/check_log.md
+    - Shell 速查表: tools/shell/shell_quick_reference.md
 - 数据库:
   - SQL:
     - 0. 数据库与 SQL 入门: database/sql/00_database_introduction.md

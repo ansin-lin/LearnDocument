@@ -1,31 +1,20 @@
-# Bash 脚本课程
+# Shell 新人培训：销售数据日次导入 Batch
 
-本课程面向日本 Web/批处理项目中的 PG，使用 Bash 编写小型、可验证的项目辅助脚本。目标是安全处理文件和日志，不是编写系统管理框架。
-开始前先完成 [Linux 命令课程](../linux/index.md)的文件、文本和权限练习。这里沿用同一份 `input/app.log`；如果没有该文件，第 06 章提供测试数据。
+本课程面向零经验 Shell 学员及 Java / Spring Boot 新人 PG。完成后应能阅读、修改和测试日本项目中的业务 Batch Shell：接收业务日期、检查 CSV、同步调用 Java、正确返回状态、记录日志、成功归档，并依据改修票留存正常/异常/退化测试证据。重点是程序开发与调查，不是 Linux 运维或复杂调度配置。
 
-## 最终成果
+先学 [Linux 基础命令课程](../linux/index.md)的目录、文件和权限；第 5 章起的可执行模拟案例需 Linux Bash、GNU date、JDK 17+。没有 JDK 可先学第 1～4 章，第 5～8 章记录环境限制，不在项目服务器自行安装。练习统一在**个人副本**进行；样例 CSV 是虚构数据。模拟 Java 程序只做简化校验与计数，不是 Spring Batch，也不写数据库。
 
-你将完成 `check_log.sh`：接收日志路径和 request ID，校验输入，提取相关记录，输出调查摘要，正确返回退出状态，并能重复执行而不破坏原始文件。
+## 八章主线
 
-## 学习顺序
+1. [Shell 基础与脚本执行](01_shell_basic.md)：运行第一份脚本，辨认解释器与状态。
+2. [变量、参数与环境变量](02_variables_arguments.md)：接收业务日期和输入路径。
+3. [条件判断、循环与函数](03_control_functions.md)：拒绝错误参数、日期格式和文件。
+4. [文件、文本与输入输出](04_file_text_processing.md)：准备 CSV，理解文件与标准流。
+5. [Shell 与 Java Batch 联动](05_batch_execution.md)：同步运行可执行模拟 JAR 并保存状态。
+6. [返回码、日志与异常处理](06_error_logging.md)：区分正常/异常并保留调查资料。
+7. [Job 调度与日本项目运用](07_job_scheduling.md)：理解 cron、JP1/AJS、Jobnet 与再执行。
+8. [销售数据日次导入综合实战](08_batch_project_practice.md)：按详细设计和日语改修票完成开发、自测和 Review。
 
-1. [脚本结构与执行方式](01_shell_basic.md)
-2. [变量、引用与参数](02_variables_arguments.md)
-3. [输入输出、重定向与管道](03_io_pipelines.md)
-4. [条件、循环与函数](04_control_functions.md)
-5. [错误处理、日志与清理](05_error_logging.md)
-6. [日志检查脚本增量实现](06_log_checker.md)
-7. [日本项目改修与交付演习](07_project_task.md)
+主线贯穿的[案例源码、脚本与 CSV](sample/sales-import/MockSalesImport.java)从最小示例逐步扩展；第 8 章提供完整可运行版本与待改修起点。[教师参考](teacher_reference.md)用于评审，[Shell 速查表](shell_quick_reference.md)用于课后回看。旧课程的 `check_log.sh` 不再占主线，保留为[日志调查附录](appendix/check_log.md)。
 
-完成主线后可用 [Linux 与 Bash 新人速查表](linux_shell_quick_reference.md) 回看命令、语法和操作边界。
-
-## 环境与边界
-
-- Linux 普通用户、Bash 4 或更高版本
-- 工作目录：`~/learndoc-linux-lab`
-- 不使用 sudo，不启停系统服务，不删除原始日志
-- 所有路径参数都要校验并用双引号引用
-- 示例执行前可用 `bash --version` 和 `pwd` 确认环境
-- 本课程的命令块在 Bash 终端执行；代码块标明的脚本内容要先保存成文件，不是逐行粘贴到终端
-
-建议安装了 ShellCheck 的环境运行静态检查；没有时记录未执行，不自行安装软件包。
+实际项目运行账号、路径、编码、调度和再执行权限以项目手顺为准；练习不用 sudo、不接触生产数据、不自行重跑真实业务 Job。
